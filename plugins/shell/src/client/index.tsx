@@ -34,6 +34,7 @@ import {
   type SavedLayout,
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
+import { ENV_COMMAND } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
 import type { HostBridge, ShellArgs } from './types.js'
@@ -483,9 +484,6 @@ declare global {
     }
   }
 }
-
-/** node 半登记的那条环境命令。各存一份字符串，浏览器半不 import node 半 */
-const ENV_COMMAND = 'shell.env'
 
 /**
  * 内核契约的那一个默认导出：拿走 `#root`，回 `{ dispose }`。

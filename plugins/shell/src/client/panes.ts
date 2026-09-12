@@ -1,7 +1,5 @@
 import type { HostBridge, PaneRow } from './types.js'
-
-/** 取表那条命令。跟 node 半的 PANES_COMMAND 是同一个字符串，各存一份（浏览器半不 import node 半） */
-const PANES_COMMAND = 'shell.panes'
+import { PANES_COMMAND } from '../protocol.js'
 
 /**
  * 取一次注册表。**取不到回空表并记一条错**：外壳照样画出空井，因为「一个件都没注册」

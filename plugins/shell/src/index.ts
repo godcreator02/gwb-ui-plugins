@@ -9,6 +9,7 @@ import type {} from '@godcreator02/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
+import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv } from './protocol.js'
 import { DESKTOP_EVENT } from './desktops.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 
@@ -30,24 +31,11 @@ export type { SavedLayout, LayoutDoc } from './layout.js'
  * 明说它在等谁。
  */
 
-/** 浏览器半取表的两条命令。注册与调用两处同吃这两个常量 */
-export const PANES_COMMAND = 'shell.panes'
-export const PLUGINS_COMMAND = 'shell.plugins'
-/** 布局档的两条命令。常量本体住 `layout.ts`（那是个纯模块，浏览器半 import 它不带 cordis） */
+/** 跨半的命令名与环境形状。常量本体住 `protocol.ts`（纯模块，浏览器半 import 它不带 cordis） */
+export { PANES_COMMAND, PLUGINS_COMMAND, ENV_COMMAND } from './protocol.js'
+export type { ShellEnv } from './protocol.js'
+/** 布局档的两条命令。常量本体住 `layout.ts`（同一个道理） */
 export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
-
-/**
- * 浏览器半开机问一次的环境：home 与三张样式表的 `file://` 地址。**由 node 半算**：本包的从
- * `import.meta.url` 算，令牌表按包解析。importmap 不在这儿——那是内核的事（浏览器半的取址），
- * 页面注完表才 import 本件的浏览器半。
- */
-export const ENV_COMMAND = 'shell.env'
-
-export interface ShellEnv {
-  home: string
-  /** 按序加载：令牌表、dockview 表、本件自己的表 */
-  styles: string[]
-}
 
 const nodeRequire = createRequire(import.meta.url)
 const fileUrl = (spec: string): string => pathToFileURL(nodeRequire.resolve(spec)).href
