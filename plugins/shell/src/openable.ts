@@ -31,10 +31,6 @@ import type { RegisteredPane } from './pane-registry.js'
  * 零 DOM、零 react，测试在 node 里直接跑。
  */
 
-/** 导航自己也是井里一格，它的 id 与 component 名 */
-export const NAV_ID = 'nav'
-export const NAV_COMPONENT = 'nav'
-
 /**
  * 落进 dockview 面板的那份 `params`：外壳的识别三件套，加上件开这一份时传的那些键。
  * 两半并排住在一份里，保留键归外壳（名单在 `panels.ts`）。
@@ -86,7 +82,7 @@ export interface OpenableSpec {
   component: string
   title: string
   icon?: string
-  params?: PanelParams
+  params: PanelParams
 }
 
 /**
@@ -125,8 +121,8 @@ export interface OpenPane {
  * 条目挂在 include 那条下面、自带 `home:` 前缀（实机是 `home:hello`），所以真实的
  * 窗格 id 长这样：`plugin:home:hello:main`——四段，不是三段。
  *
- * 那个前缀不能去掉：`entryId` 得跟条目视图的 `id` 一字不差，`liveness` 拿它去表里
- * 认这一格背后的件还在不在。改短了就认不出，而认不出会静默地变成错格匹配。
+ * 那个前缀不能去掉：`entryId` 得跟条目视图的 `id` 一字不差，改短了就对不上账，
+ * 而对不上账会静默地变成错格匹配。
  *
  * 要 entryId 或 paneId 就从面板的 `params` 里取——那儿本来就分开存着，从来不必反解。
  */
@@ -197,8 +193,6 @@ export type OpenPlan =
  *
  * **外壳的三件套压在最上面**：保留键在这一步之前已由 `pluginParamsIn` 摘掉，这个展开
  * 顺序是第二道锁——件永远改不动这一格的身份。
- *
- * 没有 `params` 的 spec（导航那格）不接参数：它不是插件窗格，件也报不出它。
  */
 function withOpenParams(
   spec: OpenableSpec,
@@ -206,7 +200,6 @@ function withOpenParams(
   key: string,
   preview: boolean,
 ): OpenableSpec {
-  if (spec.params === undefined) return spec
   const mine = pluginParamsIn(params)
   return { ...spec, params: { ...mine, ...spec.params, key, ...(preview ? { preview: true } : {}) } }
 }
@@ -216,11 +209,8 @@ function withOpenParams(
  *
  * **开格与软换同吃这一处**：两处各拼一份的话，软换那条会把 `icon` 拼漏——现象是换完
  * 内容标签上的图标变成了兜底那枚，而谁都不会想到是这儿。
- *
- * 没有 `params` 的 spec（导航那格）回 undefined：那格不是插件窗格，它没有身份三件套。
  */
-export function panelParamsOf(spec: OpenableSpec): PanelParams | undefined {
-  if (spec.params === undefined) return undefined
+export function panelParamsOf(spec: OpenableSpec): PanelParams {
   return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
 }
 
@@ -359,10 +349,7 @@ export function specForOwnPane(
   return found === undefined ? undefined : specForPane(found)
 }
 
-/** 导航永远排第一——它自己也是可开可关的一格 */
+/** 注册表 → 井里能开的那几格，按注册先后 */
 export function listOpenable(panes: readonly RegisteredPane[]): OpenableSpec[] {
-  return [
-    { id: NAV_ID, component: NAV_COMPONENT, title: '导航', icon: 'panel-left' },
-    ...panes.map((pane) => specForPane(pane)),
-  ]
+  return panes.map((pane) => specForPane(pane))
 }

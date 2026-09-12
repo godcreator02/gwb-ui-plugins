@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  NAV_COMPONENT,
-  NAV_ID,
   listOpenable,
   panelIdOf,
   planOpen,
@@ -34,14 +32,10 @@ const echo2: RegisteredPane = { ...echo, entryId: 'echo-2', title: '回声（二
 const echoLog: RegisteredPane = { ...echo, id: 'log', title: '日志', icon: 'scroll-text' }
 
 function panes(list: readonly RegisteredPane[]) {
-  return listOpenable(list).filter((s) => s.id !== NAV_ID)
+  return listOpenable(list)
 }
 
 describe('listOpenable：表里一条摊成井里一格', () => {
-  it('导航永远排第一，它自己也是可开可关的一格', () => {
-    expect(listOpenable([echo])[0]).toMatchObject({ id: NAV_ID, component: NAV_COMPONENT, title: '导航' })
-  })
-
   it('一条注册出一条：id 两段，params 三样都带着', () => {
     expect(panes([echo])).toEqual([
       {
@@ -74,8 +68,8 @@ describe('listOpenable：表里一条摊成井里一格', () => {
     expect(specs.map((s) => s.params?.paneId)).toEqual(['main', 'log'])
   })
 
-  it('空表只剩导航——「一个件都没注册」跟「表没到手」是两回事,这儿只管前者', () => {
-    expect(listOpenable([]).map((s) => s.id)).toEqual([NAV_ID])
+  it('空表回空表——「一个件都没注册」跟「表没到手」是两回事,这儿只管前者', () => {
+    expect(listOpenable([])).toEqual([])
   })
 
   it('不过滤：禁用的件根本没跑 apply、注册不进来,在表里就等于该开得出来', () => {
@@ -103,7 +97,7 @@ describe('specForOwnPane：件说「打开我的某一格」', () => {
 describe('panelIdOf：两段都进去,只有这一处这么拼', () => {
   it('落盘的 id 跟表里的算法是同一处', () => {
     expect(panelIdOf('echo', 'main')).toBe('plugin:echo:main')
-    expect(listOpenable([echo])[1]!.id).toBe(panelIdOf(echo.entryId, echo.id))
+    expect(listOpenable([echo])[0]!.id).toBe(panelIdOf(echo.entryId, echo.id))
   })
 
   it('实机的 entryId 自带 home: 前缀,拼出来是四段——这是条目 id 的真实形状', () => {

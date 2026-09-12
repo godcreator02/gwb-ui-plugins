@@ -194,9 +194,9 @@ function openInstancesAll(who: { entryId: string; paneId: string }): OpenPane[] 
   return out
 }
 
-/** 这一条 spec 背后是谁的哪一格。导航那格没有 params，两段都回空串 */
+/** 这一条 spec 背后是谁的哪一格 */
 function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
-  return { entryId: spec.params?.entryId ?? '', paneId: spec.params?.paneId ?? '' }
+  return { entryId: spec.params.entryId, paneId: spec.params.paneId }
 }
 
 /**
@@ -227,8 +227,8 @@ const TAB_COMPONENT = 'gwb-tab'
  * 序列化——所以往这儿塞活对象是不行的。
  */
 function panelParams(spec: OpenableSpec): Record<string, unknown> {
-  // 拼法归 `panelParamsOf`（开格与软换同吃那一处）。导航那格没有 params，回空表
-  return panelParamsOf(spec) ?? {}
+  // 拼法归 `panelParamsOf`（开格与软换同吃那一处）
+  return panelParamsOf(spec)
 }
 
 /**
@@ -767,9 +767,7 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   root.setAttribute('data-gwb-plugin', SELF)
 
   const panes = await fetchPanes(args.host)
-  // 导航还没有,把它从表里滤掉——listOpenable 排的第一条是导航那格,而画它的组件
-  // 第四刀才有。留着的话 dockview 会拿不到 'nav' 组件
-  const specs = listOpenable(panes).filter((s) => s.component === PLUGIN_COMPONENT)
+  const specs = listOpenable(panes)
   // 档赶在首帧之前到手——先铺默认再跳恢复，闪的那一下藏不住。没有档（第一次开机 /
   // 档废了）就地取缺省：一口「桌面 1」
   const initialDoc = (await fetchLayoutDoc(args.host)) ?? defaultDoc()

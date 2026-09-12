@@ -18,7 +18,7 @@
 /**
  * 一格拿到的总线句柄：给窗格的那两条，外加外壳自己用的 release。
  *
- * **按形状收，不 extends 别处的类型**（同 liveness 的 `EntryLike`、panels 的 `PanelLike`）：
+ * **按形状收，不 extends 别处的类型**（同 panels 的 `PanelLike`）：
  * 这几个模块要能在 node 里直接跑测试，牵进浏览器半的类型链就跑不动了。符合不符合契约，
  * 由真正接线那一处的标注钉着。
  */
