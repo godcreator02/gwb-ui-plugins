@@ -1,0 +1,56 @@
+---
+title: 令牌国有化：产物零字面 fallback
+description: 把 Tailwind 出厂主题被用到的键全部接管进令牌，四件产物只剩查表指令；语义色转正、件域两段制、守卫双断言同趟落地
+date: 2026-09-12
+labels:
+  - styles
+  - tokens
+---
+
+# 令牌国有化（2026-09-12）
+
+## 要回答的问题
+
+件产物里 `calc(var(--baseui-spacing, 0.25rem) * 4)` 这族 fallback 的根源是 `prefix()`
+把 Tailwind 内置主题变量名改写、页面上没人声明改写后的名字——前缀围栏的固有税，
+styles.mdx 残余耦合第二条。能不能把这笔税一次缴清，顺带把间距 / 字重 / 阴影 / 断点
+这些维度也收进主题？
+
+## 判据与读数
+
+- **探针先行**：总控台 out/ 的探针（件同款五行入口 + 新映射面）实测，`--spacing`、
+  `--color-white`、`--shadow-*`、`--container-*`、字重字距全部可经 `@theme inline` 接管，
+  产物零字面 fallback；唯一反复是 shadow 只映射三档时 `shadow-xs` 漏网（shadcn 组件在用），
+  补全八档（tokens 0.1.1）后清零。
+- **颜色审计**（同日）：baseui 的 amber 族 10 处是语义色走调色板（换主题不跟随且守卫不抓），
+  SOURCE_DOT 三色是装饰色散在源码与 inline style。前者转正 `--warning`，后者收件域令牌。
+- **守卫首跑抓到两类误杀**：tw-animate-css 包内写死的机制缺省（animation 简写连排的
+  `ease/0s/1/normal` 与 enter/exit 变换缺省）——映射面够不着包源码，钉前缀豁免；
+  非色形态（`border-0/b/t`、`text-center/left`）撞颜色正则——非色集合豁免。
+- **隔离 home 实机**（手搭，token-nat）：装配后页面上 `--gwb-spacing` 等度量衡全部在值、
+  `--warning` 查到暗表值；端到端实测 `hello:p-4` 实算 **16px**（与旧 fallback 0.25rem×4
+  逐位一致——观感零漂移的数学证明），`baseui:text-warning` / `bg-src-plugin` / `text-white`
+  计算值全对。装配时踩一坑：手搭 home 只装 UI 四件不挂——shell 的硬 peer（commands /
+  data / plugin-api）也得在顶层；平时这条由 plugin-manager.install 的「peer 一并装」兜着。
+
+## 落地形状
+
+- tokens 0.1.1：声明面加度量衡区（值照抄出厂默认）+ `--warning` 亮暗；映射面接管
+  spacing / 字重 / 字距 / white/black / 阴影八档 / ease / transition 默认 / 容器断点。
+- baseui：amber 全数转 `*-warning`；来源点色走**件域两段制**（`src/client/tokens.css`
+  值段 + 入口尾部 `@theme inline` 映射段——名字带件前缀挂 `:root`，portal 安全）。
+- 守卫双断言随件走（shell / theme / baseui / hello 四件）：零字面 fallback + 颜色类
+  白名单（令牌包映射面 ∪ 本件 @theme 自注册，两边现扫不手写）。
+- 发版：tokens 0.1.1 → shell 0.4.3 / theme 0.2.2 / baseui 0.0.2 / hello 0.2.4。
+- 规矩正本 [令牌与颜色：共享规则](/docs/tokens)（归属判据三问、两段制、守卫实况）；
+  styles.mdx 残余耦合两条并一条；devkit 写件手册同趟更新（devkit 是正本，hello 是活例）。
+
+## 学到什么
+
+- 消 fallback 的唯一彻底路是**国有化**：凡想跟主题走的维度，把出厂键接管到映射面——
+  「前缀改内置名」从绕不开的税变成不存在的问题，代价是升 Tailwind 大版本要重核键名
+  （映射面头注已写）。
+- 守卫要先跑再收：两条断言的首跑各抓出一类误杀，豁免名单（机制缺省、非色形态）
+  都是实跑喂出来的，不是想出来的。
+- 件域令牌的物理形态定型为两段制——不发包、不进页面全局表，`.dark` 自适配与 portal
+  安全靠「变量挂 :root + 名字带件前缀」两头保证。
