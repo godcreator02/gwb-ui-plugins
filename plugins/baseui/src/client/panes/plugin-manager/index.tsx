@@ -111,9 +111,8 @@ const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
 const SHELL_PLUGINS = 'shell.plugins'
 /**
- * 共享包那张表。以前问的是内核的 `kernel.info`——单进程内核没有那条自省命令了，改成问
- * 本件的 node 半：它去 home 的 node_modules 里逐包读 `gwb.shared`，跟内核算 importmap 时
- * 扫的是同一批声明
+ * 共享包那张表。问的是本件的 node 半——单进程内核没有自省命令；它去 home 的
+ * node_modules 里逐包读 `gwb.shared`，跟内核算 importmap 时扫的是同一批声明
  */
 const SHARED = 'plugin-manager.shared'
 const OUTDATED = 'plugin-manager.outdated'
@@ -1110,7 +1109,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   )
                 }
                 onAskRemove={() => askRemove(card)}
-            onAskUninstall={() => askUninstall(card.pkg)}
+                onAskUninstall={() => askUninstall(card.pkg)}
                 update={updates?.[card.pkg]}
                 onUpdate={
                   updates?.[card.pkg] !== undefined ? () => updatePkg(card.pkg) : undefined
@@ -1458,9 +1457,9 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
   // 认不出的 paneId 报错、不回落——「注册了 x 却画出 installed」是那种没有任何现象的错
   if (args.pane.id === PANE_ID) {
-    // 弹层（下拉、两个确认框）**照 radix 的默认 portal 到 body**：0.2 起围栏是类名前缀，
-    // 规则全页有效，挂到容器外面照样有样式。原先那层 `PortalContainer` 上下文与两个
-    // 组件里「把容器透给 Portal」的手改，连同 src/client/portal.tsx 一起退场了
+    // 弹层（下拉、两个确认框）**照 radix 的默认 portal 到 body**：围栏是类名前缀，规则
+    // 全页有效，挂到容器外面照样有样式（当初为什么曾要求挂回容器，见外壳页「菜单的
+    // portal」一节，防它回来）
     root.render(<PluginsPane args={args} />)
   } else {
     root.render(<p className="baseui:p-3 baseui:text-sm baseui:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
@@ -1470,9 +1469,9 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
 
 /** 窗格件那半的入口。导出名是 `mountPane`——外壳占整页那个根，窗格占井里一格 */
 export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
-  // **不再给容器加 position:relative**：那一句是为「弹层 absolute 定位、参照系取最近的
-  // positioned 祖先」配的，而弹层现在是官方原样——portal 到 body、confirm 那层 fixed。
-  // 随之而来的行为变化：确认框的遮罩盖整窗而不是只盖这一格，模态对话框本该如此
+  // **不给容器加 position:relative**：弹层走 radix 官方原样——portal 到 body、confirm
+  // 那层 fixed，用不着「最近的 positioned 祖先」那套参照系；遮罩因此盖整窗而不是只盖
+  // 这一格，模态对话框本该如此
   const root = boot(args, container)
   return {
     dispose() {

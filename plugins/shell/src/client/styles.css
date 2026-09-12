@@ -1,10 +1,9 @@
 /*
  * 外壳自己那张表的入口（`dist/style.css`）。**件自己就是一个完整的 Tailwind 入口**
- * ——不再由 tools/build-styles.ts 拼输入、再拿 postcss 把每条选择器改写成
- * `:where([data-gwb-plugin="…"]) …`。围栏改由**类名前缀**来做：类名从源头就是
- * `shell:flex` 这种，全页有效，但只可能匹配到外壳自己画出来的元素。好处是弹层
- * portal 到 body（在外壳根之外）照样有样式——状态栏那两个下拉菜单因此不再需要
- * 把 Portal 的 container 拽回外壳根，`shadcn add` 拉下来的组件一个补丁都不用打。
+ * ——围栏由**类名前缀**来做：类名从源头就是 `shell:flex` 这种，全页有效，但只可能匹配
+ * 到外壳自己画出来的元素。好处是弹层 portal 到 body（在外壳根之外）照样有样式——
+ * 状态栏那两个下拉菜单用不着把 Portal 的 container 拽回外壳根，`shadcn add` 拉下来的
+ * 组件一个补丁都不用打。
  *
  * **这张不是外壳的全部表**：`dist/dockview.css` 是另一张，由 `build.ts` 拼（裁过的
  * dockview 基础规则 + `src/client/dockview-theme.css`）。那张管的是 `.dv-*` 与

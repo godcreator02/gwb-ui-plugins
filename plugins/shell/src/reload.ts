@@ -44,7 +44,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * `import('electron')` 回的命名空间 → deps。
  *
  * **`BrowserWindow` 是一个类，`typeof` 是 `'function'`**——按「是对象」判它就等于不存在
- * （0.2.2 / 0.2.3 两版都栽在这，判据见文档站），所以对象或函数都往下取。electron 是
+ * （判据见文档站），所以对象或函数都往下取。electron 是
  * CJS 包，`import()` 的命名空间与 `default` 上 API 都挂，先看 `default` 不吃亏。
  * 认不出就抛，调用方收成回执
  */

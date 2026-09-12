@@ -65,8 +65,8 @@ const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeade
 
 /**
  * 切换后扫一眼 body：**探雷器，不是灭火器**。件的浮层若没把 radix Portal 的 container
- * 指到 `args.shell.portal`，它就挂在 body 上、不跟任何桌面走——藏掉桌面也藏不掉它
- * （0.0.14 那桩「后面的桌面盖住前面的」最可信的向量）。扫到只点名（console.warn），
+ * 指到 `args.shell.portal`，它就挂在 body 上、不跟任何桌面走——藏掉桌面也藏不掉它。
+ * 扫到只点名（console.warn），
  * **不删别人的 DOM**。状态栏自己的菜单也挂 body——它在桌面体系之外，应该常驻；radix
  * 的菜单在焦点离开时自己关，所以扫到的多半是没接容器那半的残影。
  */
@@ -331,7 +331,7 @@ function App({
     openDefaults(activeApi)
   }
 
-  // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html。
+  // fixed inset-0 而不是 h-screen：#root 没有高度样式，而外壳不该去改宿主那张 html。
   // 主区那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕。
   //
   // **桌面那一节上绝不加 transform / filter / perspective / will-change**：fixed 浮层的

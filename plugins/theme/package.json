@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "//exports": "只剩主入口。**内核不再读 exports 表**：浏览器半与样式表的地址由 node 半从 import.meta.url 算成 file://，注册窗格时报给外壳",
+  "//exports": "只剩主入口。**内核不读 exports 表**：浏览器半与样式表的地址由 node 半从 import.meta.url 算成 file://，注册窗格时报给外壳",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "src"
   ],
   "scripts": {
-    "//build": "样式那一步不再走 tools/build-styles.ts（那条是选择器 scope 方案）。前缀方案下件自己就是一个完整的 Tailwind 入口：`tailwindcss` 这个 bin 由 @tailwindcss/cli 提供，输入是 src/client/styles.css，扫描面由那份 css 里的 @source 说了算",
+    "//build": "前缀方案下件自己就是一个完整的 Tailwind 入口：`tailwindcss` 这个 bin 由 @tailwindcss/cli 提供，输入是 src/client/styles.css，扫描面由那份 css 里的 @source 说了算",
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "prepublishOnly": "pnpm build"
@@ -37,7 +37,7 @@
       "optional": true
     }
   },
-  "//deps": "react 系走页面 importmap（外置），types 与构建线（esbuild、以及本件自己那条 Tailwind 线）全在 dev——打进本束的算 dev。样式不再经 tools 的共享脚本改写选择器：件自己编自己那张表，围栏在类名的 theme: 前缀里",
+  "//deps": "react 系走页面 importmap（外置），types 与构建线（esbuild、以及本件自己那条 Tailwind 线）全在 dev——打进本束的算 dev。样式由件自己编自己那张表，围栏在类名的 theme: 前缀里",
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：件自己编自己那张表（`tailwindcss` 这个 bin 出自 cli 包），版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出（本件眼下没弹层用不着，但入口五行全生态一份的形状，缺一行下一个人得自己发现）。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖，但 pnpm 的严格布局下 theme 解析不到，所以显式写一条。四条都只在构建/测试期用，运行期没人 import，所以是 dev",
   "devDependencies": {
     "@godcreator02/gwb-plugin-api": "0.1.0",

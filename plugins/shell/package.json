@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "//exports": "只剩主入口。**内核不再读 exports 表**：浏览器半与两张样式表的地址由 node 半从 import.meta.url 算成 file://，随 setShell 与 shell.env 交出去",
+  "//exports": "只剩主入口。**内核不读 exports 表**：浏览器半与两张样式表的地址由 node 半从 import.meta.url 算成 file://，随 setShell 与 shell.env 交出去",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,7 +19,7 @@
   ],
   "//gwb": "**整段没有**:这个件是外壳,而「我是外壳」这件事靠 node 半调 kernel.setShell 说,不靠包清单。清单里只剩共享包的 gwb.shared 有人读（内核扫它拼 importmap），这个件不是共享包",
   "scripts": {
-    "//build": "三步，出四样。`node build.ts` 那步照旧：它出 dist/client.js（esbuild 打浏览器半）与 dist/dockview.css（裁过的 dockview 基础规则 + src/client/dockview-theme.css）——那张表管的是 .dv-* 与 .dockview-theme-gwb，类名不经我们的手，跟前缀这件事无关。变的是最后一步：dist/style.css 不再走 tools/build-styles.ts（那条是选择器 scope 方案）。前缀方案下外壳自己就是一个完整的 Tailwind 入口：`tailwindcss` 这个 bin 由 @tailwindcss/cli 提供，输入是 src/client/styles.css，扫描面由那份 css 里的 @source 说了算",
+    "//build": "三步，出四样。`node build.ts` 那步出 dist/client.js（esbuild 打浏览器半）与 dist/dockview.css（裁过的 dockview 基础规则 + src/client/dockview-theme.css）——那张表管的是 .dv-* 与 .dockview-theme-gwb，类名不经我们的手，跟前缀这件事无关。最后一步出 dist/style.css：前缀方案下外壳自己就是一个完整的 Tailwind 入口，`tailwindcss` 这个 bin 由 @tailwindcss/cli 提供，输入是 src/client/styles.css，扫描面由那份 css 里的 @source 说了算",
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
