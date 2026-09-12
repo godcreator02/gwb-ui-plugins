@@ -10,20 +10,17 @@ import {
   type SerializedDockview,
 } from 'dockview-react'
 import { GwbTab } from './GwbTab.js'
-import { PluginPane } from './PluginPane.js'
 import { StatusBar } from './StatusBar.js'
+import { PluginPanel } from './plugin-panel.js'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { wellHub } from './well-hub.js'
-import { addInstance, openOwnPane, openSpec, willFocus, TAB_COMPONENT } from './open.js'
+import { addInstance, openSpec, willFocus, TAB_COMPONENT } from './open.js'
 import {
   listOpenable,
   type OpenableSpec,
 } from '../openable.js'
-import {
-  PLUGIN_COMPONENT,
-  pluginParamsIn,
-} from '../panels.js'
+import { PLUGIN_COMPONENT } from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
   LAYOUT_SAVE_COMMAND,
@@ -39,7 +36,7 @@ import {
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
 import { notifyDesktopVisibility } from '../visibility.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
-import type { HostBridge, ShellArgs, ShellBridge } from './types.js'
+import type { HostBridge, ShellArgs } from './types.js'
 
 /**
  * 外壳的浏览器半：多口 dockview 窗格井（一口桌面一口，常驻保活），把注册表里的每一格
@@ -132,58 +129,7 @@ const SAVE_DEBOUNCE_MS = 400
  * 会让它把所有格拆了重建。标签表同理——同一个理由，同一个待遇。
  */
 const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> = {
-  [PLUGIN_COMPONENT]: (props: IDockviewPanelProps) => {
-    // 一份 params 装两半：外壳的识别三件套（加图标）在这儿读，件自己那半交给 pluginParamsIn 摘
-    const params = props.params as Record<string, unknown> | undefined
-    const pluginKey = params?.pluginKey
-    const entryId = params?.entryId
-    const paneId = params?.paneId
-    if (
-      typeof pluginKey !== 'string' ||
-      typeof entryId !== 'string' ||
-      typeof paneId !== 'string' ||
-      wellHub.host() === undefined
-    ) {
-      // 这一格的 params 是外壳自己按 openable 拼的，缺项属于外壳的 bug。摆出来而不是
-      // 画个空白——空白跟「件加载慢」分不开
-      return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">这一格缺 params（外壳的 bug）</p>
-    }
-    const bridge = wellHub.host()!
-    const openPane: ShellBridge['openPane'] = (target, options) => {
-      // 件不等返回值（它是 click 回调），但这条链上的错得有出口。井不传——判断在模块层
-      // 看全井（聚焦可能落到别的桌面），面板组件连 containerApi 都不用了
-      void openOwnPane(bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
-        console.error(`[shell] 开 ${target} 失败：${String(err)}`)
-      })
-    }
-    /**
-     * 转正：把 `preview` 从**这一份**的 params 上删掉。
-     *
-     * **写 `undefined` 就是删**（dockview 的 update 里那条：新值是 undefined 的键从
-     * params 上摘掉），不是写成 false——「有没有这个键」只该有一种判法。
-     *
-     * 已经是正式格就什么都不做：件在每次击键时调它是预料之中的用法，而每调一次就发一轮
-     * params 变更，会白白带起一次重渲染与一次布局落盘。
-     */
-    const keepPane: ShellBridge['keepPane'] = () => {
-      if (params?.preview !== true) return
-      props.api.updateParameters({ preview: undefined })
-    }
-    return (
-      <PluginPane
-        pluginKey={pluginKey}
-        entryId={entryId}
-        paneId={paneId}
-        panelId={props.api.id}
-        // 件那半只看得见自己传的那些键：保留键摘掉，件不该认识 entryId 这种外壳内部的东西
-        paneParams={pluginParamsIn(params)}
-        host={bridge}
-        openPane={openPane}
-        setTitle={(title) => props.api.setTitle(title)}
-        keepPane={keepPane}
-      />
-    )
-  },
+  [PLUGIN_COMPONENT]: PluginPanel,
 }
 
 /** 标签一律走自己的 pill 组件：图标 + 标题 + 关闭叉，形状与四态见 GwbTab 头注 */
