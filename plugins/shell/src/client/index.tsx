@@ -34,7 +34,7 @@ import {
   type SavedLayout,
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
-import { notifyDesktopVisibility } from '../visibility.js'
+import { visibilityHub } from './visibility.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
 import type { HostBridge, ShellArgs } from './types.js'
 
@@ -243,8 +243,8 @@ function App({
       if (!mountedRef.current.includes(id)) setMountedIds((list) => [...list, id])
       flushSave()
       setActiveId(id)
-      notifyDesktopVisibility(prev, false)
-      notifyDesktopVisibility(id, true)
+      visibilityHub.notify(prev, false)
+      visibilityHub.notify(id, true)
       // 键盘焦点从被藏的那口里被吐出来（visibility:hidden 不可聚焦）。接住：给新那口
       // 焦点，切回时人不用先点一下才能用键盘。rAF 等新那口真上了屏再找它
       requestAnimationFrame(() => {

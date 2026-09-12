@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeHandle, pickMountPane, pickDispose, pickRetarget } from '../src/mount-handle.js'
+import { describeHandle, pickMountPane, pickDispose, pickRetarget } from '../src/client/mount-handle.js'
 
 /**
  * 外壳接窗格契约的那两步收窄。要钉住的是：句柄按契约是 `{ dispose() }` 这个**对象**，

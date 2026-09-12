@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { desktopIdOf, portalHostOf } from './desktop-context.js'
-import { describeHandle, pickDispose, pickMountPane, pickRetarget } from '../mount-handle.js'
+import { describeHandle, pickDispose, pickMountPane, pickRetarget } from './mount-handle.js'
 import { paramsKeyOf } from '../panels.js'
-import { createBusRegistry } from '../bus.js'
-import { subscribeDesktopVisibility } from '../visibility.js'
+import { createBusRegistry } from './bus.js'
+import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
 /**
@@ -105,7 +105,7 @@ export function PluginPane({
       get portal() {
         return portalHostOf(container)
       },
-      onVisibility: (listener) => subscribeDesktopVisibility(desktopIdOf(container), listener),
+      onVisibility: (listener) => visibilityHub.subscribe(desktopIdOf(container), listener),
     }
     setError(null)
     setReady(false)

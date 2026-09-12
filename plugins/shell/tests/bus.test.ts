@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createBusRegistry } from '../src/bus.js'
+import { createBusRegistry } from '../src/client/bus.js'
 
 /**
  * 格间小总线：同一条条目的几格之间说话。
