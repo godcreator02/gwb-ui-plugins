@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
 import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator02/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@godcreator02/gwb-commands'
+import type { GwbCommands } from '@godcreator02/gwb-commands'
 // 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
 import type {} from '@godcreator02/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
@@ -126,11 +126,26 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.plugentry = createPluginRegistry(warn)
   }
 
-  /** 服务就绪时把取表那两条命令挂上；effect 包着，本件卸载时自动注销 */
+  /** 服务就绪时把命令挂上、把页面根要过来；effect 包着，本件卸载时自动注销 */
   [Service.init](): void {
     const cli = this.ctx.gwbCommands
     // inject 保证了它在，这句只是把类型收窄
     if (cli === undefined) return
+    this.registerTableCommands(cli)
+    this.registerLayoutCommands(cli)
+    this.registerEnvCommand(cli)
+    this.registerReloadCommand(cli)
+    this.registerDesktopCommands(cli)
+    // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
+    const entry = new URL('./client.js', import.meta.url).href
+    this.ctx.effect(() => this.kernel.setShell(entry))
+    this.ctx.logger('gwb-shell').info(
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}；页面根已要来，入口 ${entry}`,
+    )
+  }
+
+  /** 取表那两条：窗格注册表与件名表。注册与调用两处同吃那两个常量 */
+  private registerTableCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
         { name: PANES_COMMAND, description: '此刻注册了哪些窗格。无参数', plugin: 'gwb-shell' },
@@ -143,6 +158,10 @@ export default class GwbShell extends Service implements GwbShellApi {
         () => this.plugentry.list(),
       ),
     )
+  }
+
+  /** 布局档那两条：取整档、整份替换 */
+  private registerLayoutCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
         { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单），没存过回 null。无参数', plugin: 'gwb-shell' },
@@ -161,10 +180,18 @@ export default class GwbShell extends Service implements GwbShellApi {
         },
       ),
     )
+  }
+
+  /** 浏览器半开机问一次的环境：home 与三张样式表的 `file://` 地址 */
+  private registerEnvCommand(cli: GwbCommands): void {
     const env = shellEnv(this.kernel.dataDir)
     this.ctx.effect(() =>
       cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）。无参数', plugin: 'gwb-shell' }, () => env),
     )
+  }
+
+  /** 整页重载全部窗口。做法在 `reload.ts` */
+  private registerReloadCommand(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
         {
@@ -185,10 +212,15 @@ export default class GwbShell extends Service implements GwbShellApi {
         },
       ),
     )
-    // 桌面那三条。井在页面那半（一口桌面一口、常驻保活），node 这侧只做两件事：
-    // 读盘上的档答 list，把 switch / new 经内核事件口转给页面执行——页面那边收到后
-    // 自己切、自己落盘。回执只代表「转发了」；要确认结果，稍等一下再 list（页面切换
-    // 时同步 flush 一次档）
+  }
+
+  /**
+   * 桌面那三条。井在页面那半（一口桌面一口、常驻保活），node 这侧只做两件事：
+   * 读盘上的档答 list，把 switch / new 经内核事件口转给页面执行——页面那边收到后
+   * 自己切、自己落盘。回执只代表「转发了」；要确认结果，稍等一下再 list（页面切换
+   * 时同步 flush 一次档）
+   */
+  private registerDesktopCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
         { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面。无参数。回 { desktops: [{id,name}], active }（读盘上布局档，认不出回一口缺省）', plugin: 'gwb-shell' },
@@ -222,12 +254,6 @@ export default class GwbShell extends Service implements GwbShellApi {
           return { ok: true, relayed: true }
         },
       ),
-    )
-    // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
-    const entry = new URL('./client.js', import.meta.url).href
-    this.ctx.effect(() => this.kernel.setShell(entry))
-    this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 
