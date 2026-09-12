@@ -1,8 +1,9 @@
 /* ============================================================
- * 令牌的**声明面**：语义变量的值（shadcn 标准集，base color: zinc），亮暗两套。
+ * 令牌的**声明面**：语义变量 + 度量衡的值，亮暗两套。
  *
- * 这里是唯一写死颜色与圆角的地方。件的表里只有 `var(--background)` 这样的引用，
- * 所以换主题＝换这一份值，**所有件当场跟着变，一个都不用重新构建**。
+ * 这里是**全生态唯一写死值的地方**（颜色、圆角，以及度量衡的刻度）。件的表里只有
+ * `var(--background)`、`calc(var(--gwb-spacing) * 4)` 这样的引用，所以换主题＝换这一份值，
+ * **所有件当场跟着变，一个都不用重新构建**。
  *
  * 亮色在 `:root`、暗色在 `.dark`（挂在 html 上）。按 shadcn 的标准分层写——
  * 组件源码里的 `dark:` 变体靠它。
@@ -10,6 +11,30 @@
 
 :root {
   --radius: 0.625rem;
+
+  /* ---- 度量衡：Tailwind 出厂主题国有化 ----
+     产物里 `var(--件名-spacing, 0.25rem)` 这族 fallback 的根源是 prefix() 把出厂变量名
+     改写、页面上没人声明改写后的名字。这一区把出厂刻度的值收进页面这张表，映射面
+     （theme.reference.css 尾部）把键接管过来——件的产物从此零字面量，且这些维度
+     （间距、字重、阴影、过渡、容器断点）全部可主题化。
+
+     值照抄出厂默认（4.3.3），观感零变化。升 Tailwind 大版本时按映射面头注重核键名。 */
+  --gwb-spacing: 0.25rem;
+  --gwb-font-medium: 500;
+  --gwb-font-semibold: 600;
+  --gwb-tracking-widest: 0.1em;
+  --gwb-white: #fff;
+  --gwb-black: #000;
+  --gwb-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --gwb-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --gwb-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --gwb-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --gwb-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --gwb-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --gwb-transition-duration: 150ms;
+  --gwb-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  --gwb-container-xs: 20rem;
+  --gwb-container-lg: 32rem;
 
   /* 字体。**整个工作台一种字体：更纱黑体等宽（Sarasa Mono SC）**——正文与代码同一个族，
      中英日韩与拉丁在同一套字面里，中英混排的字重、基线、行宽都对得齐，不再靠系统回退去
@@ -68,6 +93,7 @@
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
+  --warning: oklch(0.666 0.179 58.318);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
@@ -91,6 +117,7 @@
   --accent: oklch(0.274 0.006 286.033);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --warning: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);

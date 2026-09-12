@@ -63,7 +63,29 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* ---- 度量衡：出厂主题国有化 ----
+     值全在声明面的度量衡区；这些键接管后，件的产物不再带出厂 fallback。
+     **键名以仓内 tailwindcss 出厂 theme.css 实测为准（当前 4.3.3）**——升 Tailwind
+     大版本先到这里重核一遍（新键、改名），再核声明面那区值。 */
+  --spacing: var(--gwb-spacing);
+  --font-weight-medium: var(--gwb-font-medium);
+  --font-weight-semibold: var(--gwb-font-semibold);
+  --tracking-widest: var(--gwb-tracking-widest);
+  --color-white: var(--gwb-white);
+  --color-black: var(--gwb-black);
+  --shadow-sm: var(--gwb-shadow-sm);
+  --shadow-md: var(--gwb-shadow-md);
+  --shadow-lg: var(--gwb-shadow-lg);
+  --ease-in: var(--gwb-ease-in);
+  --ease-out: var(--gwb-ease-out);
+  --ease-in-out: var(--gwb-ease-in-out);
+  --default-transition-duration: var(--gwb-transition-duration);
+  --default-transition-timing-function: var(--gwb-transition-timing);
+  --container-xs: var(--gwb-container-xs);
+  --container-lg: var(--gwb-container-lg);
 }
