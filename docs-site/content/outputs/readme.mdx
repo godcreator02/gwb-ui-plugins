@@ -1,0 +1,36 @@
+---
+title: README
+description: 仓根 README.md 的正本——render 摆过去
+---
+
+# gwb UI 平台件仓
+
+**本页回答**：`gwb-ui-plugins` 是什么、怎么装、怎么用、文档在哪。
+
+## 是什么
+
+gwb 工作台的 **UI 平台**：外壳（`shell`）带着它的视觉契约（`tokens`）与 react 运行时口粮
+（`shared-react`）、外观件（`theme`）、基础件的官方窗格集（`baseui`——日志与插件管理两格）。
+2026-09-12 三仓拆分从 `gwb-base-plugins` 分出；要换 shell 就是整套换这个平台，不承诺单换。
+
+## 怎么装（装进一个 home）
+
+```powershell
+cd <home 目录>
+pnpm add @godcreator02/gwb-shell @godcreator02/gwb-theme @godcreator02/gwb-baseui
+# cordis.yml 里给 shell / theme / baseui 各加一条条目，重启内核
+```
+
+`baseui` 的窗格按 core 件在不在自动增减：装了 `gwb-logger` 就有日志格，装了
+`gwb-plugin-manager` 就有插件管理格，缺谁少画谁。
+
+## 怎么用
+
+装齐后开工作台，日志与「插件管理」两格出现在窗格注册表里即通——agent 侧核对：
+`plugin-manager.list` 回的表里有 `baseui` 条目，`shell.panes` 里有
+`plugin:home:baseui:logger` 与 `plugin:home:baseui:plugin-manager`。
+
+## 文档
+
+`docs-site/` 是六区文档站：`cd docs-site && pnpm install && pnpm dev`，看 `http://localhost:4323`。
+现状钉在源码上，`pnpm doc` 核对。这份 README 是生成物，正本是 `docs-site/content/outputs/readme.mdx`。

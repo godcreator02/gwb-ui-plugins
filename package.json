@@ -1,0 +1,20 @@
+{
+  "name": "gwb-ui-plugins",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --no-bail typecheck",
+    "lint": "oxlint . --type-aware --deny-warnings",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm lint && pnpm test"
+  },
+  "//devDeps": "仓根只装门禁用的：oxlint、vitest、typescript、@types/node。构建线不是仓里共享的一份——每个件自己装 esbuild 与 @tailwindcss/cli",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

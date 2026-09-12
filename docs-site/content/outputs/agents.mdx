@@ -1,0 +1,68 @@
+---
+title: AGENTS
+description: 仓根 AGENTS.md 的正本——render 摆过去，只写仓专属的
+---
+
+# gwb-ui-plugins
+
+**本页回答**：在这个仓干活的 agent 先看什么、怎么跑、门禁是哪几条、什么碰不得。
+
+通用纪律（TDD、模块经接口连接、盘问、六区规则、文档怎么写）不在这儿——正本是随
+`@godcreator02/docfirst-workflow` 发的 skill「docfirst-docs」，读它。这一页只写仓专属的，
+压在 60 行内。
+
+## 这个仓是什么
+
+**gwb 的 UI 平台仓**——2026-09-12 三仓拆分从 `gwb-base-plugins` 分出（方案页在旧仓 spec 区
+`2026-09-12-three-repos-split`）。立场先立住：**shell 是一个 UI 平台的整体，要换整套换**；
+tokens（视觉契约）与 shared-react（react 运行时口粮）跟 shell 同仓同进退，不为假想的第二
+外壳实现维护独立契约包。
+
+|      | 件 / 包                                                    |
+| ---- | ---------------------------------------------------------- |
+| 外壳 | `shell`（窗格井 + 窗格注册服务，内核页面根的唯一入口）        |
+| 外观 | `theme`（全局启动样式 + 外观窗格；没外壳也照常挂）           |
+| 基础界面 | `baseui`（基础件的官方窗格集：日志、插件管理）            |
+| 共享包 | `shared-react`（react 系经内核 importmap）、`tokens`（令牌表） |
+
+## 依赖纪律
+
+- peer 一律 `>=` 不写 `^`（caret 在 0.0.x 锁死 patch）
+- **跨仓基础件**（commands / data / settings / logger / plugin-manager / plugin-api）的
+  dev 写 **registry 精确版本**——本仓没有它们，`workspace:*` 解析不到
+- **同仓包**（shell / theme / baseui / shared-react / tokens 之间）dev 照旧 `workspace:*`
+- 依赖流向单向：本仓 peer 基础仓，永不反向
+
+## baseui 三规矩（哪条破了它就吸成上帝件）
+
+1. 对每个 core 服务**一律嵌套注入**，硬 inject 只有 `gwbShell`——缺谁少画谁的窗格
+2. **一窗格一模块**：`panes/` 下窗格之间零 import，只准 import `components/ui` 共享层
+3. **只收「劈过件的皮」**：进 baseui 的唯一资格是它是某个 core 件的官方脸；UI 即本体的件
+  （hello、将来的功能件）自带皮，不进
+
+## 先读
+
+`docs-site/content/docs/`：[系统地图](docs-site/content/docs/system-map.mdx) → 要改的那块的页 →
+[术语表](docs-site/content/docs/glossary.mdx)。在途的活在 `docs-site/content/spec/`。
+
+## 怎么跑
+
+```bash
+pnpm install
+pnpm check        # typecheck + lint + test
+```
+
+改件后的发版与实机验（隔离 home 验、发本机 registry、升 default）照内核仓 AGENTS「外循环」；
+写件的整条路在 `gwb-devkit` 件的 skill。
+
+## 门禁
+
+提交前都要绿：`pnpm check`；文档检查单独 `cd docs-site && pnpm doc`。
+
+## 红线
+
+- **开发版永远不进 default**；发版前先在隔离 home 验
+- 改了代码要连着改现状页；改了 `content/outputs/` 下的 mdx 要 `pnpm doc:render` 重摆，
+  生成物跟源一起提交
+- 这份 AGENTS.md 是生成物，正本是 `docs-site/content/outputs/agents.mdx`，改那边
+- 轨迹卡只增不改

@@ -1,0 +1,10 @@
+packages:
+  - plugins/*
+  # 共享包：不是 cordis 件，是件的依赖（运行时环境、设计令牌）
+  - packages/*
+  # 文档站：自己的依赖树，不进根 check
+  - docs-site
+
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: true
