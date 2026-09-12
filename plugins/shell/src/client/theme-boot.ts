@@ -50,25 +50,19 @@ export async function applyThemeStyle(host: HostBridge): Promise<void> {
 export const THEME_CLASSES = ['dockview-theme-gwb']
 
 /**
- * **必须经 `theme` 选项交给 dockview**，光挂在 `<html>` 上没用：dockview 自己会把
- * 主题类名写到它内部的 `.dv-shell` 上（不给就是默认的 `dockview-theme-abyss`），
- * 那一层比 `<html>` 近，把我们的值整个压掉——症状是井底一片深蓝黑，而 `<html>` 上读
- * `--dv-group-view-background-color` 明明是对的。这是实机撞出来的。
- *
- * `className` 那边是 `split(' ')` 收的，所以一个字段塞得下两个类。
+ * **必须经 `theme` 选项交给 dockview**，光挂在 `<html>` 上没用：dockview 把主题类名
+ * 写在自己内部的 `.dv-shell` 上，那一层比 `<html>` 近（撞墙经过见文档站）。
+ * `className` 是 `split(' ')` 收的，一个字段塞得下两个类。
  */
 export const GWB_THEME: DockviewTheme = {
   name: 'gwb',
   className: THEME_CLASSES.join(' '),
   // 跟默认深色对齐：boot 时给 <html> 挂 dark，令牌整套走暗的那半
   colorScheme: 'dark',
-  // **沟 = gap: 8**。margin 算术是精确的（每个可见格让出 margin×(n-1)/n，最后一格
-  // 右边正好贴容器边，实测零溢出）。外圈环走 .dv-shell 自身的 padding（见
-  // dockview-theme.css 的 .dockview-theme-gwb.dv-shell）——它挂在被 ResizeObserver
-  // 量 contentRect 的元素上，padding 天然不算进可用尺寸（dockview 官方
-  // .dockview-spaced 同一机制）。内衬绝不能打在 .dv-shell 与 .dv-grid-view 之间：
-  // BaseGrid.layout 会把网格根硬写成壳的 contentRect 尺寸，中间任何 padding 都会
-  // 溢出裁边 + 触发 .dv-view 的滚动条。
+  // **沟 = gap: 8**：外圈环走 .dv-shell 自身的 padding（ResizeObserver 量的是
+  // contentRect，padding 不算进可用尺寸）。内衬绝不能打在 .dv-shell 与
+  // .dv-grid-view 之间——网格根会被硬写成壳的 contentRect 尺寸，中间的 padding
+  // 就是溢出裁边。算术与判据见文档站。
   gap: 8,
   // 拖拽落点用整块高亮，不用细线——卡是填色的，fill 才看得清
   dndTabIndicator: 'fill',

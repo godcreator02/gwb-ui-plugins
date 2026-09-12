@@ -40,16 +40,9 @@ import { DESKTOP_ATTR } from './desktop-context.js'
 import type { HostBridge, ShellArgs } from './types.js'
 
 /**
- * 外壳的浏览器半：多口 dockview 窗格井（一口桌面一口，常驻保活），把注册表里的每一格
- * 开出来。多桌面第一波（0.0.14）做过又撤回，这是第二波重做——语义、向量与判据见文档站
- * decisions「多桌面第二波」。
- *
- * 保活的形状：一口桌面一个 section，全部绝对定位叠在主区里，**非活动的只是不显示**
- * （visibility:hidden + pointer-events:none + inert），DOM、定时器、订阅全活着；开机只挂
- * 活动那口，别的桌面第一次切到才挂、挂上常驻。每口井各自防抖落盘，档是 v3（active +
- * desktops + saved）。切换 = 记账 → flush → 显隐 → 可见性通知 → 焦点接管 → body 探雷。
- *
- * 第四刀剩下的：导航。
+ * 外壳浏览器半的装配：内核契约入口（`mountShell`）、boot（取环境、注样式表、起 React
+ * 树）与 App。开格执行在 `open.ts`、页面级状态在 `well-hub`、面板与标签在
+ * `plugin-panel` / `GwbTab`、状态栏在 `StatusBar`、外观装配在 `theme-boot`。
  */
 
 const SELF = '@godcreator02/gwb-shell'
@@ -92,6 +85,12 @@ function sweepBodyPortals(activeName: string): void {
   }
 }
 
+/**
+ * 多桌面 App：一口桌面一个 section 叠在主区里，非活动的只是不显示
+ * （visibility:hidden + pointer-events:none + inert），DOM 与订阅全活着；开机只挂
+ * 活动那口，首切冷挂、挂上常驻。每口井各自防抖落盘。**切换顺序是机制的一部分**：
+ * 记账 → flush → 显隐 → 可见性通知 → 焦点接管 → body 探雷。
+ */
 function App({
   specs,
   home,

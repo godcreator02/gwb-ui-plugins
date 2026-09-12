@@ -232,12 +232,8 @@ export function StatusBar({
   }
 
   return (
-    // **relative + z-[60] + pointer-events-auto**：z 压过桌面里户口迁进本桌的模态遮罩
-    //（radix 内容 z-50 参与根层叠）——模态从此只盖本桌主区，状态栏永远可点（含切桌面
-    // 逃出模态）。pointer-events 得**显式**给：radix 的模态开着时会把 body 整个锁成
-    // pointer-events:none（锁页的标准手法），而那把锁**不跟着桌面走**——模态藏在别的
-    // 桌面时锁还扣着，继承它的话连活动桌面带状态栏全变成「看得见点不动」。这两处显式
-    // auto 不靠 body 的继承，锁再扣也只锁得住桌面以外的空白。判据见文档站 decisions
+    // z 压过本桌的模态遮罩（状态栏永远可点，含从模态里切桌面逃出）；pointer-events
+    // 显式给 auto 不靠 body 继承——radix 模态锁 body 的那把锁不跟桌面走。判据见文档站
     <footer className="shell:relative shell:z-[60] shell:pointer-events-auto shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
       <DesktopBar desktops={desktops} activeId={activeDesktopId} onSwitch={onSwitchDesktop} onNew={onNewDesktop} />
 
@@ -294,10 +290,8 @@ export function StatusBar({
         </button>
       )}
 
-      {/* **整页 reload**，不是外壳内部重建：渲染层那条 boot 链（取注册表 → 取布局档 →
-          恢复）原样重跑，注册表过时这类「boot 后才变的事」全吃到；而内核那半与页面
-          加载无关（IPC 句柄在主进程启动时注册，宿主进程也活在那边），reload 对它就是
-          一次普通的重新连线 */}
+      {/* 整页 reload，不是外壳内部重建：boot 链原样重跑，boot 后才变的注册表之类
+          全吃到；内核那半不受影响 */}
       <button
         type="button"
         className={BUTTON}

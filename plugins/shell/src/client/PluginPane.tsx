@@ -2,38 +2,45 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { desktopIdOf, portalHostOf } from './desktop-context.js'
-import { describeHandle, pickDispose, pickMountPane, pickRetarget } from './mount-handle.js'
+import { describeHandle, pickDispose, pickMountPane, pickRetarget, type MountLike } from './mount-handle.js'
 import { paramsKeyOf } from '../panels.js'
 import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
 /**
- * 一格插件窗格：`mountPane` 契约的外壳这一侧。
+ * 一格插件窗格：`mountPane` 契约的外壳这一侧。件的 `client.js` 按注册表里那条
+ * `file://` 地址动态 import（件注册时自报的），件源码里的 react 裸名由内核注的
+ * importmap 解析到共享包——件之间拿到的是同一份 React 实例。
  *
- * 契约是 `mountPane({ host, shell, pane }, container) => { dispose() }`。件的 `client.js`
- * 按注册表里那条 `file://` 地址动态 import（件注册时自报的），件源码里的 react 裸名由内核注的 importmap 解析到共享包——
- * 所以件之间拿到的是同一份 React 实例。
- *
- * **样式与模块在同一个 effect 里**：件的表要先注、而且要**等它真到位**再 import，
- * 这两件事是一条时序上的承诺。拆成两个 effect 就只剩「谁先跑」这种靠排列顺序的默契。
- * 格间总线的句柄也在这条 effect 里取、清理时松手——件挂的听众随它一起走。
- *
- * **拿不到 `dispose` 时报契约不符，不装作成功**：那条路上关格时清不掉，让写件的人
- * 当场看见。报错一渲染，容器那个 div 被 React 拆走，而件自己的根（React 根、定时器）
- * 仍挂在那个游离节点上——泄漏从看不见变成看得见，但仍在泄漏。止得住它的只有件按契约
- * 回句柄。
- *
- * **换内容分软硬两条**（外壳把这一格的 params 换掉之后）：件给了 `retarget` 就调它
- * （**软换**，件自己保住该保的状态），没给就**拆了重挂**（硬换）。判的是句柄上有没有
- * 那支函数，不是件说了什么。
+ * 样式与模块在同一个 effect 里（件的表要先注、等它真到位再 import，是一条时序上的
+ * 承诺）；拿不到 `dispose` 报契约不符，不装作成功；换内容分软硬两条——件给了
+ * `retarget` 就软换，没给就拆了重挂。判据见文档站。
  */
 
-/**
- * 格间总线的桶。**一份全局的**：桶按条目共享，得活在组件实例之上——同一条条目的几格
- * （含同一格的两份）各自 acquire 一次，引用计数管着桶什么时候拆。
- */
+/** 格间总线的桶。一份全局的：桶按条目共享，得活在组件实例之上，引用计数管拆 */
 const busRegistry = createBusRegistry()
+
+/** 注册表里这一格的自报地址：client 必有，style 可选。件卸了 / 没报地址都抛 */
+async function fetchPaneModule(
+  host: HostBridge,
+  entryId: string,
+  paneId: string,
+): Promise<{ client: string; style?: string }> {
+  const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
+  if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——件卸了？`)
+  if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器半的地址（client）`)
+  return { client: row.client, style: row.style }
+}
+
+/** 动态 import 件的 client 模块，按契约取 `mountPane` 导出（缺了或不是函数都抛） */
+async function importMountPane(url: string, who: string): Promise<MountLike> {
+  // 动态 import 回来的是 any，先落成 unknown 再按契约取
+  const mod: unknown = await import(/* @vite-ignore */ url)
+  const mount = pickMountPane(mod)
+  if (mount === undefined) throw new Error(`${who} 的 client.js 没有 mountPane 导出——那是窗格件的入口名`)
+  return mount
+}
 
 export function PluginPane({
   pluginKey,
@@ -112,20 +119,13 @@ export function PluginPane({
 
     void (async () => {
       try {
-        // 地址在注册表里，件注册时从自己的 import.meta.url 算好报上来的。每次开格现取：表是会变的
-        const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
-        if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——件卸了？`)
-        if (row.client === undefined) throw new Error(`${pluginKey} 注册窗格 ${paneId} 时没报浏览器半的地址（client）`)
-        // 表取不到不是错——件可以没有样式表。取到了才等它到位
-        if (row.style !== undefined) await loadStyle(row.style)
+        // 地址每次开格现取：注册表是会变的
+        const target = await fetchPaneModule(host, entryId, paneId)
+        // 件可以没有样式表——取到了才等它到位
+        if (target.style !== undefined) await loadStyle(target.style)
         if (disposed) return
-        // 动态 import 回来的是 any，先落成 unknown 再按契约取
-        const mod: unknown = await import(/* @vite-ignore */ row.client)
+        const mountPane = await importMountPane(target.client, pluginKey)
         if (disposed) return
-        const mountPane = pickMountPane(mod)
-        if (mountPane === undefined) {
-          throw new Error(`${pluginKey} 的 client.js 没有 mountPane 导出——那是窗格件的入口名`)
-        }
         // 没传参数就不给这一项：件那头 `pane.params === undefined` 干脆地等于「没给」
         const openParams = paneParamsRef.current
         const pane = { id: paneId, instance: panelId, ...(openParams === undefined ? {} : { params: openParams }) }

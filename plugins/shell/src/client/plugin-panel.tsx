@@ -10,9 +10,6 @@ import type { ShellBridge } from './types.js'
  * dockview 里的插件窗格面板：把面板 params 拆成两半（外壳的识别三件套、件自己那半），
  * 交给 `PluginPane` 按 `mountPane` 契约挂件。开格的判断与执行在 `open.ts`，命令口与
  * 井从枢纽过——这个组件只做「一份 params → 一个 PluginPane」。
- *
- * **必须是模块级常量的那一员**（进 `index.tsx` 的组件表）：dockview 拿组件表的引用做
- * 比对，每轮渲染换一个新对象会让它把所有格拆了重建。
  */
 export function PluginPanel(props: IDockviewPanelProps): ReactElement {
   // 一份 params 装两半：外壳的识别三件套（加图标）在这儿读，件自己那半交给 pluginParamsIn 摘
@@ -39,13 +36,9 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
     })
   }
   /**
-   * 转正：把 `preview` 从**这一份**的 params 上删掉。
-   *
-   * **写 `undefined` 就是删**（dockview 的 update 里那条：新值是 undefined 的键从
-   * params 上摘掉），不是写成 false——「有没有这个键」只该有一种判法。
-   *
-   * 已经是正式格就什么都不做：件在每次击键时调它是预料之中的用法，而每调一次就发一轮
-   * params 变更，会白白带起一次重渲染与一次布局落盘。
+   * 转正：把 `preview` 从**这一份**的 params 上删掉——写 `undefined` 就是删（dockview
+   * 只删 undefined 的键），不写成 false。已经是正式格就什么都不做，免得白白带起一轮
+   * params 变更与布局落盘。
    */
   const keepPane: ShellBridge['keepPane'] = () => {
     if (params?.preview !== true) return

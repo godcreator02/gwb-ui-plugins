@@ -7,15 +7,13 @@ import type { HostBridge } from './types.js'
  * 全井枢纽：井注册表、活动桌面、切桌分派、落盘钩子、命令口——外壳浏览器半的全部
  * 页面级状态，收在一个有声明接口的对象里。
  *
- * **为什么是模块级单例而不是 React 状态**：内核那条命令口存在模块级而不是经 params 传
- * （面板组件表必须是模块级常量——换引用会让 dockview 重建全部格，组件因此拿不到
- * `bootShell` 的闭包；而塞进 `params` 会跟着布局一起落盘）。同一个理由管着这里的每一样。
- * 它们以前是五个散装模块变量加注释里的时序约定，如今有名字、有接口，约定归在两处：
+ * **为什么是模块级单例而不是 React 状态**：面板组件表必须是模块级常量（换引用会让
+ * dockview 重建全部格），组件因此拿不到 App 的闭包；塞进 `params` 则会跟着布局落盘。
+ * 两条时序约定归在这两处：
  *
- * - `setActiveDesktop` **当场生效（同拍）**：`switchTo` 先改它再改 React 状态，
- *   跨井聚焦的分派在同一拍里看到的就是新值
- * - **桌面是分组不是宇宙**（0.4.0）：实例 id 全页唯一，查重看全井聚合
- *   （`takenAnywhere`）；同一格开在别的桌面的份带 `here: false`（`openInstances`）
+ * - `setActiveDesktop` **当场生效（同拍）**：`switchTo` 先改它再改 React 状态
+ * - **桌面是分组不是宇宙**：实例 id 全页唯一，查重看全井聚合（`takenAnywhere`），
+ *   同一格开在别的桌面的份带 `here: false`（`openInstances`）
  *
  * 对 dockview 只用到 `getPanel` / `panels`，测试里喂假井就能跑；零 DOM、零 react。
  */
