@@ -279,9 +279,12 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 
 ### `theme.startupCss`：一条软契约
 
-外壳不 import 主题件的任何东西，**命令名两边各存一份字符串**：
+外壳不 import 主题件的任何东西，**命令名两边各存一份字符串**（外壳这半在 `theme-boot.ts`
+的 `THEME_COMMAND`，主题件那半是它导出的 `STARTUP_COMMAND`）：
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="70-77" */}
+@@docfirst has ../plugins/shell/src/client/theme-boot.ts "theme.startupCss" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "theme.startupCss" @@
 
 主题件没装的时候，命令总线自己回一句「没有这条命令」，外壳静默跳过——它不因此少一根毫毛。
 这是「可选依赖」在这条线上的常规形态。
