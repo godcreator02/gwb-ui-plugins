@@ -3,9 +3,7 @@ import type { DesktopRow } from './layout.js'
 /**
  * 桌面那半的纯判断：命令面（`shell.desktop.*`）转进来的动作怎么落到桌面条目上。
  *
- * node 半与浏览器半各存一份事件记号（`DESKTOP_EVENT`）——两边不 import 对方，跟
- * `shell.panes` 那个字符串同一个规矩。判断住这儿（纯机、无 DOM），两侧共用，测试在
- * node 里直接跑。
+ * 纯机、无 DOM，node 半与浏览器半共用这一份，测试在 node 里直接跑。
  */
 
 /** node → 页面那条桌面动作事件上的记号。载荷形状就是 `DesktopAction` */
@@ -13,8 +11,7 @@ export const DESKTOP_EVENT = 'gwb-shell-desktop'
 
 /**
  * 页面上执行得了的两条动作。**井在页面那半**，node 半的命令只是把动作经内核事件口
- * 转进去（`gwbKernel.emit` → 页面 `window.gwb.on`，logger 推日志走的同一条路）；
- * 命令回执只代表「转发了」，不代表「切完了」。
+ * 转进去；命令回执只代表「转发了」，不代表「切完了」。
  */
 export type DesktopAction =
   | { t: typeof DESKTOP_EVENT; action: 'switch'; id?: string; name?: string }

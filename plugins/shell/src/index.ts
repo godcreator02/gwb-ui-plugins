@@ -19,16 +19,7 @@ export type { SavedLayout, LayoutDoc } from './layout.js'
 
 /**
  * node 半：窗格注册服务。件在自己的 `apply` 里说「我有一格窗格」，浏览器那半经
- * `shell.panes` 这条命令把表取过去。
- *
- * **为什么是运行时注册而不是包清单里静态声明**：判据见内核仓 decisions。简单说，
- * cordis 下件挂上时它的 node 半就在跑了，注册发生在 `apply` 里，而 `client.js` 仍然
- * 是点了才动态 import——动态注册一分懒加载都没牺牲。
- *
- * **为什么表要经命令过桥**：内核那条命令桥一律派给 `ctx.gwbCommands`，
- * 内核本体不认识任何件的命令名。所以这个件硬 `inject` 命令总线：没有它，注册表出不了
- * 这个进程，外壳就是个开不出任何东西的空井——那种时候不如不挂，cordis 会在日志里
- * 明说它在等谁。
+ * `shell.panes` 这条命令把表取过去。运行时注册与表经命令过桥的判据见文档站。
  */
 
 /** 跨半的命令名与环境形状。常量本体住 `protocol.ts`（纯模块，浏览器半 import 它不带 cordis） */
@@ -95,9 +86,10 @@ export default class GwbShell extends Service implements GwbShellApi {
    * 注册表本体。**用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份
    * `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，派生对象上一读就炸。
    */
-  private readonly registry: PaneRegistry
-  /** 件级信息另一张表：键是 entryId，一条条目至多一条。判据见 plugin-registry 的头注 */
-  private readonly plugentry: PluginRegistry
+  /** 窗格表：键是 (entryId, 窗格 id)，一条条目可以有好几条 */
+  private readonly paneTable: PaneRegistry
+  /** 件名表：键是 entryId，一条条目至多一条 */
+  private readonly pluginTable: PluginRegistry
   /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
   private readonly info: (message: string) => void
   /** 内核那三个名字。构造时取——那时 this.ctx 还是提供方自己的 */
@@ -110,8 +102,8 @@ export default class GwbShell extends Service implements GwbShellApi {
     const logger = ctx.logger('gwb-shell')
     const warn = (message: string): void => logger.warn(message)
     this.info = (message: string): void => logger.info(message)
-    this.registry = createPaneRegistry(warn)
-    this.plugentry = createPluginRegistry(warn)
+    this.paneTable = createPaneRegistry(warn)
+    this.pluginTable = createPluginRegistry(warn)
   }
 
   /** 服务就绪时把命令挂上、把页面根要过来；effect 包着，本件卸载时自动注销 */
@@ -137,13 +129,13 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.ctx.effect(() =>
       cli.register(
         { name: PANES_COMMAND, description: '此刻注册了哪些窗格。无参数', plugin: 'gwb-shell' },
-        () => this.registry.list(),
+        () => this.paneTable.list(),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
         { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字。无参数', plugin: 'gwb-shell' },
-        () => this.plugentry.list(),
+        () => this.pluginTable.list(),
       ),
     )
   }
@@ -264,7 +256,7 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   registerPane(spec: PaneSpec): () => void {
     const owner = this.owner()
-    const off = this.registry.register(owner, spec)
+    const off = this.paneTable.register(owner, spec)
     // 「哪格窗格是谁的」是注册表最基本的账：过去只有撞名才出声，挂上了反而无声
     this.info(`窗格 ${spec.id}（${spec.title}）登记上了（${owner.pkg}）`)
     // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘。
@@ -275,18 +267,18 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   describeSelf(info: PluginInfo): () => void {
     const owner = this.owner()
-    const off = this.plugentry.describe(owner, info)
+    const off = this.pluginTable.describe(owner, info)
     this.info(`${owner.pkg} 报了名字：${info.title}`)
     this.ctx.effect(() => off)
     return off
   }
 
   panes(): RegisteredPane[] {
-    return this.registry.list()
+    return this.paneTable.list()
   }
 
   plugins(): RegisteredPlugin[] {
-    return this.plugentry.list()
+    return this.pluginTable.list()
   }
 }
 

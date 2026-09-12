@@ -1,11 +1,8 @@
 /**
  * 件级信息表：一条条目一条记录，件说「我叫什么」。不碰 ctx，测试在 node 里直接跑。
  *
- * **跟窗格表分开两张**：那张的键是 `(entryId, 窗格 id)`、一条条目可以有好几条；这张
- * 的键就是 `entryId`、一条条目至多一条。两张表也各有各的消费方（导航列件名吃这张，
- * 井里开格吃那张），合成一张只会让「哪条键管哪个」变含糊。
- *
- * **身份同样不由件自己报**——`entryId` 与 `pkg` 由服务那层从注册方的 fiber 上取。
+ * 跟窗格表分开两张：键不同（这张就是 `entryId`、一条条目至多一条），消费方也不同。
+ * 身份同样不由件自己报——`entryId` 与 `pkg` 由服务层从注册方的 fiber 上取。
  */
 
 /** 件报自己名字时给的那几样 */
@@ -29,13 +26,7 @@ export interface PluginRegistry {
   list(): RegisteredPlugin[]
 }
 
-/**
- * `warn` 由调用方给，真跑时是 cordis logger。
- *
- * 空 title 抛错、同一条条目报两次只告警——跟窗格注册一个规矩：「报了个空名字」是
- * 根本没说清，让它进表只会在导航里多出一行空白；「报了两次」则是两条都说得清、
- * 该听谁的问题。
- */
+/** `warn` 由调用方给，真跑时是 cordis logger。空 title 抛错、报两次只告警——跟窗格注册一个规矩，判据见文档站 */
 export function createPluginRegistry(warn: (message: string) => void): PluginRegistry {
   const table = new Map<string, RegisteredPlugin>()
 

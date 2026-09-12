@@ -1,20 +1,16 @@
 /**
- * 布局档：外壳往 gwbData 落的那份文档，与围绕它的几个纯判断。
+ * 布局档：外壳往 gwbData 落的那份文档，与围绕它的几个纯判断。零 DOM、零 react，
+ * node 里直接测。
  *
- * v3（多桌面第二波，保活）起一份文档装三样：**desktops**（每口桌面各自那口井的档，
- * 各自防抖保存）、**active**（重启回到哪口）、**saved**（人起名存的布局清单——「照片」，
- * 铺开即弃，跟桌面是两回事，判据见文档站 decisions）。仍是单文档：写单位是整档，
- * 保存器醒来时读「当下」重拼一份，迟到的旧定时器写不坏账；gwbData 的面一个字不用扩。
+ * v3 一份文档装三样：**desktops**（每口桌面各自那口井的档）、**active**（重启回到
+ * 哪口）、**saved**（人起名存的布局清单）。仍是单文档：写单位是整档，保存器醒来时
+ * 读「当下」重拼一份，迟到的旧定时器写不坏账。
  *
- * 每条 `layout` 都是那一口井的 dockview `toJSON()` 结果，这层**原样搬运、不解读**
- * ——形状归 dockview。`null` 是「还没存过」：新建的桌面第一次切到时按注册表铺默认。
+ * 每条 `layout` 是那一口井的 dockview `toJSON()` 结果，这层原样搬运、不解读——形状
+ * 归 dockview。`null` 是「还没存过」：新建的桌面第一次切到时按注册表铺默认。
  *
- * 认不出的版本整档当没有（见 `parseLayoutDoc`），不写回：两台机器不同版本互毁的事，
- * 等真有了第二台再管。**v2 认得、当场迁**：current 迁成第一口桌面（「主桌面」），saved
- * 原样带走——v2 是昨天还在写的形状，扔掉它等于每次升档把人的井洗回默认。多桌面时代
- * 0.0.14 的 v1 不迁，照「认不出」整档当没有。
- *
- * 零 DOM、零 react，node 里直接测。
+ * 认不出的版本整档当没有、不写回；**v2 认得、当场迁**（迁移不落盘，下一次自动保存
+ * 写的就已是 v3）。判据见文档站。
  */
 
 /** 落进 gwbData 的文档名 */
@@ -79,11 +75,7 @@ function parseLayout(raw: unknown): Record<string, unknown> | null | undefined {
   return undefined
 }
 
-/**
- * 盘上的东西 → 档。**认不出就回 null，当没有**：第一次开机、档被人手改坏、多桌面时代的
- * v1 旧档，都走同一条路（回默认）。**v2 当场迁成 v3**——迁移不落盘，下一次自动保存写的
- * 就已经是 v3。
- */
+/** 盘上的东西 → 档。认不出就回 null（当没有，回默认）；v2 当场迁成 v3 */
 export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null
   const v = (raw as { v?: unknown }).v
@@ -112,8 +104,7 @@ export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
     ids.add(row.id)
     rows.push({ id: row.id, name: row.name, layout })
   }
-  // active 指着一口不存在的桌面：档坏了，整份当没有——猜一口（比如第一口）的话，
-  // 重启回到哪儿就取决于谁写的档，那种静默比回默认贵
+  // active 指着一口不存在的桌面：档坏了，整份当没有
   if (!ids.has(doc.active)) return null
   const saved = parseSaved(doc.saved)
   if (saved === null) return null
@@ -135,9 +126,8 @@ export function nextDesktopId(desktops: readonly DesktopRow[]): string {
 }
 
 /**
- * 存一条进 saved 清单。**同名覆盖**：名字是这套布局的钥匙，重存就是更新——不然清单里躺两个
- * 「干活」谁也说不清点哪个。覆盖时**保住原条目的 id**（id 是档内部认人的键，跟人走
- * 的名字换了内容也不换身份）。纯函数，出的是新数组。
+ * 存一条进 saved 清单。**同名覆盖**（名字是钥匙），覆盖时保住原条目的 id——id 是档
+ * 内部认人的键，换了内容也不换身份。纯函数，出的是新数组。
  */
 export function upsertSaved(saved: readonly SavedLayout[], name: string, layout: Record<string, unknown>): SavedLayout[] {
   const prev = saved.find((s) => s.name === name)
