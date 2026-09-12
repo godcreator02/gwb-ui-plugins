@@ -10,8 +10,8 @@ docfirst: none
 
 - [x] 令牌声明面新增度量衡区（spacing/字重/字距/白黑/阴影/过渡/容器断点）与 `--warning` 语义色（亮暗两套）
 - [x] 映射面对应接管（探针实测：产物仅剩 3 条"机制变量→令牌引用"形态，零字面 fallback；容器键的消费者是 shadcn 的 max-w-*，零改动治好）
-- [ ] baseui 的 amber 族 10 处全部改写为 `*-warning`；SOURCE_DOT 三色收进件域令牌（桥接或亮暗自适配）
-- [ ] 守卫升级随件走：零 fallback 断言 + 颜色类白名单（= 令牌包映射面 ∪ 本件 @theme 自注册，两边现扫）
+- [x] baseui 的 amber 族全部改写为 `*-warning`（10 处清零）；SOURCE_DOT 三色收进件域令牌两段制（tokens.css + 入口 @theme 段）
+- [x] 守卫升级随件走：三件 artifact 各加两条断言（零字面 fallback，豁免 tw-animate 机制缺省与 currentcolor；颜色白名单现扫，transparent 等关键字与非色形态豁免）。shadow 全八档补进 0.1.1
 - [ ] tokens.mdx 补归属判据与件域两段制实况；styles.mdx「残余的耦合」改写（前缀改内置名一条被本次消掉）
 - [ ] devkit 写件手册更新（**devkit 是正本**，hello 只是照规矩做出来的活例子）：零 fallback 纪律、件域两段制、两条守卫
 - [ ] 发版顺序 tokens → shell/theme/baseui → hello，隔离 home 实机验观感零漂移，升 default

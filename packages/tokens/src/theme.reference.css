@@ -78,9 +78,14 @@
   --tracking-widest: var(--gwb-tracking-widest);
   --color-white: var(--gwb-white);
   --color-black: var(--gwb-black);
+  --shadow-2xs: var(--gwb-shadow-2xs);
+  --shadow-xs: var(--gwb-shadow-xs);
   --shadow-sm: var(--gwb-shadow-sm);
   --shadow-md: var(--gwb-shadow-md);
   --shadow-lg: var(--gwb-shadow-lg);
+  --shadow-xl: var(--gwb-shadow-xl);
+  --shadow-2xl: var(--gwb-shadow-2xl);
+  --shadow-inner: var(--gwb-shadow-inner);
   --ease-in: var(--gwb-ease-in);
   --ease-out: var(--gwb-ease-out);
   --ease-in-out: var(--gwb-ease-in-out);

@@ -284,7 +284,7 @@ function SettingLine({
           {row.type === 'secret' && (
             <Badge
               variant="outline"
-              className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-amber-600 baseui:dark:text-amber-500"
+              className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
               title="secret 只影响显示打码，盘上存的是明文"
             >
               明文落盘
@@ -382,7 +382,7 @@ function EntryCard({
             <div className="baseui:flex baseui:items-center baseui:gap-2">
               <span className="baseui:truncate baseui:text-sm baseui:font-medium">{title}</span>
               {dirtyCount > 0 && (
-                <Badge className="baseui:shrink-0 baseui:border-0 baseui:bg-amber-500/15 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-amber-600 baseui:dark:text-amber-400">
+                <Badge className="baseui:shrink-0 baseui:border-0 baseui:bg-warning/15 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-warning">
                   未保存
                 </Badge>
               )}
@@ -392,7 +392,7 @@ function EntryCard({
               {update !== undefined && (
                 <Badge
                   variant="outline"
-                  className="baseui:shrink-0 baseui:border-amber-500/40 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-amber-600 baseui:dark:text-amber-400"
+                  className="baseui:shrink-0 baseui:border-warning/40 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-warning"
                   title={`home 里是 ${update.current}，registry 上最新是 ${update.latest}`}
                 >
                   有新版 {update.current} → {update.latest}
@@ -481,7 +481,7 @@ function EntryCard({
         <div className="baseui:border-t baseui:border-border baseui:bg-muted/30">
           {/* 挂不上的原因人话先说——attention 的两态（没挂上、停了还在跑）都是最该被看见的 */}
           {entry.attention && (
-            <div className="baseui:flex baseui:items-start baseui:gap-2 baseui:border-b baseui:border-border baseui:px-3 baseui:py-2 baseui:text-xs baseui:text-amber-600 baseui:dark:text-amber-400">
+            <div className="baseui:flex baseui:items-start baseui:gap-2 baseui:border-b baseui:border-border baseui:px-3 baseui:py-2 baseui:text-xs baseui:text-warning">
               <TriangleAlert className="baseui:mt-0.5 baseui:size-3.5 baseui:shrink-0" />
               <span>{entry.hint}</span>
             </div>
@@ -1229,7 +1229,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         </div>
                         {updates?.[row.pkg] !== undefined && (
                           <span
-                            className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-amber-600 baseui:dark:text-amber-400"
+                            className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-warning"
                             title={`home 里是 ${updates[row.pkg]!.current}，registry 上最新是 ${updates[row.pkg]!.latest}`}
                           >
                             有新版 → {updates[row.pkg]!.latest}
@@ -1271,7 +1271,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         </div>
                         {updates?.[row.pkg] !== undefined && (
                           <span
-                            className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-amber-600 baseui:dark:text-amber-400"
+                            className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-warning"
                             title={`home 里是 ${updates[row.pkg]!.current}，registry 上最新是 ${updates[row.pkg]!.latest}`}
                           >
                             有新版 → {updates[row.pkg]!.latest}
@@ -1374,7 +1374,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   停用→启用重挂成新版本（本来就停用的保持停用），**不重启内核**；升完整页重载。
                 </p>
                 {outdatedRows.some(([pkg]) => pkg === OWN_PKG) && (
-                  <p className="baseui:text-amber-600 baseui:dark:text-amber-400">
+                  <p className="baseui:text-warning">
                     插件管理件自己也在清单里：回执发出之后这一格会先关再开，随后整页重载。
                   </p>
                 )}

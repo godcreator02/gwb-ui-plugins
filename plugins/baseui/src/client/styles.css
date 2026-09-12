@@ -35,3 +35,14 @@
 @import 'tailwindcss/utilities.css' layer(utilities) source(none);
 @import 'tw-animate-css';
 @source "./";
+
+/* 件域令牌的值（日志来源点色那一小张），跟下面的映射段配成两段制 */
+@import './tokens.css';
+
+/* 件域令牌·映射段：注册本件专属的工具类（baseui:bg-src-plugin 这一族）。
+   inline 内联，键名即使被前缀改写也不影响——产物直接查上面的变量，零 fallback。 */
+@theme inline {
+  --color-src-plugin: var(--baseui-src-plugin);
+  --color-src-kernel: var(--baseui-src-kernel);
+  --color-src-renderer: var(--baseui-src-renderer);
+}

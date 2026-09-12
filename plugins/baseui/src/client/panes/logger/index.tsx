@@ -55,13 +55,14 @@ const ALL_KEY = '*'
 const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
 
 /**
- * 三路的点色。**效果图定稿的自有色**，令牌表里还没有——要转正进 gwb-tokens 是另一件事。
- * 用在两处：路胶囊上的小点、每行路标上的小点，让「筛选开关」和「流水行」用同一个颜色锚。
+ * 三路的点色：**件域令牌**——tokens.css 那三个 --baseui-src-*，入口尾部的 @theme 段
+ * 注册成 bg-src-* 类。用在两处：路胶囊上的小点、每行路标上的小点，让「筛选开关」
+ * 和「流水行」用同一个颜色锚。值住 tokens.css 一处，这里只写类名。
  */
 const SOURCE_DOT: Record<LogSource, string> = {
-  plugin: 'oklch(0.623 0.214 259.815)',
-  kernel: 'oklch(0.746 0.13 195)',
-  renderer: 'oklch(0.72 0.14 330)',
+  plugin: 'baseui:bg-src-plugin',
+  kernel: 'baseui:bg-src-kernel',
+  renderer: 'baseui:bg-src-renderer',
 }
 
 /** 内核事件口上认自己那条的记号，跟 node 半的 EVENT 是同一个字符串 */
@@ -76,7 +77,7 @@ const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', inf
 /** 级别字母的颜色。只有 error/warn 有色，info/debug 退成灰——一行里颜色太多就没有重点了 */
 const LEVEL_TONE: Record<LogLevel, string> = {
   error: 'baseui:text-destructive',
-  warn: 'baseui:text-amber-600 baseui:dark:text-amber-400',
+  warn: 'baseui:text-warning',
   info: 'baseui:text-muted-foreground baseui:opacity-70',
   debug: 'baseui:text-muted-foreground baseui:opacity-40',
 }
@@ -85,7 +86,7 @@ const LEVEL_TONE: Record<LogLevel, string> = {
 const ROW_TONE: Record<LogLevel, string> = {
   error:
     'baseui:bg-destructive/[0.08] baseui:shadow-[inset_2px_0_0_var(--destructive)] baseui:hover:bg-destructive/[0.14]',
-  warn: 'baseui:bg-amber-400/[0.07] baseui:shadow-[inset_2px_0_0_oklch(0.795_0.184_86.9)] baseui:hover:bg-amber-400/[0.12]',
+  warn: 'baseui:bg-warning/[0.07] baseui:shadow-[inset_2px_0_0_var(--warning)] baseui:hover:bg-warning/[0.12]',
   info: 'baseui:hover:bg-accent',
   debug: 'baseui:hover:bg-accent',
 }
@@ -267,7 +268,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
                     : 'baseui:text-muted-foreground baseui:opacity-55 baseui:hover:bg-accent baseui:hover:opacity-80'
                 }`}
               >
-                <span className="baseui:h-1.5 baseui:w-1.5 baseui:rounded-full" style={{ background: SOURCE_DOT[s] }} />
+                <span className={`baseui:h-1.5 baseui:w-1.5 baseui:rounded-full ${SOURCE_DOT[s]}`} />
                 {SOURCE_LABEL[s]}{' '}
                 <span className="baseui:text-[10.5px] baseui:tabular-nums baseui:opacity-60">{counts[s]}</span>
               </button>
@@ -340,8 +341,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             </span>
             <span className="baseui:flex baseui:items-center baseui:gap-1">
               <span
-                className="baseui:h-[5px] baseui:w-[5px] baseui:shrink-0 baseui:rounded-full"
-                style={{ background: SOURCE_DOT[e.source] }}
+                className={`baseui:h-[5px] baseui:w-[5px] baseui:shrink-0 baseui:rounded-full ${SOURCE_DOT[e.source]}`}
               />
               <span className="baseui:text-muted-foreground baseui:opacity-85">{SOURCE_LABEL[e.source]}</span>
             </span>

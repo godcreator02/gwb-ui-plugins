@@ -103,6 +103,54 @@ describe.skipIf(!built)('产物', () => {
     // 症状是弹层（portal 到 body 的那些）当场裸奔,而构建照样绿
     expect(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')).not.toContain('data-gwb-plugin')
   })
+
+  /* —— 零字面 fallback 与颜色白名单（令牌国有化，tokens ≥0.1.1）——
+   * 规矩正本：docs-site「令牌与颜色：共享规则」第六节。两条都现扫正本、不手写名单。 */
+
+  it('style.css 零字面 fallback——值只许查表（令牌变量或 currentcolor 关键字）', () => {
+    const css = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
+    /** tw-animate-css 包内写死的机制缺省（animation 简写连排、enter/exit 变换那一族），
+     *  映射面够不着：动画机制的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
+    const mechanismDefault = (key: string, fb: string) =>
+      key.startsWith('--tw-animation-') ||
+      key.startsWith('--tw-enter-') ||
+      key.startsWith('--tw-exit-') ||
+      (key === '--tw-ease' && fb === 'ease')
+    const bad = [...css.matchAll(/var\((--[\w-]+),\s*([^;{)]+)\)/g)]
+      .filter((m) => !mechanismDefault(m[1]!, m[2]!.trim()))
+      .map((m) => m[2]!.trim())
+      .filter((v) => !v.startsWith('var(') && v !== 'currentcolor')
+    expect([...new Set(bad)].sort()).toEqual([])
+  })
+
+  it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+    const tokenMap = fs.readFileSync(
+      path.join(root, 'node_modules/@godcreator02/gwb-tokens/dist/theme.reference.css'),
+      'utf8',
+    )
+    const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')
+    const allowed = new Set([
+      // 特殊色名：transparent / inherit / current 是 CSS 关键字，不是调色板也不是令牌
+      'transparent',
+      'inherit',
+      'current',
+      ...[...`${tokenMap}\n${ownEntry}`.matchAll(/--color-([\w-]+)\s*:/g)].map((m) => m[1]!),
+    ])
+    // text- 族带字号与对齐歧义，border-/divide- 带边侧与宽度歧义——这些形态不是色名
+    const NON_COLOR =
+      /^(?:[bltrxy2](?:-\d+)?|\d|center|left|right|justify|start|end|xs|sm|base|lg|xl|2xl|3xl|4xl)$/
+    const FAMILY = '(?:text|bg|border|from|via|to|divide)-'
+    const bad = new Set<string>()
+    for (const sel of classSelectors(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8'))) {
+      for (const m of sel.matchAll(new RegExp(`(?:^|\\\\:)${FAMILY}([\\w-]+)`, 'g'))) {
+        const name = m[1]!
+        if (NON_COLOR.test(name)) continue
+        if (!allowed.has(name)) bad.add(sel)
+      }
+    }
+    expect([...bad].sort()).toEqual([])
+  })
 })
 
 describe('注册窗格时自报地址', () => {
