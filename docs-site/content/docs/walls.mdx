@@ -23,7 +23,7 @@ docfirst: none
 逐条摘、再松手——顺序反过来的话桶可能已经拆了，摘了个寂寞，而桶没拆那种情况正是这几行
 要治的。
 
-{/* ref file="../plugins/shell/src/bus.ts" lines="121-131" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="121-132" */}
 
 两条跟着定下来的语义：`emit` 在 `release` 之后是**静默**的（外壳的清理顺序是「先让件
 dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效）；桶里那层是 `Set`，
@@ -39,14 +39,14 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 `plugin:home:hello:main`。
 
 看着不好看，但**去掉那个前缀会坏，而且坏得没有现象**：`entryId` 要跟条目视图的 `id`
-一字不差，`liveness` 拿它去条目表里认这一格背后的件还在不在。改短了就一条都认不出——
-那不是「认不出」，是**认成别人**：`panePluginState` 找不到条目会判 `gone`，于是每一格
-在启动的头一帧都被当成「插件已卸载」关掉，而那是落盘的布局，关掉就没了。
+一字不差——注册表按它记账，`openPane` 的安全边界也按它认「哪几格是这条条目的」。改短了
+就跟账对不上，而账对不上的症状是静默的错格匹配：认不出自己的份、也认不出别人的份，
+两边一起悄悄错位。
 
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="118-136" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="93-104" */}
 
 ### `typeof` 一个类是 `function`，按「是对象」判它等于不存在
 
@@ -56,7 +56,7 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 `typeof` 是 `'function'`，而那句 `isRecord(bw)` 只认 `typeof === 'object'`——于是 `getAllWindows`
 永远 undefined。0.2.3 以为是 ESM 的 `default` 挂法，改错了地方；0.2.4 才对：对象或函数都往下取。
 
-{/* ref file="../plugins/shell/src/reload.ts" lines="56-67" */}
+{/* ref file="../plugins/shell/src/reload.ts" lines="51-62" */}
 
 **判据**：凡是按形状收窄一个「可能是类」的东西（`BrowserWindow`、`Service` 子类、任何构造器），
 `isRecord` 那种「是对象」的守卫要配上 `typeof === 'function'`；而且**报错要说清是哪一层没认出**
@@ -85,7 +85,7 @@ import 了新入口、重开了 10 格，**但切换那一瞬渲染层连报四�
 
 搬 shell 那批纯逻辑时撞到两条。**规则本身没错，是这两处代码故意反着来**：
 
-{/* ref file="../plugins/shell/src/bus.ts" lines="94-101" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="92-106" */}
 
 - **`unicorn/no-useless-spread`** —— `for (const fn of [...set])` 那份拷贝是有意的：听众
   收到事件后摘掉自己是常事，直接遍历活集合会漏掉或重复。规则看不出「遍历期间集合会被改」
