@@ -38,9 +38,9 @@ export interface PaneBusHandle {
 export interface BusRegistry {
   acquire(scope: string): PaneBusHandle
   /**
-   * 此刻有哪些桶、各自几格占着、挂了哪些事件名。**只给验收用**（调试面
-   * `__gwbDebug.buses()`）：格间总线断了的症状是「另一格不动」，而那跟插件自己没
-   * 发、发错了名字、两格根本不在一个桶里三种成因分不开——不摆出桶的状态就只能猜。
+   * 此刻有哪些桶、各自几格占着、挂了哪些事件名。**只给验收用**：格间总线断了的症状
+   * 是「另一格不动」，而那跟插件自己没发、发错了名字、两格根本不在一个桶里三种成因
+   * 分不开——不摆出桶的状态就只能猜。
    */
   inspect(): { scope: string; refs: number; types: string[] }[]
 }

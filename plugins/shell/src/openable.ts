@@ -2,33 +2,13 @@ import { PLUGIN_COMPONENT, pluginParamsIn, shellParamKeysIn } from './panels.js'
 import type { RegisteredPane } from './pane-registry.js'
 
 /**
- * 「可以打开的窗格」那张表：注册表的一份快照摊成井里能开的那几格。默认布局、状态栏的
- * ＋列表、导航行项吃的是同一份。
+ * 「可以打开的窗格」那张表与开格的决策：注册表快照摊成井里能开的那几格（`listOpenable`
+ * / `specForPane` / `specForOwnPane` 管**定义**），`planOpen` 决定开成聚焦还是软换还是
+ * 新开、`uniquePanelId` 管**实例**。零 DOM、零 react，测试在 node 里直接跑。
  *
- * **两个概念要分清**：
- *
- * | | 是什么 | 谁产出 |
- * | --- | --- | --- |
- * | 窗格**定义** | 注册表里一条，件说「我有这么一格」 | `pane-registry` |
- * | 窗格**实例** | dockview 里一个 panel，装着不同内容的可以有好几份 | `uniquePanelId` |
- *
- * 这个文件里 `specForPane` / `listOpenable` / `specForOwnPane` 管的都是**定义**，
- * 只有 `uniquePanelId` 管实例。
- *
- * 窗格 id 是 `plugin:<条目 id>:<窗格 id>`——两段都要：同一个包挂两条条目时条目 id
- * 分得开它们，同一条条目注册几格时窗格 id 分得开那几格。
- *
- * **母仓那份是「条目表 × 包声明的 panes」，这份不是**。运行时注册下表里的每一条本身
- * 就带着身份，用不着再跟条目表对：
- *
- * - 没有 join——`pkg` 与 `entryId` 注册时就填好了
- * - 没有过滤——禁用的件根本没跑 `apply`，注册不进来；卸掉的件 effect 收尾时自己摘掉。
- *   「在表里」就等于「该开得出来」，`!disabled && !shell` 那两条判断连同它们会出的错
- *   一起消失了
- * - 没有 `canonicalPanelId`——母仓那个函数整个是老布局兼容（盘上的格 id 少一段），
- *   这条线没有那份历史，盘上的 id 跟表里的算法是同一处拼出来的
- *
- * 零 DOM、零 react，测试在 node 里直接跑。
+ * 窗格 id 是 `plugin:<条目 id>:<窗格 id>`——同一个包挂两条条目时条目 id 分得开它们，
+ * 同一条条目注册几格时窗格 id 分得开那几格。运行时注册下表里每一条自带身份，用不着
+ * join、也用不着过滤（判据见文档站）。
  */
 
 /**
@@ -112,36 +92,20 @@ export interface OpenPane {
 }
 
 /**
- * 窗格 id 的拼法：两段都进去。只有这一处这么拼，落盘的与表里的因此不会漂。
+ * 窗格 id 的拼法：两段都进去，只有这一处这么拼，落盘的与表里的因此不会漂。拼出来的
+ * 是**基名**——一格只开一份时它就是那份的 id，开第二份时由 `uniquePanelId` 在后面接。
  *
- * 拼出来的是**基名**——一格只开一份时它就是那份的 id，开第二份时由 `uniquePanelId`
- * 在它后面接。
- *
- * **拼出来的是个不透明的键**，别回头拆它。`entryId` 是 loader 给的条目全路径，件的
- * 条目挂在 include 那条下面、自带 `home:` 前缀（实机是 `home:hello`），所以真实的
- * 窗格 id 长这样：`plugin:home:hello:main`——四段，不是三段。
- *
- * 那个前缀不能去掉：`entryId` 得跟条目视图的 `id` 一字不差，改短了就对不上账，
- * 而对不上账会静默地变成错格匹配。
- *
- * 要 entryId 或 paneId 就从面板的 `params` 里取——那儿本来就分开存着，从来不必反解。
+ * **拼出来的是个不透明的键**，别回头拆它。`entryId` 是 loader 给的条目全路径（实机
+ * 是 `home:hello`，拼出来四段）；要 entryId 或 paneId 就从面板 `params` 里取，从来
+ * 不必反解。
  */
 export function panelIdOf(entryId: string, paneId: string): string {
   return `plugin:${entryId}:${paneId}`
 }
 
 /**
- * 基名 → 这一份实例的 id 与序号。`taken` 由调用方给（浏览器半问 dockview
- * 「这个 id 已经有格了吗」），所以这个函数在 node 里直接测得了。
- *
- * **第一份的 id 就是基名**，跟只能开一份的那些格长得一模一样——落盘的东西因此不受
- * 影响，人读起来也还是那个样子。第二份起在后面接 `:2` / `:3`。
- *
- * **分隔用 `:` 不用 `#`**：`#` 在 CSS 里是 id 选择器，而 panel id 会不会被 dockview
- * 拿去 `querySelector` 我们说不准。全用 `:` 与件自己给的字母数字，哪儿都安全。
- *
- * **序号一并回，不让调用方从 id 里拆**：标题要追的「(2)」得有个正当来源，而反解 id
- * 正是这一族函数的头注反复禁的事。
+ * 基名 → 这一份实例的 id 与序号。第一份的 id 就是基名，第二份起接 `:2` / `:3`；
+ * 序号一并回，不让调用方从 id 里拆。`taken` 由调用方给，node 里直接测得了。
  */
 export function uniquePanelId(base: string, taken: (id: string) => boolean): { id: string; ordinal: number } {
   let ordinal = 1
@@ -227,7 +191,7 @@ interface Placement {
 }
 
 /**
- * 新开的这一份摆哪儿，**按这一格此刻开着几份**分三档：
+ * 新开的这一份摆哪儿，**按这一格此刻开着几份**（只看本井）分三档：
  *
  * | 已经开着 | 新那份开在哪 |
  * | --- | --- |
@@ -235,20 +199,8 @@ interface Placement {
  * | 1 份 | `right`，不给参照（相对当前活动的那一格） |
  * | 2 份及以上 | `below`，参照已开的某一份**非基名实例** |
  *
- * 第三份起往下叠而不是继续往右：件开第二份、第三份多半是从**基名那一份**点出来的
- * （正文格里点两下评论），活动的一直是它，于是每一份都开在它右边，一格一列。
- *
- * **参照必须显式给。** dockview 那头只有 `direction` 的 `position` 是 `AbsolutePosition`
- * （`_doAddPanel` 里 orthogonalize 那一支），落的是整口井的边，不是「上一份的下面」。
- *
- * **要害是「不是基名那一份」，不是「最后开的那一份」**：基名那一份装的是件先开出来的
- * 内容，参照它就又挂回它底下。挑哪一份非基名的只决定新格落在那一列的哪个位置，所以
- * 这儿取表里最后一份——`open` 的顺序是 dockview 自己的布局序（`api.panels` = 组按建组
- * 先后 flatMap 组内标签先后），同一刻读两次一样，但人拖过标签之后就不再等于开格先后。
- * 判断不吊在那上面。
- *
- * 2 份及以上时表里必然有非基名的那一份（id 互不相同，基名至多占一份），`undefined`
- * 那条分支只是把「找不到」退回上一档，不靠它。
+ * 第三份起往下叠而不是继续往右，参照必须显式给——只给 direction 的 position 在
+ * dockview 那头是 `AbsolutePosition`，落的是整口井的边。判据见文档站。
  */
 function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
   const local = open.filter((p) => p.here !== false)
@@ -258,11 +210,8 @@ function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
 }
 
 /**
- * 开格的**决策**：这一格的几份里有没有装着这份内容的、该聚焦还是软换还是新开一份、
- * 参数怎么落、要不要顺带说句话。
- *
- * **一格的身份是它装的内容**（`options.key`）。所以这个函数吃的不是「这个 id 占着没有」，
- * 而是**这一格此刻开着的几份**：认身份、挑预览格、查重三件事都要读它。
+ * 开格的**决策**：一格的身份是它装的内容（`options.key`），所以吃的是**这一格此刻
+ * 开着的几份**，认身份、挑预览格、查重三件事都读它。副作用全留给调用方（`open.ts`）。
  *
  * ```
  * want = options.key ?? ''
@@ -274,16 +223,8 @@ function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
  * 4. spec 认不出                       → none
  * ```
  *
- * 走到 open 的那两条顺带说**新那份摆哪儿**（`direction` / `referencePanel`），同样按
- * 这张表算——三档在 `placeNext`。
- *
- * 抽成纯函数是因为这几条分支里有一条**实机点不出来**——「件传的参数踩了保留键」得专门
- * 写一个错的件才走得到。副作用（`setActive` / `updateParameters` / `addPanel` /
- * `console`）全留在接线那一侧，那边就只剩「按 kind 分派」几行。
- *
- * **参数不作用于聚焦**：走到聚焦时那一格装的本来就是这份内容（key 对上了），它早挂好、
- * 件的 `mountPane` 已经拿过一次参数。悄悄换掉面板 params 只会让盘上的档跟界面上活着的
- * 那份对不上——要换内容走的是 preview 那条（软换），那条会连着通知件。
+ * 走到 open 的两条顺带算好新那份摆哪儿（`placeNext`）。**参数不作用于聚焦**：走到
+ * 聚焦时那一格装的本来就是这份内容，悄悄换掉面板 params 只会让盘上的档跟界面对不上。
  */
 export function planOpen(
   spec: OpenableSpec | undefined,

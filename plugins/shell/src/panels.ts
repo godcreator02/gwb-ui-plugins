@@ -1,16 +1,9 @@
 /**
  * 面板 `params` 的读法：这一格是什么种类、背后挂的是哪个插件、哪条条目，以及这份
- * `params` 里哪一半是件自己传的。
+ * `params` 里哪一半是件自己传的。零 import、不碰 DOM，测试在 node 里直接跑。
  *
- * dockview 里一格是什么，看的是它的 `view.contentComponent`——那是 `addPanel` 时给的
- * component 名，对应 COMPONENTS 表里的键。**不拿 id 当判据**：id 是调用方起的名字
- * （壳自己开的插件格叫 `plugin:<条目 id>`，调试口 `__gwbDebug.openPanel` 开的格叫
- * 什么全由调用方定），拿前缀判种类会把调试口开出来的插件格漏掉。
- *
- * 一格背后是哪个插件同理，看 `params.pluginKey`（完整包名）：它跟条目视图的 `pkg`
- * 是同一个字符串，也是格与条目之间唯一靠得住的对应。
- *
- * 零 import、不碰 DOM，测试在 node 里直接跑。
+ * 一格是什么种类看 `view.contentComponent`（不拿 id 当判据——id 是调用方起的名字）；
+ * 背后是哪个插件看 `params.pluginKey`（完整包名，跟条目视图的 `pkg` 同一个字符串）。
  */
 
 /** 插件窗格的 component 名（COMPONENTS 表里的那个键） */
@@ -38,14 +31,8 @@ export function pluginKeyOf(panel: PanelLike | null | undefined): string {
 }
 
 /**
- * 这一格属于哪条条目（cordis.yml 里那条的 id）。
- *
- * **认不出就回空串**：非插件格，或者 params 里没有这一项。调用方按空串退回按包找——
- * 认不出条目跟「不属于任何条目」是两回事，别拿包名顶上去。
- *
- * （母仓这条判断是为「老布局落盘时 params 只有 pluginKey」写的兼容，**这条线没有那个
- * 历史包袱**。判断仍旧留着：params 缺这一项在这儿属于 bug，而不判的话它会变成静默的
- * 错格匹配——那种错没有任何现象。）
+ * 这一格属于哪条条目（cordis.yml 里那条的 id）。认不出就回空串——非插件格，或者
+ * params 里没有这一项；params 缺这一项属于外壳的 bug，不判的话它会变成静默的错格匹配。
  */
 export function entryIdOf(panel: PanelLike | null | undefined): string {
   if (!isPluginPanel(panel)) return ''
@@ -83,15 +70,10 @@ export function isPreviewPanel(panel: PanelLike | null | undefined): boolean {
 }
 
 /**
- * 外壳自己占着的那几个 `params` 键：识别三件套、标签要的图标名，加上内容身份这两样
- * （`key` 装的是什么、`preview` 是不是预览格）。
- *
- * 件经 `openPane` 传的参数跟它们**并排住在同一份 `params` 里**，所以这张名单是两边的
- * 分界：进面板之前件传的这几个键被摘掉（`pluginParamsIn`），出到件手上时同样摘一遍。
- *
- * `key` 与 `preview` 进这张名单是有代价的：**件从此不能拿这两个名字当自己的参数名**。
- * 换来的是它们跟着 panel params 落盘——重载之后外壳照旧认得出哪一格装着什么、
- * 哪一格是预览格，不用另存一份账。
+ * 外壳自己占着的那几个 `params` 键：识别三件套、标签图标，加内容身份两样（`key` /
+ * `preview`）。件传的参数跟它们并排住在同一份 `params` 里，这张名单就是两边的分界：
+ * 进面板前（`pluginParamsIn`）与出到件手上时各摘一遍。代价是件不能拿这几个名字当
+ * 自己的参数名；换来的是它们跟着 panel params 落盘，外壳不用另存一份账。
  */
 export const SHELL_PARAM_KEYS = ['pluginKey', 'entryId', 'paneId', 'icon', 'key', 'preview'] as const
 
@@ -121,12 +103,9 @@ export function pluginParamsIn(params: Record<string, unknown> | undefined): Rec
 }
 
 /**
- * 拿 `next` **整份换掉** `prev` 时要交给 `api.updateParameters` 的那份。
- *
- * **dockview 的 `updateParameters` 是并不是换**：面板那头做的是 `{ …旧, …新 }`，
- * 只有值写成 `undefined` 的键才删（`DockviewPanel.update`，8.2.0）。所以换内容时旧那份
- * 里多出来的键得**显式写成 `undefined`**——不然上一份的参数会赖在这一格里，跟着
- * `toJSON()` 一起落盘，而现象只是「件收到了一个它这一轮没传过的参数」。
+ * 拿 `next` **整份换掉** `prev` 时要交给 `api.updateParameters` 的那份。dockview 的
+ * updateParameters 是合并不是换（只有 undefined 的键删），旧那份多出来的键得显式写
+ * `undefined`，不然会赖在这一格里跟着落盘。
  */
 export function replaceParams(
   prev: Record<string, unknown> | undefined,
