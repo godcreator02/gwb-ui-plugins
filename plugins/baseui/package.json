@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-baseui",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "基础界面：基础件（logger、plugin-manager）的官方窗格集。一件多格、按 pane.id 分派；对每个 core 服务嵌套注入——缺谁少画谁的窗格，其余照常。窗格之间零 import，共享组件住 src/client/components/ui。2026-09-12 三仓拆分第一刀：logger 与 plugin-manager 劈 core，各自的浏览器半整体迁入本件（panes/logger 与 panes/plugin-manager），类名前缀统一换 baseui:，命令名随 plugin-manager 断代改名",
   "type": "module",
   "main": "dist/index.js",
