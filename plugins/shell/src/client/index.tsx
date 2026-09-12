@@ -14,6 +14,7 @@ import { PluginPane } from './PluginPane.js'
 import { StatusBar } from './StatusBar.js'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
+import { wellHub } from './well-hub.js'
 import {
   listOpenable,
   panelParamsOf,
@@ -22,16 +23,11 @@ import {
   titleForOrdinal,
   uniquePanelId,
   type OpenableSpec,
-  type OpenPane,
   type OpenPaneOptions,
   type OpenPlan,
 } from '../openable.js'
 import {
   PLUGIN_COMPONENT,
-  entryIdOf,
-  isPreviewPanel,
-  paneIdOf,
-  paneKeyOf,
   pluginParamsIn,
   replaceParams,
 } from '../panels.js'
@@ -135,64 +131,8 @@ const GWB_THEME: DockviewTheme = {
   dndTabIndicator: 'fill',
 }
 
-/**
- * 内核交出来的命令口。**存在模块级而不是经 params 传**：面板组件表必须是模块级常量
- * （换引用会让 dockview 重建全部格），组件因此拿不到 `bootShell` 的闭包；而塞进
- * `params` 会跟着布局一起落盘，第四刀就得在序列化时把它挑出去。
- */
-let hostBridge: HostBridge | undefined
-
-/**
- * 全部井的注册表（desktopId → api）。井常驻，挂上就住到外壳拆。**桌面是分组不是宇宙**
- * （0.4.0）：开格的聚焦与查重要看**全井**——同一格开在别的桌面也算一份，key 命中就
- * 走聚焦（切过去激活），实例 id 全页唯一。面板组件因此连 `containerApi` 都不用传——
- * 判断全在模块层，喂表喂的是全井聚合。
- */
-const wellApis = new Map<string, DockviewApi>()
-/** 活动桌面 id。同样住模块级（同 hostBridge 的路子）：面板组件的闭包够不着 App 的状态 */
-let activeDesktop = ''
-/** 切桌面的分派（App 注入，同 flushLayoutSave 的路子）：聚焦落到别的井时由它切到台前 */
-let switchDesktop: ((id: string) => void) | undefined
-
 /** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
 const SAVE_DEBOUNCE_MS = 400
-
-/**
- * 拆树前要抢着 flush 一次的钩子。跟 `hostBridge` 一样住模块级：`bootShell` 的 dispose
- * 够得着，而 App 内部的函数出不了那层闭包
- */
-let flushLayoutSave: (() => void) | undefined
-
-/** 这个 id 在**任何一口井**里已经有格了吗。井是分组不是宇宙：实例 id 全页唯一，查重看全井 */
-function takenAnywhere(id: string): boolean {
-  for (const api of wellApis.values()) {
-    if (api.getPanel(id) !== undefined) return true
-  }
-  return false
-}
-
-/**
- * **这一格此刻开着的几份——全井聚合**：`planOpen` 认身份、挑预览格、查重都吃这张表。
- * 开在别的桌面的份带 `here: false`（聚焦认它、预览槽与落位不认，判据归 planOpen）。
- *
- * 现从各口井里摘，不存快照——格是人随时关得掉的。滤的是「同一条条目的同一格」：`key`
- * 与 `preview` 都是这一格之内的概念，掺进别的格会让查重把别人的 id 也算上。
- */
-function openInstancesAll(who: { entryId: string; paneId: string }): OpenPane[] {
-  const out: OpenPane[] = []
-  for (const [desktop, api] of wellApis) {
-    for (const panel of api.panels) {
-      if (entryIdOf(panel) !== who.entryId || paneIdOf(panel) !== who.paneId) continue
-      out.push({
-        id: panel.id,
-        key: paneKeyOf(panel),
-        preview: isPreviewPanel(panel),
-        ...(desktop === activeDesktop ? {} : { here: false as const }),
-      })
-    }
-  }
-  return out
-}
 
 /** 这一条 spec 背后是谁的哪一格 */
 function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
@@ -211,7 +151,7 @@ function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
  */
 function willFocus(spec: OpenableSpec): boolean {
   const who = whoOf(spec)
-  return planOpen(spec, undefined, openInstancesAll(who), who).kind === 'focus'
+  return planOpen(spec, undefined, wellHub.openInstances(who), who).kind === 'focus'
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
@@ -239,7 +179,7 @@ function panelParams(spec: OpenableSpec): Record<string, unknown> {
  * 这个守卫），所以 id 必须先算好——不能指望它回一个「已经有了」。
  */
 function addInstance(api: DockviewApi, spec: OpenableSpec): void {
-  const { id, ordinal } = uniquePanelId(spec.id, takenAnywhere)
+  const { id, ordinal } = uniquePanelId(spec.id, (candidate) => wellHub.takenAnywhere(candidate))
   api.addPanel({
     id,
     component: spec.component,
@@ -267,7 +207,7 @@ async function openOwnPane(
   options: OpenPaneOptions | undefined,
 ): Promise<void> {
   const panes = await fetchPanes(host)
-  applyPlan(planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, openInstancesAll(who), who))
+  applyPlan(planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, wellHub.openInstances(who), who))
 }
 
 /**
@@ -277,7 +217,7 @@ async function openOwnPane(
  */
 function openSpec(spec: OpenableSpec): void {
   const who = whoOf(spec)
-  applyPlan(planOpen(spec, undefined, openInstancesAll(who), who))
+  applyPlan(planOpen(spec, undefined, wellHub.openInstances(who), who))
 }
 
 /** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
@@ -290,7 +230,7 @@ function applyPlan(plan: OpenPlan): void {
     return
   }
   // 预览槽与落位都只在本井找（planOpen 已保证 id 在活动井），新份也开在活动井
-  const api = wellApis.get(activeDesktop)
+  const api = wellHub.wells().get(wellHub.activeDesktop())
   if (api === undefined) return
   if (plan.kind === 'retarget') {
     const panel = api.getPanel(plan.id)
@@ -329,10 +269,10 @@ function applyPlan(plan: OpenPlan): void {
  * （保活），激活不必等显隐真落地（api 活着，CSS 只是衣裳）。
  */
 function focusAcross(panelId: string): void {
-  for (const [desktop, api] of wellApis) {
+  for (const [desktop, api] of wellHub.wells()) {
     const panel = api.getPanel(panelId)
     if (panel === undefined) continue
-    if (desktop !== activeDesktop) switchDesktop?.(desktop)
+    if (desktop !== wellHub.activeDesktop()) wellHub.switcher()?.(desktop)
     panel.api.setActive()
     return
   }
@@ -353,13 +293,13 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
       typeof pluginKey !== 'string' ||
       typeof entryId !== 'string' ||
       typeof paneId !== 'string' ||
-      hostBridge === undefined
+      wellHub.host() === undefined
     ) {
       // 这一格的 params 是外壳自己按 openable 拼的，缺项属于外壳的 bug。摆出来而不是
       // 画个空白——空白跟「件加载慢」分不开
       return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">这一格缺 params（外壳的 bug）</p>
     }
-    const bridge = hostBridge
+    const bridge = wellHub.host()!
     const openPane: ShellBridge['openPane'] = (target, options) => {
       // 件不等返回值（它是 click 回调），但这条链上的错得有出口。井不传——判断在模块层
       // 看全井（聚焦可能落到别的桌面），面板组件连 containerApi 都不用了
@@ -388,7 +328,7 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
         panelId={props.api.id}
         // 件那半只看得见自己传的那些键：保留键摘掉，件不该认识 entryId 这种外壳内部的东西
         paneParams={pluginParamsIn(params)}
-        host={hostBridge}
+        host={bridge}
         openPane={openPane}
         setTitle={(title) => props.api.setTitle(title)}
         keepPane={keepPane}
@@ -455,9 +395,9 @@ function App({
   rowsRef.current = desktops
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
-  // 模块级的活动桌面（面板组件的开格链读它），跟 ref 同一步走——switchTo 里另有一处同步赋值，
+  // 枢纽里的活动桌面（面板组件的开格链读它），跟 ref 同一步走——switchTo 里另有一处同步赋值，
   // 保证聚焦分派在同一拍里看到新值
-  activeDesktop = activeId
+  wellHub.setActiveDesktop(activeId)
   const savedRef = useRef(saved)
   savedRef.current = saved
   const timerRef = useRef<number | undefined>(undefined)
@@ -468,7 +408,8 @@ function App({
 
   const flushSave = useCallback((): void => {
     window.clearTimeout(timerRef.current)
-    if (hostBridge === undefined) return
+    const host = wellHub.host()
+    if (host === undefined) return
     // **整档为写单位**：desktops 逐口问井自己（活着的那份才是真相；还没挂井的桌面用它
     // 那条存着的），saved 用清单原文。迟到的旧定时器走不到这儿——schedule 每次重排，
     // 醒来的一定是最新这份
@@ -481,7 +422,7 @@ function App({
       }),
       saved: savedRef.current,
     }
-    void hostBridge.call(LAYOUT_SAVE_COMMAND, doc).then(
+    void host.call(LAYOUT_SAVE_COMMAND, doc).then(
       (reply) => {
         const typed = reply as { ok?: boolean; error?: string }
         setSaveFailed(typed.ok !== true)
@@ -499,11 +440,11 @@ function App({
     timerRef.current = window.setTimeout(flushSave, SAVE_DEBOUNCE_MS)
   }, [flushSave])
 
-  // 拆树前抢一把 flush（bootShell 的 dispose 经模块级钩子够到它）
+  // 拆树前抢一把 flush（bootShell 的 dispose 经枢纽的钩子够到它）
   useEffect(() => {
-    flushLayoutSave = flushSave
+    wellHub.setFlusher(flushSave)
     return () => {
-      flushLayoutSave = undefined
+      wellHub.setFlusher(undefined)
     }
   }, [flushSave])
 
@@ -513,8 +454,7 @@ function App({
     return () => {
       for (const sub of subs.values()) sub.dispose()
       subs.clear()
-      wellApis.clear()
-      activeDesktop = ''
+      wellHub.clearWells()
     }
   }, [])
 
@@ -543,7 +483,7 @@ function App({
       }
     }
     if (!restored) openDefaults(event.api)
-    wellApis.set(id, event.api)
+    wellHub.addWell(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
     // 井一变：活动的那口顺带重算「已开」记号（**换 params 也在这条上**——dockview 8.2.0
@@ -571,8 +511,8 @@ function App({
       if (row === undefined) return
       const prev = activeIdRef.current
       activeIdRef.current = id
-      // 模块层同一拍看到新活动桌面（focusAcross 的聚焦分派跟着切换走）
-      activeDesktop = id
+      // 枢纽同一拍看到新活动桌面（focusAcross 的聚焦分派跟着切换走）
+      wellHub.setActiveDesktop(id)
       if (!mountedRef.current.includes(id)) setMountedIds((list) => [...list, id])
       flushSave()
       setActiveId(id)
@@ -603,11 +543,11 @@ function App({
     [switchTo],
   )
 
-  // 跨井聚焦的切桌分派（模块层 focusAcross 经它够到 switchTo，跟 flushLayoutSave 同一个路子）
+  // 跨井聚焦的切桌分派（focusAcross 经枢纽够到 switchTo，跟落盘钩子同一个路子）
   useEffect(() => {
-    switchDesktop = switchTo
+    wellHub.setSwitcher(switchTo)
     return () => {
-      switchDesktop = undefined
+      wellHub.setSwitcher(undefined)
     }
   }, [switchTo])
 
@@ -749,7 +689,7 @@ async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
 }
 
 async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
-  hostBridge = args.host
+  wellHub.setHost(args.host)
   // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张管的是
   // `.dv-*` 与 `.dockview-theme-gwb`（类名不经我们的手）、外壳自己那张类名一律带
   // `shell:` 前缀——三张都全页有效，谁也不靠祖先关系围栏
@@ -792,7 +732,7 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
   return {
     dispose() {
       // 布局还有没落盘的那半拍，拆树前抢着写一把——赶不上也就丢最后 400ms 的挪动
-      flushLayoutSave?.()
+      wellHub.flush()
       // 挂载是异步的：dispose 可能赶在它之前，所以接在同一条链上而不是拿个变量去猜
       void mounted.then((reactRoot) => reactRoot?.unmount())
       document.documentElement.classList.remove(...THEME_CLASSES)
@@ -801,7 +741,7 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
       // **只清自己那份**：热换外壳的自然顺序是「新的先 boot、旧的后 dispose」，
       // 不判身份的话旧句柄会把新外壳的那份清掉,全井的件当场报「缺 params」——
       // 而外壳没有 bug,是 dispose 越了界
-      if (hostBridge === args.host) hostBridge = undefined
+      wellHub.releaseHost(args.host)
     },
   }
 }
