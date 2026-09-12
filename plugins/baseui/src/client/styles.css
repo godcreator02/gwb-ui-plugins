@@ -16,7 +16,9 @@
  *   归令牌包那张表）。`source(none)` 关掉自动扫描，扫描面只认下面那条 `@source`；
  *   否则 dist/ 里的产物也会被扫进来，凭空多出一堆没人用的类而且不报错。
  * - `tw-animate-css`：`animate-in` / `fade-in-0` / `zoom-in-95` 这一族。不引的话
- *   它们一个字节都不出（静默），下拉菜单与确认框就永远不动画。
+ *   它们一个字节都不出（静默），下拉菜单与确认框就永远不动画。它会带出
+ * 不带前缀的全局 `@keyframes enter/exit` 与十七个 `--tw-enter-…` `--tw-exit-…`
+ * 的 `@property`，每个件的表各一份、内容相同，无害。
  *
  * `@source "./"` 相对本文件所在目录，也就是只扫 `src/client`——两窗格的 panes/ 与
  * 共享的 components/ 都在这一层下。

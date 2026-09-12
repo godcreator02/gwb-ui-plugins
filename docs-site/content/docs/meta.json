@@ -1,3 +1,11 @@
 {
-  "pages": ["index", "system-map", "...", "glossary"]
+  "pages": [
+    "index",
+    "system-map",
+    "...",
+    "glossary",
+    "shell",
+    "styles",
+    "walls"
+  ]
 }

@@ -7,7 +7,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --no-bail typecheck",
     "lint": "oxlint . --type-aware --deny-warnings",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "doc": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst check",
+    "doc:render": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst render --target ai"
   },
   "//devDeps": "仓根只装门禁用的：oxlint、vitest、typescript、@types/node。构建线不是仓里共享的一份——每个件自己装 esbuild 与 @tailwindcss/cli",
   "devDependencies": {
