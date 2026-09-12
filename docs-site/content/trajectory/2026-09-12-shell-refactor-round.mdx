@@ -1,0 +1,58 @@
+---
+title: shell 重构轮：模块划分、死代码出清与注释归档
+born-at: 2026-09-12
+type: decision
+domain: shell
+---
+
+# shell 重构轮（0.4.2）
+
+一次行为不变的整轮重构，从「一个 856 行的 index.tsx + 五个散装模块级变量」到模块各就各位。
+发版 0.4.2（0.4.1 因发布事故作废，见下）。
+
+## 动了什么
+
+- **`well-hub`**：五个模块级变量（hostBridge / wellApis / activeDesktop / switchDesktop /
+  flushLayoutSave）收进一个有声明接口的对象。它们本来就是面板组件与 App 之间的接口，
+  只是没名字、靠注释里的时序约定活着；如今约定归在两处——`setActiveDesktop` 同拍生效、
+  桌面是分组不是宇宙（查重与聚合看全井）。补 9 条 node 测试（hub 对 dockview 只认
+  `getPanel` / `panels` 的最小面）。
+- **`open.ts`**：开格执行层出列（planOpen 的分派、全局聚焦、落位）。判断本来就在纯函数里，
+  执行侧从 index.tsx 搬出后只剩「按 kind 分派」。
+- **`plugin-panel.tsx` / `theme-boot.ts`**：dockview 面板组件与开机外观装配各自出列，
+  index.tsx 只剩内核契约入口 + boot + App（856 → 518 行）。
+- **`protocol.ts`**：跨半命令名（panes / plugins / env）与 `ShellEnv` 归一成纯模块，两半各
+  打进各的束——照 `layout.ts` 的先例，消灭抄字符串。
+- **目录归位**：bus / visibility / mount-handle 挪进 `client/`（只有浏览器半 import），
+  src 根只剩 node 半与两半真共用的四个纯模块；visibility 改工厂对齐 bus 的形状。
+- **死代码出清**：liveness（src 零引用，只有测试在养）连测试删；导航半接线
+  （listOpenable 排导航条 + boot 滤掉）摘除，第四刀落地时再加回。
+- **注释按三层分流裁短**：判据、撞墙史、版本故事全部收割进文档站（shell.mdx / walls.mdx），
+  代码里只留「这个文件装什么、这行在做什么」。
+- pane-registry 的键分隔符从**字面 NUL 字节**换成冒号——NUL 能用，但它让文件被工具判成
+  二进制、也算不上自描述；窗格 id 注册时本就禁冒号，分隔无歧义。
+
+## 撞的两堵墙
+
+**内核页面根的 onShell 在途竞争（未修，已投内核仓 feedback/inbox）**。同一 url 的
+`gwb:shell` 事件（订阅问询 + internal/status 的 200ms 去抖推送）在页面 import 外壳束
+还没落定时连发两次，`current?.url === url` 守卫拦不住（此刻 current 还是 null）→
+mountShell 跑两遍 → 第一遍的井成鬼、占住基名（满屏「(2)」）、两口井抢写档（EPERM）。
+0.4.0 同样裸奔，触发是概率性的；修法在内核侧给在途 import 加一道守卫。
+
+**0.4.1 发布事故**。给 package.json 追加版本说明时用了正则而没用 json 模块——
+`"(.*?)"\n` 没料到描述行尾是 `",\n`（带逗号），一路吞到 exports 块，把说明文本灌进了
+`exports["."]["default"]`。pnpm 的宽解析把坏文件「修」成一份能通过 JSON.parse 的
+package.json（main 干净、exports 带毒），发布与安装都不报错，直到 Node 的自引用解析
+走 exports 才炸。同版本号 unpublish + 重发也没救回来——本机 pnpm store 缓存按旧
+integrity 命中毒包，删目录重装照样复刻。出路是 0.4.2：新版本号新 integrity，绕开一切
+缓存。判据：**改 manifest 一律 json 模块进出，正则不碰 JSON**。
+
+## 验机
+
+隔离 home（shell-refactor-2609121937，已清）实机：三格默认布局基名直开、桌面
+new/switch/list 与保活（藏的那口 DOM 与订阅全活）、浮层户口每桌一个、布局档 v3
+防抖落盘、整页 reload 按档恢复、theme 软契约（startupCss）、shell.reload 命令。
+跨井聚焦与预览格的行为由 openable 的 47 条纯函数测试与 well-hub 的测试盖住，实机
+编舞没做（dockview 标签经 CDP 点不动是已知墙）。default home 升 0.4.2 后 11 格全开、
+v2 旧档当场迁 v3「主桌面」。
