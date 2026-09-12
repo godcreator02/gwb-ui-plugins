@@ -282,9 +282,9 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 外壳不 import 主题件的任何东西，**命令名两边各存一份字符串**（外壳这半在 `theme-boot.ts`
 的 `THEME_COMMAND`，主题件那半是它导出的 `STARTUP_COMMAND`）：
 
-@@docfirst has ../plugins/shell/src/client/theme-boot.ts "theme.startupCss" @@
+{/* has file="../plugins/shell/src/client/theme-boot.ts" text="theme.startupCss" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "theme.startupCss" @@
+{/* has file="../plugins/theme/src/index.ts" text="theme.startupCss" */}
 
 主题件没装的时候，命令总线自己回一句「没有这条命令」，外壳静默跳过——它不因此少一根毫毛。
 这是「可选依赖」在这条线上的常规形态。
@@ -355,7 +355,7 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 工具条窄了折行、宽了收回一行（要按宽度换向的排布，用的就是 `@md:` 那类变体），
 拖动分隔条当场变：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1056-1066" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1055-1065" */}
 
 旁边那个身份属性**如今只是个把手**。按位置隔离的年代它**就是围栏本身**（容器上不挂它，
 那个件的类名一个都不生效）；换成前缀之后挂不挂它一模一样。留着是为了在 devtools 里一眼看出
@@ -391,9 +391,9 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 
 ### 守卫抓不住的那一条：标记类
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="333-336" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="332-335" */}
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="348-350" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="347-349" */}
 
 **这两段说明什么**：上面挂的是**锚**，下面是去找那个锚的变体。带前缀之后，变体编出来的选择器
 认的是**带前缀的锚**，所以两头必须一起带前缀——锚要是写成裸的，DOM 上就没有那个类，选择器
