@@ -130,6 +130,12 @@ function App({
   const timerRef = useRef<number | undefined>(undefined)
   /** 每口井的 onDidLayoutChange 订阅。井常驻，跟着 App 卸载一起拆 */
   const wellSubsRef = useRef(new Map<string, { dispose(): void }>())
+  /**
+   * 运行时新建、还没把出生空快照落盘的那几口（判据见轨迹卡 2026-09-13-desktop-born-empty）。
+   * onWellReady 消费即删：井一挂上就 flush 一次，让活井的空 toJSON 顶掉档里的 null——
+   * 空井不触发布局事件，null 留在档里的话重启会被「null → 铺默认」复原成满的
+   */
+  const bornEmptyRef = useRef(new Set<string>())
 
   const activeApi = apis[activeId] ?? null
 
@@ -196,7 +202,8 @@ function App({
     setFocusIds(specs.filter((spec) => willFocus(spec)).map((spec) => spec.id))
   }, [specs])
 
-  /** 一口井挂上（冷挂那一刻）：按它那条档恢复，或铺默认；订阅布局变化。井常驻，只走一次 */
+  /** 一口井挂上（冷挂那一刻）：按它那条档恢复，或铺默认，或（运行时新建的）出生为空；
+   * 订阅布局变化。井常驻，只走一次 */
   const onWellReady = (id: string, event: DockviewReadyEvent): void => {
     const row = rowsRef.current.find((r) => r.id === id)
     let restored = false
@@ -209,7 +216,10 @@ function App({
         console.warn(`[shell] 桌面「${row.name}」的布局恢复不了，回默认：${String(err)}`)
       }
     }
-    if (!restored) openDefaults(event.api)
+    // 运行时新建的那口不铺默认——注册表里有几格与它无关（判据见轨迹卡）。首开（defaultDoc）、
+    // v2 迁移出的 null、存档恢复失败，这三条照旧走 openDefaults
+    const bornEmpty = bornEmptyRef.current.delete(id)
+    if (!restored && !bornEmpty) openDefaults(event.api)
     wellHub.addWell(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
@@ -222,6 +232,7 @@ function App({
         scheduleSave()
       }),
     )
+    if (bornEmpty) flushSave()
   }
 
   // 切到一口已挂井的桌面时记号也得重算（那口井没有新事件）
@@ -255,11 +266,12 @@ function App({
     [flushSave],
   )
 
-  /** 新建一口桌面并切过去。名字缺省「桌面 N」；layout 留 null（第一次切到铺默认） */
+  /** 新建一口桌面并切过去。名字缺省「桌面 N」；出生为空（井挂上时落盘空快照，见 bornEmptyRef） */
   const createDesktop = useCallback(
     (name?: string): void => {
       const id = nextDesktopId(rowsRef.current)
       const trimmed = name?.trim()
+      bornEmptyRef.current.add(id)
       rowsRef.current = [
         ...rowsRef.current,
         { id, name: trimmed === undefined || trimmed === '' ? defaultDesktopName(id) : trimmed, layout: null },

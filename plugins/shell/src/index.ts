@@ -226,7 +226,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: DESKTOP_NEW_COMMAND, description: '新建一口桌面并切过去。参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', plugin: 'gwb-shell' },
+        { name: DESKTOP_NEW_COMMAND, description: '新建一口桌面并切过去，出生为空（不铺默认）。参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', plugin: 'gwb-shell' },
         (args) => {
           const a = args as { name?: unknown } | undefined
           const name = typeof a?.name === 'string' && a.name.trim() !== '' ? a.name.trim() : undefined
