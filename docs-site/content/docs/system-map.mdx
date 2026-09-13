@@ -13,9 +13,9 @@ description: 拆成哪几块、各住哪、依赖方向是什么、先读哪块
 
 | 模块 | 在哪 | 管什么 | 先读 |
 | --- | --- | --- | --- |
-| 外壳 | `plugins/shell/src/` | 窗格注册服务（node 半）＋ 多口 dockview 窗格井（浏览器半）——内核页面根的唯一入口 | [外壳](/docs/shell) |
+| 外壳 | `plugins/shell/src/` | 窗格注册服务（node 半）＋ 多个 dockview 窗格容器（well，代码模块 `well-hub`；浏览器半）——内核页面根的唯一入口 | [外壳](/docs/shell) |
 | 外观 | `plugins/theme/src/` | 全局启动样式（字体＋自定义 CSS）＋「外观」窗格；没外壳也照常挂 | [样式与组件](/docs/styles) |
-| 基础界面 | `plugins/baseui/src/` | 基础件的官方窗格集（日志、插件管理），一件多格、浏览器半按 `pane.id` 分派 | [样式与组件](/docs/styles) |
+| 基础界面 | `plugins/baseui/src/` | 基础插件的官方窗格集（日志、插件管理），一个插件多个窗格、浏览器半按 `pane.id` 分派 | [样式与组件](/docs/styles) |
 | 令牌 | `packages/tokens/src/` | 语义变量亮暗两套＋preflight＋层顺序声明；连 node 半都没有，产物是两份 css | [令牌与颜色](/docs/tokens) |
 | 共享 react | `packages/shared-react/src/` | react 系四个裸名的 CJS→ESM 束，经页面 importmap 全页同一份实例 | [样式与组件](/docs/styles) |
 
@@ -23,7 +23,7 @@ description: 拆成哪几块、各住哪、依赖方向是什么、先读哪块
 
 ## 依赖方向
 
-单向，四条箭头：**件 → 令牌**（构建期引映射面、运行期读页面那份值）、**件 → 外壳**（注册窗格时报两个地址）、**外壳 → 主题件**（一条软契约命令）、**本仓 → 基础仓**（peer 基础件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
+单向，四条箭头：**插件 → 令牌**（构建期引映射面、运行期读页面那份值）、**插件 → 外壳**（注册窗格时报两个地址）、**外壳 → 主题插件**（一条软契约命令）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
 
 版本面上两条规矩，钉在包清单上：
 
@@ -31,7 +31,7 @@ description: 拆成哪几块、各住哪、依赖方向是什么、先读哪块
 
 {/* ref file="../plugins/shell/package.json" lines="31-38" */}
 
-**跨仓基础件的 dev 写 registry 精确版本，同仓包照旧 `workspace:*`**——本仓没有它们的 workspace，`workspace:*` 解析不到：
+**跨仓基础插件的 dev 写 registry 精确版本，同仓包照旧 `workspace:*`**——本仓没有它们的 workspace，`workspace:*` 解析不到：
 
 {/* ref file="../plugins/baseui/package.json" lines="47-53" */}
 

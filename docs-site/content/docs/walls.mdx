@@ -10,13 +10,13 @@ docfirst: none
 
 ## 服务
 
-### 一格松手时不摘听众——单实例把这个洞遮了整整三刀
+### 一个窗格松手时不摘听众——单实例把这个洞遮了整整三个阶段
 
-格间总线的 `release()` 原来只减引用计数、桶空了才整个删。**一格一份的年代这完全看不
-出问题**：最后一格松手时桶就没了，听众摘没摘都一样。
+窗格间总线的 `release()` 原来只减引用计数、桶空了才整个删。**一个窗格一份的年代这完全看不
+出问题**：最后一个窗格松手时桶就没了，听众摘没摘都一样。
 
-同一格能开两份之后遮不住了：关掉两份里的一份，**它挂的听众仍被另一份撑在桶里**，于是
-关掉的那一格继续收事件，回调往一棵已经拆掉的 React 树上打。症状要么是 console 里
+同一个窗格能开两份之后遮不住了：关掉两份里的一份，**它挂的听众仍被另一份撑在桶里**，于是
+关掉的那一个窗格继续收事件，回调往一棵已经拆掉的 React 树上打。症状要么是 console 里
 「往已卸载组件 setState」，要么干脆无声泄漏。
 
 这条是**新能力引出来的旧洞**，不是新写坏的。句柄现在自己记一份挂过什么，`release` 时
@@ -25,22 +25,22 @@ docfirst: none
 
 {/* ref file="../plugins/shell/src/client/bus.ts" lines="121-132" */}
 
-两条跟着定下来的语义：`emit` 在 `release` 之后是**静默**的（外壳的清理顺序是「先让件
-dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效）；桶里那层是 `Set`，
-**按函数引用去重**，两格挂同一个函数只存一份、谁先摘谁带走。
+两条跟着定下来的语义：`emit` 在 `release` 之后是**静默**的（外壳的清理顺序是「先让插件
+dispose、再 release」，所以插件在自己的 dispose 里喊一嗓子有效）；桶里那层是 `Set`，
+**按函数引用去重**，两个窗格挂同一个函数只存一份、谁先摘谁带走。
 
 ### 条目 id 自带 `home:` 前缀，别去掉它
 
-`fiber.entry.id` 取到的**不是** `hello`，是 **`home:hello`**——loader 把件的条目挂在
+`fiber.entry.id` 取到的**不是** `hello`，是 **`home:hello`**——loader 把插件的条目挂在
 `cordis:include` 那条下面，id 是走到它的全路径（内核那条 include 的 id 就叫 `home`）。
 
-**这条不是坏了之后查出来的**，是 `gwb-shell` 第二刀实机验时 CDP 探针的回执里当场看见的：
+**这条不是坏了之后查出来的**，是 `gwb-shell` 第二阶段实机验时 CDP 探针的回执里当场看见的：
 窗格 id 本来按 `plugin:<entryId>:<窗格 id>` 设计成三段，实际拼出来是四段的
 `plugin:home:hello:main`。
 
 看着不好看，但**去掉那个前缀会坏，而且坏得没有现象**：`entryId` 要跟条目视图的 `id`
-一字不差——注册表按它记账，`openPane` 的安全边界也按它认「哪几格是这条条目的」。改短了
-就跟账对不上，而账对不上的症状是静默的错格匹配：认不出自己的份、也认不出别人的份，
+一字不差——注册表按它记账，`openPane` 的安全边界也按它认「哪几个窗格是这条条目的」。改短了
+就跟账对不上，而账对不上的症状是静默的错窗格匹配：认不出自己的份、也认不出别人的份，
 两边一起悄悄错位。
 
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
@@ -65,14 +65,14 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 ### 【未决】外壳热换时渲染层报四条 `removeChild` NotFoundError——功能没坏，日志脏
 
 2026-09-09 实机用 `plugins.update-all` 只升 shell（0.2.2 → 0.2.3）：外壳热重挂成功，页面
-import 了新入口、重开了 10 格，**但切换那一瞬渲染层连报四条**
+import 了新入口、重开了 10 个窗格，**但切换那一瞬渲染层连报四条**
 `Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.`
 
-**现场推断，未证实**：内核页面根的 `onShell` 里先调旧外壳的 `dispose`、再 `root.textContent = ''`
+**现场推断，未证实**：内核页面根的 `onShell` 中先调旧外壳的 `dispose`、再 `root.textContent = ''`
 把根清空；而 React 的卸载是异步分批的，旧树在根已经被清空之后才去 `removeChild`，节点早就不
 在那棵树上了。只是推断——没有拿到堆栈对应到具体那一行。
 
-**根因未查，这次不修**：功能没坏（新外壳起来了、格都在），只是日志脏。**下一次动外壳热换
+**根因未查，这次不修**：功能没坏（新外壳起来了、窗格都在），只是日志脏。**下一次动外壳热换
 （内核页面根的换壳顺序、或外壳的 `dispose`）时先查这条**：让 dispose 那侧真的等 React 卸完
 （`root.unmount()` 之后再清容器），或者页面根不再手动清空容器。
 
@@ -120,7 +120,7 @@ rolldown 在 browser 平台对「CJS require 外置包」**刻意保留 `require
 
 它那句 `require('react')` 不在顶层，而在工厂函数**内部**。esbuild 提不动，于是产物里留下
 一个 `__require` 探针，跑到那一句才炸。修补是 banner 提一句 `import * as __gwb_react`，
-再把探针换成只认 react 的同步解析器（回 `default`——react-dom 要摸 React 的内部件）。
+再把探针换成只认 react 的同步解析器（回 `default`——react-dom 要摸 React 的内部实现）。
 
 那条正则认的是 **esbuild 生成代码的形状**，是个明摆着的脆弱点。所以这里跟母仓的处理不同：
 **匹配不上直接抛**，而不是打一句「无探针，原样保留」就放过——带探针的产物发出去，要到
@@ -131,23 +131,23 @@ rolldown 在 browser 平台对「CJS require 外置包」**刻意保留 `require
 
 ## 令牌
 
-### preflight 必须包进 `@layer base`，否则它盖掉所有件的工具类
+### preflight 必须包进 `@layer base`，否则它盖掉所有插件的工具类
 
 {/* ref file="../packages/tokens/build.ts" lines="16-21" */}
 
-CSS 里**未分层的规则优先级高于所有分层规则**。件的表只写 `@layer utilities { … }`、自己
+CSS 里**未分层的规则优先级高于所有分层规则**。插件的表只写 `@layer utilities { … }`、自己
 不声明层顺序，所以顺序得由先加载的令牌表来声明；而 Tailwind 的 `preflight.css` 是一份
-**裸规则**（零 `@layer`），原样拼进去就是未分层的，会压过每一个件的工具类。
+**裸规则**（零 `@layer`），原样拼进去就是未分层的，会压过每一个插件的工具类。
 
 ### 声明面与映射面必须拆成两个文件
 
 {/* ref file="../packages/tokens/src/theme.reference.css" lines="1-14" */}
 
 `theme(reference)` 只拦得住 `@theme` 块的输出，**拦不住普通规则**。把带 `:root { --background: … }`
-的声明面一起引进件的构建里，每个件的表都会多出一整份 `:root`，跟页面上那张叠成两份真相。
+的声明面一起引进插件的构建里，每个插件的表都会多出一整份 `:root`，跟页面上那张叠成两份真相。
 
 拆开之后：映射让类名解析得出来（`bg-primary` → `var(--primary)`），值仍在运行时取页面那张
-表的变量。实测验收件的产物里 `:root` 出现 **0 次**。
+表的变量。实测验收插件的产物里 `:root` 出现 **0 次**。
 
 ---
 
@@ -214,9 +214,9 @@ new Promise((resolve) => {
 ### dockview 的标签要**反复点到成功为止**
 
 `.dv-tab` 上 dispatch 那串 `pointerdown/mousedown/...`（见下面那条）**点得太早时照样返回成功，
-但那一格并不会切过来**——dockview 还没把事件接上。一次性点完就去等，会等到超时。
+但那一个窗格并不会切过来**——dockview 还没把事件接上。一次性点完就去等，会等到超时。
 
-正确的形状是把点击本身放进轮询：每轮先看目标那格的 DOM 出现没有，没出现就再点一次。
+正确的形状是把点击本身放进轮询：每轮先看目标那个窗格的 DOM 出现没有，没出现就再点一次。
 
 ### 探针里判「这次的结果」别拿自己塞的 DOM 属性当记号
 
@@ -229,7 +229,7 @@ new Promise((resolve) => {
 ### dockview 的标签不听 `.click()`
 
 探针要切窗格标签时 `tab.click()` **一点反应都没有**，而且不报错——活动标签原样不动，
-探针接着就撞上「找不到那一格里的按钮」，看着像是那一格没画出来。
+探针接着就撞上「找不到那一个窗格里的按钮」，看着像是那一个窗格没画出来。
 
 它听的是 **`pointerdown` / `mousedown` 序列**：
 
@@ -239,10 +239,10 @@ for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
 }
 ```
 
-顺带一条**验收时必须知道的**：同一个 group 里不活动的那一格，dockview 的默认渲染器
+顺带一条**验收时必须知道的**：同一个 group 里不活动的那一个窗格，dockview 的默认渲染器
 （`onlyWhenVisible`）**只把 DOM 摘走、不卸组件**。所以 `querySelector` 找不到它里面的
 东西，但它的 React 状态、总线监听全都还活着——「切走再切回来，计数还在」是对的，
-「切走的那一格收不到总线事件」则是错的。
+「切走的那一个窗格收不到总线事件」则是错的。
 
 ### 【未决】dockview 的标签经 CDP 一次都点不动，连真鼠标事件也不行
 
@@ -261,7 +261,7 @@ CDP 的问题，还是这一版外壳的问题。
 **跟这次的 diff 无关**：`GwbTab.tsx` 一行没动，前缀围栏也不碰标签条。哪天真人点也切不动，
 再当成一条真的墙来查。
 
-**2026-09-09 第二轮（其余四件全迁那次）没再撞上**：四格窗格全部经状态栏的「打开窗格」
+**2026-09-09 第二轮（其余四个插件全迁那次）没再撞上**：四个窗格全部经状态栏的「打开窗格」
 菜单激活成功，取证一路顺。所以这条现象**不是稳定复现的**，而**真人拿鼠标点能不能切
 仍然没人试过**——两个未知都还在，这条继续挂着。
 
@@ -272,9 +272,9 @@ CDP 的问题，还是这一版外壳的问题。
 
 ### 主题必须经 `theme` 选项交给它，挂在 `<html>` 上没用
 
-第三刀最费时间的一条。皮肤表写好了、`<html>` 上挂了 `dockview-theme-light
+第三阶段最费时间的一条。皮肤表写好了、`<html>` 上挂了 `dockview-theme-light
 dockview-theme-gwb` 两个类，探针读 `document.documentElement` 上的
-`--dv-group-view-background-color` 是对的（`oklch(1 0 0)`），**可井底是一片深蓝黑**。
+`--dv-group-view-background-color` 是对的（`oklch(1 0 0)`），**可容器底部是一片深蓝黑**。
 
 根因在祖先链里：dockview 自己会把主题类名写到它内部的 `.dv-shell` 上，不传就是默认的
 **`dockview-theme-abyss`**（一套深色主题）。那一层比 `<html>` 近，整个把我们的值压掉了。
@@ -293,7 +293,7 @@ HTML.dockview-theme-light dockview-theme-gwb   ← 我们挂的这份被压在�
 
 **后来撤掉了它的主题**，`className` 现在只有 `dockview-theme-gwb` 一个（当时是
 `dockview-theme-light` 打头、我们那份只覆盖配色）。这条墙本身没变：**不经 `theme` 选项
-交，`.dv-shell` 上就是 `dockview-theme-abyss`**——撤主题之后忘了传，症状照旧是井底深蓝黑。
+交，`.dv-shell` 上就是 `dockview-theme-abyss`**——撤主题之后忘了传，症状照旧是容器底部深蓝黑。
 
 ### 它自带的 18 套主题一套都不挂，所以那批变量得自己给全
 
@@ -339,12 +339,12 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 一般教训：**接了变量不等于那条规则会跑**。量的时候要量最终效果（`getComputedStyle(el,
 '::before').content`），不能只量变量读没读空——这次那 20 个变量一个都没读空，线却没有。
 
-### `addPanel` 撞 id 是同步抛，而抛出去的后果比「少开一格」重
+### `addPanel` 撞 id 是同步抛，而抛出去的后果比「少开一个窗格」重
 
 `api.addPanel({ id })` 撞上已经存在的 id **同步抛 Error**（`_doAddPanel` 头一句就是这个
 守卫），不覆盖、不返回已有的那个。
 
-第三刀的 `onReady` 里是裸 `addPanel`，**没预检也没 try/catch**。当时不炸纯粹是运气好——
+第三阶段的 `onReady` 里是裸 `addPanel`，**没预检也没 try/catch**。当时不炸纯粹是运气好——
 注册表的 Map 键 `(entryId, 窗格 id)` 在上游保证了不会有同键两条。而它一旦炸：
 
 1. `onReady` 是在 dockview-react 的 `useEffect(…, [])` 里**同步**调的，异常从 effect 里
@@ -353,7 +353,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
    它的 ResizeObserver 一起泄漏
 3. `bootShell` 的 `.catch` 接不到——它接的是 `boot()` 那条 Promise，不是 React 渲染
 
-所以开格只有一条路：**先算好唯一 id 再 addPanel**，`onReady` 与 `openPane` 同吃这一处。
+所以开窗格只有一条路：**先算好唯一 id 再 addPanel**，`onReady` 与 `openPane` 同吃这一处。
 
 顺带一条查证掉的顾虑：**panel id 不进 DOM**。tab 与 tabpanel 的 DOM id 是自增计数器
 （`dv-tab-N`），dockview 全文的 `querySelector` 查的都是 `.dv-*` 类名。所以 id 里用什么
@@ -363,7 +363,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 `Object.keys(data.panels)`），所以序列化格式根本表达不出重复 id。实例 id 全局唯一不是
 「最好这样」，是格式要求。
 
-### 窗格 id 里不许有 `:`，否则查重会静默认错格
+### 窗格 id 里不许有 `:`，否则查重会静默认错窗格
 
 `entryId` 自己就带冒号（实机 `home:hello`），而面板 id 是 `plugin:<entryId>:<窗格 id>`。
 窗格 id 里再有一个冒号的话，两组不同的「条目 × 窗格」能拼出同一个基名：
@@ -373,7 +373,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 
 **加了实例查重之后这个洞反而更难查**：以前是 `addPanel` 当场抛，现在查重把它当成
 「已经开着」，静默追个 `:2` 上去。人看到的是自己的窗格标题莫名多了个「(2)」，而源头
-在另一个件的注册参数里。
+在另一个插件的注册参数里。
 
 注册那一步直接拒了，跟空 id 一样抛、话里带包名。
 
@@ -401,14 +401,14 @@ shell 的产物守卫头一次跑就报「`dockview-enterprise` 泄漏进束里�
 
 ## 组件与 shadcn CLI
 
-### `components.json` 的 `tailwind` 是必填的，件因此得有个样式入口
+### `components.json` 的 `tailwind` 是必填的，插件因此得有个样式入口
 
 schema 的顶层 required 是 `style` / `tailwind` / `rsc` / `aliases`，而 `tailwind` 自己的
 required 是 `config` / `css` / `baseColor` / `cssVariables`——**一个都不能省**。省了报的是
 一句没有细节的 `Invalid configuration found in …/components.json`。
 
-`tailwind.css` 得指一个真实路径。件本来没有 CSS 入口（构建输入由 `tools/build-styles.ts`
-在内存里拼），所以补了一个 `src/client/styles.css`。**这不是被工具逼出来的负担**——件作者
+`tailwind.css` 得指一个真实路径。插件本来没有 CSS 入口（构建输入由 `tools/build-styles.ts`
+在内存里拼），所以补了一个 `src/client/styles.css`。**这不是被工具逼出来的负担**——插件作者
 本来就需要一个地方写自己的 CSS 规则，构建线把它 `@import` 到输入末尾。
 
 Tailwind v4 下 `tailwind.config` 填空字符串（v4 没有配置文件了）。
@@ -421,15 +421,15 @@ shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
 `error TS5102: Option 'baseUrl' has been removed`。TS 7 里 `paths` 直接相对 tsconfig
 所在目录解析，把 `baseUrl` 删掉就行，别的不用动。
 
-`@/` 别名一共要配三处，都指 `src/client`：件根的 tsconfig（**给 CLI 读**，它据此决定把
+`@/` 别名一共要配三处，都指 `src/client`：插件根的 tsconfig（**给 CLI 读**，它据此决定把
 拉下来的组件放哪）、`src/client` 那份（给 typecheck）、`build.ts` 里 esbuild 的 `alias`
 （给打包）。
 
-### 件根少配那处 `paths`，CLI 会把组件放进一个**字面叫 `@` 的目录**
+### 插件根少配那处 `paths`，CLI 会把组件放进一个**字面叫 `@` 的目录**
 
-上一条原先写着「少配一处都是构建期就炸，不会拖到运行时」——**那句不全对，件根那处不是**。
+上一条原先写着「少配一处都是构建期就炸，不会拖到运行时」——**那句不全对，插件根那处不是**。
 
-CLI 拿件根的 tsconfig 去解析 `components.json` 里的 `@/components/ui`。件根没有 `paths` 时
+CLI 拿插件根的 tsconfig 去解析 `components.json` 里的 `@/components/ui`。插件根没有 `paths` 时
 它**不报错、也不回落**，照字面建出一个目录：
 
 ```
@@ -440,7 +440,7 @@ plugins/logger/@/components/ui/button.tsx   ← 四个组件全落这儿
 ——那一行是唯一的线索，而且很容易当成别名的显示写法扫过去。真正的报错要等到 typecheck，
 说的是「找不到 `@/components/ui/button`」，跟根因隔着一层。
 
-**修**：件根 tsconfig 补上 `paths`，删掉误建的 `@` 目录重拉一次。写这个件时就是这么撞的。
+**修**：插件根 tsconfig 补上 `paths`，删掉误建的 `@` 目录重拉一次。写这个插件时就是这么撞的。
 
 ### 新版 shadcn 不再生成 `lib/utils.ts`，改用 `cn` 这个包
 
@@ -449,7 +449,7 @@ plugins/logger/@/components/ui/button.tsx   ← 四个组件全落这儿
 所以 **`lib/utils.ts` 没有了**，`clsx` 与 `tailwind-merge` 也跟着退场。
 
 CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 dev」要挪到 devDependencies
-——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个件的人多下一份用不上的包。
+——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个插件的人多下一份用不上的包。
 
 ### new-york 的组件满是 `animate-in`，样式入口不引 `tw-animate-css` 它们静默为空
 
@@ -461,8 +461,8 @@ CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 de
 **没有任何一处会报错**，因为「编不出规则」在 Tailwind 眼里跟「这不是个类名」是同一回事
 （同一条性质在换成前缀围栏之后另有一副面孔，见[定过的事](/docs/decisions)那条 2026-09-09）。
 
-**scope 方案的件一直如此，没人报过**——`tools/build-styles.ts`（那条线 2026-09-09 已删）
-拼的输入里也没有这一行，所以那些件的菜单本来就是硬切的。是写 hello 那份独立样式入口时
+**scope 方案的插件一直如此，没人报过**——`tools/build-styles.ts`（那条线 2026-09-09 已删）
+拼的输入里也没有这一行，所以那些插件的菜单本来就是硬切的。是写 hello 那份独立样式入口时
 逐条问「这行不引会怎样」才发现的，不是撞出来的。
 
 写清在样式入口的头注里，跟另外三条 import 一起，一条都不能省：

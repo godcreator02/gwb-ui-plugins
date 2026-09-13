@@ -1,0 +1,15 @@
+---
+title: gwb-ui-plugins 建仓
+born-at: 2026-09-12T17:37
+type: root
+label: UI 平台
+domain: 仓库
+---
+
+2026-09-12 三仓拆分从 `gwb-base-plugins` 分出（方案页在旧仓 spec 区
+`2026-09-12-three-repos-split`）：UI 平台单独成仓成单元——shell、theme、baseui 三个插件
+与 shared-react、tokens 两个共享包整目录迁入，跨仓基础插件依赖落本机 registry 精确版本，
+六区文档站立起（25 文件 287 测试先绿后绿）。
+
+立仓理由：shell 是一个 UI 平台的整体，要换整套换——tokens（视觉契约）与 shared-react
+（react 运行时口粮）跟 shell 同仓同进退，不为假想的第二外壳实现维护独立契约包。
