@@ -11,6 +11,7 @@ import { createPluginRegistry, type PluginInfo, type PluginRegistry, type Regist
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
 import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv } from './protocol.js'
 import { DESKTOP_EVENT } from './desktops.js'
+import { parseOpenPaneArgs } from './open-pane.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
@@ -52,6 +53,9 @@ export const RELOAD_COMMAND = 'shell.reload'
 export const DESKTOP_LIST_COMMAND = 'shell.desktop.list'
 export const DESKTOP_SWITCH_COMMAND = 'shell.desktop.switch'
 export const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
+
+/** 跨件开格那一条。**井在页面那半**，这条只是经内核事件口把动作转进去执行 */
+export const OPEN_PANE_COMMAND = 'shell.openPane'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
@@ -116,11 +120,12 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.registerEnvCommand(cli)
     this.registerReloadCommand(cli)
     this.registerDesktopCommands(cli)
+    this.registerOpenPaneCommand(cli)
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}；页面根已要来，入口 ${entry}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}，跨件开格走 ${OPEN_PANE_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 
@@ -231,6 +236,41 @@ export default class GwbShell extends Service implements GwbShellApi {
           const a = args as { name?: unknown } | undefined
           const name = typeof a?.name === 'string' && a.name.trim() !== '' ? a.name.trim() : undefined
           this.kernel.emit({ t: DESKTOP_EVENT, action: 'new', ...(name === undefined ? {} : { name }) })
+          return { ok: true, relayed: true }
+        },
+      ),
+    )
+  }
+
+  /**
+   * 跨件开一格：任何件开任何格——身份走注册表的键（entryId + 窗格 id），选项与件在
+   * 自己桥上开的同形。「件报不出别人的窗格」那道边界落在件手里的桥上；命令总线本就是
+   * 可信面（`docs-site.stop` 能杀进程树，开格不比它敏感），devkit 转调 `docs-site.create`
+   * 已是插件互调的先例。先查注册表：格不在表里当场回错，不转发一个注定没动静的动作；
+   * 在表里也只转发——井在页面那半，回执 ok 代表转发了不是开完了。
+   */
+  private registerOpenPaneCommand(cli: GwbCommands): void {
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: OPEN_PANE_COMMAND,
+          description:
+            '开一格窗格（任何件的）。参数 { entryId, paneId, key?, params?, preview? }——entryId+paneId 是注册表的键（shell.panes 现查），选项与件开自己格的同形：key 命中已开的份就聚焦、preview 放预览槽、params 跟着这一份落盘。井在页面那半，回执 ok 代表转发了不是开完了',
+          plugin: 'gwb-shell',
+        },
+        (args) => {
+          const parsed = parseOpenPaneArgs(args)
+          if (!parsed.ok) return { ok: false, error: parsed.error }
+          const known = this.paneTable
+            .list()
+            .some((p) => p.entryId === parsed.action.entryId && p.id === parsed.action.paneId)
+          if (!known) {
+            return {
+              ok: false,
+              error: `条目 ${parsed.action.entryId} 的窗格 ${parsed.action.paneId} 不在注册表里——${PANES_COMMAND} 现查`,
+            }
+          }
+          this.kernel.emit(parsed.action)
           return { ok: true, relayed: true }
         },
       ),

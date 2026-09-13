@@ -63,13 +63,15 @@ export function addInstance(api: DockviewApi, spec: OpenableSpec): void {
 }
 
 /**
- * 件说「打开我的某一格」。判断在 `planOpen`，喂它全井聚合的表；`entryId` 由面板组件
- * 闭包绑好，件报不出别人的条目。表现取不用快照——件是热挂载的，快照里没有后挂的件。
+ * 开一格（注册表认身份）。判断在 `planOpen`，喂它全井聚合的表；`who` 吃注册表的键
+ * (entryId, 窗格 id)——件的桥上传的是面板闭包绑好的自己那条目，跨件开格
+ * （`shell.openPane` 转进来的动作）传谁的开谁的。表现取不用快照——件是热挂载的，
+ * 快照里没有后挂的件。
  *
  * `await` 之后**算 id 与 addPanel 必须在同一个同步段里**：中间再插一次 await，两次
  * 并发的 openPane 会算出同一个 id，第二个 addPanel 当场抛。
  */
-export async function openOwnPane(
+export async function openRegisteredPane(
   host: HostBridge,
   who: { entryId: string; paneId: string },
   options: OpenPaneOptions | undefined,

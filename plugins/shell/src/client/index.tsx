@@ -14,7 +14,7 @@ import { PluginPanel } from './plugin-panel.js'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { wellHub } from './well-hub.js'
-import { addInstance, openSpec, willFocus, TAB_COMPONENT } from './open.js'
+import { addInstance, openRegisteredPane, openSpec, willFocus, TAB_COMPONENT } from './open.js'
 import { applyThemeStyle, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
 import {
   listOpenable,
@@ -34,6 +34,7 @@ import {
   type SavedLayout,
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
+import { isOpenPaneAction, openPaneOptionsOf } from '../open-pane.js'
 import { ENV_COMMAND } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
@@ -309,6 +310,23 @@ function App({
     })
     return off
   }, [switchTo, createDesktop])
+
+  // node 半转来的开格动作（shell.openPane，跨件开格）：与件开自己格的同一条执行链
+  // （openRegisteredPane——注册表现取，判断照旧 planOpen，key 命中已开的份就聚焦）。
+  // 身份两样得是字符串：事件口上什么件的载荷都有，认不出当没这条
+  useEffect(() => {
+    const off = window.gwb.on((payload) => {
+      if (!isOpenPaneAction(payload)) return
+      const { entryId, paneId } = payload
+      if (typeof entryId !== 'string' || typeof paneId !== 'string') return
+      const host = wellHub.host()
+      if (host === undefined) return
+      void openRegisteredPane(host, { entryId, paneId }, openPaneOptionsOf(payload)).catch((err: unknown) => {
+        console.error(`[shell] 开 ${entryId} 的 ${paneId} 失败：${String(err)}`)
+      })
+    })
+    return off
+  }, [])
 
   /** 点开哪套已存布局，就把哪套铺回**活动那口井**上。变化照常走防抖落盘。照片是模板，
    * 铺开即弃——它跟桌面是两回事（桌面各自自动存），判据见文档站 decisions */

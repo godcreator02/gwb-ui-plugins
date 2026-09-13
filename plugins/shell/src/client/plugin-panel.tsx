@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import type { IDockviewPanelProps } from 'dockview-react'
 import { PluginPane } from './PluginPane.js'
 import { wellHub } from './well-hub.js'
-import { openOwnPane } from './open.js'
+import { openRegisteredPane } from './open.js'
 import { pluginParamsIn } from '../panels.js'
 import type { ShellBridge } from './types.js'
 
@@ -31,7 +31,7 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
   const openPane: ShellBridge['openPane'] = (target, options) => {
     // 件不等返回值（它是 click 回调），但这条链上的错得有出口。井不传——判断在模块层
     // 看全井（聚焦可能落到别的桌面），面板组件连 containerApi 都不用了
-    void openOwnPane(bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
+    void openRegisteredPane(bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
       console.error(`[shell] 开 ${target} 失败：${String(err)}`)
     })
   }
