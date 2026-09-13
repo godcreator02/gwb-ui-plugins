@@ -18,7 +18,7 @@ docfirst: none
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="57-77" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="61-81" */}
 
 件给的那几样，与服务替它填上的身份：
 
@@ -68,7 +68,7 @@ await args.host.call('shell.plugins')
 `registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="240-263" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="280-303" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。
@@ -177,6 +177,7 @@ await args.host.call('shell.plugins')
 | --- | --- |
 | `shell.layout.get` | 读档，没存过回 null（`readDoc` 对没有的文档回 undefined，**这不是错、不出声**） |
 | `shell.layout.save` | **整份替换**。存这头过一遍形状——浏览器半自己的 bug 拼出的坏档，没资格盖掉盘上好的那份 |
+| `shell.openPane` | 跨件开一格（任何件的），见[下文专节](#跨件开格-shellopenpane) |
 
 几样东西几个节律：
 
@@ -258,7 +259,28 @@ mountPane({ host, shell, pane }, container) => { dispose(); retarget?(params) }
 | `pane.params` | 挂上这一刻这一份装的那份参数。没传就没有这一项 |
 
 **只开得了自己那几格**：`entryId` 由 `PluginPane` 造这个对象时闭包绑定，件报不出别人的
-条目——跟 `registerPane` 不收身份是同一条理由。
+条目——跟 `registerPane` 不收身份是同一条理由。命令面上如今另有一条跨件的口子，见下节。
+
+## 跨件开格：`shell.openPane`
+
+件手里的桥只开得了自己那几格（上一节）；跨件的活要弹**别人的**格——第一个需求方是把
+站点启动挪进单元文件夹窗格的按钮，点了要弹站件的预览格，而那时页面上可能一格站件的格
+都没开。2026-09-13 起命令面上有了这条口子：
+
+{/* ref file="../plugins/shell/src/open-pane.ts" */}
+
+判据是**边界落在哪一层**：「件报不出别人的窗格」防的是件**冒充**别人（注册时身份不由
+自己报、开格时 entryId 闭包绑死），防的不是「经总线请别人开门」——命令总线本就是可信面
+（`docs-site.stop` 能杀进程树，开格不比它敏感），devkit 转调 `docs-site.create` 已是插件
+互调的先例。件手里的桥一条没动。
+
+三条口径照抄 desktops 那三条：**井在页面那半**，node 半先查注册表（格不在表里当场回错，
+不转发一个注定没动静的动作）、再经内核事件口把动作转进去，**回执 ok 只代表转发了**；
+页面那侧用与件开自己格的同一条执行链（`openRegisteredPane`——注册表现取、判断照旧
+`planOpen`），所以 key 聚焦、preview 预览槽、params 落盘这些语义一个都不是第二份。
+多窗口时各页各自执行，与 desktops 同口径。
+
+决策经过见轨迹卡[跨件开格走命令面](/trajectory/2026-09-13-open-pane-command)。
 
 ## 一格的身份是它装的内容
 
@@ -459,7 +481,7 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="174-203" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="179-208" */}
 
 **＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致。**已开的那条不 disable**
 ——点它是聚焦，那是个有用的动作，标一下就够。
@@ -476,8 +498,8 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 `onDidLayoutChange` 重算，**换 params 也在这条事件上**（dockview 8.2.0 把每一组的
 `onDidPanelParametersChange` 接进了它），所以一格被软换或转正之后记号不会停在上一轮。
 
-判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，两个入口（件调的
-`openOwnPane`、状态栏调的 `openSpec`）共用后者。
+判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，三个入口（件的桥与跨件
+转发共用的 `openRegisteredPane`、状态栏调的 `openSpec`）共用后者。
 
 ### 菜单的 portal 曾经必须挂回外壳的根，0.2 起不必
 
