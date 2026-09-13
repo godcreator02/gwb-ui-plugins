@@ -1,0 +1,18 @@
+---
+title: 文档重分家：本仓只写外壳与视觉契约
+born-at: 2026-09-13T23:52
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 文档所有权
+domain: 文档
+---
+
+随内核仓 `2026-09-13-docs-ownership-split` 同批：各仓文档只写本仓实现的东西。判据同那
+张卡——所有权、跨仓钉不了码、行为归做的人契约归定的人、边界声明是自己的。
+
+本仓动作：styles 的 importmap 机制段压成约束句（扫声明拼表、赶在第一句裸名 import 前、
+只注一次）+边界句（内核只搬运声明）+指路内核契约页，删跨仓代码路径细节；shell 的
+「为什么硬 inject 命令总线」段改写为现行事实——原句还在描述退役前的内核（`kernel.info`
+与 `kernel.install` 两条自省命令），那两条 2026-09-09 已随单进程重构退役（内核 glossary
+退役表在案）；boot 链一环同步订正（kernel.info → onShell 收地址与 importmap）。「在
+importmap 里的才许外置」等消费方判据、开机四步链（钉码全在本仓）是自己的，留。

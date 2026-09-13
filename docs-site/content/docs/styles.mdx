@@ -161,11 +161,9 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 
 {/* ref file="../packages/shared-react/package.json" lines="17-25" */}
 
-内核扫 home 清单里所有包的这个字段，拼成一张 importmap，在 import 外壳**之前**注进页面
-（importmap 只注得了一次，而且必须赶在第一句裸名 import 之前——注过之后再注盖不掉已经解析过
-的名字）。**内核不认识 `react` 这个词，它只搬运声明。** 那段扫描与拼装的代码在内核仓
-（`apps/desktop/src/main.ts` 的 `collectImports` 与 `src/index.html`），跨仓钉不住，这儿只能
-指路。
+内核扫这份声明拼成一张表，赶在外壳第一句裸名 import **之前**注进页面，**只注一次**。
+**内核不认识 `react` 这个词，它只搬运声明**——扫描、拼装与注入时序的正本在内核仓文档站
+（「内核契约面」与「取址」）。
 
 插件那边对应的一手是：react 系四个裸名**外置**，其余依赖一律**打进本束**——
 

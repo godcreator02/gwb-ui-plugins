@@ -113,15 +113,15 @@ await args.host.call('shell.plugins')
 
 ## 为什么硬 inject 命令总线
 
-注册发生在 node 半，而排窗格的是浏览器半——表得过桥。而内核的 `dispatch` 除
-`kernel.info` 与 `kernel.install` 两条自省命令外**全部走 `ctx.gwbCommands`**，内核本体
-不认识任何插件的命令名。
+注册发生在 node 半，而排窗格的是浏览器半——表得过桥。内核**一条原生命令都没有**：
+页面经 `gwb:command` 发来的命令全走 `ctx.gwbCommands`（命令总线，gwb-commands 插件提供），
+内核本体不认识任何插件的命令名。
 
 所以只有一条路：shell 自己注册一条 `shell.panes`。没有命令总线，注册表出不了这个
 进程，外壳就是个开不出任何东西的空容器——那种时候不如不挂，cordis 会在日志里明说
 它在等谁。
 
-「内核的 `kernel.info` 顺手把窗格表带上」过不了准入判据第一关（内核零 UI 知识）。
+「内核顺手把窗格表带上」这种提议过不了内核的准入判据第一关（内核零 UI 知识）。
 
 ## 运行时注册让 openable 瘦了一圈
 
@@ -448,7 +448,7 @@ gwbData 的 `layout`，`fromJSON` 再原样喂回来——重启之后那一份�
 | **亮暗** | 切 `html.dark`，令牌整套跟着换 |
 | （告警）**布局没存上** | 只在落盘失败时出现，点一下立刻重试 |
 
-**刷新是整页 reload，不是外壳内部重建**：渲染层那条 boot 链（kernel.info → importmap →
+**刷新是整页 reload，不是外壳内部重建**：渲染层那条 boot 链（onShell 收地址与 importmap →
 bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍；内核那半与页面加载无关（IPC
 句柄在主进程启动时注册，宿主进程也活在那边），reload 对它只是一次重新连线。装了新插件、
 启停了插件之后点它，比重启整个应用轻一档。
