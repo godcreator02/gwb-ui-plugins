@@ -19,7 +19,7 @@ if (!built) console.warn('[gwb-theme] dist/ 还没造出来,产物组跳过（pn
 
 const CLIENT = 'client.js'
 /** node 半运行时真 import 的。契约包与那几个件都是 `import type`,整句擦除,不该出现 */
-const ALLOWED_BARE = new Set(['@team/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['@godcreator/gwb-plugin-api'])
 /** 外置给 importmap 的那四个，client.js 里只许它们是裸名 */
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
 /** 正则锚行首:字符串字面量里的 import 总带着缩进,顶格的才是真的顶层 import */
@@ -126,7 +126,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
-      path.join(root, 'node_modules/@team/gwb-tokens/dist/theme.reference.css'),
+      path.join(root, 'node_modules/@godcreator/gwb-tokens/dist/theme.reference.css'),
       'utf8',
     )
     const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')
@@ -186,7 +186,7 @@ describe('包清单', () => {
   })
 
   it('外壳是可选 peer——没装外壳本件照常挂,启动样式照样全局生效', () => {
-    expect(manifest.peerDependencies?.['@team/gwb-shell']).toBeDefined()
-    expect(manifest.peerDependenciesMeta?.['@team/gwb-shell']?.optional).toBe(true)
+    expect(manifest.peerDependencies?.['@godcreator/gwb-shell']).toBeDefined()
+    expect(manifest.peerDependenciesMeta?.['@godcreator/gwb-shell']?.optional).toBe(true)
   })
 })
