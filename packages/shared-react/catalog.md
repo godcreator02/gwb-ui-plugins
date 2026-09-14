@@ -1,4 +1,4 @@
-# @team/gwb-shared-react
+# @godcreator/gwb-shared-react
 
 **定位**：react 系的 CJS→ESM 束——内核收它的 gwb.shared 声明拼 importmap，全页一份实例；窗格插件互相是孤立的 React 树但共享同一个 react。
 
@@ -10,4 +10,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=@team/gwb-shared-react` 取这一组的形状）。
+命令清单不存卡——**现扫 `/surface`**（`?plugin=@godcreator/gwb-shared-react` 取这一组的形状）。
