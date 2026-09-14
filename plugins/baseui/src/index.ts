@@ -1,10 +1,10 @@
-import type { GwbContext } from '@team/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上各自那个名字。
 // **都是嵌套注入**：home 里缺谁，下面那块局部注入就永远 PENDING，本件照常挂、
 // 对应窗格不注册，其余照常
-import type {} from '@team/gwb-logger'
-import type {} from '@team/gwb-plugin-manager'
-import type {} from '@team/gwb-shell'
+import type {} from '@godcreator/gwb-logger'
+import type {} from '@godcreator/gwb-plugin-manager'
+import type {} from '@godcreator/gwb-shell'
 
 /**
  * 基础界面件：基础件的官方窗格集。一件多格，浏览器半按 `pane.id` 分派。
