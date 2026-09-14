@@ -4,7 +4,7 @@
  *
  * 给谁用：件在自己的构建期编样式表时这么引——
  *
- *   @import '@godcreator02/gwb-tokens/theme.reference.css' theme(reference);
+ *   @import '@godcreator/gwb-tokens/theme.reference.css' theme(reference);
  *
  * 为什么跟声明面分成两个文件：`theme(reference)` 只拦得住 `@theme` 块的输出，**拦不住普通
  * 规则**。把声明面一起引进去，每个件的表里就会多出一整份 `:root { --background: … }`，
