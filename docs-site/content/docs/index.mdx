@@ -9,7 +9,7 @@ description: 这个仓是什么、解决什么问题、从哪儿开始读——�
 
 这一区只写**现状**：设计、原理、边界、接口——散文，不写历史，不写计划。为什么变成这样去
 [轨迹](/trajectory)，往哪儿去看 [未来](/future/overview)，正在做的活在 [交接](/spec)。
-写法的判据见随 `@team/docfirst-workflow` 发的 skill「docfirst-docs」，这儿只留一句：
+写法的判据见随 `@godcreator/docfirst-workflow` 发的 skill「docfirst-docs」，这儿只留一句：
 **一句话如果能被代码推翻，它就该带引用；一句话如果只是在复述代码，它就不该存在。**
 
 ## 第一条引用
