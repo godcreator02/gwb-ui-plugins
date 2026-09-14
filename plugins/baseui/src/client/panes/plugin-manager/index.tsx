@@ -121,7 +121,7 @@ const UPDATE_ALL = 'plugin-manager.update-all'
 const UNINSTALL = 'plugin-manager.uninstall'
 
 /** 本件自己的包名。一键热升的确认框要说一声「这一格会先关再开」 */
-const OWN_PKG = '@team/gwb-plugin-manager'
+const OWN_PKG = '@godcreator/gwb-plugin-manager'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -934,7 +934,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       pkg,
       count: own.length,
       settings: own.flatMap((card) => card.settings),
-      isSelf: pkg === '@team/gwb-plugin-manager',
+      isSelf: pkg === '@godcreator/gwb-plugin-manager',
     })
   }
 
@@ -964,7 +964,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         setNotice({
           ok: true,
           text: `${pkg} 卸载了，包与条目一起拿掉${wiped > 0 ? `，抹掉了 ${wiped} 项设置值` : '；设置与数据留盘'}${
-            pkg === '@team/gwb-plugin-manager' ? '。本件自己的格还开着，关掉它就没了' : ''
+            pkg === '@godcreator/gwb-plugin-manager' ? '。本件自己的格还开着，关掉它就没了' : ''
           }`,
         })
       }
@@ -984,7 +984,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         <div className="baseui:flex baseui:items-center baseui:gap-2">
           <Input
             className="baseui:h-8 baseui:flex-1 baseui:font-mono baseui:text-xs"
-            placeholder="直接装包名，如 @team/gwb-hello（可带版本 @scope/name@^1.0）"
+            placeholder="直接装包名，如 @godcreator/gwb-hello（可带版本 @scope/name@^1.0）"
             value={installInput}
             onChange={(e) => setInstallInput(e.target.value)}
             onKeyDown={(e) => {
