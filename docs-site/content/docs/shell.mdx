@@ -6,7 +6,7 @@ docfirst: none
 
 # gwb-shell
 
-包名 `@godcreator02/gwb-shell`，服务 `ctx.gwbShell`。它有两半：
+包名 `@team/gwb-shell`，服务 `ctx.gwbShell`。它有两半：
 
 - **node 半**——窗格注册服务，插件在自己的 `apply` 里说「我有一个窗格」
 - **浏览器半**——多个 dockview 窗格容器（well，代码模块 `well-hub`；**一张桌面一个、
@@ -67,7 +67,7 @@ await args.host.call('shell.plugins')
 `registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="280-303" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="281-304" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。插件报不出名字，也就没法冒充别人的窗格。
