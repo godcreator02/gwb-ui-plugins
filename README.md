@@ -13,7 +13,7 @@ gwb 工作台的 **UI 平台**：外壳（`shell`）带着它的视觉契约（`
 
 ```powershell
 cd <home 目录>
-pnpm add @godcreator02/gwb-shell @godcreator02/gwb-theme @godcreator02/gwb-baseui
+pnpm add @team/gwb-shell @team/gwb-theme @team/gwb-baseui
 # cordis.yml 里给 shell / theme / baseui 各加一条条目，重启内核
 ```
 
