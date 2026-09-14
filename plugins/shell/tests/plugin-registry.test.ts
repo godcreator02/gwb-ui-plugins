@@ -6,9 +6,9 @@ import { createPluginRegistry } from '../src/plugin-registry.js'
  * 差别只在键：这张按 `entryId`，一条条目至多一条。
  */
 
-const echo = { entryId: 'echo', pkg: '@team/gwb-echo' }
+const echo = { entryId: 'echo', pkg: '@godcreator/gwb-echo' }
 /** 同一个包挂的第二条条目 */
-const echo2 = { entryId: 'echo-2', pkg: '@team/gwb-echo' }
+const echo2 = { entryId: 'echo-2', pkg: '@godcreator/gwb-echo' }
 
 function fresh() {
   const warn = vi.fn<(message: string) => void>()
@@ -20,7 +20,7 @@ describe('describe：件报自己叫什么', () => {
     const { reg } = fresh()
     reg.describe(echo, { title: '回声', icon: 'megaphone' })
     expect(reg.list()).toEqual([
-      { title: '回声', icon: 'megaphone', entryId: 'echo', pkg: '@team/gwb-echo' },
+      { title: '回声', icon: 'megaphone', entryId: 'echo', pkg: '@godcreator/gwb-echo' },
     ])
   })
 
