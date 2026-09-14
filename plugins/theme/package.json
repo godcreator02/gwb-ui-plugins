@@ -1,5 +1,5 @@
 {
-  "name": "@godcreator02/gwb-theme",
+  "name": "@team/gwb-theme",
   "version": "0.3.0",
   "author": {
     "name": "godcreator"
@@ -29,27 +29,27 @@
   },
   "//peer": "被 inject 的件写 peer，>= 号不写 ^（caret 在 0.0.x 锁死 patch）。shared-react 与 tokens 是浏览器半的口粮（react 系经 importmap、工具类的 var() 值经页面那张令牌表）——home 里没它们界面那半跑不起来，跟 shell/logger 同一判据。外壳是嵌套注入的**可选**依赖：没装外壳本件照常挂，启动样式照常全局生效，只是没有窗格",
   "peerDependencies": {
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
-    "@godcreator02/gwb-commands": ">=0.0.2",
-    "@godcreator02/gwb-settings": ">=0.0.4",
-    "@godcreator02/gwb-shared-react": ">=0.0.2",
-    "@godcreator02/gwb-shell": ">=0.0.11",
-    "@godcreator02/gwb-tokens": ">=0.0.2"
+    "@team/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-commands": ">=0.0.2",
+    "@team/gwb-settings": ">=0.0.4",
+    "@team/gwb-shared-react": ">=0.0.2",
+    "@team/gwb-shell": ">=0.0.11",
+    "@team/gwb-tokens": ">=0.0.2"
   },
   "peerDependenciesMeta": {
-    "@godcreator02/gwb-shell": {
+    "@team/gwb-shell": {
       "optional": true
     }
   },
   "//deps": "react 系走页面 importmap（外置），types 与构建线（esbuild、以及本件自己那条 Tailwind 线）全在 dev——打进本束的算 dev。样式由件自己编自己那张表，围栏在类名的 theme: 前缀里",
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：件自己编自己那张表（`tailwindcss` 这个 bin 出自 cli 包），版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出（本件眼下没弹层用不着，但入口五行全生态一份的形状，缺一行下一个人得自己发现）。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖，但 pnpm 的严格布局下 theme 解析不到，所以显式写一条。四条都只在构建/测试期用，运行期没人 import，所以是 dev",
   "devDependencies": {
-    "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-commands": "0.4.0",
-    "@godcreator02/gwb-settings": "0.1.1",
-    "@godcreator02/gwb-shell": "workspace:*",
-    "@godcreator02/gwb-shared-react": "workspace:*",
-    "@godcreator02/gwb-tokens": "workspace:*",
+    "@team/gwb-plugin-api": "0.1.0",
+    "@team/gwb-commands": "0.4.0",
+    "@team/gwb-settings": "0.1.1",
+    "@team/gwb-shell": "workspace:*",
+    "@team/gwb-shared-react": "workspace:*",
+    "@team/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",
     "@types/react": "19.2.18",
