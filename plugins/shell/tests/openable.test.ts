@@ -19,7 +19,7 @@ import type { RegisteredPane } from '../src/pane-registry.js'
 
 const echo: RegisteredPane = {
   entryId: 'echo',
-  pkg: '@godcreator02/gwb-echo',
+  pkg: '@team/gwb-echo',
   id: 'main',
   title: '回声',
   icon: 'megaphone',
@@ -43,7 +43,7 @@ describe('listOpenable：表里一条摊成井里一格', () => {
         component: PLUGIN_COMPONENT,
         title: '回声',
         icon: 'megaphone',
-        params: { pluginKey: '@godcreator02/gwb-echo', entryId: 'echo', paneId: 'main' },
+        params: { pluginKey: '@team/gwb-echo', entryId: 'echo', paneId: 'main' },
       },
     ])
   })
@@ -103,7 +103,7 @@ describe('panelIdOf：两段都进去,只有这一处这么拼', () => {
   it('实机的 entryId 自带 home: 前缀,拼出来是四段——这是条目 id 的真实形状', () => {
     // loader 把件的条目挂在 include 那条下面,id 是全路径。上面那些用例的 `echo`
     // 是简写,这一条钉住真的长什么样
-    const real: RegisteredPane = { entryId: 'home:hello', pkg: '@godcreator02/gwb-hello', id: 'main', title: '验收件' }
+    const real: RegisteredPane = { entryId: 'home:hello', pkg: '@team/gwb-hello', id: 'main', title: '验收件' }
     expect(panelIdOf(real.entryId, real.id)).toBe('plugin:home:hello:main')
     expect(panes([real])[0]).toMatchObject({
       id: 'plugin:home:hello:main',
@@ -297,7 +297,7 @@ describe('planOpen 的预览格：至多一份，下一次 preview 打开原地�
     const swap = planOpen(counter, { key: 'b', preview: true, params: { root: 'b' } }, withPreview([], 'a'), who)
     expect(swap).toMatchObject({ kind: 'retarget', id: BASE })
     expect(paramsOf(swap)).toEqual({
-      pluginKey: '@godcreator02/gwb-echo',
+      pluginKey: '@team/gwb-echo',
       entryId: 'echo',
       paneId: 'counter',
       icon: 'hash',
@@ -356,7 +356,7 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
   it('件传的键跟识别三件套并排落在同一份 params 里，身份那一格也在', () => {
     const plan = planOpen(counter, { key: 'a.md', params: { file: 'a.md', line: 3 } }, [], who)
     expect(paramsOf(plan)).toEqual({
-      pluginKey: '@godcreator02/gwb-echo',
+      pluginKey: '@team/gwb-echo',
       entryId: 'echo',
       paneId: 'counter',
       key: 'a.md',
@@ -386,7 +386,7 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
       who,
     )
     expect(paramsOf(plan)).toEqual({
-      pluginKey: '@godcreator02/gwb-echo',
+      pluginKey: '@team/gwb-echo',
       entryId: 'echo',
       paneId: 'counter',
       key: 'a',
