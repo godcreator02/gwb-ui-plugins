@@ -6,9 +6,9 @@ import { createPaneRegistry, type PaneOwner } from '../src/pane-registry.js'
  * 一条条目一个命名空间。
  */
 
-const echo: PaneOwner = { entryId: 'echo', pkg: '@team/gwb-echo' }
+const echo: PaneOwner = { entryId: 'echo', pkg: '@godcreator/gwb-echo' }
 /** 同一个包挂的第二条条目：两份独立配置的实例，各注册各的 */
-const echo2: PaneOwner = { entryId: 'echo-2', pkg: '@team/gwb-echo' }
+const echo2: PaneOwner = { entryId: 'echo-2', pkg: '@godcreator/gwb-echo' }
 
 function fresh() {
   const warn = vi.fn<(message: string) => void>()
@@ -20,7 +20,7 @@ describe('register：件给三样，身份由服务填', () => {
     const { reg } = fresh()
     reg.register(echo, { id: 'main', title: '回声', icon: 'megaphone' })
     expect(reg.list()).toEqual([
-      { id: 'main', title: '回声', icon: 'megaphone', entryId: 'echo', pkg: '@team/gwb-echo' },
+      { id: 'main', title: '回声', icon: 'megaphone', entryId: 'echo', pkg: '@godcreator/gwb-echo' },
     ])
   })
 
