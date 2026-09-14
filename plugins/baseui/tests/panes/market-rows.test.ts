@@ -59,7 +59,7 @@ describe('搜索框：检索结果的本地筛，包名与那句话一起筛', (
   })
 
   it('包名、描述两处都能命中，不区分大小写', () => {
-    expect(matchesQuery(row('@godcreator02/gwb-logger'), 'logger')).toBe(true)
+    expect(matchesQuery(row('@team/gwb-logger'), 'logger')).toBe(true)
     expect(matchesQuery(row('a', { description: '脱离终端查日志' }), '日志')).toBe(true)
     expect(matchesQuery(row('a'), '  A  ')).toBe(true)
   })
@@ -88,7 +88,7 @@ describe('对账：检索结果 + 已装的那份 → 要画的行', () => {
   })
 
   it('home 里多出来的包不摆进这段——它只认检索结果', () => {
-    const rows = toRows(catalog, index(installed('@godcreator02/gwb-api')), '')
+    const rows = toRows(catalog, index(installed('@team/gwb-api')), '')
     expect(rows.map((r) => r.pkg)).toEqual(['a', 'b'])
   })
 
