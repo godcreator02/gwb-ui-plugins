@@ -47,8 +47,8 @@ describe('isPluginPanel：按 component 判，不看 id', () => {
  */
 describe('pluginKeyOf：认 params.pluginKey，认不出回空串', () => {
   it('插件格回它的包名', () => {
-    const panel = { view: { contentComponent: PLUGIN_COMPONENT }, params: { pluginKey: '@team/echo' } }
-    expect(pluginKeyOf(panel)).toBe('@team/echo')
+    const panel = { view: { contentComponent: PLUGIN_COMPONENT }, params: { pluginKey: '@godcreator/echo' } }
+    expect(pluginKeyOf(panel)).toBe('@godcreator/echo')
   })
 
   it('不是插件格的一律空串——导航格的 params 里就算写了这一项也不算', () => {
