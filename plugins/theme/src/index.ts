@@ -1,8 +1,8 @@
-import type { GwbContext } from '@team/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
 // 只为激活那几个件的 `declare module 'cordis'`——它们给 ctx 加上各自那个名字
-import type {} from '@team/gwb-commands'
-import type {} from '@team/gwb-settings'
-import type {} from '@team/gwb-shell'
+import type {} from '@godcreator/gwb-commands'
+import type {} from '@godcreator/gwb-settings'
+import type {} from '@godcreator/gwb-shell'
 import { buildStartupCss } from './startup-css.js'
 
 /**
@@ -96,19 +96,19 @@ export function apply(ctx: GwbContext): void {
 
   ctx.effect(() =>
     cli.register(
-      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳 boot 时取', usage: '无参数', plugin: '@team/gwb-theme' },
+      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳 boot 时取', usage: '无参数', plugin: '@godcreator/gwb-theme' },
       () => buildStartupCss(readValues(ctx)),
     ),
   )
   ctx.effect(() =>
     cli.register(
-      { name: VALUES_COMMAND, description: '本件三样设置的现值', usage: '无参数', plugin: '@team/gwb-theme' },
+      { name: VALUES_COMMAND, description: '本件三样设置的现值', usage: '无参数', plugin: '@godcreator/gwb-theme' },
       () => toWire(readValues(ctx)),
     ),
   )
   ctx.effect(() =>
     cli.register(
-      { name: SAVE_COMMAND, description: '一次写齐三样外观设置', usage: '参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 抹回默认）', plugin: '@team/gwb-theme' },
+      { name: SAVE_COMMAND, description: '一次写齐三样外观设置', usage: '参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 抹回默认）', plugin: '@godcreator/gwb-theme' },
       async (args) => {
         const raw = (args ?? {}) as Record<string, unknown>
         // 逐项走 set：它自带「先 define 过才许写」的守卫与原子落盘
