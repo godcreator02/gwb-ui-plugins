@@ -11,13 +11,13 @@ describe('装机回执里 peer 那一行', () => {
   it('装上的点名，本来就在与跳过的只报数', () => {
     const view = describePeers({
       peers: [
-        { pkg: '@team/docfirst-workflow', range: '>=0.4.0', action: 'installed' },
+        { pkg: '@godcreator/docfirst-workflow', range: '>=0.4.0', action: 'installed' },
         { pkg: 'cordis', range: '^4', action: 'skipped' },
-        { pkg: '@team/gwb-commands', range: '>=0.2.0', action: 'present' },
+        { pkg: '@godcreator/gwb-commands', range: '>=0.2.0', action: 'present' },
       ],
     })
     expect(view.ok).toBe(true)
-    expect(view.line).toBe('\nPeer：装了 @team/docfirst-workflow；2 条本来就在或用不着装')
+    expect(view.line).toBe('\nPeer：装了 @godcreator/docfirst-workflow；2 条本来就在或用不着装')
   })
 
   it('有没装上的就点名，并把整条提示压成红的', () => {
