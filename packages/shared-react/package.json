@@ -1,6 +1,7 @@
 {
   "name": "@godcreator02/gwb-shared-react",
   "version": "0.0.4",
+  "author": {"name": "godcreator"},
   "description": "运行时环境：react 系的 CJS→ESM 束。件的浏览器半写裸名 import，经页面 importmap 拿到同一份实例",
   "type": "module",
   "exports": {
