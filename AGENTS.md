@@ -3,7 +3,7 @@
 **本页回答**：在这个仓干活的 agent 先看什么、怎么跑、门禁是哪几条、什么碰不得。
 
 通用纪律（TDD、模块经接口连接、盘问、六区规则、文档怎么写）不在这儿——正本是随
-`@team/docfirst-workflow` 发的 skill「docfirst-docs」，读它。这一页只写仓专属的，
+`@godcreator/docfirst-workflow` 发的 skill「docfirst-docs」，读它。这一页只写仓专属的，
 压在 60 行内。
 
 ## 这个仓是什么
