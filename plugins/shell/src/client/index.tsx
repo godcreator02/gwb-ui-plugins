@@ -46,7 +46,7 @@ import type { HostBridge, ShellArgs } from './types.js'
  * `plugin-panel` / `GwbTab`、状态栏在 `StatusBar`、外观装配在 `theme-boot`。
  */
 
-const SELF = '@team/gwb-shell'
+const SELF = '@godcreator/gwb-shell'
 
 /** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
 const SAVE_DEBOUNCE_MS = 400
