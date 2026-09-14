@@ -1,5 +1,5 @@
 {
-  "name": "@team/gwb-tokens",
+  "name": "@godcreator/gwb-tokens",
   "version": "0.1.2",
   "author": {"name": "godcreator"},
   "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
