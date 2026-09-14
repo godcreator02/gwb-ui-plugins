@@ -38,7 +38,7 @@ const INTERPOLATION = /\$\{[^{}]*\}/g
  * 用到的是 `outline-none` / `outline-hidden`，光秃秃一个 `outline` 不会出现。
  *
  * 别的字面量都编不出规则，一个都不用排：命令名（`plugin-manager.install`）与包名
- * （`@team/gwb-plugin-manager`）带点带斜杠、`plugin-manager` / `market` /
+ * （`@godcreator/gwb-plugin-manager`）带点带斜杠、`plugin-manager` / `market` /
  * `secret` / `disabled-running` 这些态名与 `all` / `on` / `off` / `bad` 这些筛选档
  * 都不是工具类，编不出东西来。**没编出规则的 token 本来就不该进排除表**——排除表
  * 越短，漏报面越小。
