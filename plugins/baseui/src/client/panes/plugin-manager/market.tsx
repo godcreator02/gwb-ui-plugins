@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 
 /**
  * 「可装」那段：registry 上这条线有什么，就摆什么——**检索走 npm registry 标准协议**，
- * node 半的 `plugins.search` 一把抓回 `@team/gwb-*` 全量，搜索框只在本地筛。
+ * node 半的 `plugins.search` 一把抓回 `@godcreator/gwb-*` 全量，搜索框只在本地筛。
  *
  * **registry 在哪儿，这段不知道也不想知道**：基址由 node 半从 pnpm 配置解析——装从哪条
  * 源来，搜就到哪去。
