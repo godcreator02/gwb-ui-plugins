@@ -1,4 +1,4 @@
-# @godcreator02/gwb-tokens
+# @team/gwb-tokens
 
 **定位**：令牌表——视觉契约：声明面（页面加载的亮暗两套值）＋映射面（theme.reference.css，插件构建期引，Tailwind 出厂键接管到页面变量，≥0.1.1 零字面 fallback）。语义色一律走它。
 
@@ -10,4 +10,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=@godcreator02/gwb-tokens` 取这一组的形状）。
+命令清单不存卡——**现扫 `/surface`**（`?plugin=@team/gwb-tokens` 取这一组的形状）。
