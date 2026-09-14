@@ -1,5 +1,5 @@
 {
-  "name": "@godcreator02/gwb-shell",
+  "name": "@team/gwb-shell",
   "version": "0.7.0",
   "author": {
     "name": "godcreator"
@@ -33,19 +33,19 @@
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：外壳自己编自己那张 dist/style.css（`tailwindcss` 这个 bin 出自 cli 包），版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出,状态栏那两个菜单从来不动画。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖,但 pnpm 的严格布局下 shell 解析不到,所以显式写一条。postcss 是另一回事——它归 build.ts 那半,用来按选择器裁 dockview 的 18 套主题,跟这四条无关。都只在构建/测试期用,运行期没人 import,所以是 dev",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator02/gwb-commands": ">=0.0.1",
-    "@godcreator02/gwb-data": ">=0.0.1",
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
-    "@godcreator02/gwb-shared-react": ">=0.0.2",
-    "@godcreator02/gwb-tokens": ">=0.0.2",
+    "@team/gwb-commands": ">=0.0.1",
+    "@team/gwb-data": ">=0.0.1",
+    "@team/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-shared-react": ">=0.0.2",
+    "@team/gwb-tokens": ">=0.0.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-commands": "0.4.0",
-    "@godcreator02/gwb-data": "0.1.0",
-    "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-shared-react": "workspace:*",
-    "@godcreator02/gwb-tokens": "workspace:*",
+    "@team/gwb-commands": "0.4.0",
+    "@team/gwb-data": "0.1.0",
+    "@team/gwb-plugin-api": "0.1.0",
+    "@team/gwb-shared-react": "workspace:*",
+    "@team/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",
     "@types/node": "^24.0.0",
