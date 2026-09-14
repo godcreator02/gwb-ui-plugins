@@ -1,0 +1,14 @@
+{
+  "plugin": "gwb-baseui",
+  "summary": "基础插件的官方窗格集——目前两格：日志（logger）、插件管理（plugin-manager）。只收「劈过件的皮」，UI 即本体的插件不进。",
+  "provides": [],
+  "depends": {
+    "hard": [
+      "gwbShell"
+    ],
+    "local": [
+      "gwbLogger",
+      "gwbPluginManager"
+    ]
+  }
+}

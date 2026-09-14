@@ -1,0 +1,17 @@
+{
+  "plugin": "gwb-shell",
+  "summary": "外壳——窗格井、桌面、布局落盘、整页重载；内核页面根的唯一入口，UI 平台的整体（要换整套换）。",
+  "provides": [
+    {
+      "service": "gwbShell",
+      "shape": "registerPane({ id, title, icon?, client, style }) 注册窗格（client/style 是浏览器半与样式表的 file:// 地址）/ describeSelf 报名字；0.1.1 起件那一格是容器查询根"
+    }
+  ],
+  "depends": {
+    "hard": [
+      "gwbCommands",
+      "gwbData"
+    ],
+    "local": []
+  }
+}
