@@ -25,7 +25,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-baseui] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** node 半运行时真 import 的，眼下一个都没有（全是 import type）——名单留着钉死这个零 */
-const ALLOWED_BARE = new Set(['@godcreator02/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['@team/gwb-plugin-api'])
 
 /** 页面 importmap 提供的那四个，跟 build.ts 的 SHARED 一一对应 */
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
@@ -155,7 +155,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
-      path.join(root, 'node_modules/@godcreator02/gwb-tokens/dist/theme.reference.css'),
+      path.join(root, 'node_modules/@team/gwb-tokens/dist/theme.reference.css'),
       'utf8',
     )
     const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')
