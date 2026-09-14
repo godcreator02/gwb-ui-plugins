@@ -12,7 +12,7 @@
  * 要发 SKILL.md 这类头部得保留 frontmatter 字段的生成物，目标写成对象：
  *   'content/outputs/skills/x.mdx': [{ to: '../skills/x/SKILL.md', frontmatter: ['name', 'description'] }]
  */
-import * as fumadocs from '@team/docfirst-workflow/fumadocs'
+import * as fumadocs from '@godcreator/docfirst-workflow/fumadocs'
 
 export default {
   formats: [fumadocs],
