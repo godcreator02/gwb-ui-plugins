@@ -8,7 +8,7 @@ const config = {
   /**
    * **这一行空着，本身就是那条「不许打包」的账。**
    *
-   * `@team/docfirst-workflow` 与 `@team/docfirst-trajectory` 都**不许**放进
+   * `@godcreator/docfirst-workflow` 与 `@godcreator/docfirst-trajectory` 都**不许**放进
    * `serverExternalPackages`：两个包里都有客户端组件（前者的 `/fumadocs/pre` 是状态点，
    * 后者的 `./react` 是星轨盘），外置之后 Next 走 Node 单独加载它们、跟站打包的 React
    * 分了家，预渲染报 `Cannot read properties of null (reading 'use')`，报错完全不指根因。
