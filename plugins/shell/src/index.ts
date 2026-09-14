@@ -1,11 +1,11 @@
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
-import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator02/gwb-plugin-api'
+import { requireKernel, type GwbContext, type GwbKernelApi } from '@team/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type { GwbCommands } from '@godcreator02/gwb-commands'
+import type { GwbCommands } from '@team/gwb-commands'
 // 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
-import type {} from '@godcreator02/gwb-data'
+import type {} from '@team/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
@@ -36,7 +36,7 @@ function shellEnv(home: string): ShellEnv {
   return {
     home,
     styles: [
-      fileUrl('@godcreator02/gwb-tokens/theme.css'),
+      fileUrl('@team/gwb-tokens/theme.css'),
       new URL('./dockview.css', import.meta.url).href,
       new URL('./style.css', import.meta.url).href,
     ],
@@ -133,13 +133,13 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerTableCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
-        { name: PANES_COMMAND, description: '此刻注册了哪些窗格', usage: '无参数', plugin: '@godcreator02/gwb-shell' },
+        { name: PANES_COMMAND, description: '此刻注册了哪些窗格', usage: '无参数', plugin: '@team/gwb-shell' },
         () => this.paneTable.list(),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字', usage: '无参数', plugin: '@godcreator02/gwb-shell' },
+        { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字', usage: '无参数', plugin: '@team/gwb-shell' },
         () => this.pluginTable.list(),
       ),
     )
@@ -149,13 +149,13 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerLayoutCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
-        { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单）', usage: '没存过回 null。无参数', plugin: '@godcreator02/gwb-shell' },
+        { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单）', usage: '没存过回 null。无参数', plugin: '@team/gwb-shell' },
         () => this.ctx.gwbData.readDoc(LAYOUT_DOC),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局档', usage: '参数是整份布局档 { v, current, saved }（shell.layout.get 回的那个形状）', plugin: '@godcreator02/gwb-shell' },
+        { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局档', usage: '参数是整份布局档 { v, current, saved }（shell.layout.get 回的那个形状）', plugin: '@team/gwb-shell' },
         (args) => {
           // 存这头也过一遍形状：浏览器半自己的 bug 拼出坏档，不该有资格盖掉盘上那份好的
           const doc = parseLayoutDoc(args)
@@ -171,7 +171,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerEnvCommand(cli: GwbCommands): void {
     const env = shellEnv(this.kernel.dataDir)
     this.ctx.effect(() =>
-      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）', usage: '无参数', plugin: '@godcreator02/gwb-shell' }, () => env),
+      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）', usage: '无参数', plugin: '@team/gwb-shell' }, () => env),
     )
   }
 
@@ -183,7 +183,7 @@ export default class GwbShell extends Service implements GwbShellApi {
           name: RELOAD_COMMAND,
           description: '整页重载全部窗口',
           usage: 'BrowserWindow.webContents.reload：装了新件、热升之后让页面重取注册表、重注 importmap。没有窗口回 ok:false。无参数',
-          plugin: '@godcreator02/gwb-shell',
+          plugin: '@team/gwb-shell',
         },
         async () => {
           let deps: ReloadDeps
@@ -209,7 +209,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerDesktopCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
-        { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面', usage: '回 { desktops: [{id,name}], active }（读盘上布局档，认不出回一口缺省）。无参数', plugin: '@godcreator02/gwb-shell' },
+        { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面', usage: '回 { desktops: [{id,name}], active }（读盘上布局档，认不出回一口缺省）。无参数', plugin: '@team/gwb-shell' },
         async () => {
           const raw = await this.ctx.gwbData.readDoc(LAYOUT_DOC)
           const doc = parseLayoutDoc(raw) ?? defaultDoc()
@@ -219,7 +219,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: DESKTOP_SWITCH_COMMAND, description: '切到某口桌面', usage: '参数 { id?, name? }（id 优先，二者给一）。井在页面那半，这条只把动作转发进去，回执 ok 代表转发了不是切完了', plugin: '@godcreator02/gwb-shell' },
+        { name: DESKTOP_SWITCH_COMMAND, description: '切到某口桌面', usage: '参数 { id?, name? }（id 优先，二者给一）。井在页面那半，这条只把动作转发进去，回执 ok 代表转发了不是切完了', plugin: '@team/gwb-shell' },
         (args) => {
           const a = args as { id?: unknown; name?: unknown } | undefined
           const id = typeof a?.id === 'string' && a.id !== '' ? a.id : undefined
@@ -232,7 +232,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: DESKTOP_NEW_COMMAND, description: '新建一口桌面并切过去，出生为空（不铺默认）', usage: '参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', plugin: '@godcreator02/gwb-shell' },
+        { name: DESKTOP_NEW_COMMAND, description: '新建一口桌面并切过去，出生为空（不铺默认）', usage: '参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', plugin: '@team/gwb-shell' },
         (args) => {
           const a = args as { name?: unknown } | undefined
           const name = typeof a?.name === 'string' && a.name.trim() !== '' ? a.name.trim() : undefined
@@ -257,7 +257,7 @@ export default class GwbShell extends Service implements GwbShellApi {
           name: OPEN_PANE_COMMAND,
           description: '开一格窗格（任何件的）',
           usage: '参数 { entryId, paneId, key?, params?, preview? }——entryId+paneId 是注册表的键（shell.panes 现查），选项与件开自己格的同形：key 命中已开的份就聚焦、preview 放预览槽、params 跟着这一份落盘。井在页面那半，回执 ok 代表转发了不是开完了',
-          plugin: '@godcreator02/gwb-shell',
+          plugin: '@team/gwb-shell',
         },
         (args) => {
           const parsed = parseOpenPaneArgs(args)
