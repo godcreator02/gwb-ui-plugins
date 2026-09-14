@@ -92,7 +92,7 @@ describe.skipIf(!built)('产物', () => {
   })
 
   it('node 半：裸名只许 cordis 与词汇表包——Service 基类必须是宿主那一份，requireKernel 是真函数', () => {
-    const allowed = new Set(['cordis', '@godcreator02/gwb-plugin-api'])
+    const allowed = new Set(['cordis', '@team/gwb-plugin-api'])
     const bare: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), BARE)) {
@@ -171,7 +171,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
-      path.join(root, 'node_modules/@godcreator02/gwb-tokens/dist/theme.reference.css'),
+      path.join(root, 'node_modules/@team/gwb-tokens/dist/theme.reference.css'),
       'utf8',
     )
     const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')
