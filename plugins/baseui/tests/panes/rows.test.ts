@@ -12,7 +12,7 @@ import {
 const entry = (patch: Partial<EntryView> = {}): EntryView => ({
   id: 'data',
   entryId: 'home:data',
-  pkg: '@godcreator02/gwb-data',
+  pkg: '@team/gwb-data',
   disabled: false,
   active: true,
   group: false,
@@ -20,7 +20,7 @@ const entry = (patch: Partial<EntryView> = {}): EntryView => ({
 })
 
 const pkg = (patch: Partial<PackageView> = {}): PackageView => ({
-  pkg: '@godcreator02/gwb-data',
+  pkg: '@team/gwb-data',
   spec: '0.0.2',
   installed: true,
   entries: [entry()],
@@ -109,7 +109,7 @@ describe('三种文案', () => {
   })
 
   it('**没有条目 ≠ 未启用**：共享包本来就不该有条目，说成「未启用」是冤枉', () => {
-    const row = toRows([pkg({ pkg: '@godcreator02/gwb-shared-react', entries: [] })])[0]!
+    const row = toRows([pkg({ pkg: '@team/gwb-shared-react', entries: [] })])[0]!
     expect(row.note).toBe('没有条目')
     expect(row.note).not.toContain('启用')
     expect(row.noteHint).toContain('共享包')
@@ -137,7 +137,7 @@ describe('两层行', () => {
   })
 
   it('包不在 home 里时如实报出来，条目还在', () => {
-    const row = toRows([{ pkg: '@godcreator02/gwb-x', installed: false, entries: [entry({ id: 'x' })] }])[0]!
+    const row = toRows([{ pkg: '@team/gwb-x', installed: false, entries: [entry({ id: 'x' })] }])[0]!
     expect(row.installed).toBe(false)
     expect(row.entries).toHaveLength(1)
   })
@@ -166,7 +166,7 @@ describe('汇总', () => {
   it('数包、数条目、数「没挂上」那几条', () => {
     const rows = toRows([
       pkg({ entries: [entry(), entry({ id: 'b', active: false })] }),
-      pkg({ pkg: '@godcreator02/gwb-tokens', entries: [] }),
+      pkg({ pkg: '@team/gwb-tokens', entries: [] }),
     ])
     expect(summarize(rows)).toEqual({ packages: 2, entries: 2, attention: 1 })
   })
@@ -182,7 +182,7 @@ describe('命令回执', () => {
   })
 
   it('**error 一个字都不吞**——set-label 在没装数据件时全靠这一句', () => {
-    const got = asResult({ ok: false, error: '没装数据件（@godcreator02/gwb-data），显示名存不下来。' })
+    const got = asResult({ ok: false, error: '没装数据件（@team/gwb-data），显示名存不下来。' })
     expect(got.ok).toBe(false)
     expect(got.error).toContain('没装数据件')
   })
