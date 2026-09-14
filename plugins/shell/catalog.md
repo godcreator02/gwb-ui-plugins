@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/shell/src/index.ts:87-87 · 未确认 -->
+<!-- 来源 ../plugins/shell/src/index.ts:87-87 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands', 'gwbData']
@@ -18,4 +18,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-shell` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。

@@ -475,7 +475,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="179-208" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="180-200" */}
 
 **＋列表走跟插件调 `openPane` 同一个 `planOpen`**，所以行为一致。**已开的那条不 disable**
 ——点它是聚焦，那是个有用的动作，标一下就够。

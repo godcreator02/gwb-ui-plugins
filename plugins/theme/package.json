@@ -1,8 +1,10 @@
 {
   "name": "@godcreator02/gwb-theme",
-  "version": "0.2.4",
-  "author": {"name": "godcreator"},
-  "description": "外观件：正文字体、等宽字体、自定义样式表。启动样式经 theme.startupCss 交给外壳在首帧前注入；「外观」那格现场改现场看。注册窗格时自报浏览器半与样式表的 file:// 地址。0.2 起样式走 Tailwind 前缀围栏（类名一律 theme: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：件自己就是一个完整的 Tailwind 入口，产物由 @tailwindcss/cli 直出",
+  "version": "0.3.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "外观件：正文字体、等宽字体、自定义样式表。启动样式经 theme.startupCss 交给外壳在首帧前注入；「外观」那格现场改现场看。注册窗格时自报浏览器半与样式表的 file:// 地址。0.2 起样式走 Tailwind 前缀围栏（类名一律 theme: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：件自己就是一个完整的 Tailwind 入口，产物由 @tailwindcss/cli 直出。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -43,7 +45,7 @@
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：件自己编自己那张表（`tailwindcss` 这个 bin 出自 cli 包），版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出（本件眼下没弹层用不着，但入口五行全生态一份的形状，缺一行下一个人得自己发现）。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖，但 pnpm 的严格布局下 theme 解析不到，所以显式写一条。四条都只在构建/测试期用，运行期没人 import，所以是 dev",
   "devDependencies": {
     "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-commands": "0.2.0",
+    "@godcreator02/gwb-commands": "0.4.0",
     "@godcreator02/gwb-settings": "0.1.1",
     "@godcreator02/gwb-shell": "workspace:*",
     "@godcreator02/gwb-shared-react": "workspace:*",
