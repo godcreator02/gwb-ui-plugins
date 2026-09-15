@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/baseui/src/index.ts:32-32 · 未确认 -->
+<!-- 来源 ../plugins/baseui/src/index.ts:32-32 · 新鲜 -->
 
 ```ts
 export const inject = ['gwbShell']
@@ -18,4 +18,4 @@ export const inject = ['gwbShell']
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-baseui` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。
