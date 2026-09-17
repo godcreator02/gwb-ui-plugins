@@ -2,7 +2,14 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { desktopIdOf, portalHostOf } from './desktop-context.js'
-import { describeHandle, pickDispose, pickMountPane, pickRetarget, type MountLike } from './mount-handle.js'
+import {
+  describeHandle,
+  disposeOutsideCommit,
+  pickDispose,
+  pickMountPane,
+  pickRetarget,
+  type MountLike,
+} from './mount-handle.js'
 import { paramsKeyOf } from '../panels.js'
 import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
@@ -150,13 +157,10 @@ export function PluginPane({
       disposed = true
       mountedRef.current = false
       retargetRef.current = undefined
-      try {
-        dispose?.()
-      } catch (err) {
-        // 卸载路径上的异常没有别的出口，吞掉就等于件的清理从来没跑过而谁也不知道
+      // 卸载路径上的异常没有别的出口，吞掉就等于件的清理从来没跑过而谁也不知道
+      disposeOutsideCommit(dispose, () => bus.release(), (err) => {
         console.error(`[shell] ${pluginKey} 的 dispose 抛了：`, err)
-      }
-      bus.release()
+      })
     }
     // **`paneParams` 故意不在这张表里**：它每轮渲染都是个新对象，进来就是反复拆了重挂。
     // 换内容走下面那条 effect，比的是它的稳定序列化；硬换要重挂时扳 `remounts`

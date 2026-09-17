@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { describeHandle, pickMountPane, pickDispose, pickRetarget } from '../src/client/mount-handle.js'
+import {
+  describeHandle,
+  disposeOutsideCommit,
+  pickMountPane,
+  pickDispose,
+  pickRetarget,
+} from '../src/client/mount-handle.js'
 
 /**
  * 外壳接窗格契约的那两步收窄。要钉住的是：句柄按契约是 `{ dispose() }` 这个**对象**，
@@ -107,6 +113,36 @@ describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
   it('函数句柄一律不收——跟 pickDispose 同一条：契约里的句柄是对象', () => {
     const both = Object.assign(() => {}, { retarget: () => {} })
     expect(pickRetarget(both)).toBeUndefined()
+  })
+})
+
+describe('disposeOutsideCommit：拆格排在 React 提交之外', () => {
+  it('当场不拆，微任务里先 dispose 再 release', async () => {
+    const log: string[] = []
+    disposeOutsideCommit(() => log.push('dispose'), () => log.push('release'), () => log.push('report'))
+    log.push('commit-done')
+    await Promise.resolve()
+    expect(log).toEqual(['commit-done', 'dispose', 'release'])
+  })
+
+  it('dispose 抛了照样 release，异常交给 report', async () => {
+    const log: string[] = []
+    disposeOutsideCommit(
+      () => {
+        throw new Error('炸')
+      },
+      () => log.push('release'),
+      (err) => log.push(`report:${String(err)}`),
+    )
+    await Promise.resolve()
+    expect(log).toEqual(['report:Error: 炸', 'release'])
+  })
+
+  it('没拿到 dispose（契约不符那条）也 release', async () => {
+    const log: string[] = []
+    disposeOutsideCommit(undefined, () => log.push('release'), () => log.push('report'))
+    await Promise.resolve()
+    expect(log).toEqual(['release'])
   })
 })
 

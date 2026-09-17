@@ -153,6 +153,13 @@ await args.host.call('shell.plugins')
 只发生在三处：第一次开机、布局文件认不出回默认、状态栏「重置布局」；**运行时新建的桌面不沾
 它，出生为空**（见下文多桌面节）。
 
+**拆的一侧是同步的**：内核页面根换壳时先调旧壳的 `dispose()`、紧接着清空根，所以 `dispose`
+返回时整棵树必须已经拆完。准备（异步的那一长段）与落树（`createRoot` + `render` 那一小段）
+分开：`dispose` 赶在准备好之前，落树那段就永不执行；树在就当场 `unmount()`。html 上的类、
+根上的身份标记、枢纽的命令口都挂在落树那段里，一起有、一起没。
+
+{/* ref file="../plugins/shell/src/client/shell-mount.ts" */}
+
 一个窗格由 `PluginPane` 承载，它是 `mountPane` 契约的外壳这一侧：
 
 ```
@@ -164,6 +171,13 @@ await args.host.call('shell.plugins')
 一条时序上的承诺；拆成两个 effect 就只剩「谁先跑谁后跑」这种靠排列顺序的默契。窗格间总线的句柄
 也在这条 effect 里取、清理时松手。**拿不到 `dispose` 就报契约不符**，不装作成功——那条
 路上关窗格时清不掉，让写插件的人当场看见。
+
+**件的 `dispose` 在 React 提交之外调**（排进微任务，随后松开总线句柄）：`PluginPane` 的
+清理 effect 跑在外壳的提交里——关窗格、换壳拆整棵树都是——件若在提交里同步
+`root.unmount()` 会被 React 推迟，紧跟着清容器就抢在拆树前面。排出提交之后，件在
+`dispose` 里「同步拆树、再清容器」是合法写法。
+
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" */}
 
 ## 布局落盘：自动存 + 起名存，回得去
 

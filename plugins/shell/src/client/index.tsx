@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
-import { createRoot, type Root } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import {
   DockviewReact,
   type DockviewApi,
@@ -37,6 +37,7 @@ import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops
 import { isOpenPaneAction, openPaneOptionsOf } from '../open-pane.js'
 import { ENV_COMMAND } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
+import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
 import type { HostBridge, ShellArgs } from './types.js'
 
@@ -445,8 +446,12 @@ async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
   }
 }
 
-async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
-  wellHub.setHost(args.host)
+/**
+ * 开机的异步那半：样式表、外观、注册表、布局档全到手，回落树那一段（同步）。页面上的
+ * 副作用（html 上的类、根上的身份标记、枢纽的命令口）一律放进落树那段——准备途中被拆了，
+ * 它们就一样都不发生。
+ */
+async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => MountedTree> {
   // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张管的是
   // `.dv-*` 与 `.dockview-theme-gwb`（类名不经我们的手）、外壳自己那张类名一律带
   // `shell:` 前缀——三张都全页有效，谁也不靠祖先关系围栏
@@ -454,14 +459,6 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   // 第四样：用户自己的外观样式（gwb-theme 件的字体覆盖 + 自定义 CSS）。它要压过令牌
   // 默认值，所以排在这三张 link 之后；theme 没装时这儿是个空操作
   await applyThemeStyle(args.host)
-  document.documentElement.classList.add(...THEME_CLASSES)
-  // 深色是默认态：令牌的 .dark 那套在这儿挂上，状态栏的开关之后随时摘。dispose 不摘
-  // ——亮暗是页面级选择，热换外壳时新壳 boot 会再挂，这头摘了反而闪一下亮色
-  document.documentElement.classList.add('dark')
-  // **只是身份标记**：围栏是类名前缀（外壳那张表里的类一律 `shell:` 开头），这个属性
-  // 不参与任何选择器。挂它是为了 devtools 里一眼认得出这棵树是谁的——井里每一格的件
-  // 容器另挂它自己的那个，同样只作身份用
-  root.setAttribute('data-gwb-plugin', SELF)
 
   const panes = await fetchPanes(args.host)
   const specs = listOpenable(panes)
@@ -475,32 +472,49 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
       `存着 ${initialDoc.saved.length} 套布局`,
   )
 
-  const reactRoot = createRoot(root)
-  reactRoot.render(<App specs={specs} home={args.home} initialDoc={initialDoc} />)
-  return reactRoot
+  return () => {
+    wellHub.setHost(args.host)
+    document.documentElement.classList.add(...THEME_CLASSES)
+    // 深色是默认态：令牌的 .dark 那套在这儿挂上，状态栏的开关之后随时摘。拆树不摘
+    // ——亮暗是页面级选择，热换外壳时新壳落树会再挂，这头摘了反而闪一下亮色
+    document.documentElement.classList.add('dark')
+    // **只是身份标记**：围栏是类名前缀（外壳那张表里的类一律 `shell:` 开头），这个属性
+    // 不参与任何选择器。挂它是为了 devtools 里一眼认得出这棵树是谁的——井里每一格的件
+    // 容器另挂它自己的那个，同样只作身份用
+    root.setAttribute('data-gwb-plugin', SELF)
+    const reactRoot = createRoot(root)
+    reactRoot.render(<App specs={specs} home={args.home} initialDoc={initialDoc} />)
+    return {
+      unmount() {
+        // 布局还有没落盘的那半拍，拆树前抢着写一把——赶不上也就丢最后 400ms 的挪动
+        wellHub.flush()
+        // 同步拆完：内核页面根在 dispose 之后紧接着清空 #root
+        reactRoot.unmount()
+        document.documentElement.classList.remove(...THEME_CLASSES)
+        root.removeAttribute('data-gwb-plugin')
+        // **只清自己那份**：不判身份的话旧句柄会把新外壳的那份清掉，全井的件当场报「缺 params」
+        wellHub.releaseHost(args.host)
+      },
+    }
+  }
 }
 
-/** 内核 import 本模块后调的是默认导出（见文件末尾），它问完环境再调这个。**回一个 `{ dispose }`**：热换外壳时页面上这棵树得有人拆 */
-export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void } {
-  const mounted = boot(args, root).catch((err: unknown) => {
+/** 挂载与拆除的共同收口：起不来就在根上写一句，拆的时候连那句一起清掉 */
+function shellHandle(root: HTMLElement, prepare: Prepare): { dispose(): void } {
+  const handle = mountWhenReady(prepare, (err) => {
     root.textContent = `外壳起不来：${String(err)}`
-    return undefined
   })
   return {
     dispose() {
-      // 布局还有没落盘的那半拍，拆树前抢着写一把——赶不上也就丢最后 400ms 的挪动
-      wellHub.flush()
-      // 挂载是异步的：dispose 可能赶在它之前，所以接在同一条链上而不是拿个变量去猜
-      void mounted.then((reactRoot) => reactRoot?.unmount())
-      document.documentElement.classList.remove(...THEME_CLASSES)
-      root.removeAttribute('data-gwb-plugin')
+      handle.dispose()
       root.textContent = ''
-      // **只清自己那份**：热换外壳的自然顺序是「新的先 boot、旧的后 dispose」，
-      // 不判身份的话旧句柄会把新外壳的那份清掉,全井的件当场报「缺 params」——
-      // 而外壳没有 bug,是 dispose 越了界
-      wellHub.releaseHost(args.host)
     },
   }
+}
+
+/** 环境已经在手时的入口（默认导出问完 `shell.env` 走的是同一条路）。**回一个 `{ dispose }`**：热换外壳时页面上这棵树得有人拆 */
+export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void } {
+  return shellHandle(root, () => prepareShell(args, root))
 }
 
 /** 页面的公共面里本件用得着的两条。按形状收，正本在内核的词汇表包 */
@@ -520,9 +534,7 @@ declare global {
  * 所以本文件顶层的 react 裸名解析得到。
  */
 export default function mountShell(root: HTMLElement): { dispose(): void } {
-  let inner: { dispose(): void } | undefined
-  let disposed = false
-  ;(async () => {
+  return shellHandle(root, async (alive) => {
     const reply = (await window.gwb.command(ENV_COMMAND)) as {
       ok?: boolean
       data?: { home: string; styles: string[] }
@@ -531,18 +543,10 @@ export default function mountShell(root: HTMLElement): { dispose(): void } {
     if (reply.ok !== true || reply.data === undefined) {
       throw new Error(`${ENV_COMMAND} 没回环境：${reply.error ?? '没说原因'}`)
     }
-    if (disposed) return
-    inner = bootShell(
+    if (!alive()) return undefined
+    return prepareShell(
       { host: { call: (command, args) => window.gwb.command(command, args) }, home: reply.data.home, styles: reply.data.styles },
       root,
     )
-  })().catch((err: unknown) => {
-    root.textContent = `外壳起不来：${String(err)}`
   })
-  return {
-    dispose() {
-      disposed = true
-      inner?.dispose()
-    },
-  }
 }

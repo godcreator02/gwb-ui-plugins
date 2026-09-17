@@ -42,6 +42,29 @@ export function pickRetarget(handle: unknown): ((params: Record<string, unknown>
   }
 }
 
+/**
+ * 在 React 提交之外拆一格：件的 `dispose` 与桶的 `release` 排进微任务，先后照旧。
+ *
+ * 窗格的清理 effect 跑在外壳的提交里（关格、换壳拆整棵树都是），件在 `dispose` 里同步
+ * `root.unmount()` 会被 React 推迟，紧跟着的 `container.textContent = ''` 就抢在拆树
+ * 前面，渲染层报 removeChild 的 NotFoundError。排出提交之后，契约里「dispose 同步拆完」
+ * 才成立。`dispose` 抛了也照样 release，异常交给 `report`。
+ */
+export function disposeOutsideCommit(
+  dispose: (() => void) | undefined,
+  release: () => void,
+  report: (err: unknown) => void,
+): void {
+  queueMicrotask(() => {
+    try {
+      dispose?.()
+    } catch (err) {
+      report(err)
+    }
+    release()
+  })
+}
+
 /** 契约不符时给人看的一句：说清它回的是什么 */
 export function describeHandle(handle: unknown): string {
   if (handle === null) return 'null'
