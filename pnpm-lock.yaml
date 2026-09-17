@@ -46,7 +46,7 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@godcreator/docfirst-trajectory':
-        specifier: ^0.1.0
+        specifier: ^0.1.1
         version: 0.1.1(react@19.2.8)
       '@godcreator/docfirst-workflow':
         specifier: ^0.2.0
