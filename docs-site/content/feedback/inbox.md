@@ -47,3 +47,25 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 `entryId` 把 `pluginKey` 刷成当前值，顺手在下次落盘时写回。
 
 复现：`shell.layout.get` 看任何一个换 scope 之前开过的格的 `params.pluginKey`。
+
+## 2026-09-17 总控台会话：标签图标表只认八个名字，认不出一律画 #，件猜错没有任何报错
+
+来源：总控台中转站 `feedback/gwb-ui-plugins-26091700-标签图标表缺layout-grid.md`（隔离 home
+`bn-collapse-2609161207` 里 `gwb-bn-query` 登记 `icon: 'layout-grid'`），体检会话补了规模。
+
+现象：`plugins/shell/src/client/GwbTab.tsx` 的 `ICONS` 只有 scroll-text / store / puzzle /
+flask-conical / panel-left / folder-open / file-text / folders 八枚，别的名字静默画 `Hash`。
+default 此刻 `shell.panes` 里 receipt / eye / activity / palette / gauge / layout-grid 六个都画成 #；
+`PaneSpec.icon` 的类型注释写的却是「lucide 的图标名（kebab-case）」。
+
+期望：件不用猜——要么按 kebab 名从 lucide 全集取，要么封闭集合但认不出就出声、说明书写明认哪些。
+
+## 2026-09-17 内核仓 feedback（devkit 投，总控台转）：没装 theme 的 home 每次开机一条「跑了条不存在的命令：theme.startupCss」
+
+来源：`gwb-kernel` 站 feedback 区 inbox 第二节（09-15 devkit 投），总控台体检会话转来。
+
+现象：`devkit.home.new` 的底座七件没有 theme，每个隔离 home 开机 `gwb.log` 都有一条
+`gwb-commands 跑了条不存在的命令：theme.startupCss`；出厂种子要加 baseui（依旧不带 theme），
+新用户首启也会撞上。第一次见的人会去追一个不存在的病。
+
+源头：外壳浏览器半开机无条件 `host.call('theme.startupCss')`（`theme-boot.ts`），theme 是可选件。
