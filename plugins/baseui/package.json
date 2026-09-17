@@ -29,12 +29,12 @@
   "//deps": "peer 分两类。硬前提只有外壳与词汇表：gwb-shell 运行时真 inject（registerPane），plugin-api 的 requireKernel 是真函数。浏览器半那两条共享包：react 系经内核注的 importmap 解析、令牌表由外壳按 file:// 注——home 里没它们界面那半跑不起来。logger 与 plugin-manager 是 **optional peer**：本件对它们一律嵌套注入（局部 ctx.inject），home 里缺谁就少画谁的窗格、其余照常——写进 peer 只是装包时顺带带上，标 optional 后 pnpm 不强制。cordis 是运行时真 import（inject 声明走 Context 类型）。node 半不 import 任何 core 件的代码，只有 `import type {}` 激活 declare module",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator/gwb-logger": ">=0.2.2",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
-    "@godcreator/gwb-plugin-manager": ">=0.1.0",
-    "@godcreator/gwb-shared-react": ">=0.0.2",
-    "@godcreator/gwb-shell": ">=0.1.0",
-    "@godcreator/gwb-tokens": ">=0.0.2",
+    "@godcreator/gwb-logger": ">=0.4.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
+    "@godcreator/gwb-plugin-manager": ">=0.4.0",
+    "@godcreator/gwb-shared-react": ">=0.0.4",
+    "@godcreator/gwb-shell": ">=0.7.2",
+    "@godcreator/gwb-tokens": ">=0.1.3",
     "cordis": "^4.0.0-rc.9"
   },
   "peerDependenciesMeta": {
@@ -49,7 +49,7 @@
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.0",
     "@godcreator/gwb-plugin-api": "0.1.1",
-    "@godcreator/gwb-plugin-manager": "0.3.0",
+    "@godcreator/gwb-plugin-manager": "0.4.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
