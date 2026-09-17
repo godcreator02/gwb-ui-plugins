@@ -210,7 +210,7 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 **第六步：开一个窗格时**——从注册表里取这个插件自报的两个地址 → **先注它的样式表、等它真到位**
 → 再动态 import 它的束 → 调它的挂载函数、把容器交出去 → 收下清理句柄。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="120-143" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="127-150" */}
 
 最后一步里「等它到位再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 落在表到位之前，那一瞬间是一堆没有样式的裸元素。这两件事因此绑在同一个清理单元里——拆成两处
@@ -346,7 +346,7 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="198-210" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="202-214" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：
