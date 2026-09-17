@@ -20,6 +20,8 @@ export interface ShellArgs {
   home: string
   /** 按序加载的样式表地址：令牌表、dockview 表、本件自己的表 */
   styles: string[]
+  /** 用户外观样式，注在三张表之后。theme 没装或没设就没有 */
+  startupCss?: string
 }
 
 /** 注册表里一条过桥之后的样子。跟 node 半的 `RegisteredPane` 是同一个形状 */

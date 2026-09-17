@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -109,6 +110,21 @@ describe.skipIf(!built)('产物', () => {
 
   it('浏览器半：dockview 真的在束里（外置了的话这条会空）', () => {
     expect(read(CLIENT)).toContain('dv-groupview')
+  })
+
+  /**
+   * 登记认图标名、标签画图标，吃的必须是同一份 lucide：名单是 build.ts 从 lucide-react 抄的，
+   * 束里是 esbuild 打进去的全集。任一头缩水（名单旧了、全集被摇树摇成几枚），就回到「登记说认得、
+   * 标签画成 #」或反过来，两头都不报错
+   */
+  it('图标名单跟打进束的 lucide 全集是同一份', () => {
+    const require = createRequire(import.meta.url)
+    const icons = Object.keys((require('lucide-react') as { icons: Record<string, unknown> }).icons).sort()
+    const version = (require('lucide-react/package.json') as { version: string }).version
+    expect(JSON.parse(read('pane-icons.json'))).toEqual({ lucide: version, keys: icons })
+    // 全集真在束里：挑几枚八个老名字之外的正名，它们的名字随图标数据一起进束
+    const client = read(CLIENT)
+    for (const name of ['layout-grid', 'receipt', 'gauge', 'zap']) expect(client).toContain(`name: "${name}"`)
   })
 
   it('两张样式表都出得来，各自的围栏规矩不同', () => {

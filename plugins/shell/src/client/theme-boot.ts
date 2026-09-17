@@ -1,41 +1,30 @@
 import type { DockviewTheme } from 'dockview-react'
-import type { HostBridge } from './types.js'
 
 /**
- * 开机的外观装配：跟 theme 件的那条软契约、我们自己的 dockview 主题。boot 挂表用
- * `applyThemeStyle`，画井用 `GWB_THEME`，收尾摘类用 `THEME_CLASSES`。
+ * 开机的外观装配：用户外观样式、我们自己的 dockview 主题。boot 注样式用 `applyStartupCss`，
+ * 画井用 `GWB_THEME`，收尾摘类用 `THEME_CLASSES`。
  */
 
-/**
- * 主题件的启动样式命令。**软契约**：命令名两边各存一份字符串，外壳不 import 主题件的
- * 任何东西（那是 node 半的包，跟 hello 客户端不 import `shell.panes` 常量同一个道理）。
- * theme 件没装时总线自己回「没有这条命令」，这儿静默跳过——外壳不因此少一根毫毛。
- */
-const THEME_COMMAND = 'theme.startupCss'
 /** 页面上那张启动样式表的 id。主题件的编辑格预览时改的就是它 */
 const THEME_STYLE_ID = 'gwb-theme-style'
 
 /**
- * 开机把用户的外观样式（字体覆盖 + 自定义 CSS）放进页面。
+ * 开机把用户的外观样式（gwb-theme 的字体覆盖 + 自定义 CSS）放进页面。值是 `shell.env` 带来的
+ * ——问不问主题件、主题件在不在，node 半已经判过了（`startup-style.ts`），这儿只管落位。
  *
  * **必须在三张表之后、首帧之前**：这张表要压过令牌的默认值，同特异性下靠文档序取胜，
  * 所以它得是 head 里靠后的那张；而「重启后开机即生效」要求它赶在 createRoot 前落位。
- * 表幂等（按 id 取，已存在就改内容）——热换外壳时新壳重注同一张，不重不漏。
+ * 表幂等（按 id 取，已存在就改内容；这一回没有就摘掉）——热换外壳时新壳照当下的值重注，
+ * 不重不漏，theme 这期间被卸了也不留旧表。
  */
-export async function applyThemeStyle(host: HostBridge): Promise<void> {
-  try {
-    const reply = (await host.call(THEME_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
-    if (reply.ok !== true || typeof reply.data !== 'string' || reply.data.trim() === '') return
-    let el = document.getElementById(THEME_STYLE_ID)
-    if (el === null) {
-      el = document.createElement('style')
-      el.id = THEME_STYLE_ID
-      document.head.appendChild(el)
-    }
-    el.textContent = reply.data
-  } catch (err) {
-    console.warn(`[shell] 启动样式没取到（theme 件没装？）：${String(err)}`)
+export function applyStartupCss(css: string | undefined): void {
+  const existing = document.getElementById(THEME_STYLE_ID)
+  if (css === undefined) {
+    existing?.remove()
+    return
   }
+  const el = existing ?? document.head.appendChild(Object.assign(document.createElement('style'), { id: THEME_STYLE_ID }))
+  el.textContent = css
 }
 
 /**

@@ -22,7 +22,7 @@ docfirst: none
 
 插件给的那几样，与服务替它填上的身份：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="9-32" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="9-35" */}
 
 ## 怎么用
 
@@ -38,8 +38,8 @@ export function apply(ctx: GwbContext) {
 }
 ```
 
-一个插件想有几个窗格就注册几个。`icon` 是 [lucide](https://lucide.dev) 的图标名，kebab-case，
-可以不给——画它是第四阶段导航的事，这一阶段只原样收下。
+一个插件想有几个窗格就注册几个。`icon` 写 lucide 的正名、可以不给，怎么认见
+[下文专节](#图标名怎么认)。
 
 **注册说不出「我能开几份」**：一个窗格开几份取决于它**装着几份不同的内容**，见
 [一个窗格的身份是它装的内容](#一个窗格的身份是它装的内容)。
@@ -61,6 +61,27 @@ await args.host.call('shell.plugins')
 
 **两张表不合并**：那张的键是 `(entryId, 窗格 id)`、一条条目可以有好几条；这张的键就是
 `entryId`、一条条目至多一条。消费方也不同（容器里开窗格吃前者，导航列插件名吃后者）。
+
+## 图标名怎么认
+
+`icon` 写 [lucide](https://lucide.dev) 的**正名**，kebab-case——lucide.dev 上图标页顶上那个名字
+（`layout-grid`、`file-text`、`receipt`）。**全集都认**，不用猜外壳认得哪几个：
+
+- **认得**：标签上画那一枚
+- **没给**：标签上画 `#`，不出声
+- **认不出**（拼错、改过名的旧名如 `home` 之于 `house`、写成 `LayoutGrid`）：窗格照样进表、标签上画
+  `#`，**登记那一刻** `gwb.log` 里一条 `warn gwb-shell`，点名是哪个包的哪个窗格、哪个名字、该怎么写
+- `describeSelf` 的 `icon` 同一套认法、同样出声（眼下还没有地方画它）
+
+两半吃同一份判法：kebab 名拼成 lucide 的导出名（`layout-grid` → `LayoutGrid`），node 半拿它对
+名单，浏览器半拿它从 lucide 全集里取：
+
+{/* ref file="../plugins/shell/src/pane-icon.ts" lines="12-24" */}
+
+名单是构建时从**打进浏览器束的那份** lucide-react 抄出来的（`dist/pane-icons.json`，带版本号），
+所以「登记说认得」与「标签画得出」永远是同一份 lucide，产物守卫钉着两头一致。代价是整个
+lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨迹卡
+[窗格图标认 lucide 全集](/trajectory/2026-09-17-pane-icons-full-lucide)。
 
 ## 身份不由插件自己报
 
@@ -143,12 +164,13 @@ await args.host.call('shell.plugins')
 分派、落盘钩子、命令入口，一份声明接口的对象，面板组件够不着 App 闭包、都从这儿过）；
 **开窗格的判断在纯函数 `planOpen`**（`openable.ts`），**执行在 `open.ts`**（聚焦 / 软换 /
 新开 / 落位、全局聚焦）；面板与标签是 `plugin-panel` / `PluginPane` / `GwbTab`；开机
-外观装配（主题软契约 + dockview 主题）在 `theme-boot`；**跨半命令名在 `protocol.ts`**
+外观装配（用户外观样式落位 + dockview 主题）在 `theme-boot`，跟主题插件的软契约在 node 半
+`startup-style`；**跨半命令名在 `protocol.ts`**
 （纯模块，两半各打进各的束、吃同一份常量，不再抄字符串）；布局文件的形状与判断在
 `layout.ts`。
 
-`bootShell` 拿到内核给的 `{ host, home, styles }`（问 `shell.env` 来的），占住整页那个
-根：注三张表 → 取一次注册表 → **取一次布局文件** → 渲染。文件没有（第一次开机 / 认不出）就从
+`bootShell` 拿到内核给的 `{ host, home, styles, startupCss? }`（问 `shell.env` 来的），占住整页那个
+根：注三张表 → 注用户外观样式 → 取一次注册表 → **取一次布局文件** → 渲染。文件没有（第一次开机 / 认不出）就从
 默认布局起——默认布局就是「表里有几个窗格开几个窗格」，全落在一个 group 里当兄弟 tab。这个默认
 只发生在三处：第一次开机、布局文件认不出回默认、状态栏「重置布局」；**运行时新建的桌面不沾
 它，出生为空**（见下文多桌面节）。

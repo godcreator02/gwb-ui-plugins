@@ -41,6 +41,21 @@ await build({
 console.log('[shell] dist/client.js ← src/client/index.tsx')
 
 /**
+ * `dist/pane-icons.json` = 打进 client.js 的那份 lucide-react 的全集导出名 + 版本。node 半登记
+ * 窗格时拿它认图标名：标签画得出哪些、登记就认哪些，两边吃的是同一份 lucide。
+ */
+const lucideDir = path.dirname(require.resolve('lucide-react/package.json'))
+const lucideVersion = (JSON.parse(fs.readFileSync(path.join(lucideDir, 'package.json'), 'utf8')) as { version: string }).version
+const { icons } = require('lucide-react') as { icons: Record<string, unknown> }
+const iconKeys = Object.keys(icons).sort()
+fs.writeFileSync(
+  path.join(here, 'dist', 'pane-icons.json'),
+  `${JSON.stringify({ lucide: lucideVersion, keys: iconKeys })}\n`,
+  'utf8',
+)
+console.log(`[shell] dist/pane-icons.json ← lucide-react ${lucideVersion}（${iconKeys.length} 枚）`)
+
+/**
  * `dist/dockview.css` = **裁过的** dockview 基础规则 + 我们自己那套 theme。
  *
  * dockview 自带 18 套主题，我们一套都不挂——所以凡是**选择器里带 `.dockview-` 的块**

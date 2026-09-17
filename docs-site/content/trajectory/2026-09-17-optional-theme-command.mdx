@@ -1,0 +1,36 @@
+---
+born-at: 2026-09-17T22:55
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 可选命令先问在不在
+domain: shell
+---
+
+## 背景
+
+外壳浏览器半开机无条件 `host.call('theme.startupCss')`：theme 没装时总线回「没有这条命令」，外壳
+静默跳过——可总线自己记一条 `warn 跑了条不存在的命令：theme.startupCss`。devkit 的底座七件不带
+theme，每个隔离 home 开机都带着它；出厂种子加了 baseui 也不带 theme，新用户首启同样撞上。第一次
+见的人会去追一个不存在的病（内核仓 feedback 区 09-15 devkit 投，总控台转来）。
+
+## 结论与边界
+
+定：**问总线有没有这条命令，有才调**，不拿失败当探测。查在 node 半：答 `shell.env` 时
+`gwbCommands.list()` 里有 `theme.startupCss` 才 `run`，结果作为可选的 `startupCss` 并进环境回执；
+浏览器半只管落位（这一回没有就摘掉旧表，热换外壳时 theme 被卸了也不留）。
+
+不选的：
+
+- **浏览器半先探测再调**：页面够得着的只有 `window.gwb.command`，总线上没有列命令的命令，要为此
+  新开一条；node 半本来就握着总线，`shell.env` 本来就是开机必问的那一趟，查在那儿还少一次往返
+- **theme 主动把样式交给外壳**：要么给 `gwbShell` 加方法（改被 inject 的面，要先问人），要么外壳
+  inject theme 的服务（theme 已 peer 外壳，反过来成环），要么 theme 经内核事件口推（页面还没订上
+  时推的就丢了）
+- **让总线别对不存在的命令记 warn**：那条账对拼错命令名是有用的，病在调用方
+
+边界：theme 比外壳晚挂上、开机那一刻总线上还没有这条命令时，这一次开机不带外观样式（跟以前
+一样），下一次整页重载就有。
+
+实弹（隔离 home `shell-2609172243`，无物证目录）：0.7.2 开机 `gwb.log` 有那条 warn；换 0.7.3-dev 后
+两次开机零条；装 theme、写字体与自定义 CSS 后整页重载，`#gwb-theme-style` 排在外壳三张表之后，
+body 字体与自定义变量都生效。

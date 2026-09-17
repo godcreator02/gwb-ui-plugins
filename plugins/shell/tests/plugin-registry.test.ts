@@ -1,18 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
+import { iconProblem } from '../src/pane-icon.js'
 import { createPluginRegistry } from '../src/plugin-registry.js'
 
 /**
- * 件级信息表。判据跟窗格表同源（身份由服务填、撞名后来者赢、注销只收自己那份），
- * 差别只在键：这张按 `entryId`，一条条目至多一条。
+ * 件级信息表。判据跟窗格表同源（身份由服务填、撞名后来者赢、注销只收自己那份、图标名认不出
+ * 出声），差别只在键：这张按 `entryId`，一条条目至多一条。
  */
 
 const echo = { entryId: 'echo', pkg: '@godcreator/gwb-echo' }
 /** 同一个包挂的第二条条目 */
 const echo2 = { entryId: 'echo-2', pkg: '@godcreator/gwb-echo' }
 
+const catalog = { lucide: '1.0.0', keys: new Set(['Megaphone']) }
+
 function fresh() {
   const warn = vi.fn<(message: string) => void>()
-  return { warn, reg: createPluginRegistry(warn) }
+  return { warn, reg: createPluginRegistry(warn, (name) => iconProblem(name, catalog)) }
 }
 
 describe('describe：件报自己叫什么', () => {
@@ -28,6 +31,15 @@ describe('describe：件报自己叫什么', () => {
     const { reg } = fresh()
     reg.describe(echo, { title: '回声' })
     expect(reg.list()[0]).not.toHaveProperty('icon')
+  })
+
+  it('图标名认不出：照样进表，warn 里带包名与那个名字', () => {
+    const { reg, warn } = fresh()
+    reg.describe(echo, { title: '回声', icon: 'megafone' })
+    expect(reg.list()[0]!.icon).toBe('megafone')
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0]![0]).toContain('gwb-echo')
+    expect(warn.mock.calls[0]![0]).toContain('"megafone"')
   })
 
   it('按报名先后排', () => {

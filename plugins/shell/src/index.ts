@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
@@ -13,6 +14,8 @@ import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv } from './pr
 import { DESKTOP_EVENT } from './desktops.js'
 import { parseOpenPaneArgs } from './open-pane.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
+import { iconProblem, parseIconCatalog, type IconCatalog } from './pane-icon.js'
+import { startupCss } from './startup-style.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
 export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
@@ -40,6 +43,18 @@ function shellEnv(home: string): ShellEnv {
       new URL('./dockview.css', import.meta.url).href,
       new URL('./style.css', import.meta.url).href,
     ],
+  }
+}
+
+/** 图标名单：`build.ts` 从打进 client.js 的那份 lucide-react 抄出来，跟 client.js 是邻居 */
+const ICON_CATALOG_URL = new URL('./pane-icons.json', import.meta.url)
+
+/** 读名单。读不出或形状不对回原因 */
+function loadIconCatalog(): IconCatalog | string {
+  try {
+    return parseIconCatalog(JSON.parse(readFileSync(ICON_CATALOG_URL, 'utf8'))) ?? '形状不对'
+  } catch (err: unknown) {
+    return String(err)
   }
 }
 
@@ -106,8 +121,14 @@ export default class GwbShell extends Service implements GwbShellApi {
     const logger = ctx.logger('gwb-shell')
     const warn = (message: string): void => logger.warn(message)
     this.info = (message: string): void => logger.info(message)
-    this.paneTable = createPaneRegistry(warn)
-    this.pluginTable = createPluginRegistry(warn)
+    const catalog = loadIconCatalog()
+    if (typeof catalog === 'string') {
+      logger.error(`图标名单 ${ICON_CATALOG_URL.href} 读不出（${catalog}）——产物不全，登记时不再核对图标名`)
+    }
+    const checkIcon = (name: string): string | undefined =>
+      typeof catalog === 'string' ? undefined : iconProblem(name, catalog)
+    this.paneTable = createPaneRegistry(warn, checkIcon)
+    this.pluginTable = createPluginRegistry(warn, checkIcon)
   }
 
   /** 服务就绪时把命令挂上、把页面根要过来；effect 包着，本件卸载时自动注销 */
@@ -167,11 +188,25 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 浏览器半开机问一次的环境：home 与三张样式表的 `file://` 地址 */
+  /**
+   * 浏览器半开机问一次的环境：home、三张样式表的 `file://` 地址，外加这一刻的用户外观样式
+   * （theme 没装就没有，见 `startup-style.ts`）
+   */
   private registerEnvCommand(cli: GwbCommands): void {
     const env = shellEnv(this.kernel.dataDir)
     this.ctx.effect(() =>
-      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）', usage: '无参数', plugin: '@godcreator/gwb-shell' }, () => env),
+      cli.register(
+        {
+          name: ENV_COMMAND,
+          description: '外壳浏览器半开机要的环境（home、样式表的地址、用户外观样式）',
+          usage: '回 { home, styles, startupCss? }——startupCss 是 theme.startupCss 此刻的值，theme 没装或没设就没有这一项。无参数',
+          plugin: '@godcreator/gwb-shell',
+        },
+        async (): Promise<ShellEnv> => {
+          const css = await startupCss(cli)
+          return css === undefined ? env : { ...env, startupCss: css }
+        },
+      ),
     )
   }
 

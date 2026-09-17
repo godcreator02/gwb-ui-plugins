@@ -15,7 +15,7 @@ import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import { wellHub } from './well-hub.js'
 import { addInstance, openRegisteredPane, openSpec, willFocus, TAB_COMPONENT } from './open.js'
-import { applyThemeStyle, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
+import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
 import {
   listOpenable,
   type OpenableSpec,
@@ -35,7 +35,7 @@ import {
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
 import { isOpenPaneAction, openPaneOptionsOf } from '../open-pane.js'
-import { ENV_COMMAND } from '../protocol.js'
+import { ENV_COMMAND, type ShellEnv } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
@@ -457,8 +457,8 @@ async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => M
   // `shell:` 前缀——三张都全页有效，谁也不靠祖先关系围栏
   await Promise.all(args.styles.map((href) => loadStyle(href)))
   // 第四样：用户自己的外观样式（gwb-theme 件的字体覆盖 + 自定义 CSS）。它要压过令牌
-  // 默认值，所以排在这三张 link 之后；theme 没装时这儿是个空操作
-  await applyThemeStyle(args.host)
+  // 默认值，所以排在这三张 link 之后；theme 没装时 env 里没有这一项
+  applyStartupCss(args.startupCss)
 
   const panes = await fetchPanes(args.host)
   const specs = listOpenable(panes)
@@ -537,15 +537,16 @@ export default function mountShell(root: HTMLElement): { dispose(): void } {
   return shellHandle(root, async (alive) => {
     const reply = (await window.gwb.command(ENV_COMMAND)) as {
       ok?: boolean
-      data?: { home: string; styles: string[] }
+      data?: ShellEnv
       error?: string
     }
     if (reply.ok !== true || reply.data === undefined) {
       throw new Error(`${ENV_COMMAND} 没回环境：${reply.error ?? '没说原因'}`)
     }
     if (!alive()) return undefined
+    const { home, styles, startupCss } = reply.data
     return prepareShell(
-      { host: { call: (command, args) => window.gwb.command(command, args) }, home: reply.data.home, styles: reply.data.styles },
+      { host: { call: (command, args) => window.gwb.command(command, args) }, home, styles, startupCss },
       root,
     )
   })

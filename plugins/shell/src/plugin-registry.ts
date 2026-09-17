@@ -9,7 +9,7 @@
 export interface PluginInfo {
   /** 给人看的名字。包名太长、也不是给人读的 */
   title: string
-  /** lucide 的图标名（kebab-case）。画它是第四刀导航的事，这一刀只原样收下 */
+  /** 跟窗格的 `icon` 同一套认法（lucide 正名、kebab-case），认不出同样 warn。眼下只原样收下，还没有地方画它 */
   icon?: string
 }
 
@@ -26,13 +26,21 @@ export interface PluginRegistry {
   list(): RegisteredPlugin[]
 }
 
-/** `warn` 由调用方给，真跑时是 cordis logger。空 title 抛错、报两次只告警——跟窗格注册一个规矩，判据见文档站 */
-export function createPluginRegistry(warn: (message: string) => void): PluginRegistry {
+/**
+ * `warn` 由调用方给，真跑时是 cordis logger。空 title 抛错、报两次只告警、图标名认不出只告警
+ * ——跟窗格注册一个规矩，判据见文档站
+ */
+export function createPluginRegistry(
+  warn: (message: string) => void,
+  checkIcon: (name: string) => string | undefined,
+): PluginRegistry {
   const table = new Map<string, RegisteredPlugin>()
 
   return {
     describe(owner, info) {
       if (info.title === '') throw new Error(`${owner.pkg} 报了个空标题`)
+      const iconIssue = info.icon === undefined ? undefined : checkIcon(info.icon)
+      if (iconIssue !== undefined) warn(`${owner.pkg} 报名字：${iconIssue}`)
       const record: RegisteredPlugin = { ...info, entryId: owner.entryId, pkg: owner.pkg }
       const prev = table.get(owner.entryId)
       if (prev !== undefined) {

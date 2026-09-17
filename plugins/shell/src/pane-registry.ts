@@ -11,7 +11,11 @@ export interface PaneSpec {
   id: string
   /** 标题栏上那几个字 */
   title: string
-  /** lucide 的图标名（kebab-case，如 `file-text`） */
+  /**
+   * 标签上那枚图标：lucide 的**正名**，kebab-case（lucide.dev 上图标页写的那个，如
+   * `layout-grid`）。全集都认；认不出的照样进表、标签上画 `#`，登记那一刻日志里 warn 一句
+   * 说清怎么改。不给就画 `#`、不出声
+   */
   icon?: string
   /** 浏览器半的地址（`file://`），件从自己的 `import.meta.url` 算。没报的格开出来是一句错，不是空白 */
   client?: string
@@ -48,8 +52,14 @@ function keyOf(entryId: string, paneId: string): string {
 /**
  * `warn` 由调用方给，真跑时是 cordis logger。说不清自己是谁的抛错，撞名后来者赢但
  * 出声——两种错的性质不一样，判据见文档站。
+ *
+ * `checkIcon` 认图标名：认得回 `undefined`，认不出回一句话（真跑时对的是 `pane-icon.ts`
+ * 的名单）。认不出只 warn、照样进表。
  */
-export function createPaneRegistry(warn: (message: string) => void): PaneRegistry {
+export function createPaneRegistry(
+  warn: (message: string) => void,
+  checkIcon: (name: string) => string | undefined,
+): PaneRegistry {
   const table = new Map<string, RegisteredPane>()
 
   return {
@@ -61,6 +71,8 @@ export function createPaneRegistry(warn: (message: string) => void): PaneRegistr
         throw new Error(`${owner.pkg} 的窗格 id ${JSON.stringify(spec.id)} 带冒号——那是拼面板 id 的分隔符`)
       }
       if (spec.title === '') throw new Error(`${owner.pkg} 的窗格 ${spec.id} 没有标题`)
+      const iconIssue = spec.icon === undefined ? undefined : checkIcon(spec.icon)
+      if (iconIssue !== undefined) warn(`${owner.pkg} 的窗格 ${spec.id}：${iconIssue}；标签上先画成 #`)
       const key = keyOf(owner.entryId, spec.id)
       const record: RegisteredPane = { ...spec, entryId: owner.entryId, pkg: owner.pkg }
       const prev = table.get(key)

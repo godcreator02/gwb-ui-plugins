@@ -1,18 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
+import { iconProblem } from '../src/pane-icon.js'
 import { createPaneRegistry, type PaneOwner } from '../src/pane-registry.js'
 
 /**
- * 窗格注册表。要钉住的是三样：身份由服务填而不是件自己报、注销只收自己那份、
- * 一条条目一个命名空间。
+ * 窗格注册表。要钉住的是四样：身份由服务填而不是件自己报、注销只收自己那份、
+ * 一条条目一个命名空间、图标名认不出当场出声。
  */
 
 const echo: PaneOwner = { entryId: 'echo', pkg: '@godcreator/gwb-echo' }
 /** 同一个包挂的第二条条目：两份独立配置的实例，各注册各的 */
 const echo2: PaneOwner = { entryId: 'echo-2', pkg: '@godcreator/gwb-echo' }
 
+/** 真跑时名单是 lucide 全集；这儿只放用得着的两枚 */
+const catalog = { lucide: '1.0.0', keys: new Set(['Megaphone', 'LayoutGrid']) }
+
 function fresh() {
   const warn = vi.fn<(message: string) => void>()
-  return { warn, reg: createPaneRegistry(warn) }
+  return { warn, reg: createPaneRegistry(warn, (name) => iconProblem(name, catalog)) }
 }
 
 describe('register：件给三样，身份由服务填', () => {
@@ -43,6 +47,30 @@ describe('register：件给三样，身份由服务填', () => {
     reg.register(echo, spec)
     spec.title = '被改了'
     expect(reg.list()[0]!.title).toBe('回声')
+  })
+})
+
+describe('图标名：认不出照样进表，但登记那一刻说出来', () => {
+  it('认得的正名不出声', () => {
+    const { reg, warn } = fresh()
+    reg.register(echo, { id: 'view', title: '视图', icon: 'layout-grid' })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('名单里没有的：进表、原样留着，warn 里带包名、窗格 id、那个名字与版本', () => {
+    const { reg, warn } = fresh()
+    reg.register(echo, { id: 'view', title: '视图', icon: 'home' })
+    expect(reg.list()[0]!.icon).toBe('home')
+    expect(warn).toHaveBeenCalledOnce()
+    const said = warn.mock.calls[0]![0]
+    for (const part of ['gwb-echo', 'view', '"home"', '1.0.0']) expect(said).toContain(part)
+  })
+
+  it('不是 kebab-case 的也出声，话里说清要 kebab-case', () => {
+    const { reg, warn } = fresh()
+    reg.register(echo, { id: 'view', title: '视图', icon: 'LayoutGrid' })
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0]![0]).toContain('kebab-case')
   })
 })
 

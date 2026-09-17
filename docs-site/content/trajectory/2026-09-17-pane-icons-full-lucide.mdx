@@ -1,0 +1,39 @@
+---
+born-at: 2026-09-17T22:50
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 窗格图标认 lucide 全集
+domain: shell
+---
+
+## 背景
+
+标签图标表只认八个名字（scroll-text / store / puzzle / flask-conical / panel-left / folder-open /
+file-text / folders），认不出一律静默画 `#`；`PaneSpec.icon` 的类型注释写的却是「lucide 的图标名」。
+default 里在用的十个名字有六个（receipt / eye / activity / palette / gauge / layout-grid）画成 #——
+件只能猜，猜错没有任何报错。反馈从 bn-query 的 `layout-grid` 起（总控台中转）。
+
+## 结论与边界
+
+定：**认 lucide 全集的正名**（kebab-case，lucide.dev 图标页上那个名字），两半同吃一份判法
+（kebab 名拼成 lucide 导出名）。node 半登记时对名单——构建时从打进浏览器束的那份 lucide-react
+抄出来、带版本号，跟 client.js 一起发——认不出的照样进表，warn 点名包、窗格、名字、该怎么写；
+浏览器半从全集取，取不到画 `#`。`describeSelf` 的 icon 同一套认法。`registerPane` 的签名与参数
+形状不动。
+
+代价（隔离 home `shell-2609172243` 实测，无物证目录）：`client.js` 1,146,001 → 2,264,313 字节；
+同一张页里交替 import 0.7.2 与 0.7.3-dev 两份 `client.js` 各 7 轮，中位 21ms → 48ms，即每次页面开机
+多约 27ms。
+
+不选的两条：
+
+- **封闭集合 + 登记时 warn + 说明书列名单**：出声治得了「静默」，治不了「件猜名字」——名单外的
+  图标每加一枚都要外壳发一版，件跟 UI 平台仓为一枚图标耦合，这次的病正是从这儿来的；而且把类型
+  注释承诺的「lucide 图标名」收窄成几个名字，等于改了被 inject 那一面的语义
+- **按需加载**：esbuild 分块或 lucide 的 DynamicIcon，开机不付那 27ms，但 dist 里多出约两千个
+  分块文件（每次装机、每趟 devkit.dev 都要解包、硬链一遍），标签首帧先空一下再出图标；只拆一个
+  `icons.js` 异步载的变体总 CPU 一点不省、只挪出首帧，平白多一条异步态与一次闪烁。27ms 在开机
+  总时序里买不起这两份复杂度
+
+边界：认的是**打进束的那一版** lucide-react 的正名。比它新的图标、lucide 改名前的旧名（`home` 之于
+`house`）会 warn，话里带着版本号；升 lucide-react 重编外壳即跟上。

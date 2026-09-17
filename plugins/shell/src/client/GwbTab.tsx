@@ -1,23 +1,12 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
-import {
-  FileText,
-  FlaskConical,
-  FolderOpen,
-  Folders,
-  Hash,
-  PanelLeft,
-  Puzzle,
-  ScrollText,
-  Store,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
+import { Hash, X, icons, type LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
+import { iconKey } from '../pane-icon.js'
 
 /**
- * 井里每一格的标签：卡头上的一块浅色圆角底。图标名是件注册窗格时给的（认不出画
- * Hash，不认得的图标名不该让标签空一块）。
+ * 井里每一格的标签：卡头上的一块浅色圆角底。图标是件注册窗格时给的 lucide 正名，从全集里取
+ * （没给或认不出画 Hash，不该让标签空一块；认不出的登记那一刻 node 半已经 warn 过）。
  *
  * 激活态订阅的是**这一格自己的** activePanel（面板会被拖去别的组，所以两级订阅：
  * 先跟住自己在哪一组，再跟住那一组显示的是谁）。预览格在标题前画一枚小空心圆点
@@ -25,20 +14,12 @@ import { cn } from 'cn'
  * 跟件调 `keepPane()` 是同一个动作。
  */
 
-/** 窗格注册用的图标裸名 → 图标。加一枚就添一行，名字跟注册那边的 kebab 裸名对齐 */
-const ICONS: Record<string, LucideIcon> = {
-  'scroll-text': ScrollText,
-  store: Store,
-  puzzle: Puzzle,
-  'flask-conical': FlaskConical,
-  'panel-left': PanelLeft,
-  'folder-open': FolderOpen,
-  'file-text': FileText,
-  folders: Folders,
-}
+/** lucide 全集，键是导出名（PascalCase）。整份打进本束——件登记什么正名都画得出 */
+const ALL_ICONS: Readonly<Record<string, LucideIcon>> = icons
 
 function iconFor(name: string | undefined): LucideIcon {
-  return name === undefined || ICONS[name] === undefined ? Hash : ICONS[name]
+  const key = name === undefined ? undefined : iconKey(name)
+  return key !== undefined && Object.hasOwn(ALL_ICONS, key) ? ALL_ICONS[key]! : Hash
 }
 
 export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {

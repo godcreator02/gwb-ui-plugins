@@ -4,8 +4,8 @@
  * cordis 拖进浏览器束」，纯常量没有这个问题，所以跨半的命令名住这儿、各吃一份，
  * 不再两边抄字符串（抄了的那两处迟早漂，而漂了没有任何报错）。
  *
- * `theme.startupCss` 那类**跨仓**软契约不归这儿——那是两个仓各存一份字符串的约定，
- * 本仓内没有第二份。
+ * `theme.startupCss` 那类**跨件**软契约不归这儿——那是两个件各存一份字符串的约定，外壳这边
+ * 只有 node 半用它（`startup-style.ts`），没有第二份。
  */
 
 /** 浏览器半取表的两条命令。注册与调用两处同吃这两个常量 */
@@ -19,4 +19,6 @@ export interface ShellEnv {
   home: string
   /** 按序加载：令牌表、dockview 表、本件自己的表 */
   styles: string[]
+  /** 用户外观样式（gwb-theme 的字体覆盖 + 自定义 CSS），注在三张表之后。theme 没装或没设就没有这一项 */
+  startupCss?: string
 }
