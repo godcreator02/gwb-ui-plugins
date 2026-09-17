@@ -29,3 +29,21 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 
 判别实验也现成：往 `onWellReady` 里订阅之后手动 `api.addPanel` 一次看 `scheduleSave`
 醒不醒——醒则是怀疑 2，不醒则是怀疑 1。
+
+## 2026-09-17 总控台会话：窗格容器的 data-gwb-plugin 取自布局存档，包改名后一直是旧名
+
+来源：总控台会话（修 default 里「单元」格整片失样时查出来的；unit-folder 那头已在 0.6.0 改用类名前缀，
+不再依赖这个属性，所以这边不急）。
+
+现象：`PluginPane` 挂的 `data-gwb-plugin={pluginKey}`，`pluginKey` 来自 dockview 面板 params，也就是
+布局存档里存下的那份，不是现场查注册表。default 的 `shell.layout.get` 里，换 scope 之前开的格全都还是
+`@godcreator02/gwb-*`（单元、日志、站内预览、站监控、外观、插件源），而 `entryId` 没变、格照样挂得上。
+于是属性上的「身份」对不上现在的包名，谁也不报错。
+
+影响：前缀方案下属性「只是身份标记」，样式不受影响；但注释里说它是给探针、样式调试「认件的把手」，
+这个把手在老存档上指错了件。另外 `saved` 里那套叫「88」的布局引的 plugins / hello / status 是早没了的件。
+
+建议（未判，供参考）：挂载时用 `fetchPaneModule` 回来的现场包名覆盖 params 里那份；或读存档时按
+`entryId` 把 `pluginKey` 刷成当前值，顺手在下次落盘时写回。
+
+复现：`shell.layout.get` 看任何一个换 scope 之前开过的格的 `params.pluginKey`。
