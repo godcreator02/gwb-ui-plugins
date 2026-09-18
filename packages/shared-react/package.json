@@ -42,5 +42,6 @@
   "repository": {
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
-  }
+  },
+  "keywords": ["gwb"]
 }
