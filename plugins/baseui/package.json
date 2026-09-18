@@ -45,7 +45,7 @@
     "@godcreator/gwb-logger": "0.4.1",
     "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-plugin-manager": "0.5.3",
-    "@godcreator/gwb-repo-kit": "0.2.2",
+    "@godcreator/gwb-repo-kit": "0.2.3",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
