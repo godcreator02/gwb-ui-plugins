@@ -2,9 +2,8 @@
   "name": "@godcreator/gwb-tokens",
   "version": "0.1.3",
   "author": {"name": "godcreator"},
-  "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
+  "description": "设计令牌表：页面级共享基础设施——只出 theme.css（声明面），内核按 gwb.shared 拼进页面 importmap。",
   "type": "module",
-  "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",
   "//prefix": "**前缀改内置主题变量名这件事已被国有化接管（0.1.1 起）**。prefix(<短名>) 仍会把 Tailwind 内置主题变量名改掉（--spacing 变 --hello-spacing），但映射面已把这些键全部映射到声明面的 --gwb-* 度量衡——件的产物零字面 fallback，间距/字重/阴影/断点全部经这张表送值、可主题化。仍走不通的只剩一件事：在页面上全局声明一份 Tailwind 原名（不带件前缀）的默认主题去影响所有件——名字对不上，别试。语义与度量衡都只走映射面",
   "exports": {
     "./theme.css": "./dist/theme.css",
@@ -25,7 +24,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "tailwindcss 只是构建输入——preflight 那段样式从它的包里取出来拼进产物，运行期没人 import 它。件那边编自己的表时另有一份 tailwindcss，跟这里无关",
   "devDependencies": {
     "tailwindcss": "^4.3.0",
     "typescript": "^7.0.2"

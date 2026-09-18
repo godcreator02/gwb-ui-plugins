@@ -11,7 +11,6 @@
     "doc": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst check",
     "doc:render": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst render --target ai"
   },
-  "//devDeps": "仓根只装门禁用的：oxlint、vitest、typescript、@types/node。构建线不是仓里共享的一份——每个件自己装 esbuild 与 @tailwindcss/cli",
   "devDependencies": {
     "@types/node": "^24.0.0",
     "oxlint": "1.81.0",
