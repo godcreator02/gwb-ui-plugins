@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "外观件：全局启动样式表与外观窗格；没外壳也照常挂，样式由件自己编自己那张表（类名 theme: 前缀围栏）。服务无；skill 0；命令 3 条。",
+  "description": "外观件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格；没外壳也照常挂，样式由件自己编自己那张表（类名 theme: 前缀围栏）。服务无；skill 0 份；命令 3 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "src"
   ],
@@ -40,6 +39,7 @@
   },
   "devDependencies": {
     "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-repo-kit": "0.2.1",
     "@godcreator/gwb-commands": "0.4.3",
     "@godcreator/gwb-settings": "0.2.1",
     "@godcreator/gwb-shell": "workspace:*",

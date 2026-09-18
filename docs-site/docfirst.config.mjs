@@ -22,11 +22,6 @@ export default {
   outputs: {
     'content/outputs/agents.mdx': ['../AGENTS.md'],
     'content/outputs/readme.mdx': ['../README.md'],
-    'content/outputs/catalog-shell.mdx': ['../plugins/shell/catalog.md'],
-    'content/outputs/catalog-theme.mdx': ['../plugins/theme/catalog.md'],
-    'content/outputs/catalog-baseui.mdx': ['../plugins/baseui/catalog.md'],
-    'content/outputs/catalog-tokens.mdx': ['../packages/tokens/catalog.md'],
-    'content/outputs/catalog-shared-react.mdx': ['../packages/shared-react/catalog.md'],
   },
   components: {
     // 讲机制的 html 动画住 public/，正文里的 <iframe> 只按原文压平

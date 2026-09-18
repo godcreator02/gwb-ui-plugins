@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "外壳：窗格容器的唯一入口——注册窗格、开格、布局档与多桌面、状态栏报版本；面板与样式表的地址由 node 半算成 file:// 报给页面。服务 gwbShell；skill 0；命令 10 条。",
+  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；浏览器半与样式表的地址由 node 半算成 file:// 报给页面。服务 gwbShell；skill 0 份；命令 10 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "src"
   ],
@@ -39,6 +38,7 @@
     "@godcreator/gwb-commands": "0.4.3",
     "@godcreator/gwb-data": "0.1.2",
     "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-repo-kit": "0.2.1",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",

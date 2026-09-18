@@ -300,6 +300,30 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 这是「可选依赖」在命令面上的常规形态：**问总线有没有，不拿失败当探测**。为什么查在 node 半、
 不在浏览器半，见轨迹卡[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
 
+### 这两个件各依赖谁：硬等待与局部注入
+
+主题插件与基础界面插件都挂在别人的服务上。**硬的**是 cordis 的 `inject`——缺了本件就不挂；
+**软的是局部注入**（`ctx.inject([…])` 开一条子 fiber）——缺谁那一条永远 PENDING，本件照常挂、
+只是少画那一块。
+
+**主题插件**：`gwbSettings` 与 `gwbCommands` 是硬等待——没有设置存不了三项外观，没有命令总线
+三条命令出不了进程；`gwbShell` 是局部注入——没外壳也照常挂，只是没有「外观」那一格。
+
+{/* ref file="../plugins/theme/src/index.ts" lines="31-32" */}
+
+{/* ref file="../plugins/theme/src/index.ts" lines="123-134" */}
+
+**基础界面插件**：硬等待只有 `gwbShell`——没有窗格容器就没有「窗格集」；`gwbLogger` 与
+`gwbPluginManager` 都是局部注入，缺谁少画谁的窗格，其余照常。
+
+{/* ref file="../plugins/baseui/src/index.ts" lines="31-32" */}
+
+{/* ref file="../plugins/baseui/src/index.ts" lines="40-52" */}
+
+两条都不反向：没装主题插件的 home 里，外壳只是少一份启动样式（上一节那条软契约）；没装
+logger / plugin-manager 的 home 里，基础界面件只是少画那一格。外壳自己那两条硬依赖
+（`gwbCommands` / `gwbData`）在[外壳](/docs/shell)的「依赖」一节。
+
 ### `gwb.shared`：声明面
 
 包清单里的一个字段，键是裸名、值是本包的导出子路径。上一节已经钉过它；这儿要说的是它的

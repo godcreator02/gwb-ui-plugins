@@ -2,7 +2,7 @@
   "name": "@godcreator/gwb-baseui",
   "version": "0.1.0",
   "author": {"name": "godcreator"},
-  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务一律嵌套注入。服务无；skill 0；命令 0 条。",
+  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。服务无；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "src"
   ],
@@ -46,6 +45,7 @@
     "@godcreator/gwb-logger": "0.4.1",
     "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-plugin-manager": "0.5.1",
+    "@godcreator/gwb-repo-kit": "0.2.1",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
