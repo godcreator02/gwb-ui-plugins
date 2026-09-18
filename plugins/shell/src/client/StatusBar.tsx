@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { FolderOpen, LayoutGrid, Monitor, Moon, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
+import { FolderOpen, Info, LayoutGrid, Monitor, Moon, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,12 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { DesktopRow, SavedLayout } from '../layout.js'
 import type { OpenableSpec } from '../openable.js'
+import type { Versions } from '../protocol.js'
+import { versionCell } from '../versions.js'
 
 /**
  * 井底下那条。**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」，
  * 也正因如此它是桌面切换器唯一合理的落点：它不属于任何一口桌面，站在所有井外面。
  *
- * 左起：桌面切换、布局菜单、可开窗格的＋列表、home 路径；右边：刷新、亮暗，布局没存上时
+ * 左起：桌面切换、布局菜单、可开窗格的＋列表、home 路径；右边：版本、刷新、亮暗，布局没存上时
  * 再亮一格告警。
  *
  * 那张「可开的窗格」列表只有一个动作：**打开这一格，已经开着就聚焦**（都在活动那口井里）。
@@ -181,6 +183,7 @@ export function StatusBar({
   specs,
   focusIds,
   home,
+  versions,
   desktops,
   activeDesktopId,
   savedLayouts,
@@ -204,6 +207,8 @@ export function StatusBar({
   focusIds: readonly string[]
   /** home 目录的绝对路径 */
   home: string
+  /** 版本那一格：格子上写产品版本（内核版），悬停列内核、外壳、运行时 */
+  versions: Versions
   /** 桌面清单与活动桌面 id。井常驻保活，切换只是换哪口显示 */
   desktops: readonly DesktopRow[]
   activeDesktopId: string
@@ -223,6 +228,7 @@ export function StatusBar({
   onResetLayout: () => void
   onRetrySave: () => void
 }): ReactElement {
+  const version = versionCell(versions)
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   const toggleDark = (): void => {
     const next = !dark
@@ -289,6 +295,11 @@ export function StatusBar({
           布局没存上
         </button>
       )}
+
+      <div className={CELL} title={version.title}>
+        <Info className="shell:size-3.5" />
+        <span className="shell:font-mono">{version.label}</span>
+      </div>
 
       {/* 整页 reload，不是外壳内部重建：boot 链原样重跑，boot 后才变的注册表之类
           全吃到；内核那半不受影响 */}

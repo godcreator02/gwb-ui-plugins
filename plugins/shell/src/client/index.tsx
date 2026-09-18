@@ -35,7 +35,7 @@ import {
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
 import { isOpenPaneAction, openPaneOptionsOf } from '../open-pane.js'
-import { ENV_COMMAND, type ShellEnv } from '../protocol.js'
+import { ENV_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
@@ -96,10 +96,12 @@ function sweepBodyPortals(activeName: string): void {
 function App({
   specs,
   home,
+  versions,
   initialDoc,
 }: {
   specs: OpenableSpec[]
   home: string
+  versions: Versions
   /** 盘上的档（已并好缺省：第一次开机或档废了就是 defaultDoc()，v2 在解析那层已迁成 v3） */
   initialDoc: LayoutDoc
 }): ReactElement {
@@ -406,6 +408,7 @@ function App({
         specs={specs}
         focusIds={focusIds}
         home={home}
+        versions={versions}
         desktops={desktops}
         activeDesktopId={activeId}
         savedLayouts={saved}
@@ -483,7 +486,7 @@ async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => M
     // 容器另挂它自己的那个，同样只作身份用
     root.setAttribute('data-gwb-plugin', SELF)
     const reactRoot = createRoot(root)
-    reactRoot.render(<App specs={specs} home={args.home} initialDoc={initialDoc} />)
+    reactRoot.render(<App specs={specs} home={args.home} versions={args.versions} initialDoc={initialDoc} />)
     return {
       unmount() {
         // 布局还有没落盘的那半拍，拆树前抢着写一把——赶不上也就丢最后 400ms 的挪动
@@ -544,9 +547,9 @@ export default function mountShell(root: HTMLElement): { dispose(): void } {
       throw new Error(`${ENV_COMMAND} 没回环境：${reply.error ?? '没说原因'}`)
     }
     if (!alive()) return undefined
-    const { home, styles, startupCss } = reply.data
+    const { home, styles, startupCss, versions } = reply.data
     return prepareShell(
-      { host: { call: (command, args) => window.gwb.command(command, args) }, home, styles, startupCss },
+      { host: { call: (command, args) => window.gwb.command(command, args) }, home, styles, startupCss, versions },
       root,
     )
   })

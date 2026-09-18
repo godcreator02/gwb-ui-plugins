@@ -1,0 +1,37 @@
+---
+born-at: 2026-09-18T11:15
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 状态栏报版本
+domain: shell
+---
+
+## 背景
+
+用户要在状态栏上看到跑的是哪一版。前一晚升 default 时，「现在到底跑的是 0.2.3 还是 0.2.4」只能去翻
+`runtime.json`；再前一晚查删目录那个 bug，要知道宿主 Electron 带的是哪版 Node，devkit 得另做实验去摸。
+
+版本从哪来先后摆过三条：外壳自己调 `app.getVersion()`（内核零改动）；内核写进 `runtime.json`、外壳读
+文件；内核契约面给 `gwbKernel` 加 `version`。第一条被否——安装版里 `app.getVersion()` 读的是应用壳的
+清单，对不对全靠打包时渲染那一步，不是内核在报；第二条被否——进程里的东西绕一圈读盘。落在第三条，
+内核那头的了断记在内核仓的轨迹卡（gwbKernel 带版本号，内核 0.2.5、词汇表 0.1.2）。
+
+## 结论与边界
+
+`shell.env` 的回执加必选的 `versions: { kernel, shell, electron, node, chrome }`，node 半答命令时拼好：
+`kernel` 取 `gwbKernel.version`，`shell` 读本包清单，其余三格是主进程 `process.versions`。浏览器半只排字：
+状态栏右侧、刷新左边一格，写 `gwb <内核版>`（跟发行包 `gwb v<版>` 同名），悬停四行列全。只读不可点。
+
+格子的位置、字样、悬停列哪些，是用户在三选一里拍的：位置选了右侧（离刷新近），字样选了产品名。
+
+边界：
+
+- **不留兼容**（用户拍板）：`versions` 与 `gwbKernel.version` 都必选，外壳 0.9.0 跑在 0.2.5 之前的内核上
+  会显示 `gwb undefined`，生态随内核一起升。
+- Node / Electron / Chromium 不经内核：`process.versions` 在进程里就是运行时自己在报，转一道不更准。
+- 不查新版本、不提示升级——那要联网问源，是另一件事。
+- 没有外壳时内核那张只读现状页不显示版本（那页归内核，眼下没有需求）。
+
+验机：隔离 home `shellver-2609181107`（安装版内核 0.2.5）经 `devkit.dev` 部署
+`0.9.1-dev.202609181108`，页面上读到格子 `gwb 0.2.5`、右邻「刷新」、悬停四行，内核版与该 home 的
+`runtime.json` 一致，日志零 warn / error。

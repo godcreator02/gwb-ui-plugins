@@ -30,7 +30,7 @@
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
     "@godcreator/gwb-logger": ">=0.4.0",
-    "@godcreator/gwb-plugin-api": ">=0.1.1",
+    "@godcreator/gwb-plugin-api": ">=0.1.2",
     "@godcreator/gwb-plugin-manager": ">=0.4.0",
     "@godcreator/gwb-shared-react": ">=0.0.4",
     "@godcreator/gwb-shell": ">=0.7.2",
@@ -48,7 +48,7 @@
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入（本件自己编自己那张 dist/style.css，版本对齐仓根 ^4.3.0）；@tailwindcss/node 是 tests/prefix.test.ts 用的；tw-animate-css 给 animate-in 一族类名；react/@types/cn/radix-ui/class-variance-authority/lucide-react 是浏览器半的束内依赖（esbuild 打进 dist/client.js）；@types/node 归 node 半。全都在构建/测试期，运行期没人 import 它们，所以是 dev",
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.0",
-    "@godcreator/gwb-plugin-api": "0.1.1",
+    "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-plugin-manager": "0.4.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",

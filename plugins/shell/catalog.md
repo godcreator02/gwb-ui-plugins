@@ -10,7 +10,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/shell/src/index.ts:102-102 · 新鲜 -->
+<!-- 来源 ../plugins/shell/src/index.ts:107-107 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands', 'gwbData']

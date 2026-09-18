@@ -10,7 +10,8 @@ import type {} from '@godcreator/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
-import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv } from './protocol.js'
+import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv, type Versions } from './protocol.js'
+import { versionsOf, type RuntimeVersions } from './versions.js'
 import { DESKTOP_EVENT } from './desktops.js'
 import { parseOpenPaneArgs } from './open-pane.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
@@ -35,7 +36,7 @@ export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
 const nodeRequire = createRequire(import.meta.url)
 const fileUrl = (spec: string): string => pathToFileURL(nodeRequire.resolve(spec)).href
 
-function shellEnv(home: string): ShellEnv {
+function shellEnv(home: string, versions: Versions): ShellEnv {
   return {
     home,
     styles: [
@@ -43,8 +44,12 @@ function shellEnv(home: string): ShellEnv {
       new URL('./dockview.css', import.meta.url).href,
       new URL('./style.css', import.meta.url).href,
     ],
+    versions,
   }
 }
+
+/** 本包清单：`dist/` 的上一级。外壳自己的版本读它 */
+const MANIFEST_URL = new URL('../package.json', import.meta.url)
 
 /** 图标名单：`build.ts` 从打进 client.js 的那份 lucide-react 抄出来，跟 client.js 是邻居 */
 const ICON_CATALOG_URL = new URL('./pane-icons.json', import.meta.url)
@@ -111,7 +116,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly pluginTable: PluginRegistry
   /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
   private readonly info: (message: string) => void
-  /** 内核那三个名字。构造时取——那时 this.ctx 还是提供方自己的 */
+  /** 内核服务（dataDir / version / emit / setShell）。构造时取——那时 this.ctx 还是提供方自己的 */
   private readonly kernel: GwbKernelApi
 
   constructor(ctx: GwbContext) {
@@ -193,13 +198,17 @@ export default class GwbShell extends Service implements GwbShellApi {
    * （theme 没装就没有，见 `startup-style.ts`）
    */
   private registerEnvCommand(cli: GwbCommands): void {
-    const env = shellEnv(this.kernel.dataDir)
+    // Electron 主进程的 process.versions 带 electron / chrome 两格，@types/node 的形状里没有
+    const runtime = process.versions as unknown as RuntimeVersions
+    const versions = versionsOf(this.kernel.version, readFileSync(MANIFEST_URL, 'utf8'), runtime)
+    const env = shellEnv(this.kernel.dataDir, versions)
     this.ctx.effect(() =>
       cli.register(
         {
           name: ENV_COMMAND,
-          description: '外壳浏览器半开机要的环境（home、样式表的地址、用户外观样式）',
-          usage: '回 { home, styles, startupCss? }——startupCss 是 theme.startupCss 此刻的值，theme 没装或没设就没有这一项。无参数',
+          description: '外壳浏览器半开机要的环境（home、样式表的地址、用户外观样式、版本）',
+          usage:
+            '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，theme 没装或没设就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是本件版本，其余三格是主进程 process.versions。无参数',
           plugin: '@godcreator/gwb-shell',
         },
         async (): Promise<ShellEnv> => {

@@ -7,6 +7,7 @@
  */
 
 import type { OpenPaneOptions } from '../openable.js'
+import type { Versions } from '../protocol.js'
 
 /** 内核交出来的命令口。整条链路是：界面 → IPC → 主进程里的 ctx.gwbCommands */
 export interface HostBridge {
@@ -22,6 +23,8 @@ export interface ShellArgs {
   styles: string[]
   /** 用户外观样式，注在三张表之后。theme 没装或没设就没有 */
   startupCss?: string
+  /** 状态栏版本那一格报的：内核、外壳、运行时 */
+  versions: Versions
 }
 
 /** 注册表里一条过桥之后的样子。跟 node 半的 `RegisteredPane` 是同一个形状 */
