@@ -22,7 +22,7 @@ tokens（视觉契约）与 shared-react（react 运行时口粮）跟 shell 同
 
 ## 依赖纪律
 
-* peer 一律 `>=` 不写 `^`（caret 在 0.0.x 锁死 patch）
+* peer 范围怎么写：正本在 devkit 的 release skill「gwb-release」，本页不复述
 * **跨仓基础插件**（commands / data / settings / logger / plugin-manager / plugin-api）的
   dev 写 **registry 精确版本**——本仓没有它们，`workspace:*` 解析不到
 * **同仓包**（shell / theme / baseui / shared-react / tokens 之间）dev 照旧 `workspace:*`
