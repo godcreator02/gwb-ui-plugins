@@ -15,3 +15,6 @@ minimumReleaseAgeExclude:
   - '@godcreator/*'
   - '@godcreator/*'
   - lucide-react@1.43.0
+
+# peer 对不上时 install 当场报错退出，不只 WARN
+strictPeerDependencies: true
