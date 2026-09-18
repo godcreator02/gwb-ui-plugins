@@ -18,7 +18,7 @@ docfirst: none
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="76-96" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="81-101" */}
 
 插件给的那几样，与服务替它填上的身份：
 
@@ -88,7 +88,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 `registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="316-339" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="325-348" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。插件报不出名字，也就没法冒充别人的窗格。
@@ -519,7 +519,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="215-235" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="224-244" */}
 
 **＋列表走跟插件调 `openPane` 同一个 `planOpen`**，所以行为一致。**已开的那条不 disable**
 ——点它是聚焦，那是个有用的动作，标一下就够。
