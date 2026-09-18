@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shared-react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {"name": "godcreator"},
   "description": "react 系运行时环境：react / react-dom 四个裸名的 CJS→ESM 束，经页面 importmap 全页同一份实例。",
   "type": "module",
