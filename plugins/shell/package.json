@@ -38,7 +38,7 @@
     "@godcreator/gwb-commands": "0.4.3",
     "@godcreator/gwb-data": "0.1.2",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.1",
+    "@godcreator/gwb-repo-kit": "0.2.2",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
