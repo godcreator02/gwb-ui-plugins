@@ -159,7 +159,7 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 
 机制是页面级的 **importmap**：提供方在自己的包清单里声明「我给页面提供这几个裸名」，
 
-{/* ref file="../packages/shared-react/package.json" lines="19-27" */}
+{/* ref file="../packages/shared-react/package.json" lines="18-26" */}
 
 内核扫这份声明拼成一张表，赶在外壳第一句裸名 import **之前**注进页面，**只注一次**。
 **内核不认识 `react` 这个词，它只搬运声明**——扫描、拼装与注入时序的正本在内核仓文档站
@@ -518,7 +518,7 @@ logger / plugin-manager 的 home 里，基础界面件只是少画那一格。�
 
 **三、构建脚本补一步**：编译本插件那张表，输入就是那份入口，扫描面由入口里最后那条说了算。
 
-{/* ref file="../plugins/baseui/package.json" lines="22-28" */}
+{/* ref file="../plugins/baseui/package.json" lines="21-26" */}
 
 **四、拉组件**：`shadcn add` 什么就有什么，拉下来是本插件目录里的文件，跟着本插件的束一起打包。
 组件的运行时依赖**打进本束**，别外置（不在 importmap 里的裸名，外置就是运行期炸）。
