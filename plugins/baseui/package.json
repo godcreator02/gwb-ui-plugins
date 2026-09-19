@@ -25,11 +25,11 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-logger": "^0.4.1",
+    "@godcreator/gwb-logger": "^0.4.2",
     "@godcreator/gwb-plugin-api": "^0.1.2",
-    "@godcreator/gwb-plugin-manager": "^0.5.4",
+    "@godcreator/gwb-plugin-manager": "^0.5.5",
     "@godcreator/gwb-shared-react": "^0.1.1",
-    "@godcreator/gwb-shell": "^0.12.0",
+    "@godcreator/gwb-shell": "^0.13.1",
     "@godcreator/gwb-tokens": "^0.1.4",
     "cordis": "^4.0.0-rc.9"
   },
@@ -42,10 +42,10 @@
     }
   },
   "devDependencies": {
-    "@godcreator/gwb-logger": "0.4.1",
+    "@godcreator/gwb-logger": "0.4.2",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-plugin-manager": "0.5.4",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-plugin-manager": "0.5.5",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
