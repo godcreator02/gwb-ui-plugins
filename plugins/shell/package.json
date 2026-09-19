@@ -19,7 +19,15 @@
     "dist",
     "src"
   ],
-  "//gwb": "**整段没有**:这个件是外壳,而「我是外壳」这件事靠 node 半调 kernel.setShell 说,不靠包清单。清单里只剩共享包的 gwb.shared 有人读（内核扫它拼 importmap），这个件不是共享包",
+  "//gwb": "只有 provides 一格（devkit.services 读它把服务的用法带进回执，repo-kit 自述守卫钉它与源码提供的服务互为充要）。「我是外壳」这件事靠 node 半调 kernel.setShell 说，不靠包清单；共享包那格 gwb.shared 这个件没有，它不是共享包",
+  "gwb": {
+    "provides": {
+      "gwbShell": {
+        "summary": "窗格注册服务：插件在 apply 里说「我有一个窗格」、报自己的名字",
+        "usage": "inject: ['gwbShell']，在 apply 里 ctx.gwbShell.registerPane({ id, title, icon?, client?, style?, kind? })——kind 'tool'（缺省，整页一份）或 'document'（能多开）；ctx.gwbShell.describeSelf({ title, icon? }) 报件名。两个都回注销函数、件卸载时自动摘。panes() / plugins() 读此刻的两张表。身份（pkg、entryId）由服务从调用方的 fiber 上取，插件不用报"
+      }
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
@@ -27,18 +35,18 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.3",
-    "@godcreator/gwb-data": "^0.1.3",
+    "@godcreator/gwb-commands": "^0.4.4",
+    "@godcreator/gwb-data": "^0.1.4",
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-shared-react": "^0.1.1",
     "@godcreator/gwb-tokens": "^0.1.4",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "0.4.3",
-    "@godcreator/gwb-data": "0.1.3",
+    "@godcreator/gwb-commands": "0.4.4",
+    "@godcreator/gwb-data": "0.1.4",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",

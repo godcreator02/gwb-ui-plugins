@@ -49,7 +49,9 @@ export function apply(ctx: GwbContext) {
 它只住注册表、不进面板 params，布局文件里没有它。
 
 **给人看的名字归运行时**（`describeSelf`），不进包清单——包清单里没人读的字段死掉时
-没有任何机制会发现。包清单里有人读的只剩 `gwb.shell` 与 `gwb.shared` 两个字段。
+没有任何机制会发现。包清单里有人读的只剩 `gwb.shell` 与 `gwb.shared` 两个字段，外加
+`gwb.provides`（本件提供哪些服务、各自的一句话与用法：`devkit.services` 读它，repo-kit 的自述守卫钉它与
+源码里提供的服务互为充要——本件就一条 `gwbShell`）。
 
 **跟 `gwb-commands` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：插件卸载时表上
 那几条自动摘掉。它们仍然回注销函数，那是给要提前摘的场景。
