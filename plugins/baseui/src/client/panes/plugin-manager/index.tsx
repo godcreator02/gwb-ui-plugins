@@ -37,6 +37,7 @@ import {
 } from './rows'
 import {
   acceptSettings,
+  formatDefault,
   orphanSettings,
   parseSlotKey,
   settingsForEntry,
@@ -204,7 +205,11 @@ type Filter = 'all' | 'on' | 'off' | 'bad'
 
 const FILTER_LABEL: Record<Filter, string> = { all: '全部', on: '启用', off: '停用', bad: '异常' }
 
-/** 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那四个值一一对应 */
+/**
+ * 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那五个值一一对应。
+ * **没设过值的项把声明方的默认画成灰占位**——空框不再让人以为没配好；`string-list`
+ * 是整行宽的 textarea，不走这儿的右列小控件，布局在 `SettingLine` 里分流。
+ */
 function SettingField({
   row,
   value,
@@ -215,15 +220,27 @@ function SettingField({
   onChange: (next: unknown) => void
 }): ReactElement {
   const [bare, setBare] = useState(false)
+  /** secret 的默认不画——默认值不该往明文占位符里放 */
+  const fallback = row.type !== 'secret' && row.default !== undefined ? formatDefault(row.default) : undefined
 
   if (row.type === 'boolean') {
-    return <Switch checked={value === true} onCheckedChange={onChange} />
+    return (
+      <div className="baseui:flex baseui:items-center baseui:gap-2">
+        <Switch checked={value === true} onCheckedChange={onChange} />
+        {value === undefined && typeof row.default === 'boolean' && (
+          <span className="baseui:text-xs baseui:text-muted-foreground" title="没设过值，此刻生效的是声明方的默认">
+            默认{row.default ? '开' : '关'}
+          </span>
+        )}
+      </div>
+    )
   }
   if (row.type === 'number') {
     return (
       <Input
         type="number"
         className="baseui:h-8 baseui:w-32 baseui:text-right baseui:tabular-nums"
+        placeholder={fallback}
         value={typeof value === 'number' ? String(value) : ''}
         onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
       />
@@ -252,14 +269,21 @@ function SettingField({
   return (
     <Input
       className="baseui:h-8 baseui:w-56"
-      placeholder="（空）"
+      placeholder={fallback ?? '（空）'}
       value={typeof value === 'string' ? value : ''}
       onChange={(e) => onChange(e.target.value)}
     />
   )
 }
 
-/** 一项设置的一行：左边说明，右边控件 */
+/** string-list 的值 ↔ textarea 的行。legacy 的分号串原样显示，人能看到没丢 */
+function listText(value: unknown): string {
+  if (Array.isArray(value)) return value.filter((one): one is string => typeof one === 'string').join('\n')
+  if (typeof value === 'string') return value
+  return ''
+}
+
+/** 一项设置的一行：`string-list` 整行宽（textarea 逐行编辑），其余左边说明右边控件 */
 function SettingLine({
   row,
   value,
@@ -269,29 +293,48 @@ function SettingLine({
   value: unknown
   onChange: (next: unknown) => void
 }): ReactElement {
+  const label = (
+    <div className="baseui:min-w-0 baseui:flex-1">
+      <div className="baseui:flex baseui:items-center baseui:gap-2">
+        <span className="baseui:text-sm">{row.title ?? row.key}</span>
+        <code className="baseui:rounded baseui:bg-muted baseui:px-1 baseui:py-0.5 baseui:font-mono baseui:text-[10px] baseui:text-muted-foreground">{row.key}</code>
+        {row.live === false && (
+          <Badge variant="outline" className="baseui:px-1 baseui:py-0 baseui:text-[10px]" title="此刻没有件声明它——件停着或者已经卸了">
+            无主
+          </Badge>
+        )}
+        {row.type === 'secret' && (
+          <Badge
+            variant="outline"
+            className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
+            title="secret 只影响显示打码，盘上存的是明文"
+          >
+            明文落盘
+          </Badge>
+        )}
+      </div>
+      {row.description !== undefined && <p className="baseui:mt-0.5 baseui:text-xs baseui:text-muted-foreground">{row.description}</p>}
+    </div>
+  )
+
+  if (row.type === 'string-list') {
+    return (
+      <div className="baseui:px-3 baseui:py-2">
+        {label}
+        <textarea
+          spellCheck={false}
+          className="baseui:mt-1 baseui:h-28 baseui:w-full baseui:resize-y baseui:rounded-md baseui:border baseui:border-border baseui:bg-background baseui:px-2 baseui:py-1.5 baseui:font-mono baseui:text-xs baseui:outline-none baseui:focus:border-primary"
+          placeholder={row.default !== undefined ? formatDefault(row.default) : '一行一项'}
+          value={listText(value)}
+          onChange={(e) => onChange(e.target.value.split('\n'))}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="baseui:flex baseui:items-start baseui:justify-between baseui:gap-4 baseui:px-3 baseui:py-2">
-      <div className="baseui:min-w-0 baseui:flex-1">
-        <div className="baseui:flex baseui:items-center baseui:gap-2">
-          <span className="baseui:text-sm">{row.title ?? row.key}</span>
-          <code className="baseui:rounded baseui:bg-muted baseui:px-1 baseui:py-0.5 baseui:font-mono baseui:text-[10px] baseui:text-muted-foreground">{row.key}</code>
-          {row.live === false && (
-            <Badge variant="outline" className="baseui:px-1 baseui:py-0 baseui:text-[10px]" title="此刻没有件声明它——件停着或者已经卸了">
-              无主
-            </Badge>
-          )}
-          {row.type === 'secret' && (
-            <Badge
-              variant="outline"
-              className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
-              title="secret 只影响显示打码，盘上存的是明文"
-            >
-              明文落盘
-            </Badge>
-          )}
-        </div>
-        {row.description !== undefined && <p className="baseui:mt-0.5 baseui:text-xs baseui:text-muted-foreground">{row.description}</p>}
-      </div>
+      {label}
       <div className="baseui:shrink-0 baseui:pt-0.5">
         <SettingField row={row} value={value} onChange={onChange} />
       </div>

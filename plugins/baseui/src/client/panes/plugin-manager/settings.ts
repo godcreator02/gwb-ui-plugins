@@ -10,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-const TYPES = ['string', 'number', 'boolean', 'secret'] as const
+const TYPES = ['string', 'number', 'boolean', 'secret', 'string-list'] as const
 export type SettingType = (typeof TYPES)[number]
 
 /** 一项设置过桥之后的样子。跟 node 半的 `SettingView` 是同一个形状 */
@@ -21,6 +21,8 @@ export interface SettingRow {
   title?: string
   description?: string
   value?: unknown
+  /** 声明方递的默认值——只有 live 的项才有。没设过值时生效的就是它，画成灰占位 */
+  default?: unknown
   /** 此刻还有件声明着它。false 的多半是件停着或已经卸了，盘上的值还在 */
   live?: boolean
 }
@@ -46,10 +48,18 @@ export function acceptSettings(raw: unknown): SettingRow[] {
     if (typeof title === 'string' && title !== '') row.title = title
     if (typeof description === 'string' && description !== '') row.description = description
     if (item['value'] !== undefined) row.value = item['value']
+    if (item['default'] !== undefined) row.default = item['default']
     if (live === false) row.live = false
     out.push(row)
   }
   return out
+}
+
+/** 默认值画进占位符前的人话化：布尔说开/关，数组逐行，其余 String() */
+export function formatDefault(def: unknown): string {
+  if (Array.isArray(def)) return def.filter((one): one is string => typeof one === 'string').join('\n')
+  if (typeof def === 'boolean') return def ? '开' : '关'
+  return String(def)
 }
 
 /** `home:hello` → `hello`。设置的 section 就是这个末段 */
