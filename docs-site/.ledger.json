@@ -691,25 +691,25 @@
     }
   },
   "content/docs/system-map.mdx": {
-    "../plugins/shell/package.json:29-36": {
-      "kind": "git",
-      "blob": "7405dc44a90031f8dc1e9312cf214093cf765264",
-      "commit": "bc75dc90400687a78c7ef4e1846073643407d6ce",
-      "lines": [
-        29,
-        36
-      ],
-      "hash": "4ab66e6824fad0b17cb596b9cbf68e86608c82c32db1e45283dc06f8dfea3e3c"
-    },
     "../plugins/baseui/package.json:44-51": {
       "kind": "git",
-      "blob": "d92867af03ab3bfc67f29514f21894e3e38bcc2c",
-      "commit": "bc75dc90400687a78c7ef4e1846073643407d6ce",
+      "blob": "a6c4d91f65640187dc0befb4d5eb7064eb194223",
+      "commit": "ccf8e650100f2b906683c6a62b4d9f9dc176789d",
       "lines": [
         44,
         51
       ],
-      "hash": "6e00b1a2b816f5c51b3a33d2ba5e543f68fa6424e42db1bcbd567da6c0f28541"
+      "hash": "a42eee7fb06786aa4df3e46bbc6ced5026398bd057ad62cf84e1bce0d6817d50"
+    },
+    "../plugins/shell/package.json:37-44": {
+      "kind": "git",
+      "blob": "f3157d894def96ae65946f50b04df86f55e5383f",
+      "commit": "ccf8e650100f2b906683c6a62b4d9f9dc176789d",
+      "lines": [
+        37,
+        44
+      ],
+      "hash": "004cea3598741467699823ed64786667f4fa2c24c0bd605b2519638b53410aeb"
     }
   }
 }
