@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": {"name": "godcreator"},
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。服务无；skill 0 份；命令 0 条。",
   "type": "module",
