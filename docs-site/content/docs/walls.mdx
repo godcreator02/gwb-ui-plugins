@@ -46,7 +46,7 @@ dispose、再 release」，所以插件在自己的 dispose 里喊一嗓子有�
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="136-146" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="149-159" */}
 
 ### `typeof` 一个类是 `function`，按「是对象」判它等于不存在
 
@@ -405,7 +405,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 把基准组的高设成「2×原高−现高」——`setSize` 冒泡到外层那一列，设的正是分支的逻辑尺寸，渲染出来回到原高，
 那份摊额从当初吃下它的兄弟那儿原路扣回。二叠、三叠的上中下与竖根六种布局量下来，兄弟组宽高偏差都不到 1px。
 
-{/* ref file="../plugins/shell/src/client/open.ts" lines="199-210" */}
+{/* ref file="../plugins/shell/src/client/open.ts" lines="292-303" */}
 
 ### 产物守卫的正则得锚在行首，不然被它自己的错误消息骗
 
