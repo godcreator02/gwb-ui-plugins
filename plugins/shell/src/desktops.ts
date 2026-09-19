@@ -16,6 +16,9 @@ export const DESKTOP_EVENT = 'gwb-shell-desktop'
 export type DesktopAction =
   | { t: typeof DESKTOP_EVENT; action: 'switch'; id?: string; name?: string }
   | { t: typeof DESKTOP_EVENT; action: 'new'; name?: string }
+  | { t: typeof DESKTOP_EVENT; action: 'rename'; id: string; name: string }
+  /** 删掉一张桌面，上面的窗格一起关掉（命令不弹确认——调用方已经决定了） */
+  | { t: typeof DESKTOP_EVENT; action: 'delete'; id: string }
 
 /** 事件载荷的宽松形状：事件口上什么件的事件都有，认了自己那记号再按这个收窄 */
 export interface DesktopActionLike {
@@ -50,4 +53,40 @@ export function resolveDesktop(
 /** 新桌面的缺省名：跟 id 的号走（d3 → 「桌面 3」） */
 export function defaultDesktopName(id: string): string {
   return `桌面 ${id.replace(/^d/, '')}`
+}
+
+/** 改名：按 id 改、名字去两头空白。空名或认不出的 id 回 undefined——什么都不改 */
+export function renameDesktop(desktops: readonly DesktopRow[], id: string, name: string): DesktopRow[] | undefined {
+  const trimmed = name.trim()
+  if (trimmed === '' || !desktops.some((d) => d.id === id)) return undefined
+  return desktops.map((d) => (d.id === id ? { ...d, name: trimmed } : d))
+}
+
+/**
+ * 删掉这张之后该切到哪张（删的是当前桌面时用）：左边相邻那张，删的是最左边那张就右边那张。
+ * 只剩一张（删不了）或认不出的 id 回 undefined
+ */
+export function afterDelete(desktops: readonly DesktopRow[], id: string): string | undefined {
+  const at = desktops.findIndex((d) => d.id === id)
+  if (at < 0 || desktops.length < 2) return undefined
+  return (at > 0 ? desktops[at - 1] : desktops[at + 1])?.id
+}
+
+function argsObject(args: unknown): { id?: unknown; name?: unknown } | undefined {
+  return args !== null && typeof args === 'object' && !Array.isArray(args) ? (args as { id?: unknown; name?: unknown }) : undefined
+}
+
+/** `shell.desktop.rename` 的参数：id 与非空名字 */
+export function parseRenameArgs(args: unknown): { ok: true; id: string; name: string } | { ok: false; error: string } {
+  const a = argsObject(args)
+  if (typeof a?.id !== 'string' || a.id === '') return { ok: false, error: '参数 { id, name }：id 是桌面 id（shell.desktop.list 现查）' }
+  if (typeof a.name !== 'string' || a.name.trim() === '') return { ok: false, error: 'name 得是非空字符串——空名不改' }
+  return { ok: true, id: a.id, name: a.name.trim() }
+}
+
+/** `shell.desktop.delete` 的参数：id */
+export function parseDeleteArgs(args: unknown): { ok: true; id: string } | { ok: false; error: string } {
+  const a = argsObject(args)
+  if (typeof a?.id !== 'string' || a.id === '') return { ok: false, error: '参数 { id }：id 是桌面 id（shell.desktop.list 现查）' }
+  return { ok: true, id: a.id }
 }

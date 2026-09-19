@@ -70,6 +70,20 @@ describe('井的进出', () => {
   })
 })
 
+describe('removeWell：删掉一张桌面时拆它的井', () => {
+  it('井与最近激活的账一起摘，别的桌面不动', () => {
+    const hub = createWellHub()
+    hub.addWell('d1', fakeWell([{ id: 'g1', panels: [] }]))
+    hub.addWell('d2', fakeWell([{ id: 'g1', panels: [pane('plugin:e1:main')] }]))
+    hub.noteActiveGroup('d2', 'g1')
+    hub.removeWell('d2')
+    expect([...hub.wells().keys()]).toEqual(['d1'])
+    expect(hub.locate('plugin:e1:main')).toBeUndefined()
+    hub.addWell('d2', fakeWell([{ id: 'g1', panels: [] }]))
+    expect(hub.deskOf('d2')?.recent).toEqual([])
+  })
+})
+
 describe('活动桌面的同拍语义', () => {
   it('setActiveDesktop 之后当场读到新值，不等下一拍', () => {
     const hub = createWellHub()
@@ -180,6 +194,8 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
     hub.setDeskOps({
       switchTo: () => undefined,
       ensureMounted: async () => undefined,
+      createDesktop: () => '',
+      notifySent: () => undefined,
       rows: () => [
         { id: 'd1', name: '桌面 1', layout: null },
         {
@@ -235,7 +251,7 @@ describe('命令口与注入钩子', () => {
 
   it('桌面操作摘了之后是 undefined', () => {
     const hub = createWellHub()
-    hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [] })
+    hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [], createDesktop: () => '', notifySent: () => undefined })
     expect(hub.deskOps()).toBeDefined()
     hub.setDeskOps(undefined)
     expect(hub.deskOps()).toBeUndefined()

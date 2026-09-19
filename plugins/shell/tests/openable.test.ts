@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  carriedTitle,
+  planSend,
   groupForLauncher,
   listOpenable,
   panelIdOf,
@@ -631,6 +633,47 @@ describe('planLaunch：启动器选了一条之后', () => {
 
   it('桌面是空的 → 新建一组', () => {
     expect(planLaunch(docCounter, ctx(desk([])))).toMatchObject({ kind: 'open', at: { empty: true } })
+  })
+})
+
+/**
+ * **送到别的桌面**：源桌面关掉、目标桌面按目标组规则开（没有来源）。送过去的一律是正式标签。
+ */
+describe('planSend：送过去之后在目标桌面怎么开', () => {
+  it('文档窗格：没有来源，落最近用过的同类组，开一份正式的（预览不带过去），参数与 key 带过去', () => {
+    const d = desk([group('g1', [other('o')], col(0)), group('g2', [tab(`${BASE}:7`, 'z')], col(1))], { active: 'g1', recent: ['g2'] })
+    const plan = planSend(docCounter, { key: 'a', params: { root: 'a' } }, '计数器', ctx(d))
+    expect(plan).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g2', index: 1 } })
+    expect(paramsOf(plan)).toEqual({ ...docCounter.params, key: 'a', root: 'a' })
+  })
+
+  it('文档窗格：目标组里已有同一内容也照开一份——送过去就是「我要在这儿有它」', () => {
+    const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
+    expect(planSend(docCounter, { key: 'a' }, '计数器', ctx(d))).toMatchObject({ kind: 'open', id: `${BASE}:2` })
+  })
+
+  it('工具窗格：目标桌面已有同一定义同一 key → 只激活那一份', () => {
+    const d = desk([group('g1', [tab(BASE, '')], col(0))])
+    expect(planSend(counter, { key: '' }, '计数器', ctx(d))).toEqual({ kind: 'focus', id: BASE })
+  })
+
+  it('工具窗格：目标桌面没有 → 照文档那样开', () => {
+    expect(planSend(counter, { key: '' }, '计数器', ctx(desk([])))).toMatchObject({ kind: 'open', at: { empty: true } })
+  })
+
+  it('标题：件自己改过的原样带过去；缺省那种按新序号重算', () => {
+    const d = desk([group('g1', [tab(BASE, 'x')], col(0))])
+    expect(planSend(docCounter, { key: 'a' }, '第三章', ctx(d))).toMatchObject({ title: '第三章' })
+    expect(planSend(docCounter, { key: 'a' }, '计数器 (4)', ctx(d))).toMatchObject({ title: '计数器 (2)' })
+  })
+})
+
+describe('carriedTitle', () => {
+  it('缺省标题（定义标题或带序号的）按新序号重算，别的原样', () => {
+    expect(carriedTitle('计数器', '计数器', 3)).toBe('计数器 (3)')
+    expect(carriedTitle('计数器 (5)', '计数器', 1)).toBe('计数器')
+    expect(carriedTitle('计数器 (五)', '计数器', 1)).toBe('计数器 (五)')
+    expect(carriedTitle('文档 B', '计数器', 2)).toBe('文档 B')
   })
 })
 

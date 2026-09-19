@@ -16,6 +16,10 @@ export interface DeskOps {
   ensureMounted(desktopId: string): Promise<DockviewApi | undefined>
   /** 桌面清单：名字与落盘布局（没挂过的桌面从这儿读它开着什么） */
   rows(): readonly DesktopRow[]
+  /** 新建一张空桌面，**不切过去**（「送到新桌面」用），回它的 id。名字空串用缺省名 */
+  createDesktop(name: string): string
+  /** 状态栏出一句「已送到『X』· 切过去」 */
+  notifySent(desktopId: string): void
 }
 
 /**
@@ -41,6 +45,8 @@ export interface WellHub {
   releaseHost(candidate: HostBridge): void
   /** 一口井挂上（常驻保活，挂上就不拆） */
   addWell(desktopId: string, api: DockviewApi): void
+  /** 删掉一张桌面时拆它的井，连同那张桌面上组的最近激活顺序 */
+  removeWell(desktopId: string): void
   /** 此刻活着的井，desktopId → api */
   wells(): ReadonlyMap<string, DockviewApi>
   /** App 卸载那趟：井全拆、活动桌面归零、最近激活的账清空 */
@@ -140,6 +146,10 @@ export function createWellHub(): WellHub {
     },
     addWell(desktopId, api) {
       wells.set(desktopId, api)
+    },
+    removeWell(desktopId) {
+      wells.delete(desktopId)
+      recent.delete(desktopId)
     },
     wells() {
       return wells

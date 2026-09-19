@@ -1,13 +1,27 @@
 import { Fragment, useRef, useState, type ReactElement } from 'react'
-import { FolderOpen, Info, LayoutGrid, Monitor, Moon, PanelsTopLeft, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
+import { FolderOpen, Info, LayoutGrid, Monitor, Moon, PanelsTopLeft, Plus, RefreshCw, Send, Sun, TriangleAlert } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import type { SendTarget } from './open.js'
 import type { DesktopRow, SavedLayout } from '../layout.js'
 import type { OpenableSpec } from '../openable.js'
 import type { SwitcherGroup } from '../pane-list.js'
@@ -39,21 +53,56 @@ const CELL =
 const BUTTON = `${CELL} shell:cursor-default shell:select-none shell:hover:bg-accent shell:hover:text-accent-foreground`
 
 /**
- * 桌面那一格：列出桌面、切换、新建（格子变输入框）。交互照 LayoutBar 那套——
- * 内联输入而不是弹窗，跟这行状态栏的分量相称。
+ * 菜单一行里行尾的小动作（✕、拉到本桌）。不让这一下冒泡成「选中这一行」——那会走成激活它、
+ * 甚至切桌面；菜单也不关，动作做完清单原地刷新
+ */
+function rowButton(text: string, label: string, title: string, run: () => void): ReactElement {
+  return (
+    <span
+      role="button"
+      tabIndex={-1}
+      aria-label={label}
+      title={title}
+      className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        run()
+      }}
+    >
+      {text}
+    </span>
+  )
+}
+
+/**
+ * 桌面那一格：列出桌面、切换、新建（格子变输入框）、每一行的改名与删除。交互照 LayoutBar 那套——
+ * 内联输入而不是弹窗，跟这行状态栏的分量相称；只有「删一张上面有窗格的桌面」弹确认，因为那会
+ * 关掉一摊窗格。
  */
 function DesktopBar({
   desktops,
   activeId,
   onSwitch,
   onNew,
+  onRename,
+  onDelete,
+  paneCountOf,
 }: {
   desktops: readonly DesktopRow[]
   activeId: string
   onSwitch: (id: string) => void
   onNew: (name: string) => void
+  onRename: (id: string, name: string) => void
+  onDelete: (id: string) => void
+  paneCountOf: (id: string) => number
 }): ReactElement {
   const [naming, setNaming] = useState<string | null>(null)
+  /** 正在改名的那一张：格子变输入框，Enter 定、Esc 弃，空名不改 */
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null)
+  /** 等人确认删除的那一张（上面有窗格才走到这儿） */
+  const [confirming, setConfirming] = useState<{ id: string; name: string; panes: number } | null>(null)
+  const [open, setOpen] = useState(false)
   const active = desktops.find((d) => d.id === activeId)
 
   /** 提交新桌面名。空名 / 纯空白照收——外壳会拿缺省名「桌面 N」顶上，那不是没起，是懒得起 */
@@ -61,6 +110,76 @@ function DesktopBar({
     if (naming === null) return
     onNew(naming.trim())
     setNaming(null)
+  }
+
+  /** 删除：只剩一张删不了；空桌面直接删；上面有窗格先确认 */
+  const askDelete = (row: DesktopRow): void => {
+    setOpen(false)
+    const panes = paneCountOf(row.id)
+    if (panes === 0) onDelete(row.id)
+    else setConfirming({ id: row.id, name: row.name, panes })
+  }
+
+  /** 行尾的一个小动作：不让这一下冒泡成「选中这一行」（那会走成切桌面） */
+  const rowAction = (label: string, title: string, run: () => void, disabled = false): ReactElement => (
+    <span
+      role="button"
+      tabIndex={-1}
+      aria-disabled={disabled}
+      data-gwb-desk-action={label}
+      title={title}
+      className={`shell:ml-1 shell:rounded shell:px-1 shell:text-[10px] ${disabled ? 'shell:opacity-40' : 'shell:hover:bg-accent'}`}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!disabled) run()
+      }}
+    >
+      {label}
+    </span>
+  )
+
+  const confirmDialog = (
+    <AlertDialog open={confirming !== null} onOpenChange={(next) => !next && setConfirming(null)}>
+      <AlertDialogContent data-gwb-desk-confirm="">
+        <AlertDialogHeader>
+          <AlertDialogTitle>删除『{confirming?.name}』？</AlertDialogTitle>
+          <AlertDialogDescription>上面 {confirming?.panes} 个窗格会一起关掉。</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>取消</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (confirming !== null) onDelete(confirming.id)
+              setConfirming(null)
+            }}
+          >
+            删除
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  if (renaming !== null) {
+    return (
+      <input
+        className="shell:bg-background shell:h-6 shell:w-36 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-foreground shell:outline-none"
+        value={renaming.value}
+        autoFocus
+        data-gwb-desk-rename={renaming.id}
+        placeholder="桌面名（Enter 定，Esc 弃）"
+        onChange={(e) => setRenaming({ ...renaming, value: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            onRename(renaming.id, renaming.value)
+            setRenaming(null)
+          }
+          if (e.key === 'Escape') setRenaming(null)
+        }}
+        onBlur={() => setRenaming(null)}
+      />
+    )
   }
 
   if (naming !== null) {
@@ -81,25 +200,33 @@ function DesktopBar({
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className={BUTTON} title="桌面：切换 / 新建（井常驻保活，切走的那口原样活着）">
-        <Monitor className="shell:size-3.5" />
-        {active?.name ?? '桌面'}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top">
-        <DropdownMenuLabel>桌面</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {desktops.map((row) => (
-          <DropdownMenuItem key={row.id} onSelect={() => onSwitch(row.id)}>
-            <span className="shell:flex-1">{row.name}</span>
-            {/* 活动的不 disable——再点一次是幂等的；标出来是让人认得出自己在哪口 */}
-            {row.id === activeId && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">当前</span>}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => setNaming('')}>新建桌面…</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger className={BUTTON} title="桌面：切换 / 新建 / 改名 / 删除（井常驻保活，切走的那口原样活着）">
+          <Monitor className="shell:size-3.5" />
+          {active?.name ?? '桌面'}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="top" data-gwb-desktops="">
+          <DropdownMenuLabel>桌面</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {desktops.map((row) => (
+            <DropdownMenuItem key={row.id} data-gwb-desk={row.id} onSelect={() => onSwitch(row.id)}>
+              <span className="shell:flex-1">{row.name}</span>
+              {/* 活动的不 disable——再点一次是幂等的；标出来是让人认得出自己在哪口 */}
+              {row.id === activeId && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">当前</span>}
+              {rowAction('改名', '给这张桌面改名', () => {
+                setOpen(false)
+                setRenaming({ id: row.id, value: row.name })
+              })}
+              {rowAction('删除', desktops.length < 2 ? '只剩这一张，删不了' : '删掉这张桌面，上面的窗格一起关掉', () => askDelete(row), desktops.length < 2)}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setNaming('')}>新建桌面…</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {confirmDialog}
+    </>
   )
 }
 
@@ -253,15 +380,25 @@ function Switcher({
   onList,
   onFocus,
   onClose,
+  onSend,
+  onPull,
 }: {
   count: number
   onList: () => SwitcherGroup[]
   onFocus: (desktop: string, instance: string) => void
   onClose: (desktop: string, instance: string) => Promise<void>
+  onSend: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
+  onPull: (instance: string) => Promise<void>
 }): ReactElement {
   const [groups, setGroups] = useState<SwitcherGroup[]>([])
+  const refresh = (): void => setGroups(onList())
+  /** 选「送到」那一项时按没按住 Shift：按住就送完跟过去 */
+  const shiftRef = useRef(false)
+  const noteShift = (e: { shiftKey: boolean }): void => {
+    shiftRef.current = e.shiftKey
+  }
   return (
-    <DropdownMenu onOpenChange={(open) => open && setGroups(onList())}>
+    <DropdownMenu onOpenChange={(open) => open && refresh()}>
       <DropdownMenuTrigger className={BUTTON} title="窗格：所有桌面上开着的窗格，点一行激活（在别的桌面就切过去）">
         <PanelsTopLeft className="shell:size-3.5" />
         窗格 {count}
@@ -279,33 +416,55 @@ function Switcher({
             ) : (
               group.rows.map((row) => {
                 const Icon = iconFor(row.icon)
+                const targets = groups.filter((g) => g.desktop !== row.desktop)
                 return (
-                  <DropdownMenuItem key={row.instance} data-gwb-pane={row.instance} onSelect={() => onFocus(row.desktop, row.instance)}>
-                    <Icon />
-                    {row.preview && (
-                      <span
-                        role="img"
-                        aria-label="预览格"
-                        className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
-                      />
-                    )}
-                    <span className="shell:flex-1 shell:truncate">{row.title}</span>
-                    <span
-                      role="button"
-                      tabIndex={-1}
-                      aria-label="关闭"
-                      title="关闭这个窗格"
-                      className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
-                      onClick={(e) => {
-                        // 别让这一下冒泡成「选中这一行」——那会走成激活它、甚至切桌面
-                        e.preventDefault()
-                        e.stopPropagation()
-                        void onClose(row.desktop, row.instance).then(() => setGroups(onList()))
-                      }}
+                  <div key={row.instance} className="shell:flex shell:items-center">
+                    <DropdownMenuItem
+                      className="shell:flex-1 shell:min-w-0"
+                      data-gwb-pane={row.instance}
+                      onSelect={() => onFocus(row.desktop, row.instance)}
                     >
-                      ✕
-                    </span>
-                  </DropdownMenuItem>
+                      <Icon />
+                      {row.preview && (
+                        <span
+                          role="img"
+                          aria-label="预览格"
+                          className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
+                        />
+                      )}
+                      <span className="shell:flex-1 shell:truncate">{row.title}</span>
+                      {!group.current &&
+                        rowButton('拉到本桌', '拉到本桌', '把它挪到当前桌面', () => void onPull(row.instance).then(refresh))}
+                      {rowButton('✕', '关闭', '关闭这个窗格', () => void onClose(row.desktop, row.instance).then(refresh))}
+                    </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="shell:text-[10px]" data-gwb-pane-send={row.instance}>
+                        送到
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {targets.map((t) => (
+                          <DropdownMenuItem
+                            key={t.desktop}
+                            data-gwb-send-to={t.desktop}
+                            onPointerDown={noteShift}
+                            onKeyDown={noteShift}
+                            onSelect={() => void onSend(row.instance, { desktop: t.desktop }, shiftRef.current)}
+                          >
+                            {t.name}
+                          </DropdownMenuItem>
+                        ))}
+                        {targets.length > 0 && <DropdownMenuSeparator />}
+                        <DropdownMenuItem
+                          data-gwb-send-to=""
+                          onPointerDown={noteShift}
+                          onKeyDown={noteShift}
+                          onSelect={() => void onSend(row.instance, { newDesktop: '' }, shiftRef.current)}
+                        >
+                          新桌面
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </div>
                 )
               })
             )}
@@ -323,6 +482,13 @@ export function StatusBar({
   onListPanes,
   onFocusPane,
   onClosePane,
+  onSendPane,
+  onPullPane,
+  sent,
+  onFollowSent,
+  onRenameDesktop,
+  onDeleteDesktop,
+  paneCountOf,
   home,
   versions,
   desktops,
@@ -349,6 +515,17 @@ export function StatusBar({
   onListPanes: () => SwitcherGroup[]
   onFocusPane: (desktop: string, instance: string) => void
   onClosePane: (desktop: string, instance: string) => Promise<void>
+  /** 送到别的桌面（切换器行尾「送到」）；follow = 送完跟过去（选的时候按住 Shift） */
+  onSendPane: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
+  /** 拉到本桌（切换器里别的桌面上那一行） */
+  onPullPane: (instance: string) => Promise<void>
+  /** 刚送到哪张桌面：亮一句「已送到『X』· 切过去」，点它切过去 */
+  sent: { desktop: string; name: string } | null
+  onFollowSent: (desktop: string) => void
+  onRenameDesktop: (id: string, name: string) => void
+  onDeleteDesktop: (id: string) => void
+  /** 某张桌面上开着几个窗格（删之前弹确认要用） */
+  paneCountOf: (desktop: string) => number
   /** home 目录的绝对路径 */
   home: string
   /** 版本那一格：格子上写产品版本（内核版），悬停列内核、外壳、运行时 */
@@ -382,7 +559,15 @@ export function StatusBar({
     // z 压过本桌的模态遮罩（状态栏永远可点，含从模态里切桌面逃出）；pointer-events
     // 显式给 auto 不靠 body 继承——radix 模态锁 body 的那把锁不跟桌面走。判据见文档站
     <footer className="shell:relative shell:z-[60] shell:pointer-events-auto shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
-      <DesktopBar desktops={desktops} activeId={activeDesktopId} onSwitch={onSwitchDesktop} onNew={onNewDesktop} />
+      <DesktopBar
+        desktops={desktops}
+        activeId={activeDesktopId}
+        onSwitch={onSwitchDesktop}
+        onNew={onNewDesktop}
+        onRename={onRenameDesktop}
+        onDelete={onDeleteDesktop}
+        paneCountOf={paneCountOf}
+      />
 
       <LayoutBar
         saved={savedLayouts}
@@ -393,7 +578,22 @@ export function StatusBar({
       />
 
       <Launcher onList={onLaunchList} onLaunch={onLaunch} />
-      <Switcher count={paneCount} onList={onListPanes} onFocus={onFocusPane} onClose={onClosePane} />
+      <Switcher
+        count={paneCount}
+        onList={onListPanes}
+        onFocus={onFocusPane}
+        onClose={onClosePane}
+        onSend={onSendPane}
+        onPull={onPullPane}
+      />
+
+      {/* 送到别的桌面之后亮一阵：当前桌面不变，点它才切过去 */}
+      {sent !== null && (
+        <button type="button" className={BUTTON} data-gwb-sent={sent.desktop} onClick={() => onFollowSent(sent.desktop)}>
+          <Send className="shell:size-3.5" />
+          已送到『{sent.name}』· 切过去
+        </button>
+      )}
 
       <div className={CELL} title={home}>
         <FolderOpen className="shell:size-3.5" />

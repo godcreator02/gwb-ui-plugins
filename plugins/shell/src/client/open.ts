@@ -3,6 +3,7 @@ import {
   panelParamsOf,
   planLaunch,
   planOpen,
+  planSend,
   specForOwnPane,
   splitHeightFix,
   titleForOrdinal,
@@ -12,7 +13,7 @@ import {
   type OpenPaneOptions,
   type OpenPlan,
 } from '../openable.js'
-import { replaceParams } from '../panels.js'
+import { pluginParamsIn, replaceParams } from '../panels.js'
 import { fetchPanes } from './panes.js'
 import { wellHub } from './well-hub.js'
 import type { HostBridge } from './types.js'
@@ -24,7 +25,6 @@ import type { HostBridge } from './types.js'
  * **打开从来不切桌面**：有来源就开在来源那张桌面上，否则开在当前桌面；那张桌面藏着也
  * 照开，当前显示哪张不变。
  */
-
 
 /** 在这张桌面上判的上下文。井还没挂上回 undefined */
 function contextOn(desktop: string, from: string | undefined): OpenContext | undefined {
@@ -72,6 +72,58 @@ export async function focusInstance(desktop: string, instance: string): Promise<
 export async function closeInstance(desktop: string, instance: string): Promise<void> {
   const api = await wellHub.deskOps()?.ensureMounted(desktop)
   api?.getPanel(instance)?.api.close()
+}
+
+/** 送到哪：已有桌面的 id，或新建一张（名字空串用缺省名） */
+export type SendTarget = { desktop: string } | { newDesktop: string }
+
+/**
+ * **送到别的桌面**。dockview 没有跨实例搬面板的接口，所以是一次关闭加一次打开：取这一份的定义、
+ * key、件那半参数与标题 → 在源桌面关掉（插件 dispose）→ 在目标桌面按 `planSend` 开一份正式的。
+ * 两张桌面都没挂过的话先在后台挂上（不显示）。**当前桌面不变**，状态栏出一句「已送到『X』·
+ * 切过去」；`follow` 送完跟过去（显式切换）。插件的状态只靠参数带过去。
+ *
+ * 定义已经不在注册表里（件卸了）就什么都不做——关得掉、开不回来的话，这一份就凭空没了。
+ */
+export async function sendPane(instance: string, to: SendTarget, follow: boolean): Promise<void> {
+  const ops = wellHub.deskOps()
+  const host = wellHub.host()
+  if (ops === undefined || host === undefined) return
+  const from = wellHub.entries().find((e) => e.instance === instance)
+  if (from === undefined) {
+    console.warn(`[shell] 送到别的桌面：窗格 ${instance} 哪张桌面都没有`)
+    return
+  }
+  const target = 'desktop' in to ? to.desktop : ops.createDesktop(to.newDesktop)
+  const [sourceApi, targetApi] = [await ops.ensureMounted(from.desktop), await ops.ensureMounted(target)]
+  const panes = await fetchPanes(host)
+  // ——从这儿往下是一个同步段：摘快照、算 id、addPanel 不能被 await 隔开——
+  const spec = specForOwnPane(panes, from.entryId, from.paneId)
+  const panel = sourceApi?.getPanel(instance)
+  if (spec === undefined || sourceApi === undefined || targetApi === undefined || panel === undefined) {
+    console.warn(`[shell] 送到别的桌面：${instance} 的定义或两头的桌面认不出，这次不送`)
+    return
+  }
+  if (target === from.desktop) {
+    // 送到它本来就在的那张：什么都不搬，激活它
+    panel.api.setActive()
+    return
+  }
+  const params = panel.params as Record<string, unknown> | undefined
+  const mine = pluginParamsIn(params)
+  const content = { key: typeof params?.key === 'string' ? params.key : '', ...(mine === undefined ? {} : { params: mine }) }
+  const title = panel.title ?? spec.title
+  panel.api.close()
+  const context = contextOn(target, undefined)
+  if (context === undefined) return
+  applyPlan(targetApi, planSend(spec, content, title, context))
+  if (follow) ops.switchTo(target)
+  else if (target !== wellHub.activeDesktop()) ops.notifySent(target)
+}
+
+/** 拉到本桌（切换器里别的桌面上那一行）：送到当前桌面，送到之后激活它，不涉及切桌面 */
+export function pullPane(instance: string): Promise<void> {
+  return sendPane(instance, { desktop: wellHub.activeDesktop() }, false)
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */

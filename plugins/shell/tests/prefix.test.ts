@@ -35,11 +35,16 @@ const clientDir = path.resolve(here, '../src/client')
 const INTERPOLATION = /\$\{[^{}]*\}/g
 
 /**
- * **误报的排除项。** 空集就是这个件此刻的真相：外壳的字符串字面量里虽然有一堆命令名、
- * dockview 的组件名与主题类名、`'right'` 这类方向值，但它们在不带前缀的编译器下**一个
- * 都编不出规则**，不构成误报。真撞上再往这儿加，并且每加一条得写清「它为什么不是类名」。
+ * **误报的排除项。** 外壳的字符串字面量里有一堆命令名、dockview 的组件名与主题类名、`'right'`
+ * 这类方向值，但它们在不带前缀的编译器下编不出规则，不构成误报。真撞上再往这儿加，并且每加
+ * 一条得写清「它为什么不是类名」：
+ *
+ * - `outline`：删桌面的确认框（shadcn `alert-dialog`）里 `AlertDialogCancel` 的 `variant="outline"`，
+ *   是 `Button` 的变体名，不是类名；它恰好也是个 Tailwind 工具类（`outline-style: solid`）。
+ *   baseui 那份守卫同一条排除。实际写法里用到的是 `outline-none` / `outline-hidden`，光秃秃一个
+ *   `outline` 当类名不会出现
  */
-const NOT_A_CLASS = new Set<string>([])
+const NOT_A_CLASS = new Set<string>(['outline'])
 
 function tsxFiles(dir: string): string[] {
   const out: string[] = []

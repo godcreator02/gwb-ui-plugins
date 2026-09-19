@@ -5,17 +5,20 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { pluginParamsIn } from '../panels.js'
 import { tabsToClose } from '../pane-list.js'
-import { openRegisteredPane } from './open.js'
-import { portalHostOf } from './desktop-context.js'
+import { openRegisteredPane, sendPane, type SendTarget } from './open.js'
+import { desktopIdOf, portalHostOf } from './desktop-context.js'
 import { wellHub } from './well-hub.js'
 
 /**
- * 标签右键菜单：留住、在旁边再开一份、关闭 / 关闭其他 / 关闭右侧。挂在本桌面的浮层户口上
- * （桌面切走跟着藏），跟状态栏菜单同一套组件。
+ * 标签右键菜单：留住、在旁边再开一份、送到 ▸ 桌面 X / 新桌面、关闭 / 关闭其他 / 关闭右侧。挂在
+ * 本桌面的浮层户口上（桌面切走跟着藏），跟状态栏菜单同一套组件。
  *
  * 「在旁边再开一份」只给**文档窗格**：用这一份此刻的 key 与参数、`placement: 'side'` 开一份
  * 正式标签，来源就是这一份；原来那份是预览就先转正。工具窗格一张桌面至多一份，没有这一项。
@@ -56,6 +59,17 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
     for (const id of tabsToClose(order(), self, which)) tab.containerApi.getPanel(id)?.api.close()
   }
 
+  /** 送到：别的桌面（这一枚所在那张除外）或一张新桌面；选的时候按住 Shift 就送完跟过去 */
+  const here = desktopIdOf(anchor.current)
+  const targets = (wellHub.deskOps()?.rows() ?? []).filter((row) => row.id !== here)
+  const shift = useRef(false)
+  const noteShift = (e: { shiftKey: boolean }): void => {
+    shift.current = e.shiftKey
+  }
+  const send = (to: SendTarget): void => {
+    void sendPane(self, to, shift.current).catch((err: unknown) => console.error(`[shell] 送到别的桌面失败：${String(err)}`))
+  }
+
   const ids = order()
   const at = ids.indexOf(self)
 
@@ -71,6 +85,27 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
         {preview && <ContextMenuItem data-gwb-tab-action="keep" onSelect={keep}>留住</ContextMenuItem>}
         {kind === 'document' && <ContextMenuItem data-gwb-tab-action="beside" onSelect={openBeside}>在旁边再开一份</ContextMenuItem>}
         {(preview || kind === 'document') && <ContextMenuSeparator />}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger data-gwb-tab-action="send">送到</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            {targets.map((row) => (
+              <ContextMenuItem
+                key={row.id}
+                data-gwb-send-to={row.id}
+                onPointerDown={noteShift}
+                onKeyDown={noteShift}
+                onSelect={() => send({ desktop: row.id })}
+              >
+                {row.name}
+              </ContextMenuItem>
+            ))}
+            {targets.length > 0 && <ContextMenuSeparator />}
+            <ContextMenuItem data-gwb-send-to="" onPointerDown={noteShift} onKeyDown={noteShift} onSelect={() => send({ newDesktop: '' })}>
+              新桌面
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSeparator />
         <ContextMenuItem data-gwb-tab-action="close" onSelect={() => tab.api.close()}>关闭</ContextMenuItem>
         <ContextMenuItem data-gwb-tab-action="close-others" disabled={ids.length < 2} onSelect={() => closeMany('others')}>
           关闭其他

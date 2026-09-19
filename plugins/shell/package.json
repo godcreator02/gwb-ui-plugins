@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；浏览器半与样式表的地址由 node 半算成 file:// 报给页面。服务 gwbShell；skill 0 份；命令 10 条。",
+  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；浏览器半与样式表的地址由 node 半算成 file:// 报给页面。服务 gwbShell；skill 0 份；命令 17 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -46,6 +46,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
+    "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
     "cordis": "4.0.0-rc.9",
     "dockview-react": "8.2.0",

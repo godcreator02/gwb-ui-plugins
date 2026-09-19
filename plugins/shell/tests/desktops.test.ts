@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { DESKTOP_EVENT, defaultDesktopName, isDesktopAction, resolveDesktop } from '../src/desktops.js'
+import {
+  DESKTOP_EVENT,
+  afterDelete,
+  defaultDesktopName,
+  isDesktopAction,
+  parseDeleteArgs,
+  parseRenameArgs,
+  renameDesktop,
+  resolveDesktop,
+} from '../src/desktops.js'
 import type { DesktopRow } from '../src/layout.js'
 
 /**
@@ -47,6 +56,47 @@ describe('resolveDesktop：id 优先于名字', () => {
   it('给得出但认不出（id / 名字都不在表里）→ undefined', () => {
     expect(resolveDesktop(rows, { id: 'd9' })).toBeUndefined()
     expect(resolveDesktop(rows, { name: '不存在' })).toBeUndefined()
+  })
+})
+
+describe('renameDesktop：改名', () => {
+  it('按 id 改名，名字两头的空白去掉；别的桌面不动', () => {
+    expect(renameDesktop(rows, 'd2', '  写作 ')).toEqual([rows[0], { ...rows[1], name: '写作' }, rows[2]])
+  })
+  it('空名（含纯空白）不改：回 undefined，调用方什么都不做', () => {
+    expect(renameDesktop(rows, 'd2', '   ')).toBeUndefined()
+  })
+  it('认不出的 id 回 undefined', () => {
+    expect(renameDesktop(rows, 'd9', '写作')).toBeUndefined()
+  })
+})
+
+describe('afterDelete：删掉一张之后切到哪张', () => {
+  it('删的是中间那张 → 左边相邻那张', () => {
+    expect(afterDelete(rows, 'd2')).toBe('d1')
+  })
+  it('删的是最左边那张 → 右边那张', () => {
+    expect(afterDelete(rows, 'd1')).toBe('d2')
+  })
+  it('只剩一张：删不了，回 undefined', () => {
+    expect(afterDelete([desktop()], 'd1')).toBeUndefined()
+  })
+  it('认不出的 id 回 undefined', () => {
+    expect(afterDelete(rows, 'd9')).toBeUndefined()
+  })
+})
+
+describe('命令参数：rename / delete', () => {
+  it('rename 要 id 与非空名字', () => {
+    expect(parseRenameArgs({ id: 'd2', name: ' 写作 ' })).toEqual({ ok: true, id: 'd2', name: '写作' })
+    expect(parseRenameArgs({ id: 'd2', name: '  ' })).toMatchObject({ ok: false })
+    expect(parseRenameArgs({ name: '写作' })).toMatchObject({ ok: false })
+    expect(parseRenameArgs(null)).toMatchObject({ ok: false })
+  })
+  it('delete 要 id', () => {
+    expect(parseDeleteArgs({ id: 'd2' })).toEqual({ ok: true, id: 'd2' })
+    expect(parseDeleteArgs({ id: '' })).toMatchObject({ ok: false })
+    expect(parseDeleteArgs(undefined)).toMatchObject({ ok: false })
   })
 })
 

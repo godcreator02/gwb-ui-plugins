@@ -21,11 +21,12 @@ import {
   launchSpec,
   launchWillFocus,
   openRegisteredPane,
+  pullPane,
+  sendPane,
   TAB_COMPONENT,
 } from './open.js'
 import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
 import { groupForLauncher, listOpenable, type OpenableSpec } from '../openable.js'
-import { orderForSwitcher } from '../pane-list.js'
 import { PLUGIN_COMPONENT } from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
@@ -39,9 +40,11 @@ import {
   type LayoutDoc,
   type SavedLayout,
 } from '../layout.js'
-import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
+import { afterDelete, defaultDesktopName, isDesktopAction, renameDesktop, resolveDesktop } from '../desktops.js'
 import { isOpenPaneAction, openPaneOptionsOf, openPaneSourceOf } from '../open-pane.js'
-import { ENV_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
+import { isPaneAction } from '../pane-actions.js'
+import { entriesOfLayout, orderForSwitcher } from '../pane-list.js'
+import { ENV_COMMAND, PANE_SYNC_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
@@ -57,6 +60,17 @@ const SELF = '@godcreator/gwb-shell'
 
 /** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
 const SAVE_DEBOUNCE_MS = 400
+
+/** 「已送到『X』· 切过去」亮多久 */
+const SENT_NOTICE_MS = 10_000
+
+/** 把所有桌面上开着的窗格推给 node 半缓存（`shell.pane.sync`）。推不上只记一句，不拦别的 */
+function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string): void {
+  const sync = { entries: wellHub.entries(), desktops: rows.map(({ id, name }) => ({ id, name })), active }
+  void host.call(PANE_SYNC_COMMAND, sync).catch((err: unknown) => {
+    console.warn(`[shell] ${PANE_SYNC_COMMAND} 推不上：${String(err)}`)
+  })
+}
 
 /**
  * 面板组件表。**必须是模块级常量**：dockview 拿它的引用做比对，每轮渲染换一个新对象
@@ -178,6 +192,8 @@ function App({
         console.error(`[shell] 布局没存上：${String(err)}`)
       },
     )
+    // 顺手把窗格清单推给 node 半（`shell.pane.list` 读它）：跟落盘同一个节律，最多慢一个防抖窗口
+    pushPanes(host, rowsRef.current, activeIdRef.current)
   }, [])
 
   const scheduleSave = useCallback((): void => {
@@ -278,6 +294,9 @@ function App({
     const waiters = readyWaitersRef.current.get(id) ?? []
     readyWaitersRef.current.delete(id)
     for (const wake of waiters) wake(event.api)
+    // 冷挂的这口井进了清单（开机那口由桌面操作那条 effect 推）
+    const host = wellHub.host()
+    if (host !== undefined && wellHub.deskOps() !== undefined) pushPanes(host, rowsRef.current, activeIdRef.current)
   }
 
   // 切到一口已挂井的桌面时「窗格 N」也得重算（那口井没有新事件）
@@ -311,9 +330,13 @@ function App({
     [flushSave],
   )
 
-  /** 新建一口桌面并切过去。名字缺省「桌面 N」；出生为空（井挂上时落盘空快照，见 bornEmptyRef） */
+  /**
+   * 新建一口桌面，回它的 id。名字缺省「桌面 N」；出生为空（井挂上时落盘空快照，见 bornEmptyRef）。
+   * 缺省切过去（状态栏「新建桌面…」、`shell.desktop.new`）；「送到新桌面」不切（`follow: false`），
+   * 井也不挂——送的那一趟自己 `ensureMounted`
+   */
   const createDesktop = useCallback(
-    (name?: string): void => {
+    (name?: string, follow = true): string => {
       const id = nextDesktopId(rowsRef.current)
       const trimmed = name?.trim()
       bornEmptyRef.current.add(id)
@@ -322,18 +345,89 @@ function App({
         { id, name: trimmed === undefined || trimmed === '' ? defaultDesktopName(id) : trimmed, layout: null },
       ]
       setDesktops(rowsRef.current)
-      switchTo(id)
+      // 不切过去时也不落盘：档里这会儿写的会是 null，重启就被「null → 铺默认」铺满（轨迹卡
+      // desktop-born-empty 那个病）。送的那一趟紧接着挂井，出生为空那次 flush 会把空快照写进去
+      if (follow) switchTo(id)
+      return id
     },
     [switchTo],
   )
 
+  /** 改名：空名不改 */
+  const renameDesk = useCallback(
+    (id: string, name: string): void => {
+      const next = renameDesktop(rowsRef.current, id, name)
+      if (next === undefined) return
+      rowsRef.current = next
+      setDesktops(next)
+      flushSave()
+    },
+    [flushSave],
+  )
+
+  /**
+   * 删掉一张桌面，上面的窗格一起关掉（插件照常 dispose），回关掉了几个。只剩一张时什么都不做。
+   * 删的是当前桌面就先切到左边相邻那张（最左边那张就右边那张）。没挂过的桌面上的窗格从没挂上过
+   * 插件，直接连同落盘布局一起丢
+   */
+  const deleteDesk = useCallback(
+    (id: string): number => {
+      const next = afterDelete(rowsRef.current, id)
+      if (next === undefined) return 0
+      if (id === activeIdRef.current) switchTo(next)
+      const api = apisRef.current[id]
+      const row = rowsRef.current.find((r) => r.id === id)
+      let closed = 0
+      if (api !== undefined) {
+        // `api.panels` 每读一次都是现拼的新数组，边关边走不会漏
+        for (const panel of api.panels) {
+          panel.api.close()
+          closed += 1
+        }
+      } else {
+        closed = entriesOfLayout(id, row?.layout ?? null).length
+      }
+      wellSubsRef.current.get(id)?.dispose()
+      wellSubsRef.current.delete(id)
+      wellHub.removeWell(id)
+      delete apisRef.current[id]
+      setApis({ ...apisRef.current })
+      mountedRef.current = mountedRef.current.filter((m) => m !== id)
+      setMountedIds(mountedRef.current)
+      rowsRef.current = rowsRef.current.filter((r) => r.id !== id)
+      setDesktops(rowsRef.current)
+      flushSave()
+      return closed
+    },
+    [switchTo, flushSave],
+  )
+
+  /** 状态栏那句「已送到『X』· 切过去」：送到别的桌面之后亮一阵，点它切过去 */
+  const [sent, setSent] = useState<{ desktop: string; name: string } | null>(null)
+  const sentTimerRef = useRef<number | undefined>(undefined)
+  const notifySent = useCallback((desktop: string): void => {
+    const name = rowsRef.current.find((r) => r.id === desktop)?.name ?? desktop
+    setSent({ desktop, name })
+    window.clearTimeout(sentTimerRef.current)
+    sentTimerRef.current = window.setTimeout(() => setSent(null), SENT_NOTICE_MS)
+  }, [])
+
   // 桌面操作经枢纽交给面板组件、标签菜单与开格链（它们够不着 App 的闭包）
   useEffect(() => {
-    wellHub.setDeskOps({ switchTo, ensureMounted, rows: () => rowsRef.current })
+    wellHub.setDeskOps({
+      switchTo,
+      ensureMounted,
+      rows: () => rowsRef.current,
+      createDesktop: (name) => createDesktop(name, false),
+      notifySent,
+    })
+    // 开机那一份清单：井的 onReady 比这条 effect 早，那会儿枢纽还摘不出清单
+    const host = wellHub.host()
+    if (host !== undefined) pushPanes(host, rowsRef.current, activeIdRef.current)
     return () => {
       wellHub.setDeskOps(undefined)
     }
-  }, [switchTo, ensureMounted])
+  }, [switchTo, ensureMounted, createDesktop, notifySent])
 
   /** 启动器的清单：现取注册表与件名表，按插件分组，工具窗格本桌已开的标上 */
   const launchList = async (): Promise<LaunchGroup[]> => {
@@ -362,10 +456,38 @@ function App({
         switchTo(row.id)
       } else if (payload.action === 'new') {
         createDesktop(typeof payload.name === 'string' ? payload.name : undefined)
+      } else if (payload.action === 'rename' && typeof payload.id === 'string' && typeof payload.name === 'string') {
+        renameDesk(payload.id, payload.name)
+      } else if (payload.action === 'delete' && typeof payload.id === 'string') {
+        // 命令不弹确认：调用方已经决定了
+        deleteDesk(payload.id)
       }
     })
     return off
-  }, [switchTo, createDesktop])
+  }, [switchTo, createDesktop, renameDesk, deleteDesk])
+
+  // node 半转来的窗格动作（shell.pane.focus / send / close）：同一条执行链，focus 在别的桌面就切过去
+  useEffect(() => {
+    const off = window.gwb.on((payload) => {
+      if (!isPaneAction(payload) || typeof payload.instance !== 'string') return
+      const instance = payload.instance
+      const row = wellHub.entries().find((e) => e.instance === instance)
+      if (row === undefined) {
+        console.warn(`[shell] 窗格动作认不出实例 ${instance}——shell.pane.list 现查`)
+        return
+      }
+      if (payload.action === 'focus') void focusInstance(row.desktop, instance)
+      else if (payload.action === 'close') void closeInstance(row.desktop, instance)
+      else if (payload.action === 'send') {
+        const to =
+          typeof payload.desktop === 'string'
+            ? { desktop: payload.desktop }
+            : { newDesktop: typeof payload.newDesktop === 'string' ? payload.newDesktop : '' }
+        void sendPane(instance, to, payload.follow === true)
+      }
+    })
+    return off
+  }, [])
 
   // node 半转来的开格动作（shell.openPane，跨件开格）：与件开自己格的同一条执行链
   // （openRegisteredPane——注册表现取，判断照旧 planOpen，来源是命令带的 from）。
@@ -466,6 +588,16 @@ function App({
         onListPanes={() => orderForSwitcher(rowsRef.current, activeIdRef.current, wellHub.entries())}
         onFocusPane={(desktop, instance) => void focusInstance(desktop, instance)}
         onClosePane={closeInstance}
+        onSendPane={(instance, to, follow) => sendPane(instance, to, follow)}
+        onPullPane={pullPane}
+        sent={sent}
+        onFollowSent={(desktop) => {
+          setSent(null)
+          switchTo(desktop)
+        }}
+        onRenameDesktop={renameDesk}
+        onDeleteDesktop={deleteDesk}
+        paneCountOf={(desktop) => wellHub.entries().filter((e) => e.desktop === desktop).length}
         home={home}
         versions={versions}
         desktops={desktops}
@@ -473,7 +605,9 @@ function App({
         savedLayouts={saved}
         saveFailed={saveFailed}
         onSwitchDesktop={(id) => switchTo(id)}
-        onNewDesktop={(name) => createDesktop(name)}
+        onNewDesktop={(name) => {
+          createDesktop(name)
+        }}
         onApplyLayout={applySaved}
         onSaveLayout={saveCurrent}
         onDeleteLayout={removeSaved}

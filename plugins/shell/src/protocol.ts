@@ -15,6 +15,12 @@ export const PLUGINS_COMMAND = 'shell.plugins'
 /** 浏览器半开机问一次的环境命令 */
 export const ENV_COMMAND = 'shell.env'
 
+/**
+ * 页面把「所有桌面上开着的窗格」推给 node 半缓存的那条（`shell.pane.list` 读这份缓存）。
+ * **页面专用**：命令总线上谁都调得到它，别的调用方推一份进来就是改了 list 的回执
+ */
+export const PANE_SYNC_COMMAND = 'shell.pane.sync'
+
 /** 状态栏那一格报的版本：内核自己报的、本件自己的、运行时的三样 */
 export interface Versions {
   /** `gwbKernel.version`——内核读自己包清单报的 */

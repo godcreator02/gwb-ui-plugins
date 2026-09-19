@@ -12,8 +12,10 @@ import { createPluginRegistry, type PluginInfo, type PluginRegistry, type Regist
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
 import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv, type Versions } from './protocol.js'
 import { versionsOf, type RuntimeVersions } from './versions.js'
-import { DESKTOP_EVENT } from './desktops.js'
+import { DESKTOP_EVENT, parseDeleteArgs, parseRenameArgs } from './desktops.js'
 import { parseOpenPaneArgs } from './open-pane.js'
+import { listRowsOf, parsePaneArgs, parsePaneSync, type PaneSync } from './pane-actions.js'
+import { PANE_SYNC_COMMAND } from './protocol.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 import { iconProblem, parseIconCatalog, type IconCatalog } from './pane-icon.js'
 import { startupCss } from './startup-style.js'
@@ -77,6 +79,16 @@ export const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
 /** 跨件开格那一条。**井在页面那半**，这条只是经内核事件口把动作转进去执行 */
 export const OPEN_PANE_COMMAND = 'shell.openPane'
 
+/** 桌面改名与删除。同桌面那几条：转发给页面执行 */
+export const DESKTOP_RENAME_COMMAND = 'shell.desktop.rename'
+export const DESKTOP_DELETE_COMMAND = 'shell.desktop.delete'
+
+/** 窗格那几条：list 读页面推来的缓存，其余三条转发给页面执行 */
+export const PANE_LIST_COMMAND = 'shell.pane.list'
+export const PANE_FOCUS_COMMAND = 'shell.pane.focus'
+export const PANE_SEND_COMMAND = 'shell.pane.send'
+export const PANE_CLOSE_COMMAND = 'shell.pane.close'
+
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
   /**
@@ -119,6 +131,11 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly info: (message: string) => void
   /** 内核服务（dataDir / version / emit / setShell）。构造时取——那时 this.ctx 还是提供方自己的 */
   private readonly kernel: GwbKernelApi
+  /**
+   * 页面推来的窗格清单（`shell.pane.sync`）。node 半没有容器，`shell.pane.list` 读的就是它；
+   * 页面每次布局变化落盘时顺手推一份。页面还没推过就是 undefined
+   */
+  private paneCache: PaneSync | undefined
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbShell')
@@ -148,6 +165,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.registerReloadCommand(cli)
     this.registerDesktopCommands(cli)
     this.registerOpenPaneCommand(cli)
+    this.registerPaneCommands(cli)
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
@@ -290,6 +308,120 @@ export default class GwbShell extends Service implements GwbShellApi {
           return { ok: true, relayed: true }
         },
       ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: DESKTOP_RENAME_COMMAND,
+          description: '给一张桌面改名',
+          usage: '参数 { id, name }——id 是桌面 id（shell.desktop.list 现查），name 非空（两头空白去掉）。转发给页面执行，回执 ok 代表转发了',
+          plugin: '@godcreator/gwb-shell',
+        },
+        async (args) => {
+          const parsed = parseRenameArgs(args)
+          if (!parsed.ok) return { ok: false, error: parsed.error }
+          const doc = parseLayoutDoc(await this.ctx.gwbData.readDoc(LAYOUT_DOC)) ?? defaultDoc()
+          if (!doc.desktops.some((d) => d.id === parsed.id)) return { ok: false, error: `没有桌面 ${parsed.id}——shell.desktop.list 现查` }
+          this.kernel.emit({ t: DESKTOP_EVENT, action: 'rename', id: parsed.id, name: parsed.name })
+          return { ok: true, relayed: true }
+        },
+      ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: DESKTOP_DELETE_COMMAND,
+          description: '删除一张桌面，上面的窗格一起关掉（不弹确认）',
+          usage:
+            '参数 { id }。上面的窗格逐个关掉（插件照常 dispose）再删桌面；删的是当前桌面就切到左边相邻那张（最左边那张就切到右边）。只剩一张时回错。回 { ok, relayed, closed }——closed 是转发那一刻页面清单里那张桌面上的窗格数。转发给页面执行',
+          plugin: '@godcreator/gwb-shell',
+        },
+        async (args) => {
+          const parsed = parseDeleteArgs(args)
+          if (!parsed.ok) return { ok: false, error: parsed.error }
+          const doc = parseLayoutDoc(await this.ctx.gwbData.readDoc(LAYOUT_DOC)) ?? defaultDoc()
+          if (!doc.desktops.some((d) => d.id === parsed.id)) return { ok: false, error: `没有桌面 ${parsed.id}——shell.desktop.list 现查` }
+          if (doc.desktops.length < 2) return { ok: false, error: '只剩这一张桌面，删不了' }
+          const closed = this.paneCache?.entries.filter((e) => e.desktop === parsed.id).length ?? 0
+          this.kernel.emit({ t: DESKTOP_EVENT, action: 'delete', id: parsed.id })
+          return { ok: true, relayed: true, closed }
+        },
+      ),
+    )
+  }
+
+  /**
+   * 窗格那几条。`list` 读页面推来的缓存（`shell.pane.sync`，页面每次落盘时推）；`focus` / `send` /
+   * `close` 先拿缓存验一下实例在不在，再转发给页面执行——回执 ok 只代表转发了
+   */
+  private registerPaneCommands(cli: GwbCommands): void {
+    const plugin = '@godcreator/gwb-shell'
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: PANE_SYNC_COMMAND,
+          description: '页面专用：把所有桌面上开着的窗格推给 node 半缓存（shell.pane.list 读它）。别调',
+          usage: '参数 { entries, desktops, active }——页面每次布局落盘时推一份。别的调用方推进来就是改写了 shell.pane.list 的回执',
+          plugin,
+        },
+        (args) => {
+          const sync = parsePaneSync(args)
+          if (sync === undefined) return { ok: false, error: '清单形状不对，没收' }
+          this.paneCache = sync
+          return { ok: true }
+        },
+      ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: PANE_LIST_COMMAND,
+          description: '所有桌面上开着的窗格',
+          usage:
+            "无参数。回 [{ instance, desktop, group, pkg, entryId, paneId, kind, key, title, preview, active }]，按桌面顺序——instance 是窗格的实例 id（pane.instance），kind 是 'tool' / 'document'，key 是此刻装的内容（件上报过就是上报的那个），active 是它是不是那一组的活动标签。读页面每次落盘时推来的清单，最多慢 400ms；页面还没推过回空表",
+          plugin,
+        },
+        () => {
+          const kindOf = (entryId: string, paneId: string) =>
+            this.paneTable.list().find((p) => p.entryId === entryId && p.id === paneId)?.kind ?? 'tool'
+          return listRowsOf(this.paneCache?.entries ?? [], kindOf)
+        },
+      ),
+    )
+    const relay = (name: string, action: 'focus' | 'close' | 'send', description: string, usage: string) =>
+      this.ctx.effect(() =>
+        cli.register({ name, description, usage, plugin }, (args) => {
+          const parsed = parsePaneArgs(action, args)
+          if (!parsed.ok) return { ok: false, error: parsed.error }
+          const { instance } = parsed.action
+          if (this.paneCache !== undefined && !this.paneCache.entries.some((e) => e.instance === instance)) {
+            return { ok: false, error: `窗格 ${instance} 不在清单里——${PANE_LIST_COMMAND} 现查` }
+          }
+          if (parsed.action.action === 'send' && parsed.action.desktop !== undefined && this.paneCache !== undefined) {
+            const to = parsed.action.desktop
+            if (!this.paneCache.desktops.some((d) => d.id === to)) return { ok: false, error: `没有桌面 ${to}——shell.desktop.list 现查` }
+          }
+          this.kernel.emit(parsed.action)
+          return { ok: true, relayed: true }
+        }),
+      )
+    relay(
+      PANE_FOCUS_COMMAND,
+      'focus',
+      '激活一个窗格；在别的桌面就切过去',
+      '参数 { instance }——instance 是 shell.pane.list 回的实例 id。这是显式切桌面的一种。转发给页面执行，回执 ok 代表转发了',
+    )
+    relay(
+      PANE_SEND_COMMAND,
+      'send',
+      '把一个窗格送到别的桌面',
+      '参数 { instance, desktop?, newDesktop?, follow? }——desktop（已有桌面的 id）与 newDesktop（新桌面的名字，true 或空串用缺省名「桌面 N」）给一个。源桌面关掉它（插件 dispose）、目标桌面按目标组规则开一份正式的（工具窗格目标桌面已有就只激活那一份），插件的状态只靠参数带过去。当前桌面不变；follow: true 送完跟过去。转发给页面执行，回执 ok 代表转发了',
+    )
+    relay(
+      PANE_CLOSE_COMMAND,
+      'close',
+      '关掉一个窗格',
+      '参数 { instance }。插件照常 dispose，不切桌面。转发给页面执行，回执 ok 代表转发了',
     )
   }
 

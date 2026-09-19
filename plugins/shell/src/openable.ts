@@ -396,6 +396,52 @@ export function planLaunch(spec: OpenableSpec, context: OpenContext): OpenPlan {
 }
 
 /**
+ * 送过去的这一份标题怎么带：件自己改过的（`setPaneTitle` / 上报内容给的）原样带过去；还是定义的
+ * 缺省标题（`标题` 或 `标题 (n)`）就按新序号重算——带着旧序号过去，新桌面上会冒出一个对不上的「(4)」
+ */
+export function carriedTitle(old: string, base: string, ordinal: number): string {
+  if (old === base) return titleForOrdinal(base, ordinal)
+  const prefix = `${base} (`
+  if (old.startsWith(prefix) && old.endsWith(')') && /^\d+$/.test(old.slice(prefix.length, -1))) {
+    return titleForOrdinal(base, ordinal)
+  }
+  return old
+}
+
+/**
+ * **送到别的桌面**之后在目标桌面怎么开（源桌面那份已由调用方关掉）。没有来源：
+ *
+ * - **工具窗格**：目标桌面已有同一格、同一 key 的就只激活那一份
+ * - 否则按目标组规则（最近用过的同类组，否则活动组，桌面空就新建一组）开一份**正式**标签——
+ *   预览不带过去，文档窗格目标组里有同一内容也照开（送过去就是「我要在这儿有它」）
+ *
+ * 带过去的是 key、件那半参数与标题（`carriedTitle`）。插件会被重新挂载，状态只靠参数带过去。
+ */
+export function planSend(
+  spec: OpenableSpec,
+  content: { key: string; params?: Record<string, unknown> },
+  title: string,
+  context: OpenContext,
+): OpenPlan {
+  const { desk } = context
+  const def: PaneDef = { entryId: spec.params.entryId, paneId: spec.params.paneId }
+  if (spec.kind === 'tool') {
+    const already = desk.groups.flatMap((g) => g.tabs).find((t) => isDef(t, def) && t.key === content.key)
+    if (already !== undefined) return { kind: 'focus', id: already.id }
+  }
+  const target = targetGroup(desk, def, 'auto')
+  const inTarget = 'group' in target ? desk.groups.find((g) => g.id === target.group) : undefined
+  const { id, ordinal } = uniquePanelId(spec.id, context.taken)
+  return {
+    kind: 'open',
+    id,
+    title: carriedTitle(title, spec.title, ordinal),
+    spec: withOpenParams(spec, content.params, content.key, false),
+    at: 'group' in target ? { group: target.group, index: inTarget === undefined ? 0 : insertAt(inTarget) } : target,
+  }
+}
+
+/**
  * 对半分之后基准组的高该补成多少（逻辑尺寸）。没变（同一排里分，不用包分支）回 undefined。
  *
  * dockview 8.3.1 在「往右分一个竖排里的组」时要把它包进一个新的横向分支，而 `Gridview.addView`
