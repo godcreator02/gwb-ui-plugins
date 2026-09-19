@@ -6,7 +6,8 @@
  * 形状，各存一份就是两份真相。
  */
 
-import type { OpenPaneOptions } from '../openable.js'
+import type { OpenPaneOptions, PaneKind } from '../openable.js'
+import type { PaneContent } from '../panels.js'
 import type { Versions } from '../protocol.js'
 
 /** 内核交出来的命令口。整条链路是：界面 → IPC → 主进程里的 ctx.gwbCommands */
@@ -37,6 +38,16 @@ export interface PaneRow {
   /** 浏览器半与样式表的地址，件注册时自报。见 pane-registry 的 PaneSpec */
   client?: string
   style?: string
+  /** 工具窗格还是文档窗格（注册时不说就是 tool） */
+  kind: PaneKind
+}
+
+/** 件名表里一条（`shell.plugins`）。启动器按插件分组时拿它的名字当组名 */
+export interface PluginRow {
+  entryId: string
+  pkg: string
+  title: string
+  icon?: string
 }
 
 /**
@@ -60,6 +71,15 @@ export interface ShellBridge {
    * 当前文件名就是走这里。初始标题归 `registerPane`，这里只管运行时改。
    */
   setPaneTitle(title: string): void
+  /**
+   * **上报这一格此刻装的内容**：件在窗格里原地换了内容（点链接跳转、后退前进）之后报一声。
+   * 外壳把这一份的 key 换成新的；给了 `params` 就整份替换件那半参数（保留键摘掉）；给了
+   * `title` 等于顺带 `setPaneTitle`。**不调 `retarget`、不重挂**——内容已经在件手里换好了。
+   * 之后布局照常落盘，整页重载回到上报的内容。预览格上报之后仍是预览格，转正归 `keepPane`。
+   *
+   * 新外壳才有这一支：件按形状判（`typeof shell.setPaneContent === 'function'`），没有就退回老行为。
+   */
+  setPaneContent(content: PaneContent): void
   /**
    * 把**这一格**留住：它不再是预览格，下一次 preview 打开不会顶掉它。
    *
@@ -111,6 +131,8 @@ export interface PaneArgs {
     id: string
     /** 这**一份**的唯一键（dockview 的 panel id）。开两份时两份的这个值不一样 */
     instance: string
+    /** 外壳把这一格当哪一类挂的（注册时说的 kind，不说就是 tool） */
+    kind: PaneKind
     /**
      * 开这一份时件自己传的那份参数（`openPane` 的 `options.params`），**不含外壳的
      * 保留键**——件看不见 `entryId` 这类外壳内部的东西。

@@ -117,6 +117,72 @@ export function replaceParams(
 }
 
 /**
+ * 参数的门：平对象、JSON 序列化不炸。参数跟着面板进 `toJSON()` 整档落盘，循环引用在这儿就拦下，
+ * 别让它写坏盘上那份布局档。开格（跨件命令）与上报内容同吃这一道。
+ */
+export function isPlainParams(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  try {
+    JSON.stringify(value)
+  } catch {
+    return false
+  }
+  return true
+}
+
+/** 件经 `setPaneContent` 报上来的那一份：这个窗格此刻装的是什么 */
+export interface PaneContent {
+  /** 此刻装的内容的 key（同 `openPane` 的 key，不透明） */
+  key: string
+  /** 给了就**整份替换**件那半参数；不给件那半不动 */
+  params?: Record<string, unknown>
+  /** 给了等于顺带 `setPaneTitle` */
+  title?: string
+}
+
+/** 件报上来的东西 → 一份合法的内容。件是 JS 写的，形状不能默认对 */
+export function parsePaneContent(raw: unknown): { ok: true; content: PaneContent } | { ok: false; error: string } {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'setPaneContent 要一个 { key, params?, title? } 对象' }
+  }
+  const c = raw as { key?: unknown; params?: unknown; title?: unknown }
+  if (typeof c.key !== 'string') return { ok: false, error: 'setPaneContent 的 key 得是字符串（此刻装的内容）' }
+  if (c.params !== undefined && !isPlainParams(c.params)) {
+    return { ok: false, error: 'setPaneContent 的 params 得是平对象且可 JSON 序列化（它跟着布局落盘）' }
+  }
+  if (c.title !== undefined && typeof c.title !== 'string') return { ok: false, error: 'setPaneContent 的 title 得是字符串' }
+  return {
+    ok: true,
+    content: {
+      key: c.key,
+      ...(c.params === undefined ? {} : { params: c.params as Record<string, unknown> }),
+      ...(c.title === undefined ? {} : { title: c.title }),
+    },
+  }
+}
+
+/**
+ * 上报内容 → 交给 dockview `updateParameters` 的那份（它是「并」，写 `undefined` 的键才删）。
+ *
+ * key 换成新的；给了 params 就整份换掉**件那半**——旧那半多出来的键写 `undefined`，保留键摘掉
+ * 并出声。外壳那几个键（识别三件套、图标、预览）一个不碰：件改不动这一份的身份，也不因上报内容
+ * 转正——那由件自己调 `keepPane` 决定。
+ */
+export function contentUpdateOf(
+  prev: Record<string, unknown> | undefined,
+  content: PaneContent,
+): { update: Record<string, unknown>; notice?: string } {
+  if (content.params === undefined) return { update: { key: content.key } }
+  const reserved = shellParamKeysIn(content.params)
+  const mine = pluginParamsIn(content.params) ?? {}
+  const dropped = Object.keys(pluginParamsIn(prev) ?? {}).filter((k) => !Object.hasOwn(mine, k))
+  return {
+    update: { key: content.key, ...mine, ...Object.fromEntries(dropped.map((k) => [k, undefined])) },
+    ...(reserved.length === 0 ? {} : { notice: `上报的 params 里 ${reserved.join('、')} 是外壳的保留键，已摘掉` }),
+  }
+}
+
+/**
  * 一份参数的**稳定序列化**：比对「这一份的参数换了没有」用它，别拿对象引用比。
  *
  * 面板 params 每轮渲染都摘出一个新对象，引用永远是新的；而 params 本来就要求可 JSON

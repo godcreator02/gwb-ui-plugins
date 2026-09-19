@@ -56,6 +56,7 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
       openPane={openPane}
       setTitle={(title) => props.api.setTitle(title)}
       keepPane={keepPane}
+      updateParams={(update) => props.api.updateParameters(update)}
     />
   )
 }

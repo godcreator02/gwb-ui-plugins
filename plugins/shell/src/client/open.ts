@@ -1,6 +1,7 @@
 import type { DockviewApi } from 'dockview-react'
 import {
   panelParamsOf,
+  planLaunch,
   planOpen,
   specForOwnPane,
   splitHeightFix,
@@ -10,7 +11,6 @@ import {
   type OpenContext,
   type OpenPaneOptions,
   type OpenPlan,
-  type PaneKind,
 } from '../openable.js'
 import { replaceParams } from '../panels.js'
 import { fetchPanes } from './panes.js'
@@ -25,13 +25,6 @@ import type { HostBridge } from './types.js'
  * 照开，当前显示哪张不变。
  */
 
-/** 注册表里还没有「这一格是哪一类」这一项：一律按缺省的工具窗格判 */
-const KIND: PaneKind = 'tool'
-
-/** 这一条 spec 背后是谁的哪一格 */
-function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
-  return { entryId: spec.params.entryId, paneId: spec.params.paneId }
-}
 
 /** 在这张桌面上判的上下文。井还没挂上回 undefined */
 function contextOn(desktop: string, from: string | undefined): OpenContext | undefined {
@@ -39,19 +32,46 @@ function contextOn(desktop: string, from: string | undefined): OpenContext | und
   if (desk === undefined) return undefined
   return {
     desk,
-    kind: KIND,
     taken: (id) => wellHub.takenAnywhere(id),
     ...(from === undefined ? {} : { from }),
   }
 }
 
 /**
- * 状态栏那张表上点这一条会不会走成**聚焦**——「已开」记号标的就是它。问的就是
- * `planOpen` 自己（当前桌面、没有来源）：另写一条「开着没有」就是第二份真相，记号会开始说谎。
+ * 启动器（状态栏「新建」）上这一条标不标「本桌已开」：点下去会不会走成**激活**。问的就是
+ * `planLaunch` 自己——另写一条「开着没有」就是第二份真相，记号会开始说谎。文档窗格点下去
+ * 永远是开一份新的，所以永远不标。
  */
-export function willFocus(spec: OpenableSpec): boolean {
+export function launchWillFocus(spec: OpenableSpec): boolean {
   const context = contextOn(wellHub.activeDesktop(), undefined)
-  return context !== undefined && planOpen(spec, undefined, context, whoOf(spec)).kind === 'focus'
+  return context !== undefined && planLaunch(spec, context).kind === 'focus'
+}
+
+/** 启动器选了一条：在当前桌面按 `planLaunch` 开，不切桌面 */
+export function launchSpec(spec: OpenableSpec): void {
+  const desktop = wellHub.activeDesktop()
+  const api = wellHub.wells().get(desktop)
+  const context = contextOn(desktop, undefined)
+  if (api === undefined || context === undefined) return
+  applyPlan(api, planLaunch(spec, context))
+}
+
+/**
+ * **显式**激活一个窗格（切换器里点一行）：它在别的桌面就切过去——这是「只有这几种动作会切
+ * 桌面」里的一种。那张桌面没挂过的话先挂上，挂好了再激活。
+ */
+export async function focusInstance(desktop: string, instance: string): Promise<void> {
+  const ops = wellHub.deskOps()
+  if (ops === undefined) return
+  if (desktop !== wellHub.activeDesktop()) ops.switchTo(desktop)
+  const api = await ops.ensureMounted(desktop)
+  api?.getPanel(instance)?.api.setActive()
+}
+
+/** 关掉一个窗格（切换器行尾的「关闭」）。不切桌面：没挂过的桌面在后台挂上再关，插件照常 dispose */
+export async function closeInstance(desktop: string, instance: string): Promise<void> {
+  const api = await wellHub.deskOps()?.ensureMounted(desktop)
+  api?.getPanel(instance)?.api.close()
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
@@ -100,14 +120,6 @@ export async function openRegisteredPane(
     who,
     located === undefined ? undefined : from,
   )
-}
-
-/**
- * 外壳自己开一格（状态栏那张「可开的窗格」列表点的就是这条）。**走跟件调 `openPane`
- * 同一个 `planOpen`**，只是没有来源、开在当前桌面：本桌已开就激活，没开就开进活动组。
- */
-export function openSpec(spec: OpenableSpec): void {
-  openOn(wellHub.activeDesktop(), spec, undefined, whoOf(spec), undefined)
 }
 
 function openOn(

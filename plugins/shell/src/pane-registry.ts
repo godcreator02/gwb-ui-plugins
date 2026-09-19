@@ -5,6 +5,13 @@
  * 一条条目一个命名空间：键是 `entryId` + 窗格 id，同一个包挂两条条目也撞不着。
  */
 
+/**
+ * 窗格的两类：打开这个动作对它是什么意思。**工具窗格**一张桌面至多一份，打开就是把它显示
+ * 出来；**文档窗格**可以开多份，每份装一个内容，打开是「装这个内容」。两类的查重范围、
+ * 启动器行为、能不能「在旁边再开一份」都不同。
+ */
+export type PaneKind = 'tool' | 'document'
+
 /** 件注册一格时给的那几样 */
 export interface PaneSpec {
   /** 窗格 id，本条条目内唯一。跟 entryId 拼成全局的窗格 id */
@@ -21,6 +28,8 @@ export interface PaneSpec {
   client?: string
   /** 样式表的地址，同上。没有就不注 */
   style?: string
+  /** 工具窗格还是文档窗格。**不给就是 `tool`**；写错照 `tool` 进表、登记那一刻 warn */
+  kind?: PaneKind
 }
 
 /** 注册方的身份，由服务层从 fiber 上取 */
@@ -31,8 +40,12 @@ export interface PaneOwner {
   pkg: string
 }
 
-/** 表里一条：件给的那几样 + 服务填的身份 */
-export type RegisteredPane = PaneSpec & PaneOwner
+/** 表里一条：件给的那几样 + 服务填的身份。`kind` 进表时一定填上 */
+export type RegisteredPane = Omit<PaneSpec, 'kind'> & PaneOwner & { kind: PaneKind }
+
+function isPaneKind(value: unknown): value is PaneKind {
+  return value === 'tool' || value === 'document'
+}
 
 export interface PaneRegistry {
   /** 注册一格，回注销函数（只收自己那份，摘两遍不炸） */
@@ -73,8 +86,12 @@ export function createPaneRegistry(
       if (spec.title === '') throw new Error(`${owner.pkg} 的窗格 ${spec.id} 没有标题`)
       const iconIssue = spec.icon === undefined ? undefined : checkIcon(spec.icon)
       if (iconIssue !== undefined) warn(`${owner.pkg} 的窗格 ${spec.id}：${iconIssue}；标签上先画成 #`)
+      const kind: PaneKind = spec.kind === undefined || isPaneKind(spec.kind) ? (spec.kind ?? 'tool') : 'tool'
+      if (spec.kind !== undefined && !isPaneKind(spec.kind)) {
+        warn(`${owner.pkg} 的窗格 ${spec.id}：kind ${JSON.stringify(spec.kind)} 认不出（只认 'tool' / 'document'），照 'tool' 进表`)
+      }
       const key = keyOf(owner.entryId, spec.id)
-      const record: RegisteredPane = { ...spec, entryId: owner.entryId, pkg: owner.pkg }
+      const record: RegisteredPane = { ...spec, kind, entryId: owner.entryId, pkg: owner.pkg }
       const prev = table.get(key)
       if (prev !== undefined) {
         warn(`条目 ${owner.entryId} 的窗格 ${spec.id} 被重复注册，后来者生效：${prev.title} → ${record.title}`)

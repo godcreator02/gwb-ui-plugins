@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  contentUpdateOf,
   isPluginPanel,
   isPreviewPanel,
   paneIdOf,
   paneKeyOf,
   paramsKeyOf,
+  parsePaneContent,
   pluginKeyOf,
   pluginParamsIn,
   replaceParams,
@@ -12,6 +14,81 @@ import {
   PLUGIN_COMPONENT,
   SHELL_PARAM_KEYS,
 } from '../src/panels.js'
+
+/**
+ * **上报内容**（`setPaneContent`）：插件在窗格里原地换了内容，报一声「我现在装的是这个」。
+ * 外壳只改这一份的面板 params——key 换成新的、给了 params 就整份换掉件那半——不软换、不重挂。
+ */
+describe('parsePaneContent：件报上来的东西先过一道门', () => {
+  it('只给 key 就行；params、title 给了就带上', () => {
+    expect(parsePaneContent({ key: 'lib:b1' })).toEqual({ ok: true, content: { key: 'lib:b1' } })
+    expect(parsePaneContent({ key: 'lib:b1', params: { root: 'b1' }, title: '第一块' })).toEqual({
+      ok: true,
+      content: { key: 'lib:b1', params: { root: 'b1' }, title: '第一块' },
+    })
+  })
+
+  it('key 不是字符串、params 不是可序列化的平对象、title 不是字符串都拒，话里说清', () => {
+    expect(parsePaneContent(null)).toMatchObject({ ok: false })
+    expect(parsePaneContent({})).toMatchObject({ ok: false, error: expect.stringContaining('key') })
+    expect(parsePaneContent({ key: 1 })).toMatchObject({ ok: false })
+    expect(parsePaneContent({ key: 'a', params: [1] })).toMatchObject({ ok: false, error: expect.stringContaining('params') })
+    const cyclic: Record<string, unknown> = {}
+    cyclic.self = cyclic
+    expect(parsePaneContent({ key: 'a', params: cyclic })).toMatchObject({ ok: false })
+    expect(parsePaneContent({ key: 'a', title: 3 })).toMatchObject({ ok: false, error: expect.stringContaining('title') })
+  })
+})
+
+describe('contentUpdateOf：交给 dockview updateParameters 的那份', () => {
+  const prev = {
+    pluginKey: '@x/note',
+    entryId: 'home:note',
+    paneId: 'reader',
+    icon: 'book',
+    key: 'lib:a',
+    preview: true,
+    root: 'a',
+    scroll: 120,
+  }
+
+  it('只给 key：只换 key，件那半一个不动，预览状态不动', () => {
+    expect(contentUpdateOf(prev, { key: 'lib:b' })).toEqual({ update: { key: 'lib:b' } })
+  })
+
+  it('给了 params：整份换掉件那半（旧的多出来的键写 undefined 删掉），外壳那几个键与 preview 不动', () => {
+    const { update } = contentUpdateOf(prev, { key: 'lib:b', params: { root: 'b' } })
+    expect(update).toEqual({ key: 'lib:b', root: 'b', scroll: undefined })
+    // 落到 dockview 的「并」上之后就是这一份
+    const merged = Object.fromEntries(
+      Object.entries({ ...prev, ...update }).filter(([, v]) => v !== undefined),
+    )
+    expect(merged).toEqual({ ...prev, key: 'lib:b', root: 'b', scroll: undefined, preview: true })
+    expect(pluginParamsIn(merged)).toEqual({ root: 'b' })
+  })
+
+  it('给了空 params：件那半清空', () => {
+    expect(contentUpdateOf(prev, { key: 'lib:b', params: {} }).update).toEqual({
+      key: 'lib:b',
+      root: undefined,
+      scroll: undefined,
+    })
+  })
+
+  it('params 里的保留键摘掉，而且出声——件改不动这一份的身份，也改不动预览状态', () => {
+    const { update, notice } = contentUpdateOf(prev, {
+      key: 'lib:b',
+      params: { root: 'b', entryId: '别人的', preview: false },
+    })
+    expect(update).toEqual({ key: 'lib:b', root: 'b', scroll: undefined })
+    expect(notice).toMatch(/保留键/)
+    expect(notice).toContain('entryId')
+  })
+
+  it('上一份一个件那半的键都没有也照样算', () => {
+    expect(contentUpdateOf(undefined, { key: 'k', params: { a: 1 } }).update).toEqual({ key: 'k', a: 1 })
+  })
+})
 
 /**
  * 「重载 UI」按钮出不出现，看的是激活那格的 component，不是 id 前缀。

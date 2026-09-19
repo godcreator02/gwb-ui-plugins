@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  groupForLauncher,
   listOpenable,
   panelIdOf,
+  planLaunch,
   planOpen,
   sideGroupOf,
   specForOwnPane,
@@ -13,8 +15,8 @@ import {
   type Desk,
   type DeskGroup,
   type DeskTab,
+  type OpenableSpec,
   type OpenContext,
-  type PaneKind,
 } from '../src/openable.js'
 import { PLUGIN_COMPONENT } from '../src/panels.js'
 import type { RegisteredPane } from '../src/pane-registry.js'
@@ -30,6 +32,7 @@ const echo: RegisteredPane = {
   id: 'main',
   title: '回声',
   icon: 'megaphone',
+  kind: 'tool',
 }
 
 /** 同一个包挂的第二条条目 */
@@ -43,20 +46,22 @@ function panes(list: readonly RegisteredPane[]) {
 }
 
 describe('listOpenable：表里一条摊成井里一格', () => {
-  it('一条注册出一条：id 两段，params 三样都带着', () => {
+  it('一条注册出一条：id 两段，params 三样都带着，kind 跟着定义走（不进 params、不落盘）', () => {
     expect(panes([echo])).toEqual([
       {
         id: 'plugin:echo:main',
         component: PLUGIN_COMPONENT,
         title: '回声',
         icon: 'megaphone',
+        kind: 'tool',
         params: { pluginKey: '@godcreator/gwb-echo', entryId: 'echo', paneId: 'main' },
       },
     ])
+    expect(panes([{ ...echo, kind: 'document' }])[0]!.kind).toBe('document')
   })
 
   it('没给 icon 的不带这个键——不塞一个空串进去', () => {
-    const bare: RegisteredPane = { entryId: 'x', pkg: '@x/x', id: 'main', title: 'X' }
+    const bare: RegisteredPane = { entryId: 'x', pkg: '@x/x', id: 'main', title: 'X', kind: 'tool' }
     expect(panes([bare])[0]).not.toHaveProperty('icon')
   })
 
@@ -86,6 +91,16 @@ describe('listOpenable：表里一条摊成井里一格', () => {
   })
 })
 
+describe('groupForLauncher：启动器按插件分组', () => {
+  it('按注册先后分组；组名取件报的名字，没报就是包名', () => {
+    const groups = groupForLauncher(listOpenable([echo, echoLog, echo2]), [{ entryId: 'echo', title: '回声件' }])
+    expect(groups.map((g) => [g.entryId, g.title, g.specs.map((s) => s.id)])).toEqual([
+      ['echo', '回声件', ['plugin:echo:main', 'plugin:echo:log']],
+      ['echo-2', '@godcreator/gwb-echo', ['plugin:echo-2:main']],
+    ])
+  })
+})
+
 describe('specForOwnPane：件说「打开我的某一格」', () => {
   it('认得出自己那格', () => {
     expect(specForOwnPane([echo, echoLog], 'echo', 'log')?.id).toBe('plugin:echo:log')
@@ -110,7 +125,7 @@ describe('panelIdOf：两段都进去,只有这一处这么拼', () => {
   it('实机的 entryId 自带 home: 前缀,拼出来是四段——这是条目 id 的真实形状', () => {
     // loader 把件的条目挂在 include 那条下面,id 是全路径。上面那些用例的 `echo`
     // 是简写,这一条钉住真的长什么样
-    const real: RegisteredPane = { entryId: 'home:hello', pkg: '@godcreator/gwb-hello', id: 'main', title: '验收件' }
+    const real: RegisteredPane = { entryId: 'home:hello', pkg: '@godcreator/gwb-hello', id: 'main', title: '验收件', kind: 'tool' }
     expect(panelIdOf(real.entryId, real.id)).toBe('plugin:home:hello:main')
     expect(panes([real])[0]).toMatchObject({
       id: 'plugin:home:hello:main',
@@ -163,7 +178,10 @@ describe('titleForOrdinal：第二份起标题带序号', () => {
 
 /** 下面几组要开的那一格：`specForPane({ ...echo, id: 'counter' })` 的基名 */
 const BASE = 'plugin:echo:counter'
+/** 工具窗格版的那一格（注册时不说 kind 就是它） */
 const counter = specForPane({ ...echo, id: 'counter', title: '计数器', icon: 'hash' })
+/** 同一格注册成文档窗格 */
+const docCounter: OpenableSpec = { ...counter, kind: 'document' }
 const who = { entryId: 'echo', paneId: 'counter' }
 const COUNTER = { entryId: 'echo', paneId: 'counter' }
 
@@ -196,10 +214,10 @@ function desk(groups: DeskGroup[], opts: { active?: string; recent?: string[] } 
   }
 }
 
-/** 判断的上下文：查重看这张桌面的全部 id，外加别的桌面占着的那些 */
-function ctx(d: Desk, kind: PaneKind, extra: { from?: string; elsewhere?: string[] } = {}): OpenContext {
+/** 判断的上下文：查重看这张桌面的全部 id，外加别的桌面占着的那些。哪一类看的是定义自己的 kind */
+function ctx(d: Desk, extra: { from?: string; elsewhere?: string[] } = {}): OpenContext {
   const ids = new Set([...d.groups.flatMap((g) => g.tabs.map((t) => t.id)), ...(extra.elsewhere ?? [])])
-  return { desk: d, kind, taken: (id) => ids.has(id), ...(extra.from === undefined ? {} : { from: extra.from }) }
+  return { desk: d, taken: (id) => ids.has(id), ...(extra.from === undefined ? {} : { from: extra.from }) }
 }
 
 /** plan 里那份面板 params（开出来的或软换进去的） */
@@ -330,21 +348,21 @@ describe('targetGroup：auto（缺省），按顺序取第一个成立的', () =
 describe('planOpen · 文档窗格：只在目标组里查重', () => {
   it('目标组里有同 key 的标签、不要预览 → 激活它；它是预览标签就转正', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    expect(planOpen(counter, { key: 'a' }, ctx(d, 'document'), who)).toEqual({ kind: 'focus', id: BASE, keep: true })
+    expect(planOpen(docCounter, { key: 'a' }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE, keep: true })
     const formal = desk([group('g1', [tab(BASE, 'a')], col(0))])
-    expect(planOpen(counter, { key: 'a' }, ctx(formal, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { key: 'a' }, ctx(formal), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
   it('目标组里有同 key 的标签、要预览 → 激活它，不改它的预览状态', () => {
     const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
-    expect(planOpen(counter, { key: 'a', preview: true }, ctx(d, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { key: 'a', preview: true }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
     const pv = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    expect(planOpen(counter, { key: 'a', preview: true }, ctx(pv, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { key: 'a', preview: true }, ctx(pv), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
   it('没有同 key、组里有预览标签、要预览 → 原地换掉它（位置不动）', () => {
     const d = desk([group('g1', [other('o1'), tab(BASE, 'a', true), other('o2')], col(0), 'o1')])
-    const plan = planOpen(counter, { key: 'b', preview: true, params: { root: 'b' } }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'b', preview: true, params: { root: 'b' } }, ctx(d), who)
     expect(plan).toMatchObject({ kind: 'retarget', id: BASE })
     expect(paramsOf(plan)).toEqual({
       pluginKey: '@godcreator/gwb-echo',
@@ -359,14 +377,14 @@ describe('planOpen · 文档窗格：只在目标组里查重', () => {
 
   it('没有同 key、组里没有预览标签、要预览 → 在目标组开新的预览标签，插在活动标签右边', () => {
     const d = desk([group('g1', [other('o1'), other('o2'), other('o3')], col(0), 'o2')])
-    const plan = planOpen(counter, { key: 'b', preview: true }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'b', preview: true }, ctx(d), who)
     expect(plan).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g1', index: 2 } })
     expect(paramsOf(plan)).toMatchObject({ key: 'b', preview: true })
   })
 
   it('没有同 key、不要预览 → 在目标组开新的正式标签，插在活动标签右边', () => {
     const d = desk([group('g1', [tab(BASE, 'a'), other('o1')], col(0))])
-    const plan = planOpen(counter, { key: 'b' }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'b' }, ctx(d), who)
     expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2`, title: '计数器 (2)', at: { group: 'g1', index: 1 } })
     expect(paramsOf(plan)).not.toHaveProperty('preview')
   })
@@ -374,24 +392,24 @@ describe('planOpen · 文档窗格：只在目标组里查重', () => {
   it('同一内容在**别的组**开着不算命中：就在目标组再开一份', () => {
     // 来源同定义 → 目标组是来源那组 g2；a 开在 g1，不跳过去
     const d = desk([group('g1', [tab(BASE, 'a')], col(0)), group('g2', [tab(`${BASE}:2`, 'x')], col(1))])
-    const plan = planOpen(counter, { key: 'a' }, ctx(d, 'document', { from: `${BASE}:2` }), who)
+    const plan = planOpen(docCounter, { key: 'a' }, ctx(d, { from: `${BASE}:2` }), who)
     expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:3`, at: { group: 'g2', index: 1 } })
   })
 
   it('同一内容在**别的桌面**开着不算命中：本桌再开一份，序号跳过别桌占着的', () => {
     const d = desk([group('g1', [other('o1')], col(0))])
-    const plan = planOpen(counter, { key: 'a' }, ctx(d, 'document', { elsewhere: [BASE] }), who)
+    const plan = planOpen(docCounter, { key: 'a' }, ctx(d, { elsewhere: [BASE] }), who)
     expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2`, at: { group: 'g1' } })
   })
 
   it('目标组要新建（对半分 / 空桌面）时没有可查的，直接开', () => {
     const d = desk([group('tree', [other('src')], col(0))])
-    expect(planOpen(counter, { key: 'a' }, ctx(d, 'document', { from: 'src' }), who)).toMatchObject({
+    expect(planOpen(docCounter, { key: 'a' }, ctx(d, { from: 'src' }), who)).toMatchObject({
       kind: 'open',
       id: BASE,
       at: { split: 'tree' },
     })
-    expect(planOpen(counter, { key: 'a' }, ctx(desk([]), 'document'), who)).toMatchObject({ kind: 'open', at: { empty: true } })
+    expect(planOpen(docCounter, { key: 'a' }, ctx(desk([])), who)).toMatchObject({ kind: 'open', at: { empty: true } })
   })
 })
 
@@ -402,22 +420,22 @@ describe('planOpen · 工具窗格：本桌所有组里查重', () => {
   it('本桌有同一定义、同一 key 的实例 → 激活它，在哪一组就在哪一组，不挪', () => {
     // 活动组是 g2，工具开在 g1 → 还是激活 g1 里那个
     const d = desk([group('g1', [tab(BASE, '')], col(0)), group('g2', [other('o')], col(1))], { active: 'g2' })
-    expect(planOpen(counter, undefined, ctx(d, 'tool'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(counter, undefined, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
   it('命中的是预览标签、这次是正式打开 → 转正', () => {
     const d = desk([group('g1', [tab(BASE, '', true)], col(0))])
-    expect(planOpen(counter, undefined, ctx(d, 'tool'), who)).toEqual({ kind: 'focus', id: BASE, keep: true })
+    expect(planOpen(counter, undefined, ctx(d), who)).toEqual({ kind: 'focus', id: BASE, keep: true })
   })
 
   it('本桌没有 → 按目标组规则开一份，插在活动标签右边', () => {
     const d = desk([group('g1', [other('o1'), other('o2')], col(0), 'o1')])
-    expect(planOpen(counter, undefined, ctx(d, 'tool'), who)).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g1', index: 1 } })
+    expect(planOpen(counter, undefined, ctx(d), who)).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g1', index: 1 } })
   })
 
   it('别的桌面开着同一个工具窗格，互不相干：本桌照开一份', () => {
     const d = desk([group('g1', [other('o1')], col(0))])
-    expect(planOpen(counter, undefined, ctx(d, 'tool', { elsewhere: [BASE] }), who)).toMatchObject({
+    expect(planOpen(counter, undefined, ctx(d, { elsewhere: [BASE] }), who)).toMatchObject({
       kind: 'open',
       id: `${BASE}:2`,
     })
@@ -425,14 +443,14 @@ describe('planOpen · 工具窗格：本桌所有组里查重', () => {
 
   it('key 不同是不同的实例：本桌那份 key 对不上就不算命中', () => {
     const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
-    expect(planOpen(counter, { key: 'b' }, ctx(d, 'tool'), who)).toMatchObject({ kind: 'open', id: `${BASE}:2` })
+    expect(planOpen(counter, { key: 'b' }, ctx(d), who)).toMatchObject({ kind: 'open', id: `${BASE}:2` })
   })
 
   it('preview 与 side 照收，语义同文档窗格：没命中时顶掉目标组的预览标签', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    expect(planOpen(counter, { key: 'b', preview: true }, ctx(d, 'tool'), who)).toMatchObject({ kind: 'retarget', id: BASE })
+    expect(planOpen(counter, { key: 'b', preview: true }, ctx(d), who)).toMatchObject({ kind: 'retarget', id: BASE })
     const two = desk([group('g1', [other('src')], col(0)), group('g2', [other('x')], col(1))])
-    expect(planOpen(counter, { placement: 'side' }, ctx(two, 'tool', { from: 'src' }), who)).toMatchObject({
+    expect(planOpen(counter, { placement: 'side' }, ctx(two, { from: 'src' }), who)).toMatchObject({
       kind: 'open',
       at: { group: 'g2' },
     })
@@ -448,7 +466,7 @@ describe('planOpen 的预览：每组每个定义至多一个', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0)), group('g2', [tab(`${BASE}:2`, 'b', true)], col(1))], {
       active: 'g2',
     })
-    expect(planOpen(counter, { key: 'c', preview: true }, ctx(d, 'document'), who)).toMatchObject({
+    expect(planOpen(docCounter, { key: 'c', preview: true }, ctx(d), who)).toMatchObject({
       kind: 'retarget',
       id: `${BASE}:2`,
     })
@@ -456,25 +474,25 @@ describe('planOpen 的预览：每组每个定义至多一个', () => {
 
   it('别的组有预览标签、目标组没有 → 在目标组新开一个预览标签（不去顶别组的）', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0)), group('g2', [other('o')], col(1))], { active: 'g2' })
-    const plan = planOpen(counter, { key: 'c', preview: true }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'c', preview: true }, ctx(d), who)
     expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2`, at: { group: 'g2' } })
     expect(paramsOf(plan)).toMatchObject({ preview: true })
   })
 
   it('目标组里别的定义的预览标签不被顶掉：各定义各有各的一个', () => {
     const d = desk([group('g1', [other('o1', 'x', true)], col(0))])
-    const plan = planOpen(counter, { key: 'c', preview: true }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'c', preview: true }, ctx(d), who)
     expect(plan).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g1', index: 1 } })
   })
 
   it('没要 preview 的调用不碰预览标签——预览标签只被 preview 打开顶掉', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    expect(planOpen(counter, { key: 'b' }, ctx(d, 'document'), who)).toMatchObject({ kind: 'open', id: `${BASE}:2` })
+    expect(planOpen(docCounter, { key: 'b' }, ctx(d), who)).toMatchObject({ kind: 'open', id: `${BASE}:2` })
   })
 
   it('软换那份 params 带着 icon：开格与软换同一处拼，不然换完标签上的图标会变成兜底那枚', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    expect(paramsOf(planOpen(counter, { key: 'b', preview: true }, ctx(d, 'document'), who))).toMatchObject({ icon: 'hash' })
+    expect(paramsOf(planOpen(docCounter, { key: 'b', preview: true }, ctx(d), who))).toMatchObject({ icon: 'hash' })
   })
 })
 
@@ -484,7 +502,7 @@ describe('planOpen 的插入位置：目标组活动标签的右边', () => {
     const tabs = [other('o1'), other('o2'), other('o3')]
     for (const [active, index] of [['o1', 1], ['o2', 2], ['o3', 3]] as const) {
       const d = desk([group('g1', tabs, col(0), active)])
-      expect(planOpen(counter, undefined, ctx(d, 'document'), who)).toMatchObject({ at: { group: 'g1', index } })
+      expect(planOpen(docCounter, undefined, ctx(d), who)).toMatchObject({ at: { group: 'g1', index } })
     }
   })
 
@@ -492,7 +510,7 @@ describe('planOpen 的插入位置：目标组活动标签的右边', () => {
     const d = desk([group('g1', [other('o1'), other('o2')], col(0), undefined)])
     // group() 缺省把第一个当活动，这儿显式抹掉
     const bare: Desk = { ...d, groups: [{ id: 'g1', tabs: d.groups[0]!.tabs, box: col(0) }] }
-    expect(planOpen(counter, undefined, ctx(bare, 'document'), who)).toMatchObject({ at: { group: 'g1', index: 2 } })
+    expect(planOpen(docCounter, undefined, ctx(bare), who)).toMatchObject({ at: { group: 'g1', index: 2 } })
   })
 })
 
@@ -504,7 +522,7 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
   const empty = desk([group('g1', [other('o')], col(0))])
 
   it('件传的键跟识别三件套并排落在同一份 params 里，身份那一格也在', () => {
-    const plan = planOpen(counter, { key: 'a.md', params: { file: 'a.md', line: 3 } }, ctx(empty, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'a.md', params: { file: 'a.md', line: 3 } }, ctx(empty), who)
     expect(paramsOf(plan)).toEqual({
       pluginKey: '@godcreator/gwb-echo',
       entryId: 'echo',
@@ -516,14 +534,14 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
   })
 
   it('不传 params 的调用方一个字不用改：面板 params 还是那三样加一个空身份', () => {
-    expect(paramsOf(planOpen(counter, undefined, ctx(empty, 'document'), who))).toEqual({ ...counter.params, key: '' })
+    expect(paramsOf(planOpen(docCounter, undefined, ctx(empty), who))).toEqual({ ...counter.params, key: '' })
   })
 
   it('不给 key 等于空串：「没给 key」不是特例，第二次点同一格照样是聚焦', () => {
     const d = desk([group('g1', [tab(BASE, '')], col(0))])
-    expect(planOpen(counter, undefined, ctx(d, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, undefined, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
     // 默认布局铺出来的那一份身上也没有 key，所以它跟「件不给 key 开的那一份」是同一格
-    expect(planOpen(counter, { params: { file: 'a.md' } }, ctx(d, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { params: { file: 'a.md' } }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
   it('保留键改不动这一格的身份：摘掉，而且要出声', () => {
@@ -531,7 +549,7 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
     const plan = planOpen(
       counter,
       { key: 'a', params: { entryId: '别人的条目', pluginKey: '@x/x', icon: 'skull', file: 'a.md' } },
-      ctx(empty, 'document'),
+      ctx(empty),
       who,
     )
     expect(paramsOf(plan)).toEqual({
@@ -546,25 +564,25 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
 
   it('`key` 与 `preview` 也是保留键：件拿它们当自己的参数名会被摘掉并出声', () => {
     // 摘掉之后按上的是**外壳算出来的**那两个值，不是件传的——身份归外壳
-    const plan = planOpen(counter, { key: 'a', params: { key: '冒充的', preview: true } }, ctx(empty, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'a', params: { key: '冒充的', preview: true } }, ctx(empty), who)
     expect(paramsOf(plan)).toEqual({ ...counter.params, key: 'a' })
     expect(plan.kind === 'open' ? plan.notice : '').toMatch(/保留键/)
   })
 
   it('聚焦已开的那份时参数不作数——那一格装的本来就是这份内容，改 params 只会让档跟界面对不上', () => {
     const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
-    expect(planOpen(counter, { key: 'a', params: { file: 'a.md' } }, ctx(d, 'document'), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { key: 'a', params: { file: 'a.md' } }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
   it('软换那条也要摘保留键、也要出声', () => {
     const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
-    const plan = planOpen(counter, { key: 'b', preview: true, params: { icon: 'skull' } }, ctx(d, 'document'), who)
+    const plan = planOpen(docCounter, { key: 'b', preview: true, params: { icon: 'skull' } }, ctx(d), who)
     expect(plan.kind).toBe('retarget')
     expect(plan.kind === 'retarget' ? plan.notice : '').toMatch(/保留键/)
   })
 
   it('认不出那一格 → 什么都不做,但话里要带得出是谁要开什么', () => {
-    const plan = planOpen(undefined, undefined, ctx(empty, 'document'), who)
+    const plan = planOpen(undefined, undefined, ctx(empty), who)
     expect(plan.kind).toBe('none')
     expect(plan.kind === 'none' ? plan.notice : '').toContain('echo')
     expect(plan.kind === 'none' ? plan.notice : '').toContain('counter')
@@ -572,8 +590,47 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
 
   it('placement 认不出（老件乱传）当缺省 auto，不当 side', () => {
     const d = desk([group('g1', [tab('src', 'x')], col(0)), group('g2', [other('o')], col(1))], { active: 'g2' })
-    const plan = planOpen(counter, { key: 'a', placement: 'left' as never }, ctx(d, 'document', { from: 'src' }), who)
+    const plan = planOpen(docCounter, { key: 'a', placement: 'left' as never }, ctx(d, { from: 'src' }), who)
     expect(plan).toMatchObject({ kind: 'open', at: { group: 'g1' } })
+  })
+})
+
+/**
+ * **状态栏「新建」**（启动器）：没有来源、在当前桌面。跟 `planOpen` 不同的两处：落点是**活动组**
+ * （不走「最近用过的同类组」），文档窗格**不查重**——选它就是要开一份新的。
+ */
+describe('planLaunch：启动器选了一条之后', () => {
+  it('文档窗格：在活动组开一份新的（key 空串、不带参数），插在活动标签右边；本桌已有空 key 的也照开', () => {
+    const d = desk(
+      [group('g1', [tab(BASE, '')], col(0)), group('g2', [other('o1'), other('o2')], col(1), 'o1')],
+      { active: 'g2', recent: ['g1'] },
+    )
+    const plan = planLaunch(docCounter, ctx(d))
+    expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2`, at: { group: 'g2', index: 1 } })
+    expect(paramsOf(plan)).toEqual({ ...docCounter.params, key: '' })
+  })
+
+  it('工具窗格：本桌已有（空 key）就激活它，在哪一组就在哪一组', () => {
+    const d = desk([group('g1', [tab(BASE, '')], col(0)), group('g2', [other('o1')], col(1))], { active: 'g2' })
+    expect(planLaunch(counter, ctx(d))).toEqual({ kind: 'focus', id: BASE })
+  })
+
+  it('工具窗格：本桌那份是预览标签 → 激活并转正', () => {
+    const d = desk([group('g1', [tab(BASE, '', true)], col(0))])
+    expect(planLaunch(counter, ctx(d))).toEqual({ kind: 'focus', id: BASE, keep: true })
+  })
+
+  it('工具窗格：本桌没有 → 开进活动组（不去最近用过的同类组），别桌开着不算', () => {
+    const d = desk([group('g1', [tab(BASE, 'x')], col(0)), group('g2', [other('o1')], col(1))], { active: 'g2', recent: ['g1'] })
+    expect(planLaunch(counter, ctx(d, { elsewhere: [`${BASE}:2`] }))).toMatchObject({
+      kind: 'open',
+      id: `${BASE}:3`,
+      at: { group: 'g2', index: 1 },
+    })
+  })
+
+  it('桌面是空的 → 新建一组', () => {
+    expect(planLaunch(docCounter, ctx(desk([])))).toMatchObject({ kind: 'open', at: { empty: true } })
   })
 })
 

@@ -1,4 +1,5 @@
 import type { OpenPaneOptions, Placement } from './openable.js'
+import { isPlainParams as plainParams } from './panels.js'
 
 /**
  * 跨件开格那一条的纯判断：`shell.openPane` 转进来的动作长什么样、总线参数怎么认成
@@ -51,20 +52,6 @@ export interface OpenPaneActionLike {
 export function isOpenPaneAction(payload: unknown): payload is OpenPaneActionLike {
   if (payload === null || typeof payload !== 'object') return false
   return (payload as OpenPaneActionLike).t === OPEN_PANE_EVENT
-}
-
-/**
- * params 的门：平对象、JSON 序列化不炸。它跟着面板进 `toJSON()` 整档落盘，循环引用
- * 在这儿就拦下，别让它写坏盘上那份布局档。
- */
-function plainParams(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  try {
-    JSON.stringify(value)
-  } catch {
-    return false
-  }
-  return true
 }
 
 function isPlacement(value: unknown): value is Placement {

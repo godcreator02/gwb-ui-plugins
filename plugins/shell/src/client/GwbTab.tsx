@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
-import { Hash, X, icons, type LucideIcon } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from 'cn'
-import { iconKey } from '../pane-icon.js'
+import { iconFor } from './icon.js'
+import { TabMenu } from './TabMenu.js'
 
 /**
  * 井里每一格的标签：卡头上的一块浅色圆角底。图标是件注册窗格时给的 lucide 正名，从全集里取
@@ -11,16 +12,8 @@ import { iconKey } from '../pane-icon.js'
  * 激活态订阅的是**这一格自己的** activePanel（面板会被拖去别的组，所以两级订阅：
  * 先跟住自己在哪一组，再跟住那一组显示的是谁）。预览格在标题前画一枚小空心圆点
  * （形状，激活未激活都认得出；不用斜体——中文没有真斜体），**双击标签转正**，
- * 跟件调 `keepPane()` 是同一个动作。
+ * 跟件调 `keepPane()` 是同一个动作；右键是标签菜单（`TabMenu`）。
  */
-
-/** lucide 全集，键是导出名（PascalCase）。整份打进本束——件登记什么正名都画得出 */
-const ALL_ICONS: Readonly<Record<string, LucideIcon>> = icons
-
-function iconFor(name: string | undefined): LucideIcon {
-  const key = name === undefined ? undefined : iconKey(name)
-  return key !== undefined && Object.hasOwn(ALL_ICONS, key) ? ALL_ICONS[key]! : Hash
-}
 
 export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
   const params = (props.params ?? {}) as { icon?: string; preview?: unknown }
@@ -54,8 +47,10 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
   }, [props.api])
 
   return (
-    // h-full：槽位高 26px（标签条 32 减上下各 3px，见 dockview-theme.css 形状那段），
-    // 跟 god-dsh-panes 的标签同尺寸；6px 圆角也同款
+    // 右键是标签菜单（留住、在旁边再开一份、关闭几项），见 TabMenu
+    <TabMenu tab={props}>
+    {/* h-full：槽位高 26px（标签条 32 减上下各 3px，见 dockview-theme.css 形状那段），
+        跟 god-dsh-panes 的标签同尺寸；6px 圆角也同款 */}
     <div
       className={cn(
         'shell:group/tab shell:flex shell:h-full shell:w-full shell:min-w-0 shell:cursor-grab shell:items-center shell:gap-1.5 shell:rounded-md shell:px-2 shell:text-[13px] shell:transition-colors shell:select-none',
@@ -98,5 +93,6 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
         <X className="shell:size-3" />
       </button>
     </div>
+    </TabMenu>
   )
 }

@@ -1,5 +1,7 @@
 import { PLUGIN_COMPONENT, pluginParamsIn, shellParamKeysIn } from './panels.js'
-import type { RegisteredPane } from './pane-registry.js'
+import type { PaneKind, RegisteredPane } from './pane-registry.js'
+
+export type { PaneKind } from './pane-registry.js'
 
 /**
  * 「可以打开的窗格」那张表与开格的决策：注册表快照摊成井里能开的那几格（`listOpenable`
@@ -33,12 +35,6 @@ export interface PanelParams {
   /** 件传的那半。键名由件定，撞上保留键的在入口就摘掉了 */
   [key: string]: unknown
 }
-
-/**
- * 窗格的两类：工具窗格一张桌面至多一份、打开就是把它显示出来；文档窗格可以开多份、
- * 每份装一个内容。两类的查重范围不同（见 `planOpen`）。注册时说不出就是 `tool`。
- */
-export type PaneKind = 'tool' | 'document'
 
 /** 新窗格往哪放：`auto` 按目标组规则，`side` 开到来源旁边（见 `targetGroup`） */
 export type Placement = 'auto' | 'side'
@@ -75,6 +71,8 @@ export interface OpenableSpec {
   component: string
   title: string
   icon?: string
+  /** 工具窗格还是文档窗格。**从注册表现取、不进面板 params**——布局文件里没有它 */
+  kind: PaneKind
   params: PanelParams
 }
 
@@ -123,11 +121,9 @@ export interface Desk {
   recent: readonly string[]
 }
 
-/** 这一次打开的上下文 */
+/** 这一次打开的上下文。要开的是哪一类看定义自己的 `kind` */
 export interface OpenContext {
   desk: Desk
-  /** 要开的这一格是哪一类 */
-  kind: PaneKind
   /** 来源窗格的实例 id。没有来源（状态栏、不带 from 的命令）就不给；不在这张桌面上等于没给 */
   from?: string
   /** 这个实例 id 在**任何一张桌面**上占着没有——实例 id 全页唯一 */
@@ -344,7 +340,7 @@ export function planOpen(
   const target = targetGroup(desk, def, options?.placement === 'side' ? 'side' : 'auto', context.from)
   const inTarget = 'group' in target ? desk.groups.find((g) => g.id === target.group) : undefined
   // 查重范围：工具窗格是整张桌面，文档窗格只是目标组
-  const scope = context.kind === 'tool' ? desk.groups.flatMap((g) => g.tabs) : (inTarget?.tabs ?? [])
+  const scope = spec.kind === 'tool' ? desk.groups.flatMap((g) => g.tabs) : (inTarget?.tabs ?? [])
   const already = scope.find((t) => isDef(t, def) && t.key === want)
   if (already !== undefined) {
     return already.preview && !preview ? { kind: 'focus', id: already.id, keep: true } : { kind: 'focus', id: already.id }
@@ -371,6 +367,35 @@ export function planOpen(
 }
 
 /**
+ * 状态栏「新建」（启动器）选了一条之后该干什么。没有来源、在当前桌面：
+ *
+ * - **文档窗格**：在活动组开一份**新的**（key 空串、不带参数，插件画它的默认内容），不查重
+ * - **工具窗格**：本桌已有同一格（key 空串）就激活它，是预览格就顺带转正；没有就开进活动组
+ *
+ * 落点是**活动组**，不走 `targetGroup` 的「最近用过的同类组」——人在状态栏点的，「这儿」就是
+ * 此刻激活的那一组。
+ */
+export function planLaunch(spec: OpenableSpec, context: OpenContext): OpenPlan {
+  const { desk } = context
+  const def: PaneDef = { entryId: spec.params.entryId, paneId: spec.params.paneId }
+  if (spec.kind === 'tool') {
+    const already = desk.groups.flatMap((g) => g.tabs).find((t) => isDef(t, def) && t.key === '')
+    if (already !== undefined) {
+      return already.preview ? { kind: 'focus', id: already.id, keep: true } : { kind: 'focus', id: already.id }
+    }
+  }
+  const active = activeGroupOf(desk)
+  const { id, ordinal } = uniquePanelId(spec.id, context.taken)
+  return {
+    kind: 'open',
+    id,
+    title: titleForOrdinal(spec.title, ordinal),
+    spec: withOpenParams(spec, undefined, '', false),
+    at: active === undefined ? { empty: true } : { group: active.id, index: insertAt(active) },
+  }
+}
+
+/**
  * 对半分之后基准组的高该补成多少（逻辑尺寸）。没变（同一排里分，不用包分支）回 undefined。
  *
  * dockview 8.3.1 在「往右分一个竖排里的组」时要把它包进一个新的横向分支，而 `Gridview.addView`
@@ -390,6 +415,7 @@ export function specForPane(pane: RegisteredPane): OpenableSpec {
     component: PLUGIN_COMPONENT,
     title: pane.title,
     ...(pane.icon === undefined ? {} : { icon: pane.icon }),
+    kind: pane.kind,
     params: { pluginKey: pane.pkg, entryId: pane.entryId, paneId: pane.id },
   }
 }
@@ -413,4 +439,31 @@ export function specForOwnPane(
 /** 注册表 → 井里能开的那几格，按注册先后 */
 export function listOpenable(panes: readonly RegisteredPane[]): OpenableSpec[] {
   return panes.map((pane) => specForPane(pane))
+}
+
+/** 启动器里的一组：一条条目（一个插件）注册的那几格 */
+export interface LauncherGroup {
+  entryId: string
+  /** 组名：件经 `describeSelf` 报的名字，没报就是包名 */
+  title: string
+  specs: OpenableSpec[]
+}
+
+/** 启动器按插件分组，组的先后跟注册先后走 */
+export function groupForLauncher(
+  specs: readonly OpenableSpec[],
+  plugins: readonly { entryId: string; title: string }[],
+): LauncherGroup[] {
+  const groups = new Map<string, LauncherGroup>()
+  for (const spec of specs) {
+    const entryId = spec.params.entryId
+    let group = groups.get(entryId)
+    if (group === undefined) {
+      const title = plugins.find((p) => p.entryId === entryId)?.title ?? spec.params.pluginKey
+      group = { entryId, title, specs: [] }
+      groups.set(entryId, group)
+    }
+    group.specs.push(spec)
+  }
+  return [...groups.values()]
 }

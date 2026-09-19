@@ -10,7 +10,8 @@ import {
   pickRetarget,
   type MountLike,
 } from './mount-handle.js'
-import { paramsKeyOf } from '../panels.js'
+import { contentUpdateOf, paramsKeyOf, parsePaneContent, pluginParamsIn } from '../panels.js'
+import type { PaneKind } from '../openable.js'
 import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
@@ -33,11 +34,11 @@ async function fetchPaneModule(
   host: HostBridge,
   entryId: string,
   paneId: string,
-): Promise<{ client: string; style?: string }> {
+): Promise<{ client: string; style?: string; kind: PaneKind }> {
   const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
   if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——件卸了？`)
   if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器半的地址（client）`)
-  return { client: row.client, style: row.style }
+  return { client: row.client, style: row.style, kind: row.kind }
 }
 
 /** 动态 import 件的 client 模块，按契约取 `mountPane` 导出（缺了或不是函数都抛） */
@@ -59,6 +60,7 @@ export function PluginPane({
   openPane,
   setTitle,
   keepPane,
+  updateParams,
 }: {
   /** 完整包名 */
   pluginKey: string
@@ -77,6 +79,8 @@ export function PluginPane({
   setTitle: ShellBridge['setPaneTitle']
   /** 把这一格留住（不再是预览格）。同样绑这一份自己的 panel api */
   keepPane: ShellBridge['keepPane']
+  /** 往这一份的面板 params 上「并」一份（dockview 的 updateParameters）。上报内容走它 */
+  updateParams: (update: Record<string, unknown>) => void
 }): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null)
   // **经 ref 转一道，不进依赖数组**：这几个函数在面板组件里每轮渲染都是个新闭包，
@@ -87,6 +91,8 @@ export function PluginPane({
   setTitleRef.current = setTitle
   const keepPaneRef = useRef(keepPane)
   keepPaneRef.current = keepPane
+  const updateParamsRef = useRef(updateParams)
+  updateParamsRef.current = updateParams
   // **同样经 ref、不进依赖数组**：这是从面板 params 摘出来的新对象，每轮渲染都换引用。
   // 挂载时读一次（读到的一定是最新那份），之后由下面那条 effect 按**稳定序列化**比对着换
   const paneParamsRef = useRef(paneParams)
@@ -95,6 +101,12 @@ export function PluginPane({
   const retargetRef = useRef<((params: Record<string, unknown>) => void) | undefined>(undefined)
   /** 件真挂上了没有。没挂上时换 params 什么都不用做——挂的时候读的就是最新那份 */
   const mountedRef = useRef(false)
+  /**
+   * **件手上此刻装的是哪份参数**（稳定序列化）。挂上时记挂载那份，软换 / 重挂后记新那份，
+   * 件自己上报内容时记上报那份——面板 params 换成它时下面那条 effect 认得出「这是件自己换的」，
+   * 不软换也不重挂
+   */
+  const heldRef = useRef<string | undefined>(undefined)
   /** 硬换的扳手：加一下，下面那条挂载 effect 就重跑一遍（拆了重挂） */
   const [remounts, setRemounts] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +127,25 @@ export function PluginPane({
       openPane: (target, options) => openPaneRef.current(target, options),
       setPaneTitle: (title) => setTitleRef.current(title),
       keepPane: () => keepPaneRef.current(),
+      setPaneContent: (raw) => {
+        const parsed = parsePaneContent(raw)
+        if (!parsed.ok) {
+          console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${parsed.error}，这次上报不作数`)
+          return
+        }
+        const { content } = parsed
+        const { update, notice } = contentUpdateOf(paneParamsRef.current, content)
+        if (notice !== undefined) console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${notice}`)
+        if (content.params !== undefined) {
+          // 先记下「件手上已经是这份了」再改面板：params 一变下面那条 effect 就会醒
+          const mine = pluginParamsIn(content.params)
+          heldRef.current = paramsKeyOf(mine)
+          // 连着上报两次、中间还没重渲染时，第二次要拿第一次之后的那半算删哪些键
+          paneParamsRef.current = mine
+        }
+        updateParamsRef.current(update)
+        if (content.title !== undefined) setTitleRef.current(content.title)
+      },
       bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
       get portal() {
         return portalHostOf(container)
@@ -135,11 +166,17 @@ export function PluginPane({
         if (disposed) return
         // 没传参数就不给这一项：件那头 `pane.params === undefined` 干脆地等于「没给」
         const openParams = paneParamsRef.current
-        const pane = { id: paneId, instance: panelId, ...(openParams === undefined ? {} : { params: openParams }) }
+        const pane = {
+          id: paneId,
+          instance: panelId,
+          kind: target.kind,
+          ...(openParams === undefined ? {} : { params: openParams }),
+        }
         const handle = mountPane({ host, shell, pane }, container)
         dispose = pickDispose(handle)
         // 软换那支是可选的：挑不到就是这个件走硬换，不是契约不符
         retargetRef.current = pickRetarget(handle)
+        heldRef.current = paramsKeyOf(openParams)
         mountedRef.current = true
         if (dispose === undefined) {
           setError(
@@ -179,6 +216,9 @@ export function PluginPane({
   const paramsKey = paramsKeyOf(paneParams)
   useEffect(() => {
     if (!mountedRef.current) return
+    // 件手上本来就是这份（件自己上报的、或者挂载时就是它）：什么都不用做
+    if (paramsKey === heldRef.current) return
+    heldRef.current = paramsKey
     const retarget = retargetRef.current
     if (retarget === undefined) {
       setRemounts((n) => n + 1)

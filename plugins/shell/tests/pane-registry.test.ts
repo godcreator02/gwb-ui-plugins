@@ -24,7 +24,7 @@ describe('register：件给三样，身份由服务填', () => {
     const { reg } = fresh()
     reg.register(echo, { id: 'main', title: '回声', icon: 'megaphone' })
     expect(reg.list()).toEqual([
-      { id: 'main', title: '回声', icon: 'megaphone', entryId: 'echo', pkg: '@godcreator/gwb-echo' },
+      { id: 'main', title: '回声', icon: 'megaphone', kind: 'tool', entryId: 'echo', pkg: '@godcreator/gwb-echo' },
     ])
   })
 
@@ -136,12 +136,34 @@ describe('说不清自己是谁的一律抛——不静默进表', () => {
   })
 })
 
-describe('注册的是**定义**，一格开几份不在这张表上', () => {
-  it('件说不出「我能开几份」——那张老的 duplicable 开关删掉了', () => {
-    // 一格开几份取决于它装着几份不同的内容（`openPane` 的 `key`），不取决于谁给过权限。
-    // 多写一个字段进来的话，注册表就又成了「开格那处要回头查一遍」的东西
+describe('注册要说清是工具窗格还是文档窗格（kind），说不出就是工具窗格', () => {
+  it('不给 kind 进表就是 tool——老插件一个字不改都是工具窗格', () => {
+    const { reg, warn } = fresh()
+    reg.register(echo, { id: 'main', title: '回声' })
+    expect(reg.list()[0]!.kind).toBe('tool')
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('给了 document / tool 原样进表', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'doc', title: '正文', kind: 'document' })
+    reg.register(echo, { id: 'log', title: '日志', kind: 'tool' })
+    expect(reg.list().map((p) => p.kind)).toEqual(['document', 'tool'])
+  })
+
+  it('kind 写错：照 tool 进表，登记那一刻 warn 一句，点名包与窗格', () => {
+    const { reg, warn } = fresh()
+    reg.register(echo, { id: 'doc', title: '正文', kind: 'documnet' as never })
+    expect(reg.list()[0]!.kind).toBe('tool')
+    expect(warn).toHaveBeenCalledOnce()
+    const said = warn.mock.calls[0]![0]
+    for (const part of ['gwb-echo', 'doc', '"documnet"']) expect(said).toContain(part)
+  })
+
+  it('说的是「打开对它是什么意思」，不是「能开几份」——那张老的 duplicable 开关没有回来', () => {
+    // 一个窗格开几份仍取决于它装着几份不同的内容（`key`）；kind 只定查重范围与启动器的行为
     const { reg } = fresh()
     reg.register(echo, { id: 'main', title: '回声' })
-    expect(Object.keys(reg.list()[0]!).sort()).toEqual(['entryId', 'id', 'pkg', 'title'])
+    expect(Object.keys(reg.list()[0]!).sort()).toEqual(['entryId', 'id', 'kind', 'pkg', 'title'])
   })
 })

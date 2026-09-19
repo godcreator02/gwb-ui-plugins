@@ -80,7 +80,8 @@ export const OPEN_PANE_COMMAND = 'shell.openPane'
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
   /**
-   * 注册一格窗格。身份不用给——`pkg` 与 `entryId` 由这儿从调用方的 fiber 上取。
+   * 注册一格窗格。身份不用给——`pkg` 与 `entryId` 由这儿从调用方的 fiber 上取。`kind` 说清
+   * 它是工具窗格还是文档窗格，不说就是 `'tool'`。
    *
    * 回一个注销函数给要提前摘的场景。**不用自己包 `ctx.effect`**：件卸载时这一格
    * 自动从表上摘掉。
@@ -159,7 +160,12 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerTableCommands(cli: GwbCommands): void {
     this.ctx.effect(() =>
       cli.register(
-        { name: PANES_COMMAND, description: '此刻注册了哪些窗格', usage: '无参数', plugin: '@godcreator/gwb-shell' },
+        {
+          name: PANES_COMMAND,
+          description: '此刻注册了哪些窗格',
+          usage: "无参数。回 [{ id, title, icon?, client?, style?, kind, entryId, pkg }]，按注册先后；kind 是 'tool'（工具窗格，注册时不说就是它）或 'document'（文档窗格）",
+          plugin: '@godcreator/gwb-shell',
+        },
         () => this.paneTable.list(),
       ),
     )
@@ -343,7 +349,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     const owner = this.owner()
     const off = this.paneTable.register(owner, spec)
     // 「哪格窗格是谁的」是注册表最基本的账：过去只有撞名才出声，挂上了反而无声
-    this.info(`窗格 ${spec.id}（${spec.title}）登记上了（${owner.pkg}）`)
+    this.info(`窗格 ${spec.id}（${spec.title}，${spec.kind === 'document' ? '文档窗格' : '工具窗格'}）登记上了（${owner.pkg}）`)
     // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘。
     // 忘了收的症状是「件卸了格还在，点开是个死格」——静默的错，这层自动把它消掉
     this.ctx.effect(() => off)

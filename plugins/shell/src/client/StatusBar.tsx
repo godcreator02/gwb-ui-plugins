@@ -1,5 +1,5 @@
-import { useState, type ReactElement } from 'react'
-import { FolderOpen, Info, LayoutGrid, Monitor, Moon, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
+import { Fragment, useRef, useState, type ReactElement } from 'react'
+import { FolderOpen, Info, LayoutGrid, Monitor, Moon, PanelsTopLeft, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,20 +10,28 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { DesktopRow, SavedLayout } from '../layout.js'
 import type { OpenableSpec } from '../openable.js'
+import type { SwitcherGroup } from '../pane-list.js'
 import type { Versions } from '../protocol.js'
 import { versionCell } from '../versions.js'
+import { iconFor } from './icon.js'
 
 /**
  * 井底下那条。**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」，
  * 也正因如此它是桌面切换器唯一合理的落点：它不属于任何一口桌面，站在所有井外面。
  *
- * 左起：桌面切换、布局菜单、可开窗格的＋列表、home 路径；右边：版本、刷新、亮暗，布局没存上时
- * 再亮一格告警。
+ * 左起：桌面切换、布局菜单、「新建」（启动器）、「窗格」（切换器）、home 路径；右边：版本、
+ * 刷新、亮暗，布局没存上时再亮一格告警。
  *
- * 那张「可开的窗格」列表只有一个动作：**打开这一格，已经开着就聚焦**（都在活动那口井里）。
- * 「再来一份」不在这儿——一格开几份取决于它装的是什么内容（件调 `openPane` 时给的
- * `key`），不是这行状态栏点得出来的事。
+ * **启动与切换分开**：「新建」开一个新的（清单每次现取注册表），「窗格」切到已开的（列出所有
+ * 桌面上开着的窗格）。一个列表同时干两件事，对文档窗格就说不清「点下去是开新的还是切过去」。
  */
+
+/** 启动器里的一组：一个插件注册的那几格，工具窗格本桌已开的标一下 */
+export interface LaunchGroup {
+  entryId: string
+  title: string
+  rows: { spec: OpenableSpec; opened: boolean }[]
+}
 
 /** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
 const CELL =
@@ -179,16 +187,148 @@ function LayoutBar({
   )
 }
 
+/**
+ * 「新建」：启动器。**每次点开都现取注册表**（热装的件不用刷新就在），按插件分组列出全部窗格
+ * 定义。文档窗格选了就开一份新的；工具窗格本桌已开就激活它（那一行标「本桌已开」）。都开在
+ * 当前桌面，不切桌面。
+ */
+function Launcher({
+  onList,
+  onLaunch,
+}: {
+  onList: () => Promise<LaunchGroup[]>
+  onLaunch: (spec: OpenableSpec) => void
+}): ReactElement {
+  const [groups, setGroups] = useState<LaunchGroup[] | null>(null)
+  // 连着点开两次：只认最后一次取回来的那份
+  const round = useRef(0)
+  const load = (): void => {
+    const mine = ++round.current
+    setGroups(null)
+    void onList().then((next) => {
+      if (round.current === mine) setGroups(next)
+    })
+  }
+  return (
+    <DropdownMenu onOpenChange={(open) => open && load()}>
+      <DropdownMenuTrigger className={BUTTON} title="新建：开一个窗格（清单每次现取注册表）">
+        <Plus className="shell:size-3.5" />
+        新建
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" data-gwb-launcher="">
+        {groups === null ? (
+          <DropdownMenuItem disabled>取注册表…</DropdownMenuItem>
+        ) : groups.length === 0 ? (
+          <DropdownMenuItem disabled>没有件注册过窗格</DropdownMenuItem>
+        ) : (
+          groups.map((group, i) => (
+            <Fragment key={group.entryId}>
+              {i > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="shell:text-muted-foreground shell:text-xs">{group.title}</DropdownMenuLabel>
+              {group.rows.map(({ spec, opened }) => {
+                const Icon = iconFor(spec.icon)
+                return (
+                  <DropdownMenuItem key={spec.id} data-gwb-launch={spec.id} onSelect={() => onLaunch(spec)}>
+                    <Icon />
+                    <span className="shell:flex-1">{spec.title}</span>
+                    {opened && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">本桌已开</span>}
+                  </DropdownMenuItem>
+                )
+              })}
+            </Fragment>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/**
+ * 「窗格 N」：切换器，N 是当前桌面上的窗格数。点开按桌面分组列出**所有桌面**上开着的窗格，
+ * 当前桌面在最前、标「当前」。点当前桌面的一行激活它；点别的桌面的一行切过去再激活（显式
+ * 切换）。行尾「关闭」关掉它，不切桌面。这是跨桌面找窗格的唯一入口。
+ */
+function Switcher({
+  count,
+  onList,
+  onFocus,
+  onClose,
+}: {
+  count: number
+  onList: () => SwitcherGroup[]
+  onFocus: (desktop: string, instance: string) => void
+  onClose: (desktop: string, instance: string) => Promise<void>
+}): ReactElement {
+  const [groups, setGroups] = useState<SwitcherGroup[]>([])
+  return (
+    <DropdownMenu onOpenChange={(open) => open && setGroups(onList())}>
+      <DropdownMenuTrigger className={BUTTON} title="窗格：所有桌面上开着的窗格，点一行激活（在别的桌面就切过去）">
+        <PanelsTopLeft className="shell:size-3.5" />
+        窗格 {count}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" data-gwb-switcher="">
+        {groups.map((group, i) => (
+          <Fragment key={group.desktop}>
+            {i > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel className="shell:flex shell:items-center shell:text-muted-foreground shell:text-xs">
+              <span className="shell:flex-1">{group.name}</span>
+              {group.current && <span className="shell:ml-2 shell:text-[10px]">当前</span>}
+            </DropdownMenuLabel>
+            {group.rows.length === 0 ? (
+              <DropdownMenuItem disabled>（空桌面）</DropdownMenuItem>
+            ) : (
+              group.rows.map((row) => {
+                const Icon = iconFor(row.icon)
+                return (
+                  <DropdownMenuItem key={row.instance} data-gwb-pane={row.instance} onSelect={() => onFocus(row.desktop, row.instance)}>
+                    <Icon />
+                    {row.preview && (
+                      <span
+                        role="img"
+                        aria-label="预览格"
+                        className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
+                      />
+                    )}
+                    <span className="shell:flex-1 shell:truncate">{row.title}</span>
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      aria-label="关闭"
+                      title="关闭这个窗格"
+                      className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
+                      onClick={(e) => {
+                        // 别让这一下冒泡成「选中这一行」——那会走成激活它、甚至切桌面
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void onClose(row.desktop, row.instance).then(() => setGroups(onList()))
+                      }}
+                    >
+                      ✕
+                    </span>
+                  </DropdownMenuItem>
+                )
+              })
+            )}
+          </Fragment>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function StatusBar({
-  specs,
-  focusIds,
+  paneCount,
+  onLaunchList,
+  onLaunch,
+  onListPanes,
+  onFocusPane,
+  onClosePane,
   home,
   versions,
   desktops,
   activeDesktopId,
   savedLayouts,
   saveFailed,
-  onOpen,
   onSwitchDesktop,
   onNewDesktop,
   onApplyLayout,
@@ -197,14 +337,18 @@ export function StatusBar({
   onResetLayout,
   onRetrySave,
 }: {
-  /** 可开的窗格清单（已经滤掉导航那条） */
-  specs: readonly OpenableSpec[]
+  /** 当前桌面上开着几个窗格（「窗格 N」那个 N） */
+  paneCount: number
   /**
-   * 点了会走成**聚焦**的那几条（spec 基名）。「已开」那个记号标的就是它——
-   * **记号跟点下去的效果同一个判据**（上游 `willFocus` 直接问 `planOpen`），
-   * 不是「这一格有没有开着」：那两者会岔开，那时记号就开始说谎。
+   * 启动器的清单：每次点开现取。「本桌已开」记号**跟点下去的效果同一个判据**（上游直接问
+   * `planLaunch`），不是「这一格有没有开着」——那两者会岔开，那时记号就开始说谎
    */
-  focusIds: readonly string[]
+  onLaunchList: () => Promise<LaunchGroup[]>
+  onLaunch: (spec: OpenableSpec) => void
+  /** 切换器的清单：所有桌面上开着的窗格 */
+  onListPanes: () => SwitcherGroup[]
+  onFocusPane: (desktop: string, instance: string) => void
+  onClosePane: (desktop: string, instance: string) => Promise<void>
   /** home 目录的绝对路径 */
   home: string
   /** 版本那一格：格子上写产品版本（内核版），悬停列内核、外壳、运行时 */
@@ -219,9 +363,6 @@ export function StatusBar({
   savedLayouts: readonly SavedLayout[]
   /** 布局档最后一次落盘成没成。失败亮一格，点一下重试 */
   saveFailed: boolean
-  /** 打开这一格；已经开着就聚焦。**这张表只干这一件事**——「再来一份」是件说了算的事，
-   * 它要几份取决于装的是什么内容（`openPane` 的 `key`），不是状态栏点得出来的 */
-  onOpen: (spec: OpenableSpec) => void
   onApplyLayout: (row: SavedLayout) => void
   onSaveLayout: (name: string) => void
   onDeleteLayout: (id: string) => void
@@ -251,30 +392,8 @@ export function StatusBar({
         onReset={onResetLayout}
       />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className={BUTTON} title="打开一格窗格">
-          <Plus className="shell:size-3.5" />
-          打开窗格
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="top">
-          <DropdownMenuLabel>可开的窗格</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {specs.length === 0 ? (
-            <DropdownMenuItem disabled>没有件注册过窗格</DropdownMenuItem>
-          ) : (
-            specs.map((spec) => {
-              const opened = focusIds.includes(spec.id)
-              return (
-                <DropdownMenuItem key={spec.id} onSelect={() => onOpen(spec)}>
-                  <span className="shell:flex-1">{spec.title}</span>
-                  {/* 已开的不 disable——点它是聚焦,那是个有用的动作 */}
-                  {opened && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">已开</span>}
-                </DropdownMenuItem>
-              )
-            })
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Launcher onList={onLaunchList} onLaunch={onLaunch} />
+      <Switcher count={paneCount} onList={onListPanes} onFocus={onFocusPane} onClose={onClosePane} />
 
       <div className={CELL} title={home}>
         <FolderOpen className="shell:size-3.5" />

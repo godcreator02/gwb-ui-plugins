@@ -27,7 +27,7 @@ function fakeWell(groups: FakeGroup[], activeGroup?: string): DockviewApi {
     getPanel: (id: string) => rows.find((row) => row.id === id),
     groups: groups.map((g) => ({
       id: g.id,
-      panels: g.panels,
+      panels: g.panels.map((p) => ({ ...p, title: p.id })),
       activePanel: g.panels.find((p) => p.id === g.active),
       element: {
         getBoundingClientRect: () => {
@@ -160,6 +160,57 @@ describe('最近用过的组：按桌面记激活顺序，只在运行时', () =
   })
 })
 
+describe('注册表缓存：同步地问「这一格是哪一类」', () => {
+  it('记下最近取到的那份表；表里没有的（件卸了）当 tool', () => {
+    const hub = createWellHub()
+    expect(hub.paneKind('e1', 'main')).toBe('tool')
+    hub.notePanes([{ entryId: 'e1', pkg: 'pkg', id: 'main', title: 'M', kind: 'document' }])
+    expect(hub.paneKind('e1', 'main')).toBe('document')
+    expect(hub.paneKind('e1', 'other')).toBe('tool')
+  })
+})
+
+describe('entries：切换器与 shell.pane.list 的清单', () => {
+  it('挂着的桌面从活井摘，没挂过的桌面从落盘布局读，按桌面顺序', () => {
+    const hub = createWellHub()
+    hub.addWell(
+      'd1',
+      fakeWell([{ id: 'g1', panels: [pane('plugin:e1:main', { key: 'a' }), pane('plugin:e1:main:2', { preview: true })], active: 'plugin:e1:main:2' }]),
+    )
+    hub.setDeskOps({
+      switchTo: () => undefined,
+      ensureMounted: async () => undefined,
+      rows: () => [
+        { id: 'd1', name: '桌面 1', layout: null },
+        {
+          id: 'd2',
+          name: '桌面 2',
+          layout: {
+            grid: { root: { type: 'leaf', data: { id: '7', views: ['plugin:e1:main:3'], activeView: 'plugin:e1:main:3' } } },
+            panels: {
+              'plugin:e1:main:3': {
+                id: 'plugin:e1:main:3',
+                contentComponent: 'plugin',
+                title: '三',
+                params: { pluginKey: 'pkg', entryId: 'e1', paneId: 'main', key: 'c' },
+              },
+            },
+          },
+        },
+      ],
+    })
+    expect(hub.entries().map((e) => [e.desktop, e.group, e.instance, e.key, e.preview, e.active])).toEqual([
+      ['d1', 'g1', 'plugin:e1:main', 'a', false, false],
+      ['d1', 'g1', 'plugin:e1:main:2', '', true, true],
+      ['d2', '7', 'plugin:e1:main:3', 'c', false, true],
+    ])
+  })
+
+  it('没注入桌面操作（外壳还没落树）时回空清单', () => {
+    expect(createWellHub().entries()).toEqual([])
+  })
+})
+
 describe('takenAnywhere：实例 id 全页唯一', () => {
   it('别的井里占着也算占', () => {
     const hub = createWellHub()
@@ -180,6 +231,14 @@ describe('命令口与注入钩子', () => {
     expect(hub.host()).toBe(first)
     hub.releaseHost(first)
     expect(hub.host()).toBeUndefined()
+  })
+
+  it('桌面操作摘了之后是 undefined', () => {
+    const hub = createWellHub()
+    hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [] })
+    expect(hub.deskOps()).toBeDefined()
+    hub.setDeskOps(undefined)
+    expect(hub.deskOps()).toBeUndefined()
   })
 
   it('flush 扳的是最新的那个钩子，摘了之后再扳是空操作', () => {

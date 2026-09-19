@@ -9,17 +9,23 @@ import {
   type SerializedDockview,
 } from 'dockview-react'
 import { GwbTab } from './GwbTab.js'
-import { StatusBar } from './StatusBar.js'
+import { StatusBar, type LaunchGroup } from './StatusBar.js'
 import { PluginPanel } from './plugin-panel.js'
 import { loadStyle } from './asset.js'
-import { fetchPanes } from './panes.js'
+import { fetchPanes, fetchPlugins } from './panes.js'
 import { wellHub } from './well-hub.js'
-import { addInstance, openRegisteredPane, openSpec, willFocus, TAB_COMPONENT } from './open.js'
-import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
 import {
-  listOpenable,
-  type OpenableSpec,
-} from '../openable.js'
+  addInstance,
+  closeInstance,
+  focusInstance,
+  launchSpec,
+  launchWillFocus,
+  openRegisteredPane,
+  TAB_COMPONENT,
+} from './open.js'
+import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
+import { groupForLauncher, listOpenable, type OpenableSpec } from '../openable.js'
+import { orderForSwitcher } from '../pane-list.js'
 import { PLUGIN_COMPONENT } from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
@@ -111,8 +117,8 @@ function App({
   const [mountedIds, setMountedIds] = useState<string[]>(() => [initialDoc.active])
   const [desktops, setDesktops] = useState<DesktopRow[]>(initialDoc.desktops)
   const [activeId, setActiveId] = useState(initialDoc.active)
-  /** 状态栏那张表上点了会走成聚焦的那几条（spec 的基名）。判据归 `willFocus`，只看活动那口井 */
-  const [focusIds, setFocusIds] = useState<string[]>([])
+  /** 当前桌面上开着几个窗格（状态栏「窗格 N」那个 N） */
+  const [paneCount, setPaneCount] = useState(0)
   /** 人起名存下来的布局清单，档里那半 */
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
@@ -140,6 +146,8 @@ function App({
    * 空井不触发布局事件，null 留在档里的话重启会被「null → 铺默认」复原成满的
    */
   const bornEmptyRef = useRef(new Set<string>())
+  /** 等某口井挂上的那几位（`ensureMounted` 排的队）。onWellReady 挂好井就叫醒它们 */
+  const readyWaitersRef = useRef(new Map<string, ((api: DockviewApi) => void)[]>())
 
   const activeApi = apis[activeId] ?? null
 
@@ -201,10 +209,30 @@ function App({
     for (const spec of specs) addInstance(target, spec)
   }
 
-  /** 状态栏「已开」记号重算：问的是当前桌面上的 `planOpen` 判据（本桌已开才算，别桌的不算） */
-  const syncFocus = useCallback((): void => {
-    setFocusIds(specs.filter((spec) => willFocus(spec)).map((spec) => spec.id))
-  }, [specs])
+  /** 「窗格 N」重算：当前桌面上开着几个窗格 */
+  const syncCount = useCallback((): void => {
+    setPaneCount(apisRef.current[activeIdRef.current]?.panels.length ?? 0)
+  }, [])
+
+  /**
+   * 把一张桌面的井挂上：已经挂着就直接回；没挂过就排进 mountedIds（在后台冷挂、不显示），
+   * 等 onWellReady 挂好再回。桌面不存在回 undefined。切换器关别桌的窗格、送到还没去过的桌面
+   * 都靠它——**挂井不等于切过去**
+   */
+  const ensureMounted = useCallback((id: string): Promise<DockviewApi | undefined> => {
+    const api = apisRef.current[id]
+    if (api !== undefined) return Promise.resolve(api)
+    if (!rowsRef.current.some((r) => r.id === id)) return Promise.resolve(undefined)
+    return new Promise((resolve) => {
+      const waiters = readyWaitersRef.current.get(id) ?? []
+      waiters.push(resolve)
+      readyWaitersRef.current.set(id, waiters)
+      if (!mountedRef.current.includes(id)) {
+        mountedRef.current = [...mountedRef.current, id]
+        setMountedIds(mountedRef.current)
+      }
+    })
+  }, [])
 
   /** 一口井挂上（冷挂那一刻）：按它那条档恢复，或铺默认，或（运行时新建的）出生为空；
    * 订阅布局变化。井常驻，只走一次 */
@@ -231,7 +259,7 @@ function App({
     // 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange）；哪口变了都要落盘。
     // 组被激活、拖放落进哪一组，记进「最近用过的组」——订在恢复之后，重载后的账从空开始
     const layoutSub = event.api.onDidLayoutChange(() => {
-      if (activeIdRef.current === id) syncFocus()
+      if (activeIdRef.current === id) syncCount()
       scheduleSave()
     })
     const activeSub = event.api.onDidActiveGroupChange((group) => {
@@ -246,12 +274,16 @@ function App({
       },
     })
     if (bornEmpty) flushSave()
+    // 等这口井的那几位（后台冷挂）这时才叫醒：井已经在枢纽里、布局已经恢复
+    const waiters = readyWaitersRef.current.get(id) ?? []
+    readyWaitersRef.current.delete(id)
+    for (const wake of waiters) wake(event.api)
   }
 
-  // 切到一口已挂井的桌面时记号也得重算（那口井没有新事件）
+  // 切到一口已挂井的桌面时「窗格 N」也得重算（那口井没有新事件）
   useEffect(() => {
-    syncFocus()
-  }, [activeApi, syncFocus])
+    syncCount()
+  }, [activeApi, syncCount])
 
   /** 切桌面。顺序是机制的一部分：先记账再 flush（档里的 active 跟这一趟走），显隐交给
    * React，可见性通知与焦点接管跟在后面。 */
@@ -294,6 +326,26 @@ function App({
     },
     [switchTo],
   )
+
+  // 桌面操作经枢纽交给面板组件、标签菜单与开格链（它们够不着 App 的闭包）
+  useEffect(() => {
+    wellHub.setDeskOps({ switchTo, ensureMounted, rows: () => rowsRef.current })
+    return () => {
+      wellHub.setDeskOps(undefined)
+    }
+  }, [switchTo, ensureMounted])
+
+  /** 启动器的清单：现取注册表与件名表，按插件分组，工具窗格本桌已开的标上 */
+  const launchList = async (): Promise<LaunchGroup[]> => {
+    const host = wellHub.host()
+    if (host === undefined) return []
+    const [panes, plugins] = await Promise.all([fetchPanes(host), fetchPlugins(host)])
+    return groupForLauncher(listOpenable(panes), plugins).map((group) => ({
+      entryId: group.entryId,
+      title: group.title,
+      rows: group.specs.map((spec) => ({ spec, opened: launchWillFocus(spec) })),
+    }))
+  }
 
   // node 半转来的桌面动作（shell.desktop.switch / new）：井在页面这半，命令只是转发
   useEffect(() => {
@@ -408,15 +460,18 @@ function App({
         })}
       </div>
       <StatusBar
-        specs={specs}
-        focusIds={focusIds}
+        paneCount={paneCount}
+        onLaunchList={launchList}
+        onLaunch={launchSpec}
+        onListPanes={() => orderForSwitcher(rowsRef.current, activeIdRef.current, wellHub.entries())}
+        onFocusPane={(desktop, instance) => void focusInstance(desktop, instance)}
+        onClosePane={closeInstance}
         home={home}
         versions={versions}
         desktops={desktops}
         activeDesktopId={activeId}
         savedLayouts={saved}
         saveFailed={saveFailed}
-        onOpen={openSpec}
         onSwitchDesktop={(id) => switchTo(id)}
         onNewDesktop={(name) => createDesktop(name)}
         onApplyLayout={applySaved}
