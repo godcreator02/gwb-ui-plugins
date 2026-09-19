@@ -1,0 +1,430 @@
+---
+title: 窗格模型第二版：工具与文档两类、本桌优先、新窗格落在来源旁边、启动器与切换器分开、窗格能送到别的桌面
+description: 注册时说清是工具窗格还是文档窗格；文档窗格的身份随插件上报的内容走；打开窗格只在本桌面找、只有显式动作才切桌面；新窗格按「目标组」规则落在来源窗格旁边，不再贴整张桌面的边；预览窗格每组一个；状态栏拆成「新建」「窗格」两格；标签右键菜单；窗格能送到别的桌面、桌面能改名删除；全部操作有命令面可验。每条行为标注参考来源
+---
+
+# 窗格模型第二版
+
+**本页回答**：外壳的窗格系统改成什么样——每个操作按下去会发生什么、为什么这样定（参考了谁）、插件那头的接口怎么变、分几期做、做到什么算完。
+
+**由来**。2026-09-19 在块笔记仓的会话里，人说窗格的绑定、新建、跳转「用起来比较不合直觉」：什么时候复用已有窗格、什么时候新开、开在哪、开完整片自动缩放、新建桌面后开不出东西、会被切到别的桌面；并且认为笔记这种窗格就该能开多份、能从 A 桌面送到 B 桌面，现在的规则像是自己编的。那边读代码查出了几处根因（见下文「现状」），人要求照成熟产品完整重设计一版，每条行为标出参考来源。
+
+**本页只是设计**。它推翻了本仓几条写下的判据，并且改外壳对插件的接口（`registerPane` 的形状、`mountPane` 的桥、`shell.openPane` 的参数，另加几条命令）。这些是别的插件 inject 的那一面，**动手前要人逐条拍板**，见文末「待拍板」。
+
+## 验收
+
+分四期（见「分期」），每期的验收写在这儿。纯函数的判断全用 node 测试钉住；页面上的行为经命令面（本页新加的 `shell.pane.list` 等）在隔离 home 里验，因为 dockview 的标签经 CDP 点不动（[撞过的墙](/docs/walls)里那条未决）。
+
+**第一期：打开窗格的判断与摆放**
+
+- [ ] `planOpen` 换成本页「打开窗格」那张表的规则，表里每一行一条测试
+- [ ] 本桌优先：别的桌面开着同一内容时，在本桌开，不切桌面（测试＋隔离 home 里 `shell.pane.list` 验）
+- [ ] 新窗格按「目标组」规则落位；要新建组时只把来源窗格所在那一组对半分，别的组宽高一个像素不变（隔离 home 里量组的宽高）
+- [ ] 新标签插在目标组当前活动标签的右边
+- [ ] 预览窗格每组至多一个；正式打开命中组里的预览窗格时把它转正
+- [ ] 桥上的 `openPane` 自动带来源窗格；`shell.openPane` 命令多收 `from` 与 `placement`
+- [ ] 除了「只有这几种动作会切桌面」那张表里列的，任何操作都不切桌面
+
+**第二期：两类窗格、内容上报、状态栏、标签菜单**
+
+- [ ] `registerPane` 多收 `kind`（缺省 `tool`）；`shell.panes` 回执带它
+- [ ] 桥上多一支 `setPaneContent`：更新这个窗格的 key、参数与标题，跟着布局落盘；整页重载后窗格回到上报的内容
+- [ ] 状态栏「打开窗格」拆成「新建」（启动器）与「窗格」（切换器）两格，行为照本页两张表；「新建」的清单每次打开现取注册表，热装的插件不用刷新就出现
+- [ ] 标签右键菜单：留住、在旁边再开一份、送到桌面、关闭、关闭其他、关闭右侧
+- [ ] 不改一行的老插件照跑（`kind` 缺省、不调 `setPaneContent`）
+
+**第三期：送到别的桌面、桌面改名与删除、命令面**
+
+- [ ] 标签右键与切换器里「送到 → 桌面 X / 新桌面」：源桌面少这个窗格、目标桌面多这个窗格，当前桌面不变；状态栏出一句「已送到『桌面 X』· 切过去」
+- [ ] 切换器里别的桌面上的窗格能「拉到本桌」
+- [ ] 桌面能改名；能删除（不是最后一张），上面的窗格并到相邻桌面
+- [ ] 命令 `shell.pane.list` / `shell.pane.focus` / `shell.pane.send` / `shell.pane.close` / `shell.desktop.rename` / `shell.desktop.delete` 可用、有 usage
+
+**第四期：各消费方适配**（在各自的仓里立页，本页只列要改什么，见「消费方怎么跟」）
+
+- [ ] 块笔记正文窗格、查询视图窗格、单元文件夹原文窗格、站内预览窗格声明 `kind: 'document'` 并上报内容
+- [ ] 单元文件夹撤掉「焦点原文窗格」那套总线路由，恢复「再开一份」
+
+**门禁与文档**
+
+- [ ] 每期 `pnpm check`、`cd docs-site && pnpm doc` 双绿；隔离 home 里验，数写进进度
+- [ ] `docs/shell.mdx` 按新模型改写；本页「推翻的判据」每条落一张轨迹卡；做完拆解归梁、删本页
+
+## 现状（查证过的）
+
+这一节是读代码与 dockview 源码查出来的，没有在真工作台里复现过。
+
+**一、窗格的身份在打开那一刻就定死了。** 外壳认「这份内容开着没有」靠打开时给的 `key`（`openable.ts` 的 `planOpen`：已开的份里有 `p.key === want` 就聚焦）。可有的窗格像浏览器标签：块笔记的正文窗格点引用是原地换页，key 与参数却一直停在最初那一块。桥上只有 `setPaneTitle` 与 `keepPane`，插件没法说「我现在装的是别的了」。后果：再打开最初那块会聚焦到一个早已走开的窗格；打开它现在显示的那块又会多开一份；整页重载后回到最初那块。
+
+**二、聚焦看全局，预览与摆放只看本桌，于是会被切走。** `wellHub.openInstances` 把所有桌面的窗格聚在一起喂给 `planOpen`，key 命中别的桌面就 `focusAcross` 切过去（shell.mdx 称之为「任务栏语义」，判据「桌面是分组不是宇宙」）；预览槽与落位只看当前容器。后果：新建桌面（会自动切过去、是空的）后在状态栏点「打开窗格 → 块笔记」，因为块笔记在桌面 1 开着，直接被切回桌面 1——新桌面上开不出它。
+
+**三、新窗格摆在哪，跟你在哪儿点的无关，还会挤压整张桌面。** `placeNext` 按「这个窗格定义此刻在本容器开了几份」分三档：0 份落活动组当标签；1 份给 `{ direction: 'right' }`、不给参照；2 份以上叠在最后一份非基名实例下面。shell.mdx 说第二档「相对当前活动的那一个窗格」，但 dockview 8.3.1 的 `_doAddPanel` 里不带参照的方向走 `orthogonalize`，贴的是**整个容器的边**，整片布局重新分宽——这就是「开了以后窗格自动缩放」。就算带了参照（第三档），`addPanel` 走的 `createGroupAtLocation` 不给尺寸时用 `Sizing.Distribute`，**同一排的组全部均分**，照样牵动别的组；dockview 里只有拖放那条路（`moveGroupOrPanel` 用 `dropSizing`）才是「只切参照组的一半、兄弟不动」，源码注释引的是它自己的 issue #1612。第一档落「活动组」，活动组可能是别的插件的窗格，于是新窗格盖住了它。
+
+**四、外壳不知道是谁发起的打开。** 桥上的 `openPane` 在 `plugin-panel.tsx` 里只绑了条目与窗格 id，没带发起的那个窗格；跨插件的 `shell.openPane` 走 node 半转发，更不知道来源。所以「开在来源旁边」根本无从做起。
+
+**五、状态栏那个「打开窗格」一个列表干两件事。** 它列的是窗格**定义**，点下去走同一个 `planOpen`：已开（任何桌面）就切过去聚焦，没开就开「没带 key 的那一份」。对工具窗格这够用；对文档窗格，「没带内容的那一份」本身就是个奇怪的东西，而它又兼着切换。另外它用的是开机那一刻的注册表快照（`prepareShell` 里取一次），热装的插件要点「刷新」才出现。
+
+**六、窗格不能在桌面之间挪，桌面不能改名、不能删。** 每张桌面是一个独立的 dockview 实例，dockview 没有跨实例搬窗格的接口；外壳也没提供关了重开以外的办法。桌面命令只有 list / switch / new。
+
+**七、插件已经在自己补洞。** 单元文件夹的原文窗格自己维护了一个「焦点原文窗格」（`gwb-unit-folder` 的 `client/selection.ts`：有焦点窗格就经总线点名、没有就广播再 `openPane`），它的「Ctrl+单击再开一份」随 shell 0.7 收紧 `PaneSpec` 休眠了，调用处还留着已经不被认的 `duplicate: true`。块笔记则把 key 当内容用、内部却在导航（见一）。外壳缺「同类窗格最近在哪一组」这个概念，插件只能各造各的。
+
+**八、预览窗格每个容器一个，不是每组一个。** 两列正文各自想要一个可被顶掉的预览标签时，只能共用一个。
+
+## 设计原则
+
+每条一句话，后面是它照着谁。参考来源的编号见文末「参考来源」。
+
+1. **窗格分两类：工具窗格与文档窗格。** 工具窗格（日志、插件管理、外观、备份、单元树、站监控）一张桌面至多一份，打开就是把它显示出来；文档窗格（笔记正文、查询视图、文件原文、站内预览）可以开多份，每份装一个内容，能在里面走来走去。照 VS Code 的视图（住在视图容器里）与编辑器（住在编辑器组里）之分 [R6]、JetBrains 的工具窗口与编辑器标签之分 [R20]。
+2. **文档窗格的身份是它此刻装的内容，由插件上报。** 像浏览器标签页：地址随导航变，每个标签页有自己的前进后退 [R13]；Obsidian 的标签页也各有一条历史 [R10]。（VS Code 的前进后退缺省是跨编辑器的一条全局历史 [R27]，它的编辑器里不会原地换文件，所以这一条照浏览器与 Obsidian。）外壳不猜内容，插件换了内容就报一声；历史本身归插件管。
+3. **本桌优先：只有显式动作才切桌面。** 打开窗格只在当前桌面里找、在当前桌面里开；别的桌面开着同一内容也不跳过去。照 VS Code `workbench.editor.revealIfOpen` 默认关：已在别的组开着也在活动组再开一份 [R1]。Windows 让人选任务栏与 Alt+Tab 只显示本桌面的窗口还是所有桌面的（二手来源说默认只显示本桌面）[R18]；macOS 默认会切到应用所在的空间（二手来源），但专门留了开关 [R19]——「要不要被拽去别处」在参考产品里都是可选的，不是唯一路径。
+4. **新东西落在你点的地方旁边，不挤别人。** 新标签插在当前活动标签右边 [R4]；「开到旁边」先找相邻的组、有就复用，没有才新建 [R3][R20]；一次操作只动一处。
+5. **启动与切换分开。** 「开一个新的」和「切到已开的」是两个入口：操作系统的开始菜单与任务栏 / Alt+Tab；VS Code 的「打开的编辑器」视图与 Ctrl+Tab 专管切到已开的 [R7]。
+6. **移动是一等动作。** 窗格能送到别的桌面、桌面删掉时窗格不丢：Windows 任务视图「移动到」[R15]、删除桌面时窗口移到另一张桌面而不是被关 [R17]、Chrome「将标签页移至其他窗口」[R14]、VS Code「移到下一组 / 移到新窗口」[R8]、Obsidian「移到新窗口」[R11]、GNOME 把窗口移到别的工作区 [R29]。
+7. **预览是每组的快速翻看。** 每组至多一个预览标签，下一次预览打开顶掉它，开始用它就转正 [R2]。本仓 0.x 已经照 VS Code 做了预览，这一版只把它从「每容器一个」改成「每组一个」，与 VS Code 一致。
+
+## 名词
+
+本页新用到的词。沿用[术语表](/docs/glossary)里的窗格容器、窗格、桌面、预览窗格、布局文件。
+
+| 词 | 意思 |
+| --- | --- |
+| 窗格定义 / 窗格实例 | 定义是注册表里的一条（插件 × 窗格 id）；实例是容器里开出来的一个标签。沿用 shell.mdx「定义与实例是两回事」 |
+| 工具窗格 / 文档窗格 | 注册时 `kind` 声明的两类，见原则 1 |
+| 组 | dockview 的 group：一排标签共用的那一块区域。一张桌面上可以有好几组，分屏就是多组并排 |
+| 来源窗格 | 发起这次打开的那个窗格实例：插件经桥调 `openPane` 时就是它自己；跨插件命令带 `from` 时是 `from` 指的那个；状态栏与不带 `from` 的命令没有来源 |
+| 目标组 | 这次打开落在哪一组，按下文「目标组怎么定」算 |
+| 侧边组 | 某一组右边紧挨着的那一组 |
+| 最近用过的同类组 | 当前桌面上，最近一次被激活、且装着同一窗格定义的实例的那一组 |
+| 内容 key | 文档窗格此刻装的内容的标识，插件给的不透明字符串；工具窗格也有，缺省空串 |
+
+## 每个操作会发生什么
+
+### 注册窗格
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 插件 `registerPane({ id, title, icon?, client?, style?, kind? })` | 同今天，外加 `kind: 'tool' \| 'document'`，**缺省 `tool`**。身份照旧由外壳从 fiber 上取，插件报不出别人的 | [R6][R20] |
+| `kind` 写错（不是这两个值） | 照 `tool` 进表，登记那一刻日志 warn 一句，点名是哪个包的哪个窗格——跟图标名认不出同一个做法 | 本仓 icon 那条先例 |
+| `shell.panes` | 回执每条多带 `kind` | — |
+
+### 目标组怎么定
+
+所有「在当前桌面开一个窗格」的操作都先算目标组。输入是：窗格定义、放法（`placement`）、来源窗格（可能没有）、在哪张桌面（有来源就是来源所在的桌面，否则是当前桌面）。
+
+**`placement: 'side'`（开到旁边）**：基准组是来源窗格所在的组（没有来源就用这张桌面的活动组）。基准组右边已经有侧边组 → 目标组就是它；没有 → 把基准组对半分，右半边成为新的一组，就是目标组。参考 VS Code「在侧边打开」：在首选方向上找相邻组、有就复用，没有才新建，方向缺省向右 [R3]；JetBrains「Open in Right Split」在已有右分屏时也是开进那一个 [R20]。
+
+**`placement: 'auto'`（缺省）**，按顺序取第一个成立的：
+
+1. 来源窗格与要开的是**同一个窗格定义** → 来源窗格所在的组（笔记里 Ctrl+单击，新标签就开在这一列）
+2. 这张桌面上有**最近用过的同类组** → 那一组（从查询视图里点一条结果，落到你最近在用的那一列正文里）
+3. 有来源窗格 → 照 `'side'` 算（从单元树里第一次点开文件，原文开在单元树旁边，不盖住单元树）
+4. 这张桌面有活动组 → 活动组
+5. 桌面是空的 → 新建一组
+
+第 2、3 条对应 VS Code 里编辑器只开在编辑器组里、不会盖住视图容器里的视图 [R6]；`revealIfOpen` 的查找也是按组的最近激活顺序来的 [R1]。
+
+**对半分只动基准组**：新组拿走基准组的一半宽，其余组的宽高一个像素不变。今天那种「不带参照、贴整个容器的边、整片重新分宽」的放法（现状三）**不再出现**：每次新建组都带 `referenceGroup` 或 `referencePanel` [R23]。
+
+实现提示（dockview 8.3.1）：光带参照不够，`addPanel` 带参照新建组时不给尺寸会让同一排全部均分（现状三）。能做到「只切一半」的现成路径是拖放用的那条（`dropSizing`），所以可以先把新窗格当标签开进基准组、再用 `panel.api.moveTo({ group, position: 'right' })` 挪到它右边；或者显式给 `initialWidth` 为基准组宽的一半。两条都要在隔离 home 里量过再定。
+
+### 打开窗格
+
+入口有三个，走同一张表：插件桥上的 `shell.openPane(paneId, options)`（来源是它自己）、跨插件命令 `shell.openPane { entryId, paneId, from?, … }`、状态栏「新建」（没有来源，规则另见那一节）。
+
+选项：`key?`（内容 key，缺省空串）、`params?`（交给这一份的参数，可 JSON 序列化，照旧跟着布局落盘）、`preview?`（放进预览标签）、`placement?`（`'auto' | 'side'`，缺省 `'auto'`）。「新标签」不单设一档：不要预览、放法缺省，就是在目标组开一个新的正式标签。
+
+**文档窗格**，先算出目标组，只在**目标组**里查重：
+
+| 目标组里 | 要预览？ | 发生什么 | 参考 |
+| --- | --- | --- | --- |
+| 有一个标签的 key 等于要开的 key | 否 | 激活那个标签；它若是预览标签，转正 | [R1][R2] |
+| 同上 | 是 | 激活那个标签，不改它的预览状态 | [R2] |
+| 没有，组里有预览标签 | 是 | 原地换掉预览标签的内容（插件给了 `retarget` 就软换，没给就重挂，同今天）；位置不动，激活它 | [R2]，见下注 |
+| 没有，组里没有预览标签 | 是 | 在目标组开一个新的预览标签，插在活动标签右边，激活 | [R2][R4] |
+| 没有 | 否 | 在目标组开一个新的正式标签，插在活动标签右边，激活 | [R4][R9] |
+
+注：VS Code 顶掉预览时是把新的预览插到活动标签右边、同时关掉旧的 [R2]。本仓选**原地换**：同一个实例不拆，插件的 `retarget` 才能软换、保住它的状态（今天的做法，shell.mdx「软换与硬换」）。dockview 的 `addPanel` 不给 `index` 时追加到组末尾 [R28]，所以「插在活动标签右边」要显式给 `index`。
+
+**同一内容在别的组、别的桌面开着，都不算命中**：不跳过去，就在目标组再开一份。要去已开的那份，用切换器（下文）。参考 VS Code `workbench.editor.revealIfOpen` 默认关 [R1]、Obsidian 同一篇笔记可以开在多个标签页 [R12]。
+
+**工具窗格**，查重范围是**当前桌面的所有组**：
+
+| 当前桌面上 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 有同一定义、同一 key 的实例 | 激活它（在哪一组就在哪一组，不挪） | [R6] |
+| 没有 | 按目标组规则开一份，插在活动标签右边，激活 | [R6][R4] |
+
+别的桌面上开着同一个工具窗格，互不相干：每张桌面各有各的一份。参考 VS Code 的多个窗口各开各的工作区，资源管理器这类视图的内容各窗口互不相干（但视图摆在哪个容器，同一配置档的各窗口是共享的）[R6]。工具窗格的 `preview` 与 `placement: 'side'` 照收，语义同文档窗格。
+
+**无论哪一行，打开都不切桌面**。命令带的 `from` 指向别的桌面上的窗格时，开在那张桌面上，当前显示的桌面不变。
+
+**打不开的情况**（照旧）：窗格定义不在注册表里 → 什么都不做，console 与命令回执说明是谁要开什么；`params` 里有外壳保留键 → 摘掉并 warn。
+
+### 上报内容（新）
+
+桥上新加一支 `setPaneContent({ key, params?, title? })`，只作用于调用它的这个实例：
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 插件在窗格里换了内容（点链接原地跳转、后退前进），调 `setPaneContent` | 这个实例的内容 key 换成新的；给了 `params` 就整份替换插件那半参数（保留键照旧摘掉）；给了 `title` 等于顺带 `setPaneTitle`。**不调 `retarget`、不重挂**——内容已经在插件手里换好了 | [R10][R13] 浏览器标签页的地址随导航变 |
+| 之后布局自动落盘 | 存的是上报后的 key 与参数，整页重载、重启都回到这里 | — |
+| 这个实例是预览标签 | 保持预览，外壳不因上报内容自动转正；插件认为「这算开始用了」就自己调 `keepPane` | — |
+| 上报的 key 跟同组另一个标签撞了 | 两个都留着，不合并。查重只发生在打开那一刻 | [R12] |
+| 老插件不调它 | 行为同今天：key 与参数停在打开那一刻 | — |
+
+### 预览标签
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 以预览打开 | 见「打开窗格」表。**每组至多一个预览标签**（今天是每容器一个） | [R2] |
+| 转正 | 插件调 `keepPane`、人双击标签、标签菜单「留住」、以正式方式打开命中它、把它送到别的桌面、在旁边再开一份它——都把它变成正式标签 | [R2] |
+| 标记 | 同今天：标题前一个空心小圆点 | 本仓现状 |
+| 正式标签变回预览 | 没有这个动作 | [R2] |
+
+### 关闭
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 点标签上的叉、标签菜单「关闭」、`shell.pane.close` | 插件的 `dispose` 照今天的时序调；这一组里激活**最近用过的**那个标签——dockview 8.3.1 的组本来就按 `mostRecentlyUsed` 这么做，不用另写 | [R5][R28] |
+| 「关闭其他」「关闭右侧」 | 同一组里其余的 / 右边的逐个关 | 常见的标签菜单项 |
+| 组里最后一个标签关了 | 这一组消失 | VS Code `workbench.editor.closeEmptyGroups` 默认开 [R26] |
+| 桌面上最后一个窗格关了 | 桌面变空，不自动铺任何东西；状态栏「新建」随时可用 | 本仓「新桌面为空」 |
+
+### 在同一张桌面里挪
+
+拖标签换位置、拖到别的组、拖出来分屏：全照 dockview 原生，本页不改。拖动完成的那一刻，落到的那一组成为「最近用过的同类组」。
+
+### 在旁边再开一份（文档窗格）
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 标签菜单「在旁边再开一份」 | 用这个实例此刻的 key 与参数、`placement: 'side'` 打开一份新的正式标签；原来那份若是预览，转正 | VS Code Split Editor 在新组里再开一份 [R8]；JetBrains Split Right [R20] |
+
+工具窗格没有这一项：一张桌面至多一份。
+
+### 送到别的桌面（新）
+
+入口：标签右键「送到 → 桌面 X / 新桌面…」、切换器里一行的「送到」、命令 `shell.pane.send { instance, desktop?, newDesktop?, follow? }`。
+
+| 步骤 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 1 | 取这个实例的定义、内容 key、插件那半参数、标题，然后在源桌面关掉它（插件 `dispose`） | dockview 没有跨实例搬 panel 的接口 [R24] |
+| 2 | 目标桌面的容器还没挂上（从没切去过）：先在后台把它挂上，不显示 | 本仓容器常驻保活 |
+| 3 | 文档窗格：按目标组规则在目标桌面开一份正式标签（没有来源，所以取目标桌面上最近用过的同类组，否则活动组，桌面空就新建一组）。工具窗格：目标桌面已有同一定义、同一 key 的就只激活那一份（源桌面那份照样关掉），没有就照文档窗格那样开 | [R15] |
+| 4 | 预览状态不带过去：送过去的一律是正式标签 | 送过去本身就是「我要留着它」 |
+| 5 | **当前桌面不变**，状态栏出一句「已送到『桌面 X』· 切过去」，点「切过去」才切。`follow: true`（命令）或菜单里按住 Shift 选：送完跟过去 | 本仓的选择，见下注；[R14][R15] |
+| 6 | 两张桌面各落一次盘 | — |
+
+注：送过去之后跟不跟，参考产品不一致。Chrome「将标签页移至其他窗口」会把标签设成目标窗口的活动标签、并把目标窗口带到前台，也就是跟过去（源码）[R14]；Windows 任务视图「移动到」之后切不切桌面，官方与能访问的二手来源都没写 [R15]。本页选默认不跟，理由是「送走」多半是在整理当前桌面、人还要接着在这儿干活；是否改成默认跟过去列进「待拍板」。
+
+**插件的状态只靠参数带过去**：步骤 1 与 3 是一次关闭加一次打开，插件会被重新挂载。滚动位置、打到一半的字这类东西，插件想保住就得在 `setPaneContent` 的参数里带着。这是文档窗格要上报内容的第二个理由。
+
+「送到新桌面…」：先建一张空桌面（名字缺省「桌面 N」，可当场改），再照上表送过去；同样不切过去。
+
+### 拉到本桌（新）
+
+切换器里别的桌面上的窗格，行尾有「拉到本桌」：等于把它送到当前桌面，送到之后激活它。当前桌面本来就是目标，所以不涉及切桌面。
+
+### 桌面
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 新建（状态栏、`shell.desktop.new`） | 同今天：空的，切过去 | Windows 用 Win+Ctrl+D 新建桌面（官方），新建后切过去（二手来源）[R16]；本仓「新桌面为空」 |
+| 切换（状态栏桌面菜单、切换器、「切过去」、`shell.desktop.switch`） | 同今天的切换时序 | Windows Win+Ctrl+←/→ [R16] |
+| 改名（桌面菜单里这一行的「改名」、`shell.desktop.rename`） | 这一行变内联输入框，Enter 定、Esc 弃；空名不改 | 无外部参考：今天只能在新建时起名，建完改不了 |
+| 删除（桌面菜单里这一行的「删除」、`shell.desktop.delete`） | 只剩一张时不能删。上面的每个窗格照「送到」并到**左边相邻**的桌面（删的是最左边那张就并到右边）；删的是当前桌面就切到那一张；状态栏说一句「已删除，N 个窗格并到『桌面 X』」。不弹确认：窗格一个不丢 | Windows 关闭桌面时窗口不关、移到「下一个可用的桌面」（官方），二手来源说是左边那张 [R17]；macOS 删除空间时窗口移到另一个空间 [R17] |
+| 排序 | 本期不做 | — |
+
+**只有这几种动作会切桌面**：点状态栏桌面菜单里的一行；点切换器里别的桌面上的一行；点「已送到 … · 切过去」；新建桌面；删除当前桌面；命令 `shell.desktop.switch` / `shell.desktop.new` / `shell.desktop.delete`（删当前桌面时）/ `shell.pane.focus`（窗格在别的桌面时）/ `shell.pane.send { follow: true }`。**别的一律不切**，包括插件的 `openPane`、跨插件的 `shell.openPane`、状态栏「新建」。参考原则 3 [R1][R18][R19]。
+
+### 状态栏：「新建」（启动器）
+
+替代今天「打开窗格」那一半「开」的职责。
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 点开「＋ 新建」 | **现取**注册表（不用开机快照），按插件分组列出全部窗格定义；工具窗格那一行若本桌已开，标「本桌已开」 | 操作系统的开始菜单 |
+| 选一个文档窗格 | 在本桌活动组开一份**新的**（key 空串、不带参数，插件画它的默认内容），不查重、不切桌面 | 浏览器的「新标签页」 |
+| 选一个工具窗格 | 本桌已有就激活它；没有就在本桌活动组开一份 | [R6] |
+
+### 状态栏：「窗格」（切换器）
+
+替代今天「打开窗格」那一半「切到已开的」职责，并且是跨桌面找窗格的唯一入口。
+
+| 操作 | 发生什么 | 参考 |
+| --- | --- | --- |
+| 点开「窗格 N」（N 是当前桌面上的窗格数） | 按桌面分组列出**所有桌面**上开着的窗格，当前桌面在最前、标「当前」；每行是图标、标题、预览标记 | Windows 任务栏与 Alt+Tab 可选「在所有桌面上」[R18]；VS Code「打开的编辑器」按组分组列出已开的编辑器 [R7] |
+| 点当前桌面上的一行 | 激活那个标签 | [R7] |
+| 点别的桌面上的一行 | 切到那张桌面并激活那个标签（显式切换） | [R18] |
+| 行尾「关闭」 | 同关闭 | — |
+| 行尾「送到 ▸」 | 同送到别的桌面 | [R15] |
+| 别的桌面上的行，行尾「拉到本桌」 | 同拉到本桌 | [R15] |
+
+### 标签右键菜单（新）
+
+| 菜单项 | 出现条件 | 发生什么 | 参考 |
+| --- | --- | --- | --- |
+| 留住 | 预览标签 | 转正，同双击标签 | [R2] |
+| 在旁边再开一份 | 文档窗格 | 见上 | [R8][R20] |
+| 送到 ▸ 桌面 X… / 新桌面… | 有别的桌面或总能新建 | 见上；按住 Shift 选则送完跟过去 | [R14][R15] |
+| 关闭 / 关闭其他 / 关闭右侧 | 总有 | 见上 | 常见的标签菜单项 |
+
+菜单挂本桌面的浮层户口（`gwb-portal-host`），跟状态栏菜单同一套组件。
+
+### 布局文件、重载与重启
+
+| 操作 | 发生什么 |
+| --- | --- |
+| 自动落盘 | 同今天（每容器变化 400ms 防抖）；存的参数是插件最后一次上报的那份 |
+| 整页重载 / 重启 | 每个窗格回到上报的内容；「最近用过的同类组」不落盘，重载后从空开始（第一次打开就按活动组算） |
+| 存布局 / 铺布局 / 重置布局 | 不变。重置布局照旧「表里有几个窗格定义开几个」，文档窗格各开一份默认内容 |
+| 布局文件版本 | 不变（v3）：本页不往文件里加字段，`kind` 从注册表现取，预览标记与 key 本来就在面板参数里 |
+
+## 给文档窗格插件的手势约定
+
+外壳看不见插件里面的点击，所以下面这张表是**约定**：各插件照着做，同一个手势在所有插件里意思一样。
+
+| 手势 | 意思 | 插件怎么做 | 参考 |
+| --- | --- | --- | --- |
+| 单击（在同类文档窗格里） | 本窗格原地换内容 | 自己换，换完 `setPaneContent` | Obsidian 无修饰键 = 在当前标签打开 [R9][R10]；浏览器 |
+| 单击（在别的窗格里，比如工具窗格、别的插件） | 预览 | `openPane(…, { preview: true })` | VS Code 在资源管理器里单击 = 预览打开 [R2] |
+| Ctrl / ⌘ + 单击，或中键 | 新标签，开在同一组，并切过去 | `openPane(…)`，不要预览、放法缺省 | Obsidian Ctrl / ⌘ = 新标签 [R9]；Chrome Ctrl / ⌘ + 单击与中键 = 新标签 [R13]，见下注 |
+| Ctrl / ⌘ + Alt / ⌥ + 单击 | 开到旁边 | `placement: 'side'` | Obsidian Ctrl+Alt / ⌘⌥ = 新标签组 [R9]；Chrome Ctrl+Alt / ⌘⌥ + 单击 = 在分屏里打开 [R25]；VS Code 在侧边打开 [R3] |
+| 悬停 / 点记号 | 浮卡看一眼，不开窗格 | 插件自己画 | Notion 的 side peek / center peek [R22]；Roam / Logseq 的 Shift+单击开到右侧栏 [R21] |
+
+注：Ctrl + 单击开的新标签切不切过去，参考产品不一致——Chrome 是后台打开、要 Ctrl+Shift 才切 [R13]；Obsidian 有「始终聚焦新标签页」设置，二手来源说默认开 [R9]。本页选切过去（新标签就是人要看的东西），后台打开列进「不做」。
+
+Shift + 单击（Chrome 与 Obsidian 里是新窗口 [R9][R13]）先不占：外壳还没有独立窗口（见「不做」）。
+
+## 接口变化
+
+全部是加法；老插件不改一行照跑，但会拿到新的**行为**（查重范围、摆放、不再自动切桌面），见「消费方怎么跟」。
+
+**node 半**
+
+- `registerPane` 的 `PaneSpec` 多一个可选字段 `kind: 'tool' | 'document'`，缺省 `tool`
+- `shell.panes` 每条多带 `kind`
+- `shell.openPane` 多收 `from?`（来源窗格的实例 id，即 `pane.instance`）与 `placement?`
+- 新命令（都经内核事件口转给页面执行，跟 desktop 那几条同一种转发；只读的 `list` 由页面回填）：
+
+| 命令 | 参数 | 干什么 |
+| --- | --- | --- |
+| `shell.pane.list` | 无 | 所有桌面上开着的窗格：`{ instance, desktop, group, pkg, entryId, paneId, kind, key, title, preview, active }` |
+| `shell.pane.focus` | `{ instance }` | 激活它；在别的桌面就切过去（显式切换） |
+| `shell.pane.send` | `{ instance, desktop? , newDesktop?, follow? }` | 送到别的桌面，`desktop` 与 `newDesktop` 给一个 |
+| `shell.pane.close` | `{ instance }` | 关掉它 |
+| `shell.desktop.rename` | `{ id, name }` | 改名 |
+| `shell.desktop.delete` | `{ id }` | 删除，窗格并到相邻桌面 |
+
+`shell.pane.list` 要页面回答，node 半没有容器。做法二选一，实现时定：页面在每次布局变化时把清单推给 node 半缓存；或 node 半发事件、页面经一条回调命令回填。
+
+**浏览器半（`mountPane` 的 args）**
+
+- `shell.openPane(paneId, { key?, params?, preview?, placement? })`：多一个 `placement`；外壳自动把调用它的这个实例当来源
+- `shell.setPaneContent({ key, params?, title? })`：新
+- `pane.kind`：新，插件知道自己被当成哪一类挂的
+- `setPaneTitle` / `keepPane` / `bus` / `portal` / `onVisibility` / `pane.instance` / `pane.params`：不变
+
+**插件探测新能力**：照块笔记那头的做法，按形状判（`typeof shell.setPaneContent === 'function'`），没有就退回今天的行为。老外壳不认 `placement` / `kind`，多带的字段被忽略，不报错。
+
+## 推翻的判据
+
+做完每条落一张轨迹卡（轨迹卡只增不改，旧卡不动）。
+
+| 今天的判据（出处） | 改成 | 为什么 |
+| --- | --- | --- |
+| 「注册说不出我能开几份」，一个窗格开几份只取决于装着几份不同的内容（shell.mdx） | 注册要说清是工具还是文档 | 说的不是「能开几份」，是「打开这个动作对它是什么意思」：对工具是显示，对文档是装一个内容。两类的查重范围、启动器行为、能不能再开一份都不同，外壳不知道就只能一套规则套两类 |
+| 「桌面是分组不是宇宙」：key 全局找份，命中别的桌面就切过去（shell.mdx、轨迹卡 2026-09-12 重构轮） | 本桌优先，只有显式动作切桌面 | 被切走是现状二那种体验的根；参考产品都把这件事做成默认关或可关 [R1][R18][R19] |
+| 状态栏「没有『＋一份』那种按钮」，那张表只干「打开，已开就聚焦」（shell.mdx） | 拆成启动器与切换器；启动器对文档窗格就是开一份新的 | 一个列表同时开与切，是现状五的根 [R7] |
+| 「预览窗格每容器一份」，全案唯一的桌面特例（shell.mdx） | 每组一个 | 跟 VS Code 一致 [R2]；两列正文各要一个预览标签是正常需求 |
+| `placeNext` 按已开份数分三档（shell.mdx） | 目标组规则 | 现状三；新窗格该落在来源旁边、只动一处 [R3][R4] |
+
+shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不符（现状三），改写现状页时一并更正。shell.mdx 引用的「定过的事」「路线」两页在本仓不存在，改写时把判据直接写进现状页与轨迹卡。
+
+## 消费方怎么跟
+
+外壳这边做完之后，各插件在自己的仓里立页适配。下表是查过各仓代码之后列的（2026-09-19）：
+
+| 仓 / 插件 | 窗格 | 该声明 | 要改什么 |
+| --- | --- | --- | --- |
+| gwb-block-note / gwb-bn-core | `reader`（正文） | `document` | 每次换页 `setPaneContent`（key 为「库:块 id」，参数带 `root` / `lib`）；按手势约定改各入口；不带根的主窗格不再全页共用一个视图（多份时会同步翻页） |
+| gwb-block-note / gwb-bn-query | `view`（数据库视图） | `document` | 撤掉「不带参数 = 全部视图」那种开法（块笔记仓 ui-round-4 的 F 段）；开正文走 `shell.openPane` 时带 `from` |
+| gwb-unit-folder | `main`（单元） | `tool` | 无 |
+| gwb-unit-folder | `viewer`（文件原文） | `document` | 撤掉 `selection.ts` 的「焦点原文窗格」总线路由：单击 = 预览，Ctrl+单击 = 不要预览的普通打开（落到原文窗格那一组的新标签），Ctrl+Alt+单击 = `placement: 'side'`，恢复「再开一份」；删掉已失效的 `duplicate: true` |
+| gwb-docs-site | `view`（站内预览） | `document` | `shell.openPane` 带 `from`（能拿到时）；站切换时 `setPaneContent` |
+| gwb-docs-site | `monitor`（站监控） | `tool` | 无 |
+| gwb-ui-plugins / baseui | `logger`、`plugin-manager` | `tool` | 无 |
+| gwb-ui-plugins / theme | `appearance` | `tool` | 无 |
+| gwb-windows-backup | `main` | `tool` | 无 |
+| gwb-pomodoro（测试件） | `main` | `tool` | 无 |
+
+**老插件拿到的行为变化**（不改代码也会变的）：同一内容在别的组、别的桌面开着时不再跳过去而是再开一份；新窗格落在来源旁边；不会再被切桌面。
+
+## 不做
+
+- **独立窗口**（把一组弹成单独的操作系统窗口）。VS Code、Obsidian 都有 [R8][R11]，dockview 也有 popout 组 [R24]，但它牵扯多窗口之间的协调（本仓至今「多窗口时各页各自执行」），另开一页
+- **把标签拖到状态栏的桌面上 = 送过去**。像 Windows 任务视图、macOS 调度中心里拖窗口 [R15][R19]，手感好，放下一期；本期先有菜单与命令
+- **快捷键**（切桌面、送到桌面、开到旁边）。候选可参考 Windows 的 Win+Ctrl+←/→ [R16]，但跟插件自己的快捷键怎么分界要单独想，另开一页
+- **「已开就跳过去」的设置**（VS Code 的 `revealIfOpen`、macOS 那个开关）。先固定为不跳；真有人要再加
+- **桌面排序**、**标签页后台打开**（Chrome 的 Ctrl+单击默认后台 [R13]）：本期不做
+
+## 分期
+
+| 期 | 内容 | 动哪儿 |
+| --- | --- | --- |
+| 一 | `planOpen` 第二版（目标组、本桌优先、每组预览、组内查重、新标签插在活动标签右边）；摆放永远带参照；桥自动带来源；`shell.openPane` 收 `from` / `placement`；不再自动切桌面 | `openable.ts`、`open.ts`、`well-hub.ts`、`plugin-panel.tsx`、`open-pane.ts`，测试 |
+| 二 | `kind`；`setPaneContent`；状态栏拆「新建」「窗格」、新建现取注册表；标签右键菜单 | `pane-registry.ts`、`index.ts`、`PluginPane.tsx`、`StatusBar.tsx`、`GwbTab.tsx`、`panels.ts` |
+| 三 | 送到、拉到本桌、桌面改名删除、新命令面 | `index.tsx`、`desktops.ts`、`index.ts`、`well-hub.ts` |
+| 四 | 各消费方适配，各仓各立页 | 见上表 |
+
+每期单独发版（shell 抬 minor），每期都在新开的隔离 home 里验，不拿 default 验。第一、二期做完，块笔记那头就能开始跟（它等的就是内容上报与 `placement`）。
+
+## 待拍板
+
+1. **这套方向本身**：两类窗格、本桌优先、目标组规则、启动器与切换器分开、送到桌面。以及上面「推翻的判据」那五条
+2. **`kind` 缺省 `tool`**：老插件一个不改就都是工具窗格。另一个选法是缺省 `document`（更接近今天「按 key 开多份」的行为），但那样日志、插件管理这类会在启动器里变成「开一份新的」
+3. **工具窗格每桌一份**，还是全页一份（在别的桌面打开时把它「拉过来」）。本页选每桌一份，因为简单，也跟 VS Code 多窗口各开各的工作区、视图内容互不相干相近 [R6]
+4. **送过去之后跟不跟过去**：本页选默认不跟、状态栏给「切过去」；Shift 或 `follow: true` 跟过去。反例是 Chrome：移标签到别的窗口会把那个窗口带到前台 [R14]
+5. **删除桌面时窗格并到相邻桌面**（照 Windows 与 macOS：窗口不关、移到别的桌面 / 空间 [R17]），还是关掉；并到左边还是右边（Windows 官方只说「下一个可用的桌面」）
+6. **预览标签里上报了新内容要不要自动转正**：本页选外壳不管、插件自己定（块笔记可以定成「在预览里主动跳转一次就转正」）
+7. **`shell.pane.list` 怎么回填**：页面推送缓存，还是按需回调
+
+## 参考来源
+
+2026-09-19 逐条上网核对。「可信度」一栏：**官方**是产品自己的文档或帮助页；**源码**是官方开源仓库里的实现（行为证据，不是承诺）；**二手**是第三方文章，只在官方查不到时用，正文里凡是只靠二手的都标了。
+
+| 编号 | 核实后的说法 | 出处 | 可信度 |
+| --- | --- | --- | --- |
+| R1 | VS Code `workbench.editor.revealIfOpen` 默认 false：编辑器优先在活动组打开，不跳到别的可见组里已开的那份；开了才跳过去。强制指定组或「在侧边打开」时不看这个设置。查找按组的最近激活顺序 | [workbench.contribution.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/workbench.contribution.ts)、[editorGroupFinder.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/editor/common/editorGroupFinder.ts) | 源码（设置说明文字就在里面） |
+| R2 | VS Code 预览模式：单击以预览打开、标签名斜体；每个编辑器组至多一个预览编辑器，下一次预览打开替换它，新的插在目标位置（缺省活动标签右边）。转正：在预览里编辑、双击标签、标签菜单「Keep Open」、在资源管理器里双击文件、命令 View: Keep Editor；从预览里发起代码导航也会转正。设置 `enablePreview` 默认 true | [User interface · Preview mode](https://code.visualstudio.com/docs/editing/getting-started/userinterface)、[editorGroupModel.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/common/editor/editorGroupModel.ts) | 官方＋源码 |
+| R3 | VS Code「Open to the Side」（资源管理器右键；Ctrl+Enter，macOS ⌃Enter；Alt / ⌥ + 单击）：在活动组的首选方向上找相邻组，有就复用，没有或那组被锁定才新建；方向由 `workbench.editor.openSideBySideDirection` 定，缺省 right | [User interface · Side by side editing](https://code.visualstudio.com/docs/editing/getting-started/userinterface)、R1 的 editorGroupFinder.ts | 官方＋源码 |
+| R4 | VS Code `workbench.editor.openPositioning` 缺省 right：新编辑器开在活动标签右边（总在已固定的标签之后） | R1 的 workbench.contribution.ts、R2 的 editorGroupModel.ts | 源码 |
+| R5 | VS Code `workbench.editor.focusRecentEditorAfterClose` 缺省 true：关掉活动编辑器后激活最近用过的那个；关了才按左右位置 | 同上 | 源码 |
+| R6 | VS Code 的视图住在视图容器里（活动栏 / 侧栏、面板），能拖到别的容器，「View: Open View」打开任意视图；编辑器住在编辑器区的编辑器组里。多窗口时各窗口打开各自的工作区，视图内容互不相干，但视图摆在哪个容器按配置档存、同一配置档的各窗口共享 | [UX guidelines · Overview](https://code.visualstudio.com/api/ux-guidelines/overview)、[UX guidelines · Views](https://code.visualstudio.com/api/ux-guidelines/views)、[viewDescriptorService.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/views/browser/viewDescriptorService.ts) | 官方＋源码（「每窗口」那半是源码推断） |
+| R7 | VS Code「Open Editors」视图按编辑器组分组列出已开的编辑器（1.53 起对新用户默认隐藏）；Ctrl+Tab（两个平台都是 ⌃Tab）在**当前组**的最近使用列表里切换 | [Release notes 1.53](https://code.visualstudio.com/updates/v1_53)、[Default keybindings](https://code.visualstudio.com/docs/reference/default-keybindings) | 官方 |
+| R8 | VS Code 编辑器组：Split Editor（Ctrl+\ / ⌘\）在新组里再开一份；Move Editor into Next / Previous Group（Ctrl+Alt+→/← ，macOS ⌃⌘→/←）；Move Editor into New Window（浮动窗口 1.85 起，1.86 起重启恢复） | [Custom layout](https://code.visualstudio.com/docs/configure/custom-layout)、[Release notes 1.85](https://code.visualstudio.com/updates/v1_85)、[editorCommands.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/parts/editor/editorCommands.ts) | 官方＋源码（命令 ID 以源码为准） |
+| R9 | Obsidian 点内部链接：无修饰键在当前标签打开；Ctrl / ⌘ 新标签；Ctrl+Alt / ⌘⌥ 新标签组（官方没说一定在右边）；Ctrl+Alt+Shift / ⌘⌥⇧ 新窗口。钉住的标签里点链接总在别的标签打开。「Always focus new tabs」设置官方没写默认值，二手来源说默认开 | [Tabs](https://obsidian.md/help/tabs)、[Settings](https://obsidian.md/help/settings)；二手：[obsidian-journal PR #462](https://github.com/srg-kostyrko/obsidian-journal/pull/462) | 官方（默认值那半是二手） |
+| R10 | Obsidian 每个标签页有自己的导航历史，标题栏带前进 / 后退（0.16.3 起） | [Changelog 0.16.3](https://obsidian.md/changelog/2022-09-19-desktop-v0.16.3/) | 官方 |
+| R11 | Obsidian 弹出窗口（0.15 起，仅桌面版）：标签右键「Move to new window」「Open in new window」、对应命令、把标签拖出窗口或拖进别的窗口；只能在同一个库的窗口之间移 | [Pop-out windows](https://obsidian.md/help/pop-out-windows) | 官方 |
+| R12 | Obsidian 核心不给同一篇笔记去重，没有「已开就聚焦」的核心设置；功能请求在论坛挂着，去重靠社区插件（如 Mononote） | [论坛：IDE style navigation](https://forum.obsidian.md/t/ide-style-navigation-tab-reuse-on-link-opening-tab-management-switch-to-already-open-note/46671)、[论坛：Switch to tab when already opened](https://forum.obsidian.md/t/switch-to-tab-when-a-note-is-already-opened-instead-of-opening-the-note-in-a-new-tab/50332)、[Mononote](https://github.com/czottmann/obsidian-mononote) | 间接证据（论坛＋插件） |
+| R13 | Chrome：Ctrl / ⌘ + 单击 = 新标签后台打开；Ctrl / ⌘ + Shift + 单击 = 新标签并切过去；Shift + 单击 = 新窗口；中键同 Ctrl（帮助页没写，源码里同样处理）。前进后退作用于当前标签页 | [Chrome keyboard shortcuts · Mouse shortcuts](https://support.google.com/chrome/answer/157179)、[window_open_disposition_utils.cc](https://github.com/chromium/chromium/blob/main/ui/base/window_open_disposition_utils.cc) | 官方＋源码 |
+| R14 | Chrome 标签右键「Move tab to another window」（只有一个窗口时是「Move tab to new window」），也能把标签拖出成新窗口、拖进别的窗口。源码：移过去的标签追加在目标窗口末尾、设为活动标签，并把目标窗口带到前台 | [Manage tabs](https://support.google.com/chrome/answer/2391819)、Chromium 源码 `browser_commands.cc`（MoveTabsToWindowImpl）、`tab_menu_model.cc` | 官方＋源码 |
+| R15 | Windows 任务视图：右键窗口「Move to」选桌面，或把窗口拖到目标桌面的缩略图上。「移到新桌面」这一项、移完切不切桌面，官方与能访问的二手来源都没写 | [How to multitask in Windows](https://support.microsoft.com/en-us/windows/how-to-multitask-in-windows-b4fa0333-98f8-ef43-e25c-06d4fb1d6960) | 官方（后两点查不到） |
+| R16 | Windows 11 快捷键：Win+Ctrl+D 新建桌面，Win+Ctrl+←/→ 切换，Win+Ctrl+F4 关闭当前桌面。新建后切过去只有二手来源 | [Keyboard shortcuts in Windows](https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)；二手：[itechguides](https://www.itechguides.com/shortcut-key-for-windows-11-virtual-desktop-create-view-close-tutorial/) | 官方（切过去那半是二手） |
+| R17 | 删除桌面时窗口不关：Windows 移到「下一个可用的桌面」（官方没说方向，二手说是左边那张）；macOS 删除空间时窗口移到另一个空间 | R15 的微软页面、[Work in multiple spaces on Mac](https://support.apple.com/guide/mac-help/work-in-multiple-spaces-mh14112/mac)；二手：[How-To Geek](https://www.howtogeek.com/796349/how-to-use-virtual-desktops-on-windows-11/) | 官方（「左边」是二手） |
+| R18 | Windows 设置 › 系统 › 多任务 › 桌面：任务栏与 Alt+Tab 各有「Only on the desktop I'm using / On all desktops」一项。默认值官方没写，二手来源说两项默认都是只显示本桌面（另有一篇二手说法相反，可信度较低） | [Configure multiple desktops](https://support.microsoft.com/en-us/windows/experience/configure-multiple-desktops-in-windows)；二手：[NinjaOne](https://www.ninjaone.com/blog/how-to-show-all-open-windows-on-taskbar/)、[Geek Rewind](https://geekrewind.com/how-to-show-all-open-windows-on-alttab-on-all-desktops-in-windows-11) | 官方（默认值是二手） |
+| R19 | macOS 系统设置 › 桌面与程序坞 › 调度中心：「切换到某个应用程序时，会切换到包含该应用程序的打开窗口的空间」开关，默认开（二手）。在调度中心里把窗口拖到空间栏上的另一个空间，就是移过去 | [Change Desktop & Dock settings](https://support.apple.com/zh-cn/guide/mac-help/mchlp1119/mac)、R17 的 Apple 页面；二手：[macos-defaults.com](https://macos-defaults.com/mission-control/applespacesswitchonactivate.html) | 官方（默认值是二手） |
+| R20 | JetBrains IDE：工具窗口（项目、运行、版本控制）贴在主窗口边上、能拆成独立窗口，跟编辑器标签是两套东西；标签右键 Split Right / Down，Window › Editor Tabs 里 Split and Move Right；项目视图 Shift+Enter「Open in Right Split」在已有右分屏时开进那一个 | [Editor tabs](https://www.jetbrains.com/help/idea/managing-editor-tabs.html)、[Tool windows](https://www.jetbrains.com/help/idea/tool-windows.html) | 官方 |
+| R21 | Roam Research：Shift+单击在右侧栏打开（二手）。Logseq：Shift+单击链接、页面引用、搜索结果在右侧栏打开（社区帖＋源码快捷键表） | 二手：[Ness Labs](https://nesslabs.com/roam-research-workflow-tips)；[Logseq 论坛](https://discuss.logseq.com/t/how-to-work-with-logseqs-right-hand-sidebar/8461)、[Logseq shortcut config](https://github.com/logseq/logseq/blob/master/src/main/frontend/modules/shortcut/config.cljs) | 二手 / 源码 |
+| R22 | Notion 数据库视图的「Open pages in」：Side peek（右侧打开、左边数据库仍能用）、Center peek（居中弹窗）、Full page。Table / Board / List / Timeline 默认 side peek | [Views, filters & sorts](https://www.notion.com/help/views-filters-and-sorts) | 官方 |
+| R23 | dockview `addPanel` 的 `position`：`{ referencePanel, direction }` / `{ referenceGroup, direction }` 相对某格分；只给 `direction` 是贴整个容器的边（源码类型名 `AbsolutePosition`）。本仓另核 8.3.1 源码：`_doAddPanel` 不带参照走 `orthogonalize`；带参照新建组不给尺寸时 `Sizing.Distribute`（同一排均分）；拖放路径用 `dropSizing` 只切参照组一半（注释引 issue #1612） | [Add panels](https://dockview.dev/docs/core/panels/add)、[options.ts](https://github.com/mathuo/dockview/blob/master/packages/dockview-core/src/dockview/options.ts)；本仓 `node_modules/.pnpm/dockview-core@8.3.1/…/dockview-core.js` | 官方＋源码 |
+| R24 | dockview 没有在两个独立实例之间移动 panel 的 API（文档给的做法是自己接拖放、在目标实例里 `addPanel`）；`moveTo` 只在同一布局内；另有弹出组 `addPopoutGroup`（独立浏览器窗口、仍属同一布局）与浮动组 `addFloatingGroup` | [Nested dockviews](https://dockview.dev/docs/core/nested/)、[Move panels](https://dockview.dev/docs/core/panels/move/)、[Popout groups](https://dockview.dev/docs/core/groups/popoutGroups)、[Floating groups](https://dockview.dev/docs/core/groups/floatingGroups) | 官方 |
+| R25 | Chrome 分屏：标签右键「Add tab to new split view」、链接右键「Open link in split view」；源码里 Ctrl+Alt / ⌘⌥ + 单击在分屏里打开链接 | [Split view](https://support.google.com/chrome/answer/16971124)、R13 的源码文件 | 官方＋源码 |
+| R26 | VS Code `workbench.editor.closeEmptyGroups` 默认 true：组里最后一个编辑器关掉后这个组自动关 | R1 的 workbench.contribution.ts | 源码 |
+| R27 | VS Code `workbench.editor.navigationScope` 默认 default：前进后退是跨所有编辑器与组的一条全局历史，可限到组或单个编辑器——跟浏览器、Obsidian 每个标签一条不同 | 同上 | 源码 |
+| R28 | dockview 8.3.1 组模型：`openPanel` 不给 `index`（或越界）时追加到组末尾；关掉活动面板后激活组内 `mostRecentlyUsed` 的第一个 | [dockviewGroupPanelModel.ts @ v8.3.1](https://github.com/mathuo/dockview/blob/v8.3.1/packages/dockview-core/src/dockview/dockviewGroupPanelModel.ts) | 源码 |
+| R29 | GNOME：Super+Shift+Page Up / Page Down 把窗口移到左 / 右边的工作区，也能在概览里拖 | [Move a window to a different workspace](https://help.gnome.org/users/gnome-help/stable/shell-workspaces-movewindow.html) | 官方 |
+
+## 进度
+
+- 2026-09-19 立页（从块笔记仓的会话发起）：现状逐条读代码查过，dockview 的三处行为（不带参照贴整个容器边、带参照新建组同排均分、关闭后按最近用过激活）对过 8.3.1 源码；29 条参考来源逐条上网核对，只有二手来源的地方正文里都标了
