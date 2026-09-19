@@ -34,7 +34,7 @@ import {
   type SavedLayout,
 } from '../layout.js'
 import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
-import { isOpenPaneAction, openPaneOptionsOf } from '../open-pane.js'
+import { isOpenPaneAction, openPaneOptionsOf, openPaneSourceOf } from '../open-pane.js'
 import { ENV_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
@@ -126,13 +126,13 @@ function App({
   rowsRef.current = desktops
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
-  // 枢纽里的活动桌面（面板组件的开格链读它），跟 ref 同一步走——switchTo 里另有一处同步赋值，
-  // 保证聚焦分派在同一拍里看到新值
+  // 枢纽里的活动桌面（开格链拿它挑「当前桌面」），跟 ref 同一步走——switchTo 里另有一处同步
+  // 赋值，保证切完的那一拍里开格就落在新桌面上
   wellHub.setActiveDesktop(activeId)
   const savedRef = useRef(saved)
   savedRef.current = saved
   const timerRef = useRef<number | undefined>(undefined)
-  /** 每口井的 onDidLayoutChange 订阅。井常驻，跟着 App 卸载一起拆 */
+  /** 每口井的订阅（布局变化、组激活、拖放落组）。井常驻，跟着 App 卸载一起拆 */
   const wellSubsRef = useRef(new Map<string, { dispose(): void }>())
   /**
    * 运行时新建、还没把出生空快照落盘的那几口（判据见轨迹卡 2026-09-13-desktop-born-empty）。
@@ -201,7 +201,7 @@ function App({
     for (const spec of specs) addInstance(target, spec)
   }
 
-  /** 状态栏「已开」记号重算：问的是**全局表**的 `planOpen` 判据（别桌已开的也算，点它切过去） */
+  /** 状态栏「已开」记号重算：问的是当前桌面上的 `planOpen` 判据（本桌已开才算，别桌的不算） */
   const syncFocus = useCallback((): void => {
     setFocusIds(specs.filter((spec) => willFocus(spec)).map((spec) => spec.id))
   }, [specs])
@@ -228,14 +228,23 @@ function App({
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
     // 井一变：活动的那口顺带重算「已开」记号（**换 params 也在这条上**——dockview 8.2.0
-    // 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange）；哪口变了都要落盘
-    wellSubsRef.current.set(
-      id,
-      event.api.onDidLayoutChange(() => {
-        if (activeIdRef.current === id) syncFocus()
-        scheduleSave()
-      }),
-    )
+    // 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange）；哪口变了都要落盘。
+    // 组被激活、拖放落进哪一组，记进「最近用过的组」——订在恢复之后，重载后的账从空开始
+    const layoutSub = event.api.onDidLayoutChange(() => {
+      if (activeIdRef.current === id) syncFocus()
+      scheduleSave()
+    })
+    const activeSub = event.api.onDidActiveGroupChange((group) => {
+      if (group !== undefined) wellHub.noteActiveGroup(id, group.id)
+    })
+    const moveSub = event.api.onDidMovePanel(({ panel }) => wellHub.noteActiveGroup(id, panel.group.id))
+    wellSubsRef.current.set(id, {
+      dispose() {
+        layoutSub.dispose()
+        activeSub.dispose()
+        moveSub.dispose()
+      },
+    })
     if (bornEmpty) flushSave()
   }
 
@@ -253,7 +262,7 @@ function App({
       if (row === undefined) return
       const prev = activeIdRef.current
       activeIdRef.current = id
-      // 枢纽同一拍看到新活动桌面（focusAcross 的聚焦分派跟着切换走）
+      // 枢纽同一拍看到新活动桌面（开格链挑「当前桌面」读它）
       wellHub.setActiveDesktop(id)
       if (!mountedRef.current.includes(id)) setMountedIds((list) => [...list, id])
       flushSave()
@@ -286,14 +295,6 @@ function App({
     [switchTo],
   )
 
-  // 跨井聚焦的切桌分派（focusAcross 经枢纽够到 switchTo，跟落盘钩子同一个路子）
-  useEffect(() => {
-    wellHub.setSwitcher(switchTo)
-    return () => {
-      wellHub.setSwitcher(undefined)
-    }
-  }, [switchTo])
-
   // node 半转来的桌面动作（shell.desktop.switch / new）：井在页面这半，命令只是转发
   useEffect(() => {
     const off = window.gwb.on((payload) => {
@@ -315,7 +316,7 @@ function App({
   }, [switchTo, createDesktop])
 
   // node 半转来的开格动作（shell.openPane，跨件开格）：与件开自己格的同一条执行链
-  // （openRegisteredPane——注册表现取，判断照旧 planOpen，key 命中已开的份就聚焦）。
+  // （openRegisteredPane——注册表现取，判断照旧 planOpen，来源是命令带的 from）。
   // 身份两样得是字符串：事件口上什么件的载荷都有，认不出当没这条
   useEffect(() => {
     const off = window.gwb.on((payload) => {
@@ -324,9 +325,11 @@ function App({
       if (typeof entryId !== 'string' || typeof paneId !== 'string') return
       const host = wellHub.host()
       if (host === undefined) return
-      void openRegisteredPane(host, { entryId, paneId }, openPaneOptionsOf(payload)).catch((err: unknown) => {
-        console.error(`[shell] 开 ${entryId} 的 ${paneId} 失败：${String(err)}`)
-      })
+      void openRegisteredPane(host, { entryId, paneId }, openPaneOptionsOf(payload), openPaneSourceOf(payload)).catch(
+        (err: unknown) => {
+          console.error(`[shell] 开 ${entryId} 的 ${paneId} 失败：${String(err)}`)
+        },
+      )
     })
     return off
   }, [])

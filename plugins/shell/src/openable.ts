@@ -3,8 +3,9 @@ import type { RegisteredPane } from './pane-registry.js'
 
 /**
  * 「可以打开的窗格」那张表与开格的决策：注册表快照摊成井里能开的那几格（`listOpenable`
- * / `specForPane` / `specForOwnPane` 管**定义**），`planOpen` 决定开成聚焦还是软换还是
- * 新开、`uniquePanelId` 管**实例**。零 DOM、零 react，测试在 node 里直接跑。
+ * / `specForPane` / `specForOwnPane` 管**定义**），`targetGroup` 算落在哪一组、`planOpen`
+ * 决定开成聚焦还是软换还是新开、`uniquePanelId` 管**实例**。判断吃的是**一张桌面的快照**
+ * （`Desk`），零 DOM、零 react，测试在 node 里直接跑。
  *
  * 窗格 id 是 `plugin:<条目 id>:<窗格 id>`——同一个包挂两条条目时条目 id 分得开它们，
  * 同一条条目注册几格时窗格 id 分得开那几格。运行时注册下表里每一条自带身份，用不着
@@ -34,6 +35,15 @@ export interface PanelParams {
 }
 
 /**
+ * 窗格的两类：工具窗格一张桌面至多一份、打开就是把它显示出来；文档窗格可以开多份、
+ * 每份装一个内容。两类的查重范围不同（见 `planOpen`）。注册时说不出就是 `tool`。
+ */
+export type PaneKind = 'tool' | 'document'
+
+/** 新窗格往哪放：`auto` 按目标组规则，`side` 开到来源旁边（见 `targetGroup`） */
+export type Placement = 'auto' | 'side'
+
+/**
  * 件调 `openPane` 时给的那几样。
  *
  * **`params` 必须可 JSON 序列化**：它跟着面板进 `api.toJSON()`、再整档写进 gwbData 的
@@ -42,17 +52,20 @@ export interface PanelParams {
  */
 export interface OpenPaneOptions {
   /**
-   * 这一份装的是什么。**一格的身份是它装的内容**——外壳拿这个字符串去同一格已开的
-   * 几份里找，找得到就聚焦那一份。不透明：外壳一个字都不解释。不给等于空串。
+   * 这一份装的是什么。**一格的身份是它装的内容**——外壳拿这个字符串去已开的几份里找
+   * （文档窗格只找目标组，工具窗格找这张桌面），找得到就激活那一份。不透明：外壳一个字都
+   * 不解释。不给等于空串。
    */
   key?: string
   /** 交给这一份的参数。走到聚焦时不作数、走到软换时原样换上（见 `planOpen`） */
   params?: Record<string, unknown>
   /**
-   * 找不到时把内容放进**预览格**：已经有一份预览格就原地换掉它的内容（格数不变），
-   * 没有就新开一份并标成预览格。同一格的预览格**至多一份**。
+   * 找不到时把内容放进目标组的**预览格**：那一组已经有这一格的预览格就原地换掉它的内容，
+   * 没有就新开一份并标成预览格。**每组每一格至多一份预览格**。
    */
   preview?: boolean
+  /** 往哪放，缺省 `auto`。认不出的值当 `auto` */
+  placement?: Placement
 }
 
 /** 一格「可以打开的窗格」。`params` 是要落进 dockview 面板的那份 */
@@ -65,31 +78,64 @@ export interface OpenableSpec {
   params: PanelParams
 }
 
-/**
- * 这一格**此刻开着的几份**：`planOpen` 认身份、挑预览格、查重都吃这一张表。
- *
- * **桌面是分组不是宇宙**（0.4.0 起）：表是**全井聚合**的——同一格开在别的桌面也算一份，
- * `here: false` 标出来。两条口径各看各的半边：
- *
- * - **聚焦与查重看全表**——key 命中别桌的份也走聚焦（接线侧切过去再激活，任务栏语义）；
- *   实例 id 的查重更得全表，跨井撞名正是上一版「井内唯一」翻掉的原因
- * - **预览槽与落位只看本井**（`here` 不是 false 的那些）——预览是本井的快速翻看（全案
- *   唯一保留的桌面特例），dockview 的 position 参照也不能跨井
- *
- * 由调用方从各口井现摘（按 `entryId` + `paneId` 滤），所以这个判断在 node 里直接测得了。
- * **只装同一格的那几份**：`key` 与 `preview` 都是「这一格之内」的概念，掺进别的格会让
- * 查重把别人的 id 也算上。
- */
-export interface OpenPane {
+/** 桌面上一个标签（一份窗格实例）在判断里要看的那几样。`key` 与 `preview` 只在同一格之内比 */
+export interface DeskTab {
   /** 这一份的 panel id */
   id: string
+  entryId: string
+  paneId: string
   /** 这一份装着什么（没给过就是空串） */
   key: string
   /** 这一份是不是预览格 */
   preview: boolean
-  /** 这一份开在**别的桌面**。省略＝在活动那口井。聚焦认它、预览与落位不认 */
-  here?: false
 }
+
+/** 一组在页面上的矩形（px）。找侧边组只看它，所以嵌套成什么样都一样判 */
+export interface GroupBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** 桌面上的一组：一排标签共用的那一块 */
+export interface DeskGroup {
+  id: string
+  /** 组里的标签，按标签条从左到右 */
+  tabs: DeskTab[]
+  /** 活动标签的 panel id。说不出就不给——新标签追加到末尾 */
+  active?: string
+  box: GroupBox
+}
+
+/**
+ * `planOpen` 看的那一张桌面，由接线侧从这张桌面的井里现摘。**判断只看这一张**：别的桌面
+ * 开着什么与它无关（本桌优先），唯一跨桌的是实例 id 查重（`OpenContext.taken`）。
+ */
+export interface Desk {
+  groups: DeskGroup[]
+  /** 这张桌面的活动组 */
+  activeGroup?: string
+  /**
+   * 组的最近激活顺序，最近的在前。只在运行时记、不落盘（重载后从空开始）；可能含已经
+   * 没了的组，判断时跳过
+   */
+  recent: readonly string[]
+}
+
+/** 这一次打开的上下文 */
+export interface OpenContext {
+  desk: Desk
+  /** 要开的这一格是哪一类 */
+  kind: PaneKind
+  /** 来源窗格的实例 id。没有来源（状态栏、不带 from 的命令）就不给；不在这张桌面上等于没给 */
+  from?: string
+  /** 这个实例 id 在**任何一张桌面**上占着没有——实例 id 全页唯一 */
+  taken: (id: string) => boolean
+}
+
+/** 目标组：开进已有的一组、把一组对半分出新的一组、或者桌面是空的新建一组 */
+export type Target = { group: string } | { split: string } | { empty: true }
 
 /**
  * 窗格 id 的拼法：两段都进去，只有这一处这么拼，落盘的与表里的因此不会漂。拼出来的
@@ -128,28 +174,21 @@ export function titleForOrdinal(title: string, ordinal: number): string {
   return ordinal <= 1 ? title : `${title} (${ordinal})`
 }
 
+/**
+ * 新那份开在哪：开进某一组的第 `index` 个位置（活动标签的右边——dockview 的 openPanel
+ * 不给 index 就追加到末尾，所以这儿显式算好）、把某一组对半分、或者空桌面新建一组。
+ * **没有「不带参照」那一档**：只给方向的 position 在 dockview 那头贴的是整个容器的边，
+ * 整片重新分宽。
+ */
+export type OpenAt = { group: string; index: number } | { split: string } | { empty: true }
+
 /** 「件说打开某一格」之后该干什么。副作用留给调用方，这儿只出判断 */
 export type OpenPlan =
-  | { kind: 'focus'; id: string; notice?: string }
+  /** 激活这一份。`keep` 时顺带转正（正式打开命中了预览格） */
+  | { kind: 'focus'; id: string; keep?: true; notice?: string }
   /** 软换：这一格还是这一格，换掉它 params 里装的内容。`params` 是**整份**新的面板 params */
   | { kind: 'retarget'; id: string; params: PanelParams; notice?: string }
-  | {
-      kind: 'open'
-      id: string
-      title: string
-      spec: OpenableSpec
-      /**
-       * 新那份往哪开。**不给等于不给 dockview 的 `position`**——那时它落进当前活动组
-       * 当兄弟 tab。三档怎么分见 `placeNext`
-       */
-      direction?: 'right' | 'below'
-      /**
-       * `direction` 相对哪一份实例算（那一份的 panel id）。**不给就是相对当前活动的
-       * 那一格**
-       */
-      referencePanel?: string
-      notice?: string
-    }
+  | { kind: 'open'; id: string; title: string; spec: OpenableSpec; at: OpenAt; notice?: string }
   | { kind: 'none'; notice: string }
 
 /**
@@ -178,89 +217,170 @@ export function panelParamsOf(spec: OpenableSpec): PanelParams {
   return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
 }
 
-/** 这一格已开的那几份里，某个 id 占着没有。`uniquePanelId` 要的那个形状 */
-function takenIn(open: readonly OpenPane[]): (id: string) => boolean {
-  return (id) => open.some((p) => p.id === id)
+/** 窗格定义的键：注册表的 (条目 id, 窗格 id) */
+interface PaneDef {
+  entryId: string
+  paneId: string
 }
 
-/** 新开的这一份摆哪儿：`OpenPlan` 的 `open` 那一档里那两格。**只看本井**（here 非 false 的那些）——
- * dockview 的 position 参照不能跨井，摆放的视觉语境也是本井的 */
-interface Placement {
-  direction?: 'right' | 'below'
-  referencePanel?: string
+function isDef(tab: DeskTab, def: PaneDef): boolean {
+  return tab.entryId === def.entryId && tab.paneId === def.paneId
 }
 
 /**
- * 新开的这一份摆哪儿，**按这一格此刻开着几份**（只看本井）分三档：
- *
- * | 已经开着 | 新那份开在哪 |
- * | --- | --- |
- * | 0 份 | 不给落位——落当前活动组 |
- * | 1 份 | `right`，不给参照（相对当前活动的那一格） |
- * | 2 份及以上 | `below`，参照已开的某一份**非基名实例** |
- *
- * 第三份起往下叠而不是继续往右，参照必须显式给——只给 direction 的 position 在
- * dockview 那头是 `AbsolutePosition`，落的是整口井的边。判据见文档站。
+ * 侧边组往右找多远算「紧挨着」（px）。实机组间缝是 8（外壳给 dockview 的 `gap`），
+ * 余量吃掉亚像素摊分
  */
-function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
-  const local = open.filter((p) => p.here !== false)
-  if (local.length === 0) return {}
-  const under = local.length < 2 ? undefined : local.findLast((p) => p.id !== spec.id)
-  return under === undefined ? { direction: 'right' } : { direction: 'below', referencePanel: under.id }
+const SIDE_REACH = 16
+
+/**
+ * 某一组右边紧挨着的那一组：左边沿贴着它的右边沿、竖向跟它有重叠。好几组都挨着
+ * （右边一列叠着好几组）取竖向重叠最多的，一样多取靠上的。没有回 undefined。
+ */
+export function sideGroupOf(desk: Desk, groupId: string): string | undefined {
+  const base = desk.groups.find((g) => g.id === groupId)
+  if (base === undefined) return undefined
+  const right = base.box.x + base.box.w
+  let best: { id: string; overlap: number; y: number } | undefined
+  for (const g of desk.groups) {
+    if (g.id === groupId) continue
+    const dx = g.box.x - right
+    if (dx < -1 || dx > SIDE_REACH) continue
+    const overlap = Math.min(base.box.y + base.box.h, g.box.y + g.box.h) - Math.max(base.box.y, g.box.y)
+    // 只擦到一个角的不算
+    if (overlap <= 1) continue
+    if (best === undefined || overlap > best.overlap || (overlap === best.overlap && g.box.y < best.y)) {
+      best = { id: g.id, overlap, y: g.box.y }
+    }
+  }
+  return best?.id
+}
+
+/** 这张桌面上装着这个实例的那一组 */
+function groupHolding(desk: Desk, instanceId: string | undefined): DeskGroup | undefined {
+  if (instanceId === undefined) return undefined
+  return desk.groups.find((g) => g.tabs.some((t) => t.id === instanceId))
+}
+
+/** 这张桌面的活动组（说不出就取第一组） */
+function activeGroupOf(desk: Desk): DeskGroup | undefined {
+  return desk.groups.find((g) => g.id === desk.activeGroup) ?? desk.groups[0]
+}
+
+/** 开到基准组旁边：右边有侧边组就是它，没有就把基准组对半分 */
+function beside(desk: Desk, base: DeskGroup): Target {
+  const side = sideGroupOf(desk, base.id)
+  return side === undefined ? { split: base.id } : { group: side }
 }
 
 /**
- * 开格的**决策**：一格的身份是它装的内容（`options.key`），所以吃的是**这一格此刻
- * 开着的几份**，认身份、挑预览格、查重三件事都读它。副作用全留给调用方（`open.ts`）。
+ * **目标组**：这次打开落在哪一组。只在一张桌面里算（有来源是来源那张，接线侧挑好）。
+ *
+ * `side`：基准组是来源所在的组（没有来源用活动组），右边有侧边组就是它，没有就对半分。
+ *
+ * `auto`，按顺序取第一个成立的：
+ *
+ * 1. 来源与要开的是同一个窗格定义 → 来源所在的组
+ * 2. 这张桌面上有最近用过的同类组（最近激活、且装着这一格的实例）→ 那一组
+ * 3. 有来源 → 照 `side` 算
+ * 4. 有活动组 → 活动组
+ * 5. 桌面是空的 → 新建一组
+ */
+export function targetGroup(desk: Desk, def: PaneDef, placement: Placement, from?: string): Target {
+  const source = groupHolding(desk, from)
+  if (placement === 'side') {
+    const base = source ?? activeGroupOf(desk)
+    return base === undefined ? { empty: true } : beside(desk, base)
+  }
+  const sourceTab = source?.tabs.find((t) => t.id === from)
+  if (source !== undefined && sourceTab !== undefined && isDef(sourceTab, def)) return { group: source.id }
+  for (const id of desk.recent) {
+    const g = desk.groups.find((x) => x.id === id)
+    if (g?.tabs.some((t) => isDef(t, def)) === true) return { group: g.id }
+  }
+  if (source !== undefined) return beside(desk, source)
+  const active = activeGroupOf(desk)
+  return active === undefined ? { empty: true } : { group: active.id }
+}
+
+/** 开进已有的一组时插在哪：活动标签的右边，说不出活动标签就追加到末尾 */
+function insertAt(group: DeskGroup): number {
+  const active = group.tabs.findIndex((t) => t.id === group.active)
+  return active < 0 ? group.tabs.length : active + 1
+}
+
+/**
+ * 开格的**决策**：先算目标组，再按这一格是哪一类查重。副作用全留给调用方（`open.ts`）。
  *
  * ```
  * want = options.key ?? ''
- * 1. 表里有 p.key === want            → focus 那一份
- * 2. 没有，且没要 preview              → open 一份新的（params 带 key，不带 preview）
- * 3. 没有，且要了 preview
- *    3a. 表里有预览格                  → retarget 它（params 带 key 与 preview: true）
- *    3b. 没有                         → open 一份新的并标成预览格
- * 4. spec 认不出                       → none
+ * 工具窗格：这张桌面任何一组里有同一格、key === want 的 → focus 它（不挪）
+ * 文档窗格：只在目标组里找同一格、key === want 的   → focus 它
+ *   focus 时它是预览格、这次又是正式打开            → 顺带转正（keep）
+ * 没找到，且要了 preview：
+ *   目标组里有这一格的预览格                       → retarget 它（位置不动）
+ *   没有                                          → open 一份新的并标成预览格
+ * 没找到，且没要 preview                          → open 一份新的正式格
+ * spec 认不出                                     → none
  * ```
  *
- * 走到 open 的两条顺带算好新那份摆哪儿（`placeNext`）。**参数不作用于聚焦**：走到
- * 聚焦时那一格装的本来就是这份内容，悄悄换掉面板 params 只会让盘上的档跟界面对不上。
+ * 同一内容在别的组（文档窗格）、别的桌面（两类都是）开着都不算命中——本桌优先，打开从来
+ * 不切桌面。新开的插在目标组活动标签的右边。**参数不作用于聚焦**：走到聚焦时那一格装的
+ * 本来就是这份内容，悄悄换掉面板 params 只会让盘上的档跟界面对不上。
  */
 export function planOpen(
   spec: OpenableSpec | undefined,
   options: OpenPaneOptions | undefined,
-  open: readonly OpenPane[],
-  who: { entryId: string; paneId: string },
+  context: OpenContext,
+  who: PaneDef,
 ): OpenPlan {
   if (spec === undefined) {
     return { kind: 'none', notice: `条目 ${who.entryId} 要开的窗格 ${who.paneId} 不在注册表里` }
   }
+  const { desk } = context
+  const def: PaneDef = { entryId: spec.params.entryId, paneId: spec.params.paneId }
   const want = options?.key ?? ''
-  // 装着这份内容的那一格已经开着——预览格也好正式格也好、**本井还是别的桌面**（here:false）
-  // 都算它：桌面是分组不是宇宙，key 命中就走聚焦，切过去激活归接线侧
-  const already = open.find((p) => p.key === want)
-  if (already !== undefined) return { kind: 'focus', id: already.id }
+  const preview = options?.preview === true
+  const target = targetGroup(desk, def, options?.placement === 'side' ? 'side' : 'auto', context.from)
+  const inTarget = 'group' in target ? desk.groups.find((g) => g.id === target.group) : undefined
+  // 查重范围：工具窗格是整张桌面，文档窗格只是目标组
+  const scope = context.kind === 'tool' ? desk.groups.flatMap((g) => g.tabs) : (inTarget?.tabs ?? [])
+  const already = scope.find((t) => isDef(t, def) && t.key === want)
+  if (already !== undefined) {
+    return already.preview && !preview ? { kind: 'focus', id: already.id, keep: true } : { kind: 'focus', id: already.id }
+  }
   const reserved = shellParamKeysIn(options?.params)
   const notice =
     reserved.length === 0 ? undefined : `窗格 ${who.paneId} 传的 params 里 ${reserved.join('、')} 是外壳的保留键，已摘掉`
-  const preview = options?.preview === true
   const next = withOpenParams(spec, options?.params, want, preview)
-  const nextParams = panelParamsOf(next)
-  // 预览槽只在本井找：预览是本井的快速翻看，顶掉别桌的预览格毫无意义（全案唯一的桌面特例）
-  const slot = preview ? open.find((p) => p.preview && p.here !== false) : undefined
-  // 预览格至多一份：有一份活着就原地换掉它装的东西，格数不变
-  if (slot !== undefined && nextParams !== undefined) {
-    return { kind: 'retarget', id: slot.id, params: nextParams, ...(notice === undefined ? {} : { notice }) }
+  // 预览格每组每一格至多一份：目标组里有就原地换掉它装的东西，格数不变
+  const slot = preview ? inTarget?.tabs.find((t) => isDef(t, def) && t.preview) : undefined
+  if (slot !== undefined) {
+    return { kind: 'retarget', id: slot.id, params: panelParamsOf(next), ...(notice === undefined ? {} : { notice }) }
   }
-  const { id, ordinal } = uniquePanelId(spec.id, takenIn(open))
+  const { id, ordinal } = uniquePanelId(spec.id, context.taken)
+  const at: OpenAt = 'group' in target ? { group: target.group, index: inTarget === undefined ? 0 : insertAt(inTarget) } : target
   return {
     kind: 'open',
     id,
     title: titleForOrdinal(spec.title, ordinal),
     spec: next,
-    ...placeNext(spec, open),
+    at,
     ...(notice === undefined ? {} : { notice }),
   }
+}
+
+/**
+ * 对半分之后基准组的高该补成多少（逻辑尺寸）。没变（同一排里分，不用包分支）回 undefined。
+ *
+ * dockview 8.3.1 在「往右分一个竖排里的组」时要把它包进一个新的横向分支，而 `Gridview.addView`
+ * 塞回去的尺寸是叶子**渲染后的高**（已经扣掉摊到的组间缝），不是它在那一排里的逻辑尺寸——
+ * 分支于是少一份缝的摊额，多出来的流给同列的兄弟。补法：把基准组的高设成 `2×原高−现高`，
+ * `setSize` 冒泡到外层那排设的正是分支的逻辑尺寸，渲染出来回到原高，那份摊额从当初吃下它的
+ * 兄弟那儿原路扣回来（隔离 home 里量过二叠、三叠的上中下与竖根，兄弟组的宽高都回到原值）。
+ */
+export function splitHeightFix(before: number, after: number): number | undefined {
+  return Math.abs(before - after) < 0.5 ? undefined : 2 * before - after
 }
 
 /** 表里一条 → 井里那一格的**定义**。列表与「打开我的某一格」同吃这一处，免得两边拼得不一样 */

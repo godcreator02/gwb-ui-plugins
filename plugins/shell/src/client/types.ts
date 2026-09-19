@@ -45,8 +45,10 @@ export interface PaneRow {
  */
 export interface ShellBridge {
   /**
-   * 打开本件的另一格。**身份是 `options.key`**：装着这份内容的那一格已经开着就聚焦它，
-   * 没开着才开新的一份（`preview: true` 时优先放进预览格）。认不出 paneId 什么都不做。
+   * 打开本件的另一格。**来源就是调它的这一份**：新窗格落在它旁边（`placement` 缺省按目标组
+   * 规则，`'side'` 开到旁边）、开在它所在的那张桌面上，**从不切桌面**。**身份是
+   * `options.key`**：本桌已经开着装这份内容的那一格就激活它，没开着才开新的一份
+   * （`preview: true` 时优先放进目标组的预览格）。认不出 paneId 什么都不做。
    *
    * `options.params` 是**让开出来的几份彼此不同**的那条路：它原样到那一份的
    * `mountPane` 手上（`pane.params`），并且跟着布局落盘、重启后还在。必须可 JSON

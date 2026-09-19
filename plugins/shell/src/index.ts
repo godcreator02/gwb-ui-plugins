@@ -300,7 +300,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         {
           name: OPEN_PANE_COMMAND,
           description: '开一格窗格（任何件的）',
-          usage: '参数 { entryId, paneId, key?, params?, preview? }——entryId+paneId 是注册表的键（shell.panes 现查），选项与件开自己格的同形：key 命中已开的份就聚焦、preview 放预览槽、params 跟着这一份落盘。井在页面那半，回执 ok 代表转发了不是开完了',
+          usage: "参数 { entryId, paneId, key?, params?, preview?, from?, placement? }——entryId+paneId 是注册表的键（shell.panes 现查），选项与件开自己格的同形：key 命中本桌已开的份就激活、preview 放目标组的预览槽、params 跟着这一份落盘；from 是来源窗格的实例 id（件手上的 pane.instance），新窗格落在它旁边、开在它那张桌面上，页面上找不到就当没给；placement 'auto'（缺省，按目标组规则）或 'side'（开到来源旁边，没有来源就是活动组旁边）。从不切桌面。井在页面那半，回执 ok 代表转发了不是开完了",
           plugin: '@godcreator/gwb-shell',
         },
         (args) => {

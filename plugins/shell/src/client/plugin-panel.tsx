@@ -29,9 +29,9 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
   }
   const bridge = wellHub.host()!
   const openPane: ShellBridge['openPane'] = (target, options) => {
-    // 件不等返回值（它是 click 回调），但这条链上的错得有出口。井不传——判断在模块层
-    // 看全井（聚焦可能落到别的桌面），面板组件连 containerApi 都不用了
-    void openRegisteredPane(bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
+    // 件不等返回值（它是 click 回调），但这条链上的错得有出口。**来源就是这一份自己**：
+    // 新窗格落在它旁边、开在它那张桌面上——件不用说，也说不成别人
+    void openRegisteredPane(bridge, { entryId, paneId: target }, options, props.api.id).catch((err: unknown) => {
       console.error(`[shell] 开 ${target} 失败：${String(err)}`)
     })
   }

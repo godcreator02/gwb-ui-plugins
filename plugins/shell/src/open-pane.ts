@@ -1,8 +1,8 @@
-import type { OpenPaneOptions } from './openable.js'
+import type { OpenPaneOptions, Placement } from './openable.js'
 
 /**
  * 跨件开格那一条的纯判断：`shell.openPane` 转进来的动作长什么样、总线参数怎么认成
- * 一份合法载荷、事件载荷怎么挑回 `openPane` 的那几样。
+ * 一份合法载荷、事件载荷怎么挑回 `openPane` 的那几样与来源。
  *
  * 纯机、无 DOM，node 半与浏览器半共用这一份，测试在 node 里直接跑。
  */
@@ -20,12 +20,19 @@ export interface OpenPaneAction {
   /** 谁的哪一格：注册表的键就是这两样拼的，光给 paneId 会撞名 */
   entryId: string
   paneId: string
-  /** 这一份装的内容（同 key 的份已开就聚焦），语义同件开自己格的那个 key */
+  /** 这一份装的内容，语义同件开自己格的那个 key */
   key?: string
   /** 交给这一份的参数，跟着布局落盘，必须可 JSON 序列化 */
   params?: Record<string, unknown>
-  /** 放进预览槽（本井至多一份，转正就是删键） */
+  /** 放进目标组的预览槽（每组每一格至多一份，转正就是删键） */
   preview?: boolean
+  /**
+   * 来源窗格的实例 id（件手上的 `pane.instance`）。新窗格落在它旁边、开在它所在的那张
+   * 桌面上；页面上找不到它就当没有来源
+   */
+  from?: string
+  /** 往哪放，缺省 auto */
+  placement?: Placement
 }
 
 /** 事件载荷的宽松形状：事件口上什么件的事件都有，认了自己那记号再按这个收窄 */
@@ -36,6 +43,8 @@ export interface OpenPaneActionLike {
   key?: unknown
   params?: unknown
   preview?: unknown
+  from?: unknown
+  placement?: unknown
 }
 
 /** 是不是一条开格动作（记号对得上）。事件监听那侧的第一道过滤 */
@@ -58,16 +67,20 @@ function plainParams(value: unknown): value is Record<string, unknown> {
   return true
 }
 
+function isPlacement(value: unknown): value is Placement {
+  return value === 'auto' || value === 'side'
+}
+
 /**
  * 总线参数 → 开格动作。entryId 与 paneId 都得是非空字符串；key 得是字符串；params 过
- * `plainParams` 那道门；preview 只认布尔。认不出回 error，调用方原样回给总线——
- * agent 手滑不该在井里留下任何动静。
+ * `plainParams` 那道门；preview 只认布尔；from 得是非空字符串；placement 只认 auto / side。
+ * 认不出回 error，调用方原样回给总线——agent 手滑不该在井里留下任何动静。
  */
 export function parseOpenPaneArgs(
   args: unknown,
 ): { ok: true; action: OpenPaneAction } | { ok: false; error: string } {
   if (args === null || typeof args !== 'object' || Array.isArray(args)) {
-    return { ok: false, error: '参数得是 { entryId, paneId, key?, params?, preview? } 那样的对象' }
+    return { ok: false, error: '参数得是 { entryId, paneId, key?, params?, preview?, from?, placement? } 那样的对象' }
   }
   const a = args as OpenPaneActionLike
   if (typeof a.entryId !== 'string' || a.entryId === '') {
@@ -85,6 +98,12 @@ export function parseOpenPaneArgs(
   if (a.preview !== undefined && typeof a.preview !== 'boolean') {
     return { ok: false, error: 'preview 是布尔（true = 放进预览槽）' }
   }
+  if (a.from !== undefined && (typeof a.from !== 'string' || a.from === '')) {
+    return { ok: false, error: 'from 是来源窗格的实例 id（件手上的 pane.instance），非空字符串，不给就别带' }
+  }
+  if (a.placement !== undefined && !isPlacement(a.placement)) {
+    return { ok: false, error: "placement 只认 'auto'（缺省，按目标组规则）或 'side'（开到来源旁边）" }
+  }
   return {
     ok: true,
     action: {
@@ -94,6 +113,8 @@ export function parseOpenPaneArgs(
       ...(typeof a.key === 'string' ? { key: a.key } : {}),
       ...(plainParams(a.params) ? { params: a.params } : {}),
       ...(a.preview === true ? { preview: true } : {}),
+      ...(typeof a.from === 'string' ? { from: a.from } : {}),
+      ...(isPlacement(a.placement) ? { placement: a.placement } : {}),
     },
   }
 }
@@ -107,5 +128,11 @@ export function openPaneOptionsOf(action: OpenPaneActionLike): OpenPaneOptions {
     ...(typeof action.key === 'string' ? { key: action.key } : {}),
     ...(plainParams(action.params) ? { params: action.params } : {}),
     ...(action.preview === true ? { preview: true } : {}),
+    ...(isPlacement(action.placement) ? { placement: action.placement } : {}),
   }
+}
+
+/** 事件载荷 → 来源窗格的实例 id。挑不走当没有来源 */
+export function openPaneSourceOf(action: OpenPaneActionLike): string | undefined {
+  return typeof action.from === 'string' && action.from !== '' ? action.from : undefined
 }
