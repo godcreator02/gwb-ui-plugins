@@ -1,4 +1,4 @@
-import { useRef, type ReactElement, type ReactNode } from 'react'
+import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import {
   ContextMenu,
@@ -23,6 +23,11 @@ import { wellHub } from './well-hub.js'
  */
 export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; children: ReactNode }): ReactElement {
   const anchor = useRef<HTMLSpanElement>(null)
+  /**
+   * 菜单挂哪：**打开那一刻**按锚点找本桌面的浮层户口。渲染时就算的话，标签第一次渲染那会儿锚点
+   * 还没挂上，`portalHostOf(null)` 退回 body——这一枚标签只要没再重渲染过，菜单就一直挂在 body 上
+   */
+  const [host, setHost] = useState<HTMLElement | null>(null)
   const params = (tab.params ?? {}) as Record<string, unknown>
   const entryId = typeof params.entryId === 'string' ? params.entryId : undefined
   const paneId = typeof params.paneId === 'string' ? params.paneId : undefined
@@ -55,22 +60,22 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
   const at = ids.indexOf(self)
 
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={(open) => open && setHost(portalHostOf(anchor.current))}>
       <ContextMenuTrigger asChild>
         {/* 触发区就是整枚标签；锚点只用来找本桌面的浮层户口 */}
         <span ref={anchor} className="shell:contents">
           {children}
         </span>
       </ContextMenuTrigger>
-      <ContextMenuContent container={portalHostOf(anchor.current)} data-gwb-tab-menu={self}>
-        {preview && <ContextMenuItem onSelect={keep}>留住</ContextMenuItem>}
-        {kind === 'document' && <ContextMenuItem onSelect={openBeside}>在旁边再开一份</ContextMenuItem>}
+      <ContextMenuContent container={host} data-gwb-tab-menu={self}>
+        {preview && <ContextMenuItem data-gwb-tab-action="keep" onSelect={keep}>留住</ContextMenuItem>}
+        {kind === 'document' && <ContextMenuItem data-gwb-tab-action="beside" onSelect={openBeside}>在旁边再开一份</ContextMenuItem>}
         {(preview || kind === 'document') && <ContextMenuSeparator />}
-        <ContextMenuItem onSelect={() => tab.api.close()}>关闭</ContextMenuItem>
-        <ContextMenuItem disabled={ids.length < 2} onSelect={() => closeMany('others')}>
+        <ContextMenuItem data-gwb-tab-action="close" onSelect={() => tab.api.close()}>关闭</ContextMenuItem>
+        <ContextMenuItem data-gwb-tab-action="close-others" disabled={ids.length < 2} onSelect={() => closeMany('others')}>
           关闭其他
         </ContextMenuItem>
-        <ContextMenuItem disabled={at < 0 || at === ids.length - 1} onSelect={() => closeMany('right')}>
+        <ContextMenuItem data-gwb-tab-action="close-right" disabled={at < 0 || at === ids.length - 1} onSelect={() => closeMany('right')}>
           关闭右侧
         </ContextMenuItem>
       </ContextMenuContent>
