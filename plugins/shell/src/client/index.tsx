@@ -18,7 +18,7 @@ import {
   addInstance,
   closeInstance,
   focusInstance,
-  launchMark,
+  launchGoesTo,
   launchSpec,
   openRegisteredPane,
   sendPane,
@@ -439,7 +439,7 @@ function App({
     }
   }, [switchTo, ensureMounted, createDesktop, notify])
 
-  /** 启动器的清单：现取注册表与件名表，按插件分组，工具窗格开着的标上在哪（本桌 / 别的桌面） */
+  /** 启动器的清单：现取注册表与件名表，按插件分组，每一格点下去去哪（开着的工具窗格：本桌 / 别的桌面） */
   const launchList = async (): Promise<LaunchGroup[]> => {
     const host = wellHub.host()
     if (host === undefined) return []
@@ -448,8 +448,8 @@ function App({
       entryId: group.entryId,
       title: group.title,
       rows: group.specs.map((spec) => {
-        const mark = launchMark(spec)
-        return mark === undefined ? { spec } : { spec, mark }
+        const goesTo = launchGoesTo(spec)
+        return goesTo === undefined ? { spec } : { spec, goesTo }
       }),
     }))
   }

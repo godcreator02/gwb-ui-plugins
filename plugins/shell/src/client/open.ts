@@ -51,16 +51,16 @@ function contextOn(desktop: string, from: string | undefined): OpenContext | und
 }
 
 /**
- * 启动器（状态栏「新建」）上这一条标什么：点下去会走成**激活本桌那份**就标「本桌已开」，会走成
- * **到别的桌面激活**就标「在『X』」，开新的不标。问的就是 `planLaunch` 自己——另写一条「开着没有」
- * 就是第二份真相，记号会开始说谎。文档窗格点下去永远是开一份新的，所以永远不标。
+ * 启动器（状态栏「新建」）上这一条点下去**去哪**：会走成激活本桌那份就回「本桌」，会走成到别的桌面
+ * 激活就回那张桌面的名字，开一份新的回 undefined（行尾写「＋」）。问的就是 `planLaunch` 自己——另写
+ * 一条「开着没有」就是第二份真相，行尾那句会开始说谎。文档窗格点下去永远是开一份新的。
  */
-export function launchMark(spec: OpenableSpec): string | undefined {
+export function launchGoesTo(spec: OpenableSpec): string | undefined {
   const context = contextOn(wellHub.activeDesktop(), undefined)
   if (context === undefined) return undefined
   const plan = planLaunch(spec, context)
-  if (plan.kind === 'focus') return '本桌已开'
-  if (plan.kind === 'reveal') return `在『${desktopName(plan.desktop)}』`
+  if (plan.kind === 'focus') return '本桌'
+  if (plan.kind === 'reveal') return desktopName(plan.desktop)
   return undefined
 }
 

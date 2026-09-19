@@ -30,13 +30,13 @@ import { iconFor } from './icon.js'
  */
 
 /**
- * 启动器里的一组：一个插件注册的那几格。工具窗格开着的标一下在哪（`mark`：「本桌已开」或「在『X』」），
- * 开新的那几格不标
+ * 启动器里的一组：一个插件注册的那几格。`goesTo` 是点下去去哪（开着的工具窗格：「本桌」或那张桌面的
+ * 名字）；没有就是点下去开一份新的
  */
 export interface LaunchGroup {
   entryId: string
   title: string
-  rows: { spec: OpenableSpec; mark?: string }[]
+  rows: { spec: OpenableSpec; goesTo?: string }[]
 }
 
 /** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
@@ -130,8 +130,12 @@ function LayoutBar({
 
 /**
  * 「新建」：启动器。**每次点开都现取注册表**（热装的件不用刷新就在），按插件分组列出全部窗格
- * 定义。文档窗格选了就在当前桌面开一份新的；工具窗格全页一份——本桌开着就激活它（标「本桌已开」），
- * 开在别的桌面就切过去激活它（标「在『X』」），哪儿都没有就在当前桌面开。
+ * 定义。文档窗格选了就在当前桌面开一份新的；工具窗格全页一份——本桌开着就激活它，开在别的桌面就
+ * 切过去激活它，哪儿都没有就在当前桌面开。
+ *
+ * **每一行行尾写点下去会怎样**（人定的）：「＋」是开一份新的，「→ 本桌」「→ 桌面 X」是去已经开着的
+ * 那一份；去已开的那几行左边再加一道色条，扫一眼就挑得出哪些开着（像任务栏给运行中的程序加标记）。
+ * 不用灰色——灰色是「点不了」，而这几行照样点得动；不用圆点——预览窗格已经用空心圆点了。
  *
  * **选了之后菜单不关**（人定的：常拿它一连开好几样），点菜单外面或 Esc 才关；开完原地重摘一次，
  * 记号跟着变。
@@ -171,21 +175,35 @@ function Launcher({
             <Fragment key={group.entryId}>
               {i > 0 && <DropdownMenuSeparator />}
               <DropdownMenuLabel className="shell:text-muted-foreground shell:text-xs">{group.title}</DropdownMenuLabel>
-              {group.rows.map(({ spec, mark }) => {
+              {group.rows.map(({ spec, goesTo }) => {
                 const Icon = iconFor(spec.icon)
                 return (
                   <DropdownMenuItem
                     key={spec.id}
                     data-gwb-launch={spec.id}
+                    data-gwb-launch-goes={goesTo ?? ''}
                     onSelect={(e) => {
-                      // 拦下「选中就关」：菜单留着，开完重摘一次记号
+                      // 拦下「选中就关」：菜单留着，开完重摘一次行尾
                       e.preventDefault()
                       void onLaunch(spec).then(() => load(true))
                     }}
                   >
+                    {/* 开着的那几行左边一道色条；别的行留同宽的空位，图标对得齐 */}
+                    <span
+                      aria-hidden
+                      className={`shell:-ml-1 shell:h-4 shell:w-0.5 shell:shrink-0 shell:rounded-full ${goesTo === undefined ? '' : 'shell:bg-primary'}`}
+                    />
                     <Icon />
                     <span className="shell:flex-1">{spec.title}</span>
-                    {mark !== undefined && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">{mark}</span>}
+                    {goesTo === undefined ? (
+                      <span className="shell:text-muted-foreground shell:ml-2 shell:text-xs" title="开一份新的">
+                        ＋
+                      </span>
+                    ) : (
+                      <span className="shell:ml-2 shell:text-[10px]" title={`去已经开着的那一份（在${goesTo === '本桌' ? '本桌' : `『${goesTo}』`}）`}>
+                        → {goesTo}
+                      </span>
+                    )}
                   </DropdownMenuItem>
                 )
               })}
