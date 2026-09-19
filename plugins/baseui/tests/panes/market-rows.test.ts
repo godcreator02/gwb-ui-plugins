@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { acceptPackages, installedIndex, matchesQuery, NO_INDEX, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
+import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
 
 /**
  * 「可装」那段的纯逻辑。原先筛一份手工白名单，2026-09-08 起筛的是 **registry 检索结果**
  * ——`plugin-manager.search` 一把抓回全量，搜索框纯本地筛。acceptPackages 的判形也在这一组里。
+ * 2026-09-19 起检索是**多源聚合**（官方线 + source.add 配的第三方源），行上的源徽章与
+ * 聚合 note 的收窄（scopeOf / acceptNote）也钉在这组。
  */
 
 const row = (pkg: string, patch: Partial<SearchRow> = {}): SearchRow => ({
@@ -32,6 +34,27 @@ describe('acceptPackages：plugins.search 的 data 收窄', () => {
 
   it('version / description 不是非空字符串就当没有', () => {
     expect(acceptPackages([{ pkg: 'a', version: '', description: 7 }])).toEqual([{ pkg: 'a' }])
+  })
+})
+
+describe('scopeOf：行上源徽章的判据', () => {
+  it('带 scope 的包名剥出 scope，第三方与官方都剥得出', () => {
+    expect(scopeOf('@j/gwb-daily-planner')).toBe('@j')
+    expect(scopeOf('@godcreator/gwb-shell')).toBe('@godcreator')
+  })
+
+  it('裸名、只有 @、@ 后没有 / 的都回空串（不猜）', () => {
+    expect(scopeOf('gwb-shell')).toBe('')
+    expect(scopeOf('@')).toBe('')
+    expect(scopeOf('@joke')).toBe('')
+  })
+})
+
+describe('acceptNote：聚合回执里「哪几条源没查成」的收窄', () => {
+  it('字符串原样过，其余一概当没有', () => {
+    expect(acceptNote('这几条源没查成：@x')).toBe('这几条源没查成：@x')
+    expect(acceptNote(undefined)).toBe('')
+    expect(acceptNote(7)).toBe('')
   })
 })
 

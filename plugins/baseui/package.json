@@ -1,8 +1,8 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": {"name": "godcreator"},
-  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。服务无；skill 0 份；命令 0 条。",
+  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。插件管理的「可装」表吃多源聚合（官方线 + 第三方源打徽章）。服务无；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,7 +27,7 @@
   "peerDependencies": {
     "@godcreator/gwb-logger": "^0.4.2",
     "@godcreator/gwb-plugin-api": "^0.1.2",
-    "@godcreator/gwb-plugin-manager": "^0.5.5",
+    "@godcreator/gwb-plugin-manager": "^0.6.0",
     "@godcreator/gwb-shared-react": "^0.1.1",
     "@godcreator/gwb-shell": "^0.13.1",
     "@godcreator/gwb-tokens": "^0.1.4",
@@ -44,7 +44,7 @@
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.2",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-plugin-manager": "0.5.5",
+    "@godcreator/gwb-plugin-manager": "0.6.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",

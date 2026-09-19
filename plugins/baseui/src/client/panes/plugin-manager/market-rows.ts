@@ -20,6 +20,18 @@ export interface SearchRow {
   description?: string
 }
 
+/** 包名里的 scope：`@j/gwb-x` → `@j`；裸名（没 scope）回空串。行上的源徽章从这儿来 */
+export function scopeOf(pkg: string): string {
+  if (!pkg.startsWith('@')) return ''
+  const cut = pkg.indexOf('/')
+  return cut === -1 ? '' : pkg.slice(0, cut)
+}
+
+/** 聚合回执里的 `note`：有就是「哪几条源没查成」那句，没有（或不是字符串）回空串 */
+export function acceptNote(raw: unknown): string {
+  return typeof raw === 'string' ? raw : ''
+}
+
 /** 判形。**认不出的丢掉、不崩**——node 半改了形状时宁可少显示几行，不要整段白屏 */
 export function acceptPackages(raw: unknown): SearchRow[] {
   if (!Array.isArray(raw)) return []

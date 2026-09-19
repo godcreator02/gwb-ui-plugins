@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { RotateCw, Search } from 'lucide-react'
 import { asResult } from './rows'
-import { acceptPackages, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
+import { acceptNote, acceptPackages, scopeOf, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
 import { describePeers } from './peers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 /**
- * 「可装」那段：registry 上这条线有什么，就摆什么——**检索走 npm registry 标准协议**，
- * node 半的 `plugins.search` 一把抓回 `@godcreator/gwb-*` 全量，搜索框只在本地筛。
+ * 「可装」那段：**全部配好的源**上有什么，就摆什么——node 半的 `plugins.search` 无参一把
+ * 抓回多源全量（官方线在前、第三方按 scope 名排；某条源挂了进 `note` 点名，不塌整表），
+ * 搜索框只在本地筛。
  *
  * **registry 在哪儿，这段不知道也不想知道**：基址由 node 半从 pnpm 配置解析——装从哪条
- * 源来，搜就到哪去。
+ * 源来，搜就到哪去。**第三方件打源徽章**（包名里的 scope，官方线不打——满屏徽章是噪音）。
  *
  * **装的动作照旧走本件的服务**：`plugins.install`。已装的不给「再装一份」按钮：多数件
  * 是服务提供方，第二条条目会抛 `service ... has been registered` 根本挂不上。真要第二条
@@ -37,6 +38,8 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
   const [query, setQuery] = useState('')
   /** null 是「还没查到」。跟「查到了、源上一个都没有」（空数组）分得开 */
   const [rows, setRows] = useState<SearchRow[] | null>(null)
+  /** 聚合回执的 note：哪几条源没查成（好源照常）。空串＝没有坏源 */
+  const [sourceNote, setSourceNote] = useState('')
   /** 查询本身没成的那句话。跟「装失败」（按包名放在行上）分开 */
   const [loadError, setLoadError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -57,6 +60,7 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
       const result = asResult(await host.call(SEARCH))
       if (!result.ok) {
         setRows(null)
+        setSourceNote('')
         setLoadError(result.error ?? '')
         return
       }
@@ -64,6 +68,7 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
       const innerOk = (receipt as Record<string, unknown>)['ok'] === true
       if (!innerOk) {
         setRows(null)
+        setSourceNote('')
         setLoadError(
           typeof (receipt as Record<string, unknown>)['error'] === 'string'
             ? String((receipt as Record<string, unknown>)['error'])
@@ -72,9 +77,11 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
         return
       }
       setRows(acceptPackages((receipt as Record<string, unknown>)['packages']))
+      setSourceNote(acceptNote((receipt as Record<string, unknown>)['note']))
       setLoadError('')
     } catch (err: unknown) {
       setRows(null)
+      setSourceNote('')
       setLoadError(String(err))
     } finally {
       setLoading(false)
@@ -130,7 +137,7 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
           <Input
             type="search"
             className="baseui:h-8 baseui:pl-7"
-            placeholder="筛这条线，如 log、theme"
+            placeholder="筛全部源，如 log、theme"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -153,6 +160,12 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
         </Button>
       </div>
 
+      {sourceNote !== '' && (
+        <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2 baseui:text-xs baseui:text-muted-foreground">
+          {sourceNote}
+        </div>
+      )}
+
       {done !== '' && (
         <div className="baseui:flex baseui:items-start baseui:gap-2 baseui:border-b baseui:border-border baseui:px-3 baseui:py-2 baseui:text-xs baseui:text-muted-foreground">
           <span className="baseui:flex-1 baseui:whitespace-pre-wrap baseui:break-all">{done}</span>
@@ -173,8 +186,8 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
         {rows !== null && shown.length === 0 && (
           <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">
             {query.trim() === ''
-              ? 'registry 上这条线一个 gwb 件都没有。'
-              : `这条线上没有匹配「${query.trim()}」的（共 ${String(summary.total)} 个）。清单外的包名，直接用上面那个「直接装包名」。`}
+              ? '配好的源上一个 gwb 件都没有。'
+              : `配好的源里没有匹配「${query.trim()}」的（共 ${String(summary.total)} 个）。清单外的包名，直接用上面那个「直接装包名」。`}
           </p>
         )}
 
@@ -182,6 +195,16 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
           <div key={row.pkg} className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
             <div className="baseui:flex baseui:items-baseline baseui:gap-2">
               <span className="baseui:font-mono baseui:text-sm baseui:break-all">{row.pkg}</span>
+              {scopeOf(row.pkg) !== '' && scopeOf(row.pkg) !== '@godcreator' && (
+                // 官方线不打徽章——满屏徽章是噪音；第三方件亮出它来自哪条源
+                <Badge
+                  variant="outline"
+                  className="baseui:shrink-0"
+                  title="第三方源上的件（这个 scope 是 plugin-manager.source.add 配的）"
+                >
+                  {scopeOf(row.pkg)}
+                </Badge>
+              )}
               {row.version !== undefined && (
                 <span className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title="registry 上的最新版">
                   {row.version}
