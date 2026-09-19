@@ -91,12 +91,17 @@ const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeade
  * 扫到只点名（console.warn），
  * **不删别人的 DOM**。状态栏自己的菜单也挂 body——它在桌面体系之外，应该常驻；radix
  * 的菜单在焦点离开时自己关，所以扫到的多半是没接容器那半的残影。
+ *
+ * radix 的**焦点护栏**（`data-radix-focus-guard` 的两个 span）也不算：模态菜单开着时 radix 往
+ * body 首尾各塞一个，菜单关了才摘。菜单项里直接切桌面（按住 Shift 送过去、切换器点别桌那一行）
+ * 时，切换那一刻菜单还没关，护栏还在——那不是谁的浮层。
  */
 function sweepBodyPortals(activeName: string): void {
   const strays: string[] = []
   for (const el of document.body.children) {
-    // 根节点与三类非浮层的常态节点不算
+    // 根节点、三类非浮层的常态节点、radix 的焦点护栏不算
     if (el.id === 'root' || /^(STYLE|SCRIPT|LINK|NOSCRIPT)$/.test(el.tagName)) continue
+    if (el.hasAttribute('data-radix-focus-guard')) continue
     const cls = el.getAttribute('class') ?? ''
     strays.push(`<${el.tagName.toLowerCase()}${cls === '' ? '' : ` class="${cls}"`}>`)
   }

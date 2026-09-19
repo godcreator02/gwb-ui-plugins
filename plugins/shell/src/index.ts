@@ -71,7 +71,7 @@ function loadIconCatalog(): IconCatalog | string {
  */
 export const RELOAD_COMMAND = 'shell.reload'
 
-/** 桌面那三条命令。**井在页面那半**，switch / new 只是经内核事件口把动作转进去执行 */
+/** 桌面那几条命令。**井在页面那半**，switch / new 只是经内核事件口把动作转进去执行 */
 export const DESKTOP_LIST_COMMAND = 'shell.desktop.list'
 export const DESKTOP_SWITCH_COMMAND = 'shell.desktop.switch'
 export const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
@@ -170,7 +170,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}，跨件开格走 ${OPEN_PANE_COMMAND}；页面根已要来，入口 ${entry}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND} / ${DESKTOP_RENAME_COMMAND} / ${DESKTOP_DELETE_COMMAND}，跨件开格走 ${OPEN_PANE_COMMAND}，窗格走 ${PANE_LIST_COMMAND} / ${PANE_FOCUS_COMMAND} / ${PANE_SEND_COMMAND} / ${PANE_CLOSE_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 
@@ -269,9 +269,9 @@ export default class GwbShell extends Service implements GwbShellApi {
   }
 
   /**
-   * 桌面那三条。井在页面那半（一口桌面一口、常驻保活），node 这侧只做两件事：
-   * 读盘上的档答 list，把 switch / new 经内核事件口转给页面执行——页面那边收到后
-   * 自己切、自己落盘。回执只代表「转发了」；要确认结果，稍等一下再 list（页面切换
+   * 桌面那五条。井在页面那半（一口桌面一口、常驻保活），node 这侧只做两件事：
+   * 读盘上的档答 list，把 switch / new / rename / delete 经内核事件口转给页面执行——页面
+   * 那边收到后自己动、自己落盘。回执只代表「转发了」；要确认结果，稍等一下再 list（页面切换
    * 时同步 flush 一次档）
    */
   private registerDesktopCommands(cli: GwbCommands): void {
