@@ -29,7 +29,7 @@
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-plugin-manager": "^0.5.4",
     "@godcreator/gwb-shared-react": "^0.1.1",
-    "@godcreator/gwb-shell": "^0.10.0",
+    "@godcreator/gwb-shell": "^0.12.0",
     "@godcreator/gwb-tokens": "^0.1.4",
     "cordis": "^4.0.0-rc.9"
   },
