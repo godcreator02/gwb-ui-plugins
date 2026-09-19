@@ -27,7 +27,7 @@
   "peerDependencies": {
     "@godcreator/gwb-logger": "^0.4.1",
     "@godcreator/gwb-plugin-api": "^0.1.2",
-    "@godcreator/gwb-plugin-manager": "^0.5.3",
+    "@godcreator/gwb-plugin-manager": "^0.5.4",
     "@godcreator/gwb-shared-react": "^0.1.1",
     "@godcreator/gwb-shell": "^0.10.0",
     "@godcreator/gwb-tokens": "^0.1.4",
@@ -44,7 +44,7 @@
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.1",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-plugin-manager": "0.5.3",
+    "@godcreator/gwb-plugin-manager": "0.5.4",
     "@godcreator/gwb-repo-kit": "0.2.3",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-shell": "workspace:*",
