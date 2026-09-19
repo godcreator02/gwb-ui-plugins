@@ -394,6 +394,7 @@ shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不
 | gwb-windows-backup | `main` | `tool` | 无 |
 | gwb-pomodoro（测试件） | `main` | `tool` | 无 |
 | gwb-cgm-alert（2026-09-19 补进来，立页时还没有这个仓） | `main`（血糖告警） | `tool` | 无（窗格照旧不声明 `kind`）；shell 依赖版本跟到当时的新线 |
+| gwb-devkit（2026-09-19 补进来） | 无窗格，只经 `gwbShell.describeSelf` 报件名 | — | 无；shell 依赖版本跟到当时的新线 |
 
 **老插件拿到的行为变化**（不改代码也会变的）：同一内容在别的组、别的桌面开着时不再跳过去而是再开一份；新窗格落在来源旁边；不会再被切桌面。
 
@@ -488,6 +489,7 @@ shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不
 
 ## 进度
 
+- 2026-09-19 第四期·本仓：shell **0.13.1** 发团队源（「新建」行尾写动作，补丁）。theme、baseui 跟上：同仓 peer 跟到 `^0.13.1`，顺带还火车债（theme 的 commands 0.4.4、settings 0.2.4；baseui 的 logger 0.4.2、plugin-manager 0.5.5；两件 repo-kit 0.3.0——两件都「服务无」，不用 `gwb.provides`），只跟依赖、插件面不变，按 gwb-release 发补丁 theme **0.3.4**、baseui **0.1.3**。`tool-single-2609191605` 装两件的开发版：「外观」注册为工具窗格、开得出来，插件管理照常，日志零 warn / error。system-map 那两条黄（shell peer 块挪行、baseui dev 钉块）此刻的内容都是本轮改的，认下了。消费方表补上 devkit
 - 2026-09-19 第三期补·0.13.1（已拍板第 16 条）：「新建」每一行行尾写点下去会怎样——「＋」开新的、「→ 本桌」「→ 桌面 X」去已开的那份（`launchGoesTo`，问的仍是 `planLaunch`），去已开的那几行左边一道色条。只动界面，按 gwb-release 是补丁。`tool-single-2609191605`（`0.13.1-dev`）：桌面「乙」上「新建」里探针文档「＋」、探针清单「→ 桌面 1」带色条（乙上那份手塞的老式插件管理让插件管理显示「→ 本桌」）；点探针清单切到桌面 1、菜单不关、行尾变「→ 本桌」。同一时间派了三个子代理跟第四期（docs-site + unit-folder、block-note、windows-backup / cgm-alert / devkit），本仓 theme / baseui 我自己跟
 - 2026-09-19 抬号判错的账（人问「发版的版号有看 devkit 的 release skill 吗」之后对了一遍，当时没读）：按 gwb-release，**0.11.0（第二期）与 0.12.0（第三期）都该是补丁**——`kind` 可选、`setPaneContent`、`pane.kind`、`shell.panes` 回执加字段、新命令、桌面事件加动作全是加法，状态栏是界面；照本页「每期抬 minor」那句抬成了次版本号，号已发出、同号不重发，改不回。0.10.0 与 0.13.0 是真破坏（开窗格的行为变了），号是对的；0.12.1 / 0.12.2 补丁也对。**0.11 / 0.12 / 0.13 三次按破坏版发，都没做 skill 第四节那一步**（发之前 `devkit.audit-deps`、给出范围的下游投 inbox）。后果（当时 `devkit.audit-deps` 的结果）：windows-backup 已追到 0.11.0、devkit 已追到 0.12.2、本仓 baseui 已追到 `^0.12.0`，都被 0.13.0 甩出范围、要再追一次；shell 出范围的下游共 unit-folder（0.9.1）、block-note 的 bn-core 与 bn-query（0.9.1）、docs-site（0.9.2）、windows-backup（0.11.0）、devkit（0.12.2）、cgm-alert（0.9.2，新仓，已补进「消费方怎么跟」），加上本仓同仓的 theme（`^0.10.0`）与 baseui（`^0.12.0`）。已改：「分期」那句改成照 gwb-release 判；全局 `~/.claude/CLAUDE.md` 加了「抬号前先读 gwb-release、冲突以它为准并停下来问人」。给下游补投 inbox 还是第四期统一追，等人定
 - 2026-09-19 第三期补·0.13.0：发版检票先拒了一次——上游出了新号（gwb-commands 0.4.4、gwb-data 0.1.4 范围内；repo-kit 0.3.0 是破坏版，自述守卫新钉「`gwb.provides` 与源码提供的服务互为充要」），钉与 peer 跟上、清单补 `gwb.provides.gwbShell`，再发 shell **0.13.0**（件拿到的开窗格行为变了，抬次版本号）。`shell-0121-2609191540` 里 `plugin-manager.update` 升到 0.13.0 冒烟：桌面「乙」上 `shell.openPane` 插件管理出「『插件管理』在『桌面 1』· 切过去」、不多开；「新建」里标「在『桌面 1』」，点它切到桌面 1、菜单不关、记号变「本桌已开」；日志零 warn、零 error。system-map 上 shell 清单那条钉码跟着变黄，没认：那一页按页认会连带认下另一个会话 baseui 清单那条黄，留给它
