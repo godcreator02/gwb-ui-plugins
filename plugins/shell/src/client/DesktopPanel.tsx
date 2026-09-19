@@ -42,6 +42,7 @@ export function DesktopPanel({
   desktops,
   activeId,
   onSections,
+  panesTick,
   onSwitch,
   onFocusPane,
   onSend,
@@ -55,6 +56,8 @@ export function DesktopPanel({
   activeId: string
   /** 此刻的那棵树：所有桌面与各自开着的窗格，照桌面顺序。每次点开、每次拖放完现取 */
   onSections: () => DeskSection[]
+  /** 窗格清单变了几回（外壳每次落盘加一）：开着的时候别处开关了窗格，按它重摘 */
+  panesTick: number
   onSwitch: (id: string) => void
   onFocusPane: (desktop: string, instance: string) => void
   /** 送到别的桌面（拖放）；follow = 放下时按住了 Shift */
@@ -79,11 +82,12 @@ export function DesktopPanel({
 
   /** 拖放送完重摘：送到是异步的（可能要先在后台挂井），桌面清单不一定变，得自己摘 */
   const refresh = (): void => setSections(onSections())
-  // 点开那一刻、开着时桌面清单变了（改名、删除、切过去）都重摘。依赖里**故意没有 onSections**：
-  // 它每轮都是新函数，按它重跑等于每轮都重摘；清单的变化由这三样带进来
+  // 点开那一刻、开着时桌面清单变了（改名、删除、切过去）、窗格变了（别处开关了窗格，外壳落盘时
+  // panesTick 加一）都重摘。依赖里**故意没有 onSections**：它每轮都是新函数，按它重跑等于每轮都
+  // 重摘；清单的变化由这四样带进来
   useEffect(() => {
     if (open) setSections(onSections())
-  }, [open, desktops, activeId])
+  }, [open, desktops, activeId, panesTick])
 
   const cancelSpring = (): void => {
     window.clearTimeout(spring.current)

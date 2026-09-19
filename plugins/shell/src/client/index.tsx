@@ -143,6 +143,11 @@ function App({
   /** 人起名存下来的布局清单，档里那半 */
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
+  /**
+   * 窗格清单变了几回：每次落盘（防抖之后）加一。「桌面」面板开着时拿它重摘清单——面板开着的时候
+   * 别处开了、关了窗格（命令、插件、标签上的 ✕），不重摘就一直列着旧的
+   */
+  const [panesTick, setPanesTick] = useState(0)
 
   // 回调读的都走 ref：防抖保存醒来时要读「当下」，不能读进闭包那一刻的旧账
   const apisRef = useRef(apis)
@@ -199,8 +204,10 @@ function App({
         console.error(`[shell] 布局没存上：${String(err)}`)
       },
     )
-    // 顺手把窗格清单推给 node 半（`shell.pane.list` 读它）：跟落盘同一个节律，最多慢一个防抖窗口
+    // 顺手把窗格清单推给 node 半（`shell.pane.list` 读它）：跟落盘同一个节律，最多慢一个防抖窗口；
+    // 「桌面」面板开着的话也跟着重摘
     pushPanes(host, rowsRef.current, activeIdRef.current)
+    setPanesTick((n) => n + 1)
   }, [])
 
   const scheduleSave = useCallback((): void => {
@@ -579,6 +586,7 @@ function App({
         onLaunchList={launchList}
         onLaunch={launchSpec}
         onSections={() => desktopSections(rowsRef.current, activeIdRef.current, wellHub.entries())}
+        panesTick={panesTick}
         onFocusPane={(desktop, instance) => void focusInstance(desktop, instance)}
         onSendPane={(instance, to, follow) => sendPane(instance, to, follow)}
         sent={sent}

@@ -185,6 +185,7 @@ export function StatusBar({
   onLaunchList,
   onLaunch,
   onSections,
+  panesTick,
   onFocusPane,
   onSendPane,
   sent,
@@ -213,6 +214,8 @@ export function StatusBar({
   onLaunch: (spec: OpenableSpec) => void
   /** 「桌面」面板的那棵树：所有桌面与各自开着的窗格，照桌面顺序 */
   onSections: () => DeskSection[]
+  /** 窗格清单变了几回（每次落盘加一）：面板开着时按它重摘 */
+  panesTick: number
   onFocusPane: (desktop: string, instance: string) => void
   /** 送到别的桌面（面板里拖放；拖到当前桌面就是拉到本桌）；follow = 放下时按住了 Shift */
   onSendPane: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
@@ -259,6 +262,7 @@ export function StatusBar({
         desktops={desktops}
         activeId={activeDesktopId}
         onSections={onSections}
+        panesTick={panesTick}
         onSwitch={onSwitchDesktop}
         onFocusPane={onFocusPane}
         onSend={onSendPane}
