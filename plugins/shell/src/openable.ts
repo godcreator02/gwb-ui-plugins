@@ -108,7 +108,8 @@ export interface DeskGroup {
 
 /**
  * `planOpen` 看的那一张桌面，由接线侧从这张桌面的井里现摘。**判断只看这一张**：别的桌面
- * 开着什么与它无关（本桌优先），唯一跨桌的是实例 id 查重（`OpenContext.taken`）。
+ * 开着什么与它无关（本桌优先），跨桌的只有两样——实例 id 查重（`OpenContext.taken`），与工具
+ * 窗格全页一份时去别的桌面找那一份（`OpenContext.elsewhere`）。
  */
 export interface Desk {
   groups: DeskGroup[]
@@ -121,6 +122,13 @@ export interface Desk {
   recent: readonly string[]
 }
 
+/** 别的桌面上开着的那一份（工具窗格全页一份，打开时要去那儿找它） */
+export interface OtherInstance {
+  desktop: string
+  id: string
+  preview: boolean
+}
+
 /** 这一次打开的上下文。要开的是哪一类看定义自己的 `kind` */
 export interface OpenContext {
   desk: Desk
@@ -128,6 +136,11 @@ export interface OpenContext {
   from?: string
   /** 这个实例 id 在**任何一张桌面**上占着没有——实例 id 全页唯一 */
   taken: (id: string) => boolean
+  /**
+   * **别的桌面**上开着的同一定义、同一 key 的那一份（工具窗格全页一份，要去那儿找它）。不给等于
+   * 别的桌面上都没有
+   */
+  elsewhere?: (def: PaneDef, key: string) => OtherInstance | undefined
 }
 
 /** 目标组：开进已有的一组、把一组对半分出新的一组、或者桌面是空的新建一组 */
@@ -182,6 +195,11 @@ export type OpenAt = { group: string; index: number } | { split: string } | { em
 export type OpenPlan =
   /** 激活这一份。`keep` 时顺带转正（正式打开命中了预览格） */
   | { kind: 'focus'; id: string; keep?: true; notice?: string }
+  /**
+   * 这一份（工具窗格，全页一份）开在**别的桌面**上：到那张桌面激活它，`keep` 同上。切不切过去归
+   * 调用方——人点的（启动器）切过去，插件与命令开的只在那张桌面上激活、状态栏提示一句
+   */
+  | { kind: 'reveal'; desktop: string; id: string; keep?: true; notice?: string }
   /** 软换：这一格还是这一格，换掉它 params 里装的内容。`params` 是**整份**新的面板 params */
   | { kind: 'retarget'; id: string; params: PanelParams; notice?: string }
   | { kind: 'open'; id: string; title: string; spec: OpenableSpec; at: OpenAt; notice?: string }
@@ -214,7 +232,7 @@ export function panelParamsOf(spec: OpenableSpec): PanelParams {
 }
 
 /** 窗格定义的键：注册表的 (条目 id, 窗格 id) */
-interface PaneDef {
+export interface PaneDef {
   entryId: string
   paneId: string
 }
@@ -299,6 +317,16 @@ export function targetGroup(desk: Desk, def: PaneDef, placement: Placement, from
   return active === undefined ? { empty: true } : { group: active.id }
 }
 
+/** 在别的桌面上找到的那一份 → reveal；它是预览格、这次是正式打开就顺带转正 */
+function revealOf(there: OtherInstance, preview: boolean): OpenPlan {
+  return {
+    kind: 'reveal',
+    desktop: there.desktop,
+    id: there.id,
+    ...(there.preview && !preview ? { keep: true as const } : {}),
+  }
+}
+
 /** 开进已有的一组时插在哪：活动标签的右边，说不出活动标签就追加到末尾 */
 function insertAt(group: DeskGroup): number {
   const active = group.tabs.findIndex((t) => t.id === group.active)
@@ -311,8 +339,9 @@ function insertAt(group: DeskGroup): number {
  * ```
  * want = options.key ?? ''
  * 工具窗格：这张桌面任何一组里有同一格、key === want 的 → focus 它（不挪）
+ *           本桌没有、别的桌面上有                      → reveal 它（全页一份，不在本桌再开）
  * 文档窗格：只在目标组里找同一格、key === want 的   → focus 它
- *   focus 时它是预览格、这次又是正式打开            → 顺带转正（keep）
+ *   focus / reveal 时它是预览格、这次又是正式打开   → 顺带转正（keep）
  * 没找到，且要了 preview：
  *   目标组里有这一格的预览格                       → retarget 它（位置不动）
  *   没有                                          → open 一份新的并标成预览格
@@ -320,8 +349,9 @@ function insertAt(group: DeskGroup): number {
  * spec 认不出                                     → none
  * ```
  *
- * 同一内容在别的组（文档窗格）、别的桌面（两类都是）开着都不算命中——本桌优先，打开从来
- * 不切桌面。新开的插在目标组活动标签的右边。**参数不作用于聚焦**：走到聚焦时那一格装的
+ * **文档窗格**同一内容在别的组、别的桌面开着都不算命中——本桌优先，能多开。**工具窗格全页一份**：
+ * 本桌优先（老版本留下的多份里先挑本桌那份），本桌没有才去别的桌面找。打开本身不切桌面：reveal
+ * 切不切过去归调用方。新开的插在目标组活动标签的右边。**参数不作用于聚焦**：走到聚焦时那一格装的
  * 本来就是这份内容，悄悄换掉面板 params 只会让盘上的档跟界面对不上。
  */
 export function planOpen(
@@ -345,6 +375,9 @@ export function planOpen(
   if (already !== undefined) {
     return already.preview && !preview ? { kind: 'focus', id: already.id, keep: true } : { kind: 'focus', id: already.id }
   }
+  // 工具窗格全页一份：本桌没有就去别的桌面找
+  const there = spec.kind === 'tool' ? context.elsewhere?.(def, want) : undefined
+  if (there !== undefined) return revealOf(there, preview)
   const reserved = shellParamKeysIn(options?.params)
   const notice =
     reserved.length === 0 ? undefined : `窗格 ${who.paneId} 传的 params 里 ${reserved.join('、')} 是外壳的保留键，已摘掉`
@@ -370,7 +403,8 @@ export function planOpen(
  * 状态栏「新建」（启动器）选了一条之后该干什么。没有来源、在当前桌面：
  *
  * - **文档窗格**：在活动组开一份**新的**（key 空串、不带参数，插件画它的默认内容），不查重
- * - **工具窗格**：本桌已有同一格（key 空串）就激活它，是预览格就顺带转正；没有就开进活动组
+ * - **工具窗格**（全页一份）：本桌已有同一格（key 空串）就激活它；本桌没有、别的桌面上有就 reveal
+ *   （启动器是人点的，调用方切过去）；是预览格就顺带转正；哪儿都没有就开进活动组
  *
  * 落点是**活动组**，不走 `targetGroup` 的「最近用过的同类组」——人在状态栏点的，「这儿」就是
  * 此刻激活的那一组。
@@ -383,6 +417,8 @@ export function planLaunch(spec: OpenableSpec, context: OpenContext): OpenPlan {
     if (already !== undefined) {
       return already.preview ? { kind: 'focus', id: already.id, keep: true } : { kind: 'focus', id: already.id }
     }
+    const there = context.elsewhere?.(def, '')
+    if (there !== undefined) return revealOf(there, false)
   }
   const active = activeGroupOf(desk)
   const { id, ordinal } = uniquePanelId(spec.id, context.taken)
@@ -485,6 +521,22 @@ export function specForOwnPane(
 /** 注册表 → 井里能开的那几格，按注册先后 */
 export function listOpenable(panes: readonly RegisteredPane[]): OpenableSpec[] {
   return panes.map((pane) => specForPane(pane))
+}
+
+/**
+ * 默认布局铺哪几格（第一次开机、存档恢复不了、「重置布局」）：表里有几格铺几格，但**工具窗格
+ * 全页一份**——整页哪张桌面上已经开着它空 key 的那份就不再铺（不然重置桌面 2 会铺出第二份插件
+ * 管理）。文档窗格照铺一份默认内容。`open` 是整页此刻开着的窗格（含没挂过的桌面落盘的那些）
+ */
+export function specsForDefaults(
+  specs: readonly OpenableSpec[],
+  open: readonly { entryId: string; paneId: string; key: string }[],
+): OpenableSpec[] {
+  return specs.filter(
+    (spec) =>
+      spec.kind === 'document' ||
+      !open.some((e) => e.entryId === spec.params.entryId && e.paneId === spec.params.paneId && e.key === ''),
+  )
 }
 
 /** 启动器里的一组：一条条目（一个插件）注册的那几格 */

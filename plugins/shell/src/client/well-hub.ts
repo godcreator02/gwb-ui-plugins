@@ -18,8 +18,11 @@ export interface DeskOps {
   rows(): readonly DesktopRow[]
   /** 新建一张空桌面，**不切过去**（「送到新桌面」用），回它的 id。名字空串用缺省名 */
   createDesktop(name: string): string
-  /** 状态栏出一句「已送到『X』· 切过去」 */
-  notifySent(desktopId: string): void
+  /**
+   * 状态栏出一句「<text> · 切过去」，点它切到这张桌面：送到别的桌面之后（「已送到『X』」）、插件或
+   * 命令打开的工具窗格开在别的桌面上时（「『插件管理』在『X』」）
+   */
+  notify(desktopId: string, text: string): void
 }
 
 /**
@@ -72,8 +75,11 @@ export interface WellHub {
   /** App 落树时注入桌面操作，拆树时摘掉 */
   setDeskOps(ops: DeskOps | undefined): void
   deskOps(): DeskOps | undefined
-  /** 所有桌面上开着的窗格，按桌面顺序：挂着的从活井摘，没挂过的从落盘布局读 */
-  entries(): PaneEntry[]
+  /**
+   * 所有桌面上开着的窗格，按桌面顺序：挂着的从活井摘，没挂过的从落盘布局读。桌面清单缺省问注入的
+   * 桌面操作；开机那一下井的 onReady 比注入早，那时由调用方把清单递进来
+   */
+  entries(rows?: readonly DesktopRow[]): PaneEntry[]
 }
 
 /** dockview 组上本模块要看的那一点形状 */
@@ -214,9 +220,9 @@ export function createWellHub(): WellHub {
     deskOps() {
       return ops
     },
-    entries() {
-      if (ops === undefined) return []
-      return ops.rows().flatMap((row) => {
+    entries(rows = ops?.rows()) {
+      if (rows === undefined) return []
+      return rows.flatMap((row) => {
         const api = wells.get(row.id)
         return api === undefined ? entriesOfLayout(row.id, row.layout) : liveEntries(row.id, api)
       })

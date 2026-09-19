@@ -195,7 +195,7 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
       switchTo: () => undefined,
       ensureMounted: async () => undefined,
       createDesktop: () => '',
-      notifySent: () => undefined,
+      notify: () => undefined,
       rows: () => [
         { id: 'd1', name: '桌面 1', layout: null },
         {
@@ -225,6 +225,14 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
   it('没注入桌面操作（外壳还没落树）时回空清单', () => {
     expect(createWellHub().entries()).toEqual([])
   })
+
+  it('递进来桌面清单就照它摘，不等注入（开机那一下井的 onReady 比注入早）', () => {
+    const hub = createWellHub()
+    hub.addWell('d1', oneGroup([pane('plugin:e1:main')]))
+    expect(hub.entries([{ id: 'd1', name: '桌面 1', layout: null }]).map((e) => [e.desktop, e.instance])).toEqual([
+      ['d1', 'plugin:e1:main'],
+    ])
+  })
 })
 
 describe('takenAnywhere：实例 id 全页唯一', () => {
@@ -251,7 +259,7 @@ describe('命令口与注入钩子', () => {
 
   it('桌面操作摘了之后是 undefined', () => {
     const hub = createWellHub()
-    hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [], createDesktop: () => '', notifySent: () => undefined })
+    hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [], createDesktop: () => '', notify: () => undefined })
     expect(hub.deskOps()).toBeDefined()
     hub.setDeskOps(undefined)
     expect(hub.deskOps()).toBeUndefined()

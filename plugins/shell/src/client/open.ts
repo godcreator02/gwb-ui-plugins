@@ -20,11 +20,17 @@ import type { HostBridge } from './types.js'
 
 /**
  * 开格的**执行层**：判断全在纯函数 `planOpen`（`openable.ts`），这儿只挑桌面、摘快照、
- * 按判断分派成 dockview 的动作——聚焦（顺带转正）、软换、开进某一组、对半分。
+ * 按判断分派成 dockview 的动作——聚焦（顺带转正）、软换、开进某一组、对半分、到别的桌面激活。
  *
- * **打开从来不切桌面**：有来源就开在来源那张桌面上，否则开在当前桌面；那张桌面藏着也
- * 照开，当前显示哪张不变。
+ * **打开本身不切桌面**：有来源就开在来源那张桌面上，否则开在当前桌面；那张桌面藏着也照开，
+ * 当前显示哪张不变。唯一的例外是工具窗格全页一份、开在别的桌面上（`reveal`）：人在启动器里点的
+ * 切过去，插件与命令开的只在那张桌面上激活、状态栏提示一句。
  */
+
+/** 桌面的名字（状态栏那句提示用）；认不出就用 id */
+function desktopName(desktop: string): string {
+  return wellHub.deskOps()?.rows().find((r) => r.id === desktop)?.name ?? desktop
+}
 
 /** 在这张桌面上判的上下文。井还没挂上回 undefined */
 function contextOn(desktop: string, from: string | undefined): OpenContext | undefined {
@@ -33,27 +39,41 @@ function contextOn(desktop: string, from: string | undefined): OpenContext | und
   return {
     desk,
     taken: (id) => wellHub.takenAnywhere(id),
+    // 工具窗格全页一份：别的桌面上（挂着的与没挂过的都算）开着的同一格同一 key
+    elsewhere: (def, key) => {
+      const hit = wellHub
+        .entries()
+        .find((e) => e.desktop !== desktop && e.entryId === def.entryId && e.paneId === def.paneId && e.key === key)
+      return hit === undefined ? undefined : { desktop: hit.desktop, id: hit.instance, preview: hit.preview }
+    },
     ...(from === undefined ? {} : { from }),
   }
 }
 
 /**
- * 启动器（状态栏「新建」）上这一条标不标「本桌已开」：点下去会不会走成**激活**。问的就是
- * `planLaunch` 自己——另写一条「开着没有」就是第二份真相，记号会开始说谎。文档窗格点下去
- * 永远是开一份新的，所以永远不标。
+ * 启动器（状态栏「新建」）上这一条标什么：点下去会走成**激活本桌那份**就标「本桌已开」，会走成
+ * **到别的桌面激活**就标「在『X』」，开新的不标。问的就是 `planLaunch` 自己——另写一条「开着没有」
+ * 就是第二份真相，记号会开始说谎。文档窗格点下去永远是开一份新的，所以永远不标。
  */
-export function launchWillFocus(spec: OpenableSpec): boolean {
+export function launchMark(spec: OpenableSpec): string | undefined {
   const context = contextOn(wellHub.activeDesktop(), undefined)
-  return context !== undefined && planLaunch(spec, context).kind === 'focus'
+  if (context === undefined) return undefined
+  const plan = planLaunch(spec, context)
+  if (plan.kind === 'focus') return '本桌已开'
+  if (plan.kind === 'reveal') return `在『${desktopName(plan.desktop)}』`
+  return undefined
 }
 
-/** 启动器选了一条：在当前桌面按 `planLaunch` 开，不切桌面 */
-export function launchSpec(spec: OpenableSpec): void {
+/**
+ * 启动器选了一条：按 `planLaunch` 在当前桌面开；工具窗格开在别的桌面上就**切过去**激活它——这是
+ * 人在状态栏点的，属于「只有这几种动作会切桌面」
+ */
+export function launchSpec(spec: OpenableSpec): Promise<void> {
   const desktop = wellHub.activeDesktop()
   const api = wellHub.wells().get(desktop)
   const context = contextOn(desktop, undefined)
-  if (api === undefined || context === undefined) return
-  applyPlan(api, planLaunch(spec, context))
+  if (api === undefined || context === undefined) return Promise.resolve()
+  return applyPlan(api, planLaunch(spec, context), 'switch')
 }
 
 /**
@@ -117,9 +137,9 @@ export async function sendPane(instance: string, to: SendTarget, follow: boolean
   panel.api.close()
   const context = contextOn(target, undefined)
   if (context === undefined) return
-  applyPlan(targetApi, planSend(spec, content, title, context))
+  void applyPlan(targetApi, planSend(spec, content, title, context), 'stay')
   if (follow) ops.switchTo(target)
-  else if (target !== wellHub.activeDesktop()) ops.notifySent(target)
+  else if (target !== wellHub.activeDesktop()) ops.notify(target, `已送到『${desktopName(target)}』`)
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
@@ -181,7 +201,27 @@ function openOn(
   const context = contextOn(desktop, from)
   // 井还没挂上（开机那一小段）：没有地方开，也就什么都不做
   if (api === undefined || context === undefined) return
-  applyPlan(api, planOpen(spec, options, context, who))
+  // 件与命令开的：工具窗格在别的桌面上也不把人拽过去，只提示
+  void applyPlan(api, planOpen(spec, options, context, who), 'stay')
+}
+
+/**
+ * 工具窗格（全页一份）开在别的桌面上：到那张桌面激活它（没挂过就先在后台挂上），`keep` 时顺带
+ * 转正。`switch`（人在启动器里点的）切过去；`stay`（件与命令开的）不切，那张不是当前桌面就在状态栏
+ * 提示「『X』在『桌面 N』· 切过去」——后台里 agent 开个工具，不该把正在干活的人拽走
+ */
+async function reveal(plan: Extract<OpenPlan, { kind: 'reveal' }>, how: 'switch' | 'stay'): Promise<void> {
+  const ops = wellHub.deskOps()
+  if (ops === undefined) return
+  if (how === 'switch') ops.switchTo(plan.desktop)
+  const api = await ops.ensureMounted(plan.desktop)
+  const panel = api?.getPanel(plan.id)
+  if (panel === undefined) return
+  if (plan.keep === true) panel.api.updateParameters({ preview: undefined })
+  panel.api.setActive()
+  if (how === 'stay' && plan.desktop !== wellHub.activeDesktop()) {
+    ops.notify(plan.desktop, `『${panel.title ?? plan.id}』在『${desktopName(plan.desktop)}』`)
+  }
 }
 
 /** 新开一份交给 dockview 的那几样（位置另给） */
@@ -193,29 +233,33 @@ interface NewPanel {
   params: Record<string, unknown>
 }
 
-/** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
-function applyPlan(api: DockviewApi, plan: OpenPlan): void {
-  // 四种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
+/**
+ * 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在。`how` 只管 `reveal`（工具窗格开在
+ * 别的桌面上）：切过去还是只提示。只有 reveal 是异步的（可能要先在后台挂井），别的都在这一拍做完
+ */
+function applyPlan(api: DockviewApi, plan: OpenPlan, how: 'switch' | 'stay'): Promise<void> {
+  // 哪种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
   if (plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
-  if (plan.kind === 'none') return
+  if (plan.kind === 'none') return Promise.resolve()
+  if (plan.kind === 'reveal') return reveal(plan, how)
   if (plan.kind === 'focus') {
     const panel = api.getPanel(plan.id)
-    if (panel === undefined) return
+    if (panel === undefined) return Promise.resolve()
     // 转正就是把 preview 这个键删掉（写 undefined 就是删），跟双击标签、keepPane 同一个动作
     if (plan.keep === true) panel.api.updateParameters({ preview: undefined })
     panel.api.setActive()
-    return
+    return Promise.resolve()
   }
   if (plan.kind === 'retarget') {
     const panel = api.getPanel(plan.id)
     // 快照是刚从井里摘的，这一格不该凭空没了。真没了就当什么都没发生——补开一格的话，
     // 人看到的是「点一下冒出来两格」，比少开一格更难往回查
-    if (panel === undefined) return
+    if (panel === undefined) return Promise.resolve()
     // **`replaceParams` 少不了**：dockview 的 updateParameters 是并不是换，上一份内容
     // 的参数不显式写成 undefined 就会赖在这一格里，跟着 toJSON() 一起落盘
     panel.api.updateParameters(replaceParams(panel.params, plan.params))
     panel.api.setActive()
-    return
+    return Promise.resolve()
   }
   const panel: NewPanel = {
     id: plan.id,
@@ -233,6 +277,7 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
   } else {
     api.addPanel(panel)
   }
+  return Promise.resolve()
 }
 
 /**

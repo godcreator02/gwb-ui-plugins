@@ -29,11 +29,14 @@ import { iconFor } from './icon.js'
  * 桌面上开着的窗格）。一个列表同时干两件事，对文档窗格就说不清「点下去是开新的还是切过去」。
  */
 
-/** 启动器里的一组：一个插件注册的那几格，工具窗格本桌已开的标一下 */
+/**
+ * 启动器里的一组：一个插件注册的那几格。工具窗格开着的标一下在哪（`mark`：「本桌已开」或「在『X』」），
+ * 开新的那几格不标
+ */
 export interface LaunchGroup {
   entryId: string
   title: string
-  rows: { spec: OpenableSpec; opened: boolean }[]
+  rows: { spec: OpenableSpec; mark?: string }[]
 }
 
 /** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
@@ -127,22 +130,26 @@ function LayoutBar({
 
 /**
  * 「新建」：启动器。**每次点开都现取注册表**（热装的件不用刷新就在），按插件分组列出全部窗格
- * 定义。文档窗格选了就开一份新的；工具窗格本桌已开就激活它（那一行标「本桌已开」）。都开在
- * 当前桌面，不切桌面。
+ * 定义。文档窗格选了就在当前桌面开一份新的；工具窗格全页一份——本桌开着就激活它（标「本桌已开」），
+ * 开在别的桌面就切过去激活它（标「在『X』」），哪儿都没有就在当前桌面开。
+ *
+ * **选了之后菜单不关**（人定的：常拿它一连开好几样），点菜单外面或 Esc 才关；开完原地重摘一次，
+ * 记号跟着变。
  */
 function Launcher({
   onList,
   onLaunch,
 }: {
   onList: () => Promise<LaunchGroup[]>
-  onLaunch: (spec: OpenableSpec) => void
+  onLaunch: (spec: OpenableSpec) => Promise<void>
 }): ReactElement {
   const [groups, setGroups] = useState<LaunchGroup[] | null>(null)
   // 连着点开两次：只认最后一次取回来的那份
   const round = useRef(0)
-  const load = (): void => {
+  /** 取清单。`quiet` 是开完之后那次重摘：旧清单先留着，不闪一下「取注册表…」 */
+  const load = (quiet = false): void => {
     const mine = ++round.current
-    setGroups(null)
+    if (!quiet) setGroups(null)
     void onList().then((next) => {
       if (round.current === mine) setGroups(next)
     })
@@ -153,7 +160,8 @@ function Launcher({
         <Plus className="shell:size-3.5" />
         新建
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" data-gwb-launcher="">
+      {/* 状态栏自己的浮层：点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 探雷得认得它 */}
+      <DropdownMenuContent align="start" side="top" data-gwb-launcher="" data-gwb-status-layer="">
         {groups === null ? (
           <DropdownMenuItem disabled>取注册表…</DropdownMenuItem>
         ) : groups.length === 0 ? (
@@ -163,13 +171,21 @@ function Launcher({
             <Fragment key={group.entryId}>
               {i > 0 && <DropdownMenuSeparator />}
               <DropdownMenuLabel className="shell:text-muted-foreground shell:text-xs">{group.title}</DropdownMenuLabel>
-              {group.rows.map(({ spec, opened }) => {
+              {group.rows.map(({ spec, mark }) => {
                 const Icon = iconFor(spec.icon)
                 return (
-                  <DropdownMenuItem key={spec.id} data-gwb-launch={spec.id} onSelect={() => onLaunch(spec)}>
+                  <DropdownMenuItem
+                    key={spec.id}
+                    data-gwb-launch={spec.id}
+                    onSelect={(e) => {
+                      // 拦下「选中就关」：菜单留着，开完重摘一次记号
+                      e.preventDefault()
+                      void onLaunch(spec).then(() => load(true))
+                    }}
+                  >
                     <Icon />
                     <span className="shell:flex-1">{spec.title}</span>
-                    {opened && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">本桌已开</span>}
+                    {mark !== undefined && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">{mark}</span>}
                   </DropdownMenuItem>
                 )
               })}
@@ -188,8 +204,8 @@ export function StatusBar({
   panesTick,
   onFocusPane,
   onSendPane,
-  sent,
-  onFollowSent,
+  notice,
+  onFollowNotice,
   onRenameDesktop,
   onDeleteDesktop,
   home,
@@ -207,11 +223,12 @@ export function StatusBar({
   onRetrySave,
 }: {
   /**
-   * 启动器的清单：每次点开现取。「本桌已开」记号**跟点下去的效果同一个判据**（上游直接问
+   * 启动器的清单：每次点开现取。「本桌已开」「在『X』」记号**跟点下去的效果同一个判据**（上游直接问
    * `planLaunch`），不是「这一格有没有开着」——那两者会岔开，那时记号就开始说谎
    */
   onLaunchList: () => Promise<LaunchGroup[]>
-  onLaunch: (spec: OpenableSpec) => void
+  /** 启动器选了一条。开在别的桌面上的工具窗格要切过去、可能先挂井，所以是异步的 */
+  onLaunch: (spec: OpenableSpec) => Promise<void>
   /** 「桌面」面板的那棵树：所有桌面与各自开着的窗格，照桌面顺序 */
   onSections: () => DeskSection[]
   /** 窗格清单变了几回（每次落盘加一）：面板开着时按它重摘 */
@@ -219,9 +236,12 @@ export function StatusBar({
   onFocusPane: (desktop: string, instance: string) => void
   /** 送到别的桌面（面板里拖放；拖到当前桌面就是拉到本桌）；follow = 放下时按住了 Shift */
   onSendPane: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
-  /** 刚送到哪张桌面：亮一句「已送到『X』· 切过去」，点它切过去 */
-  sent: { desktop: string; name: string } | null
-  onFollowSent: (desktop: string) => void
+  /**
+   * 状态栏那句「<text> · 切过去」：送到别的桌面之后（「已送到『X』」）、件与命令开的工具窗格在别的
+   * 桌面上时（「『插件管理』在『X』」）亮一阵，点它切到那张桌面
+   */
+  notice: { desktop: string; text: string } | null
+  onFollowNotice: (desktop: string) => void
   onRenameDesktop: (id: string, name: string) => void
   onDeleteDesktop: (id: string) => void
   /** home 目录的绝对路径 */
@@ -281,11 +301,11 @@ export function StatusBar({
 
       <Launcher onList={onLaunchList} onLaunch={onLaunch} />
 
-      {/* 送到别的桌面之后亮一阵：当前桌面不变，点它才切过去 */}
-      {sent !== null && (
-        <button type="button" className={BUTTON} data-gwb-sent={sent.desktop} onClick={() => onFollowSent(sent.desktop)}>
+      {/* 送到别的桌面、或件开的工具窗格在别的桌面上：亮一阵，当前桌面不变，点它才切过去 */}
+      {notice !== null && (
+        <button type="button" className={BUTTON} data-gwb-notice={notice.desktop} onClick={() => onFollowNotice(notice.desktop)}>
           <Send className="shell:size-3.5" />
-          已送到『{sent.name}』· 切过去
+          {notice.text}· 切过去
         </button>
       )}
 

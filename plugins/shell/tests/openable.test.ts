@@ -10,6 +10,7 @@ import {
   sideGroupOf,
   specForOwnPane,
   specForPane,
+  specsForDefaults,
   splitHeightFix,
   targetGroup,
   titleForOrdinal,
@@ -216,10 +217,31 @@ function desk(groups: DeskGroup[], opts: { active?: string; recent?: string[] } 
   }
 }
 
-/** 判断的上下文：查重看这张桌面的全部 id，外加别的桌面占着的那些。哪一类看的是定义自己的 kind */
-function ctx(d: Desk, extra: { from?: string; elsewhere?: string[] } = {}): OpenContext {
-  const ids = new Set([...d.groups.flatMap((g) => g.tabs.map((t) => t.id)), ...(extra.elsewhere ?? [])])
-  return { desk: d, taken: (id) => ids.has(id), ...(extra.from === undefined ? {} : { from: extra.from }) }
+/** 别的桌面上开着的一份（`OpenContext.elsewhere` 从这些里找） */
+interface OtherTab {
+  desktop: string
+  id: string
+  key: string
+  preview?: boolean
+  paneId?: string
+}
+
+/**
+ * 判断的上下文：查重看这张桌面的全部 id，外加别的桌面占着的那些（`elsewhere` 只占号；`onOther`
+ * 是别的桌面上开着的窗格，既占号、也让工具窗格找得到）。哪一类看的是定义自己的 kind
+ */
+function ctx(d: Desk, extra: { from?: string; elsewhere?: string[]; onOther?: OtherTab[] } = {}): OpenContext {
+  const onOther = extra.onOther ?? []
+  const ids = new Set([...d.groups.flatMap((g) => g.tabs.map((t) => t.id)), ...(extra.elsewhere ?? []), ...onOther.map((t) => t.id)])
+  return {
+    desk: d,
+    taken: (id) => ids.has(id),
+    elsewhere: (def, key) => {
+      const hit = onOther.find((t) => def.entryId === 'echo' && def.paneId === (t.paneId ?? 'counter') && t.key === key)
+      return hit === undefined ? undefined : { desktop: hit.desktop, id: hit.id, preview: hit.preview === true }
+    },
+    ...(extra.from === undefined ? {} : { from: extra.from }),
+  }
 }
 
 /** plan 里那份面板 params（开出来的或软换进去的） */
@@ -416,9 +438,11 @@ describe('planOpen · 文档窗格：只在目标组里查重', () => {
 })
 
 /**
- * **打开窗格 · 工具窗格**（spec 那张表一行一条）。查重范围是**当前桌面的所有组**。
+ * **打开窗格 · 工具窗格**（spec 那张表一行一条）。工具窗格**全页一份**（2026-09-19 人定，推翻
+ * 「每张桌面各一份」）：先在本桌所有组里找，本桌没有再去别的桌面找——在别的桌面就到那张桌面
+ * 激活它（`reveal`），不在本桌再开一份。切不切过去归调用方（人点的切，插件与命令开的只提示）。
  */
-describe('planOpen · 工具窗格：本桌所有组里查重', () => {
+describe('planOpen · 工具窗格：全页一份', () => {
   it('本桌有同一定义、同一 key 的实例 → 激活它，在哪一组就在哪一组，不挪', () => {
     // 活动组是 g2，工具开在 g1 → 还是激活 g1 里那个
     const d = desk([group('g1', [tab(BASE, '')], col(0)), group('g2', [other('o')], col(1))], { active: 'g2' })
@@ -435,9 +459,41 @@ describe('planOpen · 工具窗格：本桌所有组里查重', () => {
     expect(planOpen(counter, undefined, ctx(d), who)).toMatchObject({ kind: 'open', id: BASE, at: { group: 'g1', index: 1 } })
   })
 
-  it('别的桌面开着同一个工具窗格，互不相干：本桌照开一份', () => {
+  it('别的桌面开着同一定义、同一 key 的 → 到那张桌面激活它（reveal），本桌不再开一份', () => {
     const d = desk([group('g1', [other('o1')], col(0))])
-    expect(planOpen(counter, undefined, ctx(d, { elsewhere: [BASE] }), who)).toMatchObject({
+    expect(planOpen(counter, undefined, ctx(d, { onOther: [{ desktop: 'd2', id: BASE, key: '' }] }), who)).toEqual({
+      kind: 'reveal',
+      desktop: 'd2',
+      id: BASE,
+    })
+  })
+
+  it('别的桌面那份是预览标签、这次是正式打开 → reveal 并转正', () => {
+    const d = desk([group('g1', [other('o1')], col(0))])
+    expect(
+      planOpen(counter, undefined, ctx(d, { onOther: [{ desktop: 'd2', id: BASE, key: '', preview: true }] }), who),
+    ).toEqual({ kind: 'reveal', desktop: 'd2', id: BASE, keep: true })
+  })
+
+  it('本桌与别的桌面都有（老版本留下的多份）→ 本桌那份优先，不切走', () => {
+    const d = desk([group('g1', [tab(`${BASE}:2`, '')], col(0))])
+    expect(planOpen(counter, undefined, ctx(d, { onOther: [{ desktop: 'd2', id: BASE, key: '' }] }), who)).toEqual({
+      kind: 'focus',
+      id: `${BASE}:2`,
+    })
+  })
+
+  it('别的桌面那份 key 不同 → 不是同一份，本桌开一份新的（号照全页查重）', () => {
+    const d = desk([group('g1', [other('o1')], col(0))])
+    expect(planOpen(counter, { key: 'b' }, ctx(d, { onOther: [{ desktop: 'd2', id: BASE, key: 'a' }] }), who)).toMatchObject({
+      kind: 'open',
+      id: `${BASE}:2`,
+    })
+  })
+
+  it('文档窗格不管别的桌面：能多开，本桌照开一份', () => {
+    const d = desk([group('g1', [other('o1')], col(0))])
+    expect(planOpen(docCounter, undefined, ctx(d, { onOther: [{ desktop: 'd2', id: BASE, key: '' }] }), who)).toMatchObject({
       kind: 'open',
       id: `${BASE}:2`,
     })
@@ -622,7 +678,22 @@ describe('planLaunch：启动器选了一条之后', () => {
     expect(planLaunch(counter, ctx(d))).toEqual({ kind: 'focus', id: BASE, keep: true })
   })
 
-  it('工具窗格：本桌没有 → 开进活动组（不去最近用过的同类组），别桌开着不算', () => {
+  it('工具窗格：本桌没有、别的桌面开着（空 key）→ reveal（切不切过去归调用方，启动器是切）', () => {
+    const d = desk([group('g1', [other('o1')], col(0))])
+    expect(planLaunch(counter, ctx(d, { onOther: [{ desktop: 'd3', id: `${BASE}:2`, key: '' }] }))).toEqual({
+      kind: 'reveal',
+      desktop: 'd3',
+      id: `${BASE}:2`,
+    })
+    expect(planLaunch(counter, ctx(d, { onOther: [{ desktop: 'd3', id: BASE, key: '', preview: true }] }))).toEqual({
+      kind: 'reveal',
+      desktop: 'd3',
+      id: BASE,
+      keep: true,
+    })
+  })
+
+  it('工具窗格：本桌与别的桌面都没有（空 key 的）→ 开进活动组（不去最近用过的同类组）', () => {
     const d = desk([group('g1', [tab(BASE, 'x')], col(0)), group('g2', [other('o1')], col(1))], { active: 'g2', recent: ['g1'] })
     expect(planLaunch(counter, ctx(d, { elsewhere: [`${BASE}:2`] }))).toMatchObject({
       kind: 'open',
@@ -665,6 +736,27 @@ describe('planSend：送过去之后在目标桌面怎么开', () => {
     const d = desk([group('g1', [tab(BASE, 'x')], col(0))])
     expect(planSend(docCounter, { key: 'a' }, '第三章', ctx(d))).toMatchObject({ title: '第三章' })
     expect(planSend(docCounter, { key: 'a' }, '计数器 (4)', ctx(d))).toMatchObject({ title: '计数器 (2)' })
+  })
+})
+
+/**
+ * **默认布局铺哪几格**（第一次开机、恢复不了、「重置布局」）：表里有几格开几格，但工具窗格全页
+ * 一份——整页哪张桌面上已经开着（空 key 的那份）就不再铺，文档窗格照铺一份默认内容。
+ */
+describe('specsForDefaults：默认布局铺哪几格', () => {
+  const log = specForPane({ ...echoLog })
+  it('整页都没开：全铺', () => {
+    expect(specsForDefaults([counter, log, docCounter], []).map((s) => s.id)).toEqual([BASE, log.id, BASE])
+  })
+  it('工具窗格别处开着（空 key）就不铺；key 不同的不算；文档窗格照铺', () => {
+    const open = [
+      { entryId: 'echo', paneId: 'counter', key: '' },
+      { entryId: 'echo', paneId: 'log', key: 'x' },
+    ]
+    expect(specsForDefaults([counter, log, docCounter], open).map((s) => [s.id, s.kind])).toEqual([
+      [log.id, 'tool'],
+      [BASE, 'document'],
+    ])
   })
 })
 

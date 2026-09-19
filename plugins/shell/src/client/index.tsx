@@ -18,14 +18,14 @@ import {
   addInstance,
   closeInstance,
   focusInstance,
+  launchMark,
   launchSpec,
-  launchWillFocus,
   openRegisteredPane,
   sendPane,
   TAB_COMPONENT,
 } from './open.js'
 import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
-import { groupForLauncher, listOpenable, type OpenableSpec } from '../openable.js'
+import { groupForLauncher, listOpenable, specsForDefaults, type OpenableSpec } from '../openable.js'
 import { PLUGIN_COMPONENT } from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
@@ -60,8 +60,8 @@ const SELF = '@godcreator/gwb-shell'
 /** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
 const SAVE_DEBOUNCE_MS = 400
 
-/** 「已送到『X』· 切过去」亮多久 */
-const SENT_NOTICE_MS = 10_000
+/** 状态栏那句「… · 切过去」亮多久 */
+const NOTICE_MS = 10_000
 
 /** 切完桌面隔多久扫 body：等点出这次切换的状态栏浮层走完退场动画（见 sweepBodyPortals） */
 const SWEEP_DELAY_MS = 500
@@ -233,10 +233,17 @@ function App({
     }
   }, [])
 
-  const openDefaults = (target: DockviewApi): void => {
-    // 走跟 openPane 同一条路：算唯一 id 再开。裸 addPanel 的话，specs 里万一出现
-    // 两条同 id，第二条会同步抛、异常冲出 onReady，**整口井起不来**而不是少开一格
-    for (const spec of specs) addInstance(target, spec)
+  /**
+   * 给这张桌面铺默认布局。走跟 openPane 同一条路：算唯一 id 再开。裸 addPanel 的话，specs 里万一
+   * 出现两条同 id，第二条会同步抛、异常冲出 onReady，**整口井起不来**而不是少开一格。
+   *
+   * **工具窗格全页一份**：别的桌面上已经开着的不再铺（`specsForDefaults`）。整页开着什么按桌面清单
+   * 递给枢纽现摘——开机那一下 onReady 比桌面操作的注入早；这张桌面自己那份（铺之前刚清空，或者存档
+   * 恢复不了）不算
+   */
+  const openDefaults = (target: DockviewApi, desktop: string): void => {
+    const open = wellHub.entries(rowsRef.current).filter((e) => e.desktop !== desktop)
+    for (const spec of specsForDefaults(specs, open)) addInstance(target, spec)
   }
 
   /**
@@ -276,7 +283,7 @@ function App({
     // 运行时新建的那口不铺默认——注册表里有几格与它无关（判据见轨迹卡）。首开（defaultDoc）、
     // v2 迁移出的 null、存档恢复失败，这三条照旧走 openDefaults
     const bornEmpty = bornEmptyRef.current.delete(id)
-    if (!restored && !bornEmpty) openDefaults(event.api)
+    if (!restored && !bornEmpty) openDefaults(event.api, id)
     wellHub.addWell(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
@@ -403,14 +410,16 @@ function App({
     [switchTo, flushSave],
   )
 
-  /** 状态栏那句「已送到『X』· 切过去」：送到别的桌面之后亮一阵，点它切过去 */
-  const [sent, setSent] = useState<{ desktop: string; name: string } | null>(null)
-  const sentTimerRef = useRef<number | undefined>(undefined)
-  const notifySent = useCallback((desktop: string): void => {
-    const name = rowsRef.current.find((r) => r.id === desktop)?.name ?? desktop
-    setSent({ desktop, name })
-    window.clearTimeout(sentTimerRef.current)
-    sentTimerRef.current = window.setTimeout(() => setSent(null), SENT_NOTICE_MS)
+  /**
+   * 状态栏那句「<text> · 切过去」：送到别的桌面之后（「已送到『X』」）、件与命令开的工具窗格在别的
+   * 桌面上时（「『插件管理』在『X』」）亮一阵，点它切过去
+   */
+  const [notice, setNotice] = useState<{ desktop: string; text: string } | null>(null)
+  const noticeTimerRef = useRef<number | undefined>(undefined)
+  const notify = useCallback((desktop: string, text: string): void => {
+    setNotice({ desktop, text })
+    window.clearTimeout(noticeTimerRef.current)
+    noticeTimerRef.current = window.setTimeout(() => setNotice(null), NOTICE_MS)
   }, [])
 
   // 桌面操作经枢纽交给面板组件、标签菜单与开格链（它们够不着 App 的闭包）
@@ -420,7 +429,7 @@ function App({
       ensureMounted,
       rows: () => rowsRef.current,
       createDesktop: (name) => createDesktop(name, false),
-      notifySent,
+      notify,
     })
     // 开机那一份清单：井的 onReady 比这条 effect 早，那会儿枢纽还摘不出清单
     const host = wellHub.host()
@@ -428,9 +437,9 @@ function App({
     return () => {
       wellHub.setDeskOps(undefined)
     }
-  }, [switchTo, ensureMounted, createDesktop, notifySent])
+  }, [switchTo, ensureMounted, createDesktop, notify])
 
-  /** 启动器的清单：现取注册表与件名表，按插件分组，工具窗格本桌已开的标上 */
+  /** 启动器的清单：现取注册表与件名表，按插件分组，工具窗格开着的标上在哪（本桌 / 别的桌面） */
   const launchList = async (): Promise<LaunchGroup[]> => {
     const host = wellHub.host()
     if (host === undefined) return []
@@ -438,7 +447,10 @@ function App({
     return groupForLauncher(listOpenable(panes), plugins).map((group) => ({
       entryId: group.entryId,
       title: group.title,
-      rows: group.specs.map((spec) => ({ spec, opened: launchWillFocus(spec) })),
+      rows: group.specs.map((spec) => {
+        const mark = launchMark(spec)
+        return mark === undefined ? { spec } : { spec, mark }
+      }),
     }))
   }
 
@@ -534,12 +546,13 @@ function App({
     scheduleSave()
   }
 
-  /** 重置**活动那口**：清掉井，照「表里有几格开几格」重铺。逐格关，**不走 `api.clear()`**
-   * ——它内部账对不上时会抛（母仓撞过），而这儿用不着它：关完重开，id 查重问的是当下真有哪些 */
+  /** 重置**活动那口**：清掉井，照「表里有几格开几格」重铺（别的桌面上开着的工具窗格不铺）。逐格关，
+   * **不走 `api.clear()`**——它内部账对不上时会抛（母仓撞过），而这儿用不着它：关完重开，id 查重
+   * 问的是当下真有哪些 */
   const resetLayout = (): void => {
     if (activeApi === null) return
     for (const panel of activeApi.panels) activeApi.removePanel(panel)
-    openDefaults(activeApi)
+    openDefaults(activeApi, activeIdRef.current)
   }
 
   // fixed inset-0 而不是 h-screen：#root 没有高度样式，而外壳不该去改宿主那张 html。
@@ -589,9 +602,9 @@ function App({
         panesTick={panesTick}
         onFocusPane={(desktop, instance) => void focusInstance(desktop, instance)}
         onSendPane={(instance, to, follow) => sendPane(instance, to, follow)}
-        sent={sent}
-        onFollowSent={(desktop) => {
-          setSent(null)
+        notice={notice}
+        onFollowNotice={(desktop) => {
+          setNotice(null)
           switchTo(desktop)
         }}
         onRenameDesktop={renameDesk}

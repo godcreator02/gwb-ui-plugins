@@ -30,6 +30,10 @@ import { draggedPane, endRowDrag, startRowDrag } from './pane-drag.js'
  *
  * 是弹出面板不是菜单：菜单的规矩是点一项就选中关掉、按键拿去做首字母跳转，跟改名框、拖拽都对着干。
  * 关窗格不在这儿（标签上的 ✕、标签右键菜单）。
+ *
+ * **点了不关**（人定的：这张面板常拿来来回切）：切桌面、激活窗格、拖放、新建、删除之后面板都留着，
+ * 只有**点面板外面**或 Esc 才关。radix 的弹出面板缺省还有一条「焦点移出去就关」——切桌面时外壳把
+ * 焦点交给新桌面、激活窗格时 dockview 也会挪焦点，不拦的话面板照样被这一下带关，所以只拦这一条
  */
 
 /** 拖着标签在状态栏这一格上停多久，面板自己弹开 */
@@ -139,16 +143,14 @@ export function DesktopPanel({
       const pane = draggedPane()
       endRowDrag()
       if (pane === undefined) return
-      // 按住 Shift 放下是「送完跟过去」——跟点桌面、点别桌的窗格一样，切桌面的动作都把面板收起来
-      if (e.shiftKey) changeOpen(false)
       void onSend(pane.instance, to, e.shiftKey).then(refresh, (err: unknown) => {
         console.error(`[shell] 拖到别的桌面失败：${String(err)}`)
       })
     },
   })
 
+  /** 删除先确认：确认框是模态的，叠在面板上面，面板不关（点确认框不算点面板外面） */
   const askDelete = (section: DeskSection): void => {
-    changeOpen(false)
     setConfirming({ id: section.desktop, name: section.name, panes: section.rows.length })
   }
   const confirmText = confirming === null ? undefined : deleteConfirmText(confirming.name, confirming.panes)
@@ -178,7 +180,6 @@ export function DesktopPanel({
     if (naming === null) return
     onNew(naming.trim())
     setNaming(null)
-    changeOpen(false)
   }
 
   return (
@@ -205,6 +206,8 @@ export function DesktopPanel({
           onEscapeKeyDown={(e) => {
             if (renaming !== null || naming !== null) e.preventDefault()
           }}
+          // 只有点外面才关：焦点移出去（切桌面、激活窗格时焦点被挪走）不算
+          onFocusOutside={(e) => e.preventDefault()}
         >
           <div className="shell:max-h-[60vh] shell:overflow-y-auto">
             {sections.map((section) => (
@@ -220,16 +223,10 @@ export function DesktopPanel({
                   data-gwb-desk={section.desktop}
                   title="点一下切过去；右键改名"
                   className={`${ROW} shell:hover:bg-accent`}
-                  onClick={() => {
-                    changeOpen(false)
-                    onSwitch(section.desktop)
-                  }}
+                  onClick={() => onSwitch(section.desktop)}
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return
-                    if (e.key === 'Enter') {
-                      changeOpen(false)
-                      onSwitch(section.desktop)
-                    }
+                    if (e.key === 'Enter') onSwitch(section.desktop)
                     if (e.key === 'F2') setRenaming({ id: section.desktop, value: section.name })
                   }}
                   onContextMenu={(e) => {
@@ -279,14 +276,9 @@ export function DesktopPanel({
                           endRowDrag()
                           setOver(null)
                         }}
-                        onClick={() => {
-                          changeOpen(false)
-                          onFocusPane(pane.desktop, pane.instance)
-                        }}
+                        onClick={() => onFocusPane(pane.desktop, pane.instance)}
                         onKeyDown={(e) => {
-                          if (e.key !== 'Enter') return
-                          changeOpen(false)
-                          onFocusPane(pane.desktop, pane.instance)
+                          if (e.key === 'Enter') onFocusPane(pane.desktop, pane.instance)
                         }}
                       >
                         <Icon className="shell:size-3.5 shell:shrink-0" />
