@@ -18,11 +18,11 @@ docfirst: none
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="81-101" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="81-102" */}
 
 插件给的那几样，与服务替它填上的身份：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="9-35" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="8-44" */}
 
 ## 怎么用
 
@@ -33,7 +33,7 @@ export const inject = ['gwbShell']
 
 export function apply(ctx: GwbContext) {
   ctx.gwbShell.registerPane({ id: 'main', title: '我这个窗格', icon: 'flask-conical' })
-  ctx.gwbShell.registerPane({ id: 'doc', title: '文档' })
+  ctx.gwbShell.registerPane({ id: 'doc', title: '文档', kind: 'document' })
   ctx.gwbShell.describeSelf({ title: '我这个插件', icon: 'box' })
 }
 ```
@@ -41,8 +41,12 @@ export function apply(ctx: GwbContext) {
 一个插件想有几个窗格就注册几个。`icon` 写 lucide 的正名、可以不给，怎么认见
 [下文专节](#图标名怎么认)。
 
-**注册说不出「我能开几份」**：一个窗格开几份取决于它**装着几份不同的内容**，见
-[一个窗格的身份是它装的内容](#一个窗格的身份是它装的内容)。
+**注册要说清是工具窗格还是文档窗格**（`kind`，判据见轨迹卡[窗格分两类](/trajectory/2026-09-19-pane-kinds)）：
+**工具窗格**（`'tool'`，缺省）一张桌面至多一份，打开就是把它显示出来；**文档窗格**（`'document'`）
+可以开多份，每份装一个内容。说的是「打开这个动作对它是什么意思」，不是「能开几份」——开几份
+仍取决于它**装着几份不同的内容**，见[一个窗格的身份是它装的内容](#一个窗格的身份是它装的内容)。
+`kind` 写错照 `tool` 进表、登记那一刻 `gwb.log` 里 warn 一句；`shell.panes` 的回执每条都带它。
+它只住注册表、不进面板 params，布局文件里没有它。
 
 **给人看的名字归运行时**（`describeSelf`），不进包清单——包清单里没人读的字段死掉时
 没有任何机制会发现。包清单里有人读的只剩 `gwb.shell` 与 `gwb.shared` 两个字段。
@@ -85,10 +89,10 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 
 ## 身份不由插件自己报
 
-`registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
+`registerPane` 只收 `{ id, title, icon?, client?, style?, kind? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="325-348" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="331-357" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。插件报不出名字，也就没法冒充别人的窗格。
@@ -139,7 +143,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 布局就活不过一次重启。缺谁本件就不挂，cordis 在日志里明说它在等谁——而不是挂上一个开不出
 窗格、也存不下布局的空外壳。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="103-107" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="104-108" */}
 
 两样都是**基础仓的件**（commands / data），落的是全生态那条「本仓 → 基础仓」的箭头：本仓的
 件 peer 它们，永不反向。
@@ -295,11 +299,13 @@ mountPane({ host, shell, pane }, container) => { dispose(); retarget?(params) }
 | `host.call(command, args?)` | 命令通道，走到宿主分发再原路回 |
 | `shell.openPane(paneId, { key?, params?, preview?, placement? })` | 打开**本插件**的另一个窗格。**来源自动就是调它的这一份**：新窗格落在它旁边、开在它那张桌面上，从不切桌面；`placement` 缺省 `'auto'`（按目标组规则），`'side'` 开到旁边 |
 | `shell.setPaneTitle(title)` | 改这个窗格标签上的标题 |
+| `shell.setPaneContent({ key, params?, title? })` | **上报这个窗格此刻装的内容**：原地换了内容之后报一声，外壳改这一份的 key（与参数、标题），不软换、不重挂。见[下文专节](#上报内容setpanecontent) |
 | `shell.keepPane()` | 把这个窗格留住：它不再是预览窗格 |
 | `shell.bus` | 窗格间小总线，`emit(type, detail?)` 与 `on(type, fn)` 回注销函数 |
 | `shell.portal` | 本窗格所在桌面的**浮层户口**：插件里 radix Portal 的挂载点指它，桌面切走浮层跟着一起藏。不在桌面体系里时是 `document.body`（radix 缺省），插件不必判空 |
 | `shell.onVisibility(cb)` | 本窗格所在桌面的可见性：切走收 `false`、切回收 `true`，**注册即回一次当下值**，回注销函数。协作式降级——插件拿它停订阅 / 停渲染 / 停媒体，外壳只通知不强制 |
 | `pane.id` | 这个窗格是本插件的哪个窗格（注册时给的那个 id） |
+| `pane.kind` | 外壳把它当哪一类挂的：`'tool'` 或 `'document'`（注册时说的，不说就是 `'tool'`） |
 | `pane.instance` | 这**一份**的唯一键。开两份时两份的这个值不一样；**全页唯一**（可当全局键用） |
 | `pane.params` | 挂上这一刻这一份装的那份参数。没传就没有这一项 |
 
@@ -367,7 +373,7 @@ want = options.key ?? ''
 认不出那个窗格                                             → 什么都不做，但话里带得出是谁要开什么
 ```
 
-注册表说不出窗格是哪一类，眼下一律按**工具窗格**判；文档窗格那一支由测试钉着。
+哪一类看注册表：`kind` 跟着窗格定义走（`OpenableSpec.kind`），开窗格时从现取的注册表里带上。
 
 判断全在 `planOpen` 里，接线那侧只剩「按 kind 分派」——**有一条分支实机点不出来**
 （传的参数踩了保留键，得专门写一个乱传的插件才走得到），这也正是它必须是纯函数的理由。
@@ -387,7 +393,7 @@ pin 管的是排序与溢出，跟「别换我的内容」不是一件事。
 | --- | --- |
 | 怎么进 | 插件开窗格时 `preview: true`。**每一组里同一个窗格的预览窗格至多一份**：两组可以各有一个，不同窗格的预览窗格同组并存 |
 | 被顶掉 | 下一次 `preview: true` 打开、落在同一组、内容不同 → **原地换内容**（`retarget`），位置不动、窗格数不变。别的组的预览窗格不碰 |
-| 怎么转正 | 插件调 `shell.keepPane()`、人**双击标签**、以正式方式打开命中它。三条落到同一个动作：把 `preview` 从这一份的 params 上删掉 |
+| 怎么转正 | 插件调 `shell.keepPane()`、人**双击标签**、标签菜单「留住」、以正式方式打开命中它、「在旁边再开一份」它。都落到同一个动作：把 `preview` 从这一份的 params 上删掉 |
 | 标成什么样 | 标题前面**一个小空心圆点**（边框走 currentColor，带 `aria-label`）。**不用斜体**——中文没有真斜体，浏览器画的伪斜体很难看 |
 | 没有的动作 | **正式窗格变不回预览窗格**。VS Code 也没有 |
 
@@ -430,6 +436,27 @@ mountPane(args, container) {
   可 JSON 序列化。挂载那条 effect 的依赖数组里**故意没有 `paneParams`**，理由同上
 - **插件还没挂上时什么都不做**：挂载那条链读的是 ref、读到的一定是最新那份。这时候扳重挂
   只会把正在挂的那一次白白掐掉
+
+### 上报内容：`setPaneContent`
+
+软换与硬换是**外壳换内容、通知插件**；反方向是插件自己在窗格里换了内容（点链接原地跳转、
+后退前进）——外壳看不见，得插件报一声：
+
+```js
+// 原地跳到了另一块
+args.shell.setPaneContent({ key: 'lib:b', params: { root: 'b' }, title: '第二块' })
+```
+
+外壳只改**这一份**的面板 params：key 换成新的；给了 `params` 就**整份替换**插件那半（保留键
+摘掉并出声，旧那半多出来的键删掉）；给了 `title` 等于顺带 `setPaneTitle`。之后照常落盘，整页
+重载回到上报的内容。**不调 `retarget`、不重挂**——内容已经在插件手里换好了：`PluginPane` 记着
+「插件手上此刻是哪份参数」，面板 params 换成插件自己报的那份时，那条软换 effect 认得出来、
+什么都不做。预览窗格上报之后仍是预览窗格，转正归插件自己调 `keepPane`。
+
+{/* ref file="../plugins/shell/src/panels.ts" lines="164-183" */}
+
+插件按形状判新外壳（`typeof shell.setPaneContent === 'function'`），老外壳上没有这一支，
+插件退回老行为（key 与参数停在打开那一刻）。
 
 ### 开出来的几份靠 `params` 彼此不同
 
@@ -478,7 +505,7 @@ orthogonalize 那一支），贴的是整个容器的边、整片重新分宽，
 基准组在一列里时 dockview 包分支还会吞掉一份组间缝，分完用 `splitHeightFix` 算出的高补回去。
 量法与数见[撞过的墙](/docs/walls)：
 
-{/* ref file="../plugins/shell/src/client/open.ts" lines="178-198" */}
+{/* ref file="../plugins/shell/src/client/open.ts" lines="190-210" */}
 
 **软换是 `api.updateParameters`，而它是并不是换**：dockview 那头做的是 `{ …旧, …新 }`，
 只有值写成 `undefined` 的键才删（8.2.0 的 `DockviewPanel.update`）。所以换内容前要拿
@@ -498,13 +525,14 @@ orthogonalize 那一支），贴的是整个容器的边、整片重新分宽，
 
 **`min-h-0` 少不了**：flex 子项默认 `min-height: auto`，容器里内容一高就把状态栏挤出屏幕。
 
-左边四段、右边三段，外加一个告警：
+左边五段、右边三段，外加一个告警：
 
 | 项 | 干什么 |
 | --- | --- |
 | **桌面** | 列出桌面、点谁切谁（当前那张标「当前」）；「新建桌面…」（格子变内联输入框，空名由外壳拿「桌面 N」顶上，**新建的那张出生为空**——窗格由人自己开）。容器常驻保活，切走的那张原样活着 |
 | **布局** | 已存布局清单：点谁把谁铺回**活动那个容器**上、行尾 ✕ 删谁；「存当前为布局…」（格子变内联输入框，Enter 存、Esc 弃、**同名覆盖**）；「重置布局（铺回全部窗格）」 |
-| **＋ 可开窗格** | 点开列出注册表里所有窗格，选一个就在当前桌面开（本桌已开就激活，不切桌面）；点下去会走成聚焦的那几条标一下「已开」 |
+| **＋ 新建**（启动器） | 点开**现取**注册表与件名表，按插件分组列出全部窗格；文档窗格选了就在当前桌面的活动组开一份新的，工具窗格本桌已开就激活（那一行标「本桌已开」）、没开就开进活动组。不切桌面 |
+| **窗格 N**（切换器） | N 是当前桌面上的窗格数。点开按桌面分组列出**所有桌面**上开着的窗格（当前桌面在最前、标「当前」）；点当前桌面的一行激活它，点别的桌面的一行**切过去**再激活；行尾 ✕ 关掉它、不切桌面 |
 | **home** | 一眼看出自己在哪个 home 里，开测试 home 时不用翻日志 |
 | **版本** | 格子上写 `gwb <内核版>`（发行包就叫这个名字），悬停一行一样列内核、外壳、Electron · Node、Chromium。只读不可点 |
 | **刷新** | `location.reload()` 整页重跑——重取注册表、按布局文件恢复布局，宿主进程不动。渲染层「boot 之后注册表就旧了」的手动答卷 |
@@ -545,29 +573,45 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="224-244" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="230-250" */}
 
-**＋列表走跟插件调 `openPane` 同一个 `planOpen`**，所以行为一致：没有来源、在当前桌面上判，
-本桌已开就激活，没开就开进目标组（多半是活动组），别的桌面开着不算。**已开的那条不 disable**
-——点它是聚焦，那是个有用的动作，标一下就够。
+**启动与切换分开**（判据见轨迹卡[启动器与切换器分开](/trajectory/2026-09-19-launcher-switcher)）：
+「新建」只管开一个新的，「窗格」只管切到已开的。一个列表同时干两件事，对文档窗格就说不清点下去
+是开新的还是切过去。
 
-**没有「＋一份」那种按钮**：这张表回到它本来的职责——打开这个窗格，已经开着就聚焦。
-「再来一份」是插件说了算的事，它要几份取决于装的是什么内容，不是状态栏点得出来的。状态栏这条
-入口不给 `key`（等于空串），所以它开/聚焦的是**那份没有身份的**。
+**启动器的判断是 `planLaunch`**（跟 `planOpen` 同住 `openable.ts`）：落点是**活动组**、不走
+「最近用过的同类组」；文档窗格不查重（key 空串、不带参数，插件画它的默认内容）；工具窗格本桌
+已有（空 key）就激活、是预览就顺带转正。**「本桌已开」那个记号问的就是 `planLaunch` 自己**
+（`launchWillFocus`：点下去会不会走成激活），不是「这个窗格有没有开着」——另写一条就是第二份
+真相，漂了没有任何现象，只是记号开始说谎。清单每次点开现取，所以热装的插件不用刷新就在。
 
-**「已开」那个记号问的是 `planOpen` 自己**（`willFocus`：点下去会不会走成聚焦），
-不是「这个窗格有没有开着」。两者会岔开——插件拿几个 `key` 开了几份、而空身份那一份没开着，
-那时后者说「已开」，点下去却多一个空白的窗格。**记号与效果必须同一个判据**，在接线侧另写
-一条就是第二份真相，而漂了没有任何现象：只是那个记号开始说谎。记号跟着
-`onDidLayoutChange` 重算，**换 params 也在这条事件上**（dockview 8.2.0 把每一组的
-`onDidPanelParametersChange` 接进了它），所以一个窗格被软换或转正之后记号不会停在上一轮。
+**切换器的清单**：挂着的桌面从活容器现摘，**没挂过的桌面从落盘布局里读**（开机只挂活动那张，
+别的桌面没切去过就没有容器）；两条路出同一个形状：
 
-判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，三个入口（插件的桥与跨插件
-转发共用的 `openRegisteredPane`、状态栏调的 `openSpec`）共用后者。
+{/* ref file="../plugins/shell/src/pane-list.ts" lines="9-26" */}
+
+点没挂过的桌面上的一行：先切过去（冷挂），挂好了再激活；关它也是先在后台挂上再关，插件照常
+`dispose`。「挂上」由 App 的 `ensureMounted` 做——排进已挂清单、等 `onReady` 叫醒，**挂容器
+不等于切过去**；它连同切桌经 `wellHub` 的桌面操作交给开窗格链与菜单。
+
+判断与副作用继续分开：`planOpen` / `planLaunch` 出判断，`applyPlan` 落成动作。
+
+### 标签右键菜单
+
+| 项 | 出现条件 | 干什么 |
+| --- | --- | --- |
+| 留住 | 预览窗格 | 转正，同双击标签 |
+| 在旁边再开一份 | 文档窗格 | 用这一份此刻的 key 与参数、`placement: 'side'` 开一份正式的，来源就是这一份；原来那份是预览就先转正 |
+| 关闭 / 关闭其他 / 关闭右侧 | 总有 | 同一组里逐个关，插件照常 `dispose` |
+
+菜单挂**本桌面的浮层户口**（桌面切走跟着藏），挂载点在菜单**打开那一刻**按标签找：标签第一次
+渲染时它还没挂进桌面那一节，那时算的话退回 `body`。这一格是哪一类问注册表缓存
+（`wellHub.paneKind`，每次取注册表都顺手记一份，开机就是热的）。组件是 shadcn 的 `context-menu`
+官方原样，只给 `ContextMenuContent` 加了一格 `container`。
 
 ### 菜单 portal 到哪都有样式——别把围栏改回 scope
 
-外壳的菜单（状态栏「布局」「＋可开窗格」）radix Portal 默认挂 `body`。选择器 scope 的
+外壳状态栏的菜单（「桌面」「布局」「新建」「窗格」）radix Portal 默认挂 `body`。选择器 scope 的
 年代这会整层裸奔——那时给 `DropdownMenuContent` 打过 `container` 补丁、拖着一条把外壳根
 送下去的 prop 链；换成 Tailwind 前缀围栏（类名自带 `shell:` 前缀、规则全页有效）之后，
 补丁与 prop 链连根删掉，`dropdown-menu.tsx` 重拉成官方原样——实机量过，两个菜单都挂在
@@ -605,7 +649,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 
 插件那个窗格的容器上因此只剩两样东西，一样在围栏之外，一样只是个把手：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="202-216" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="242-256" */}
 
 - **`@container` 让这个窗格成为容器查询的根。** **窗格不是视口**——插件里写的 `@sm:` / `@md:`
   这类变体按**这个窗格现在有多宽**判，跟整窗大小无关。同一个插件在窄窗格里竖排、在宽窗格里横排，
