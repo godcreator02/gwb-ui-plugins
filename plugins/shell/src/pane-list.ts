@@ -1,7 +1,7 @@
 import { PLUGIN_COMPONENT } from './panels.js'
 
 /**
- * 窗格清单：「此刻开着哪些窗格」的一行一个形状。切换器（状态栏「窗格」）列它，`shell.pane.list`
+ * 窗格清单：「此刻开着哪些窗格」的一行一个形状。切换器（状态栏「桌面」面板）列它，`shell.pane.list`
  * 回它。挂着的桌面从活井现摘，**没挂过的桌面从落盘的那份布局里读**（开机只挂活动那张，别的
  * 桌面没切去过就没有井）。纯模块，两半共用，node 里直接测。
  */
@@ -113,25 +113,35 @@ export function tabsToClose(order: readonly string[], self: string, which: 'othe
   return which === 'others' ? order.filter((id) => id !== self) : order.slice(at + 1)
 }
 
-/** 切换器里的一段：一张桌面与它上面的窗格 */
-export interface SwitcherGroup {
+/** 「桌面」面板里的一段：一张桌面与它上面的窗格 */
+export interface DeskSection {
   desktop: string
   name: string
   current: boolean
   rows: PaneEntry[]
 }
 
-/** 按桌面分段：当前桌面在最前、标「当前」，其余照桌面顺序；空桌面也列出来（送到那张要用得着它） */
-export function orderForSwitcher(
+/**
+ * 按桌面分段，**照桌面本来的顺序**（像任务视图：桌面的位置不随当前那张变，删当前桌面切左邻
+ * 说的「左」也是这个顺序），当前那张标「当前」；空桌面也列出来——窗格要能往上拖
+ */
+export function desktopSections(
   desktops: readonly { id: string; name: string }[],
   current: string,
   rows: readonly PaneEntry[],
-): SwitcherGroup[] {
-  const groups = desktops.map((d) => ({
+): DeskSection[] {
+  return desktops.map((d) => ({
     desktop: d.id,
     name: d.name,
     current: d.id === current,
     rows: rows.filter((r) => r.desktop === d.id),
   }))
-  return [...groups.filter((g) => g.current), ...groups.filter((g) => !g.current)]
+}
+
+/**
+ * 拖着的窗格能不能放到这张桌面上：放回它本来在的那张不算送到；认不出它在哪张（拖的不是窗格，
+ * 或者页面上找不到它）不接。当前桌面照接——把别的桌面上的窗格放到当前桌面上就是拉到本桌
+ */
+export function acceptsDrop(from: string | undefined, to: string): boolean {
+  return from !== undefined && from !== to
 }

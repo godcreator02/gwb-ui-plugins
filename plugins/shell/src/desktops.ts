@@ -72,6 +72,17 @@ export function afterDelete(desktops: readonly DesktopRow[], id: string): string
   return (at > 0 ? desktops[at - 1] : desktops[at + 1])?.id
 }
 
+/**
+ * 删桌面的确认框写什么。**一律确认**（空桌面也确认，人定的）；上面有窗格就点名会一起关掉几个——
+ * 那一摊是不回来的，框里得说清楚
+ */
+export function deleteConfirmText(name: string, panes: number): { title: string; description: string } {
+  return {
+    title: `删除『${name}』？`,
+    description: panes > 0 ? `上面 ${String(panes)} 个窗格会一起关掉。` : '这张桌面是空的。',
+  }
+}
+
 function argsObject(args: unknown): { id?: unknown; name?: unknown } | undefined {
   return args !== null && typeof args === 'object' && !Array.isArray(args) ? (args as { id?: unknown; name?: unknown }) : undefined
 }

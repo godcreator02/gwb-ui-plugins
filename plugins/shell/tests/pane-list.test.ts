@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entriesOfLayout, entryOf, orderForSwitcher, tabsToClose, type PaneEntry } from '../src/pane-list.js'
+import { acceptsDrop, desktopSections, entriesOfLayout, entryOf, tabsToClose, type PaneEntry } from '../src/pane-list.js'
 
 describe('tabsToClose：标签菜单的「关闭其他」「关闭右侧」', () => {
   const order = ['a', 'b', 'c', 'd']
@@ -110,8 +110,8 @@ describe('entriesOfLayout：没挂过的桌面，从落盘的布局里读', () =
   })
 })
 
-describe('orderForSwitcher：当前桌面在最前，其余照桌面顺序', () => {
-  it('分组、排序、带上桌面名与「当前」', () => {
+describe('desktopSections：「桌面」面板里按桌面顺序排的那棵树', () => {
+  it('照桌面本来的顺序（不把当前那张提到最前），带上桌面名与「当前」；空桌面也列出来（要能往上拖）', () => {
     const row = (desktop: string, instance: string): PaneEntry => ({
       instance,
       desktop,
@@ -124,7 +124,7 @@ describe('orderForSwitcher：当前桌面在最前，其余照桌面顺序', () 
       preview: false,
       active: false,
     })
-    const groups = orderForSwitcher(
+    const sections = desktopSections(
       [
         { id: 'd1', name: '桌面 1' },
         { id: 'd2', name: '写作' },
@@ -133,10 +133,22 @@ describe('orderForSwitcher：当前桌面在最前，其余照桌面顺序', () 
       'd2',
       [row('d1', 'a'), row('d2', 'b'), row('d1', 'c')],
     )
-    expect(groups.map((g) => [g.desktop, g.name, g.current, g.rows.map((r) => r.instance)])).toEqual([
-      ['d2', '写作', true, ['b']],
+    expect(sections.map((s) => [s.desktop, s.name, s.current, s.rows.map((r) => r.instance)])).toEqual([
       ['d1', '桌面 1', false, ['a', 'c']],
+      ['d2', '写作', true, ['b']],
       ['d3', '空的', false, []],
     ])
+  })
+})
+
+describe('acceptsDrop：拖着的窗格能不能放到这张桌面上', () => {
+  it('放回它本来在的那张不算（那不是送到）', () => {
+    expect(acceptsDrop('d1', 'd1')).toBe(false)
+  })
+  it('别的桌面都接（含当前桌面——那就是拉到本桌）', () => {
+    expect(acceptsDrop('d1', 'd2')).toBe(true)
+  })
+  it('认不出它在哪张（拖的是什么认不出）：不接', () => {
+    expect(acceptsDrop(undefined, 'd2')).toBe(false)
   })
 })

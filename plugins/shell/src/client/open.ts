@@ -57,7 +57,7 @@ export function launchSpec(spec: OpenableSpec): void {
 }
 
 /**
- * **显式**激活一个窗格（切换器里点一行）：它在别的桌面就切过去——这是「只有这几种动作会切
+ * **显式**激活一个窗格（「桌面」面板里点一行、`shell.pane.focus`）：它在别的桌面就切过去——这是「只有这几种动作会切
  * 桌面」里的一种。那张桌面没挂过的话先挂上，挂好了再激活。
  */
 export async function focusInstance(desktop: string, instance: string): Promise<void> {
@@ -68,7 +68,7 @@ export async function focusInstance(desktop: string, instance: string): Promise<
   api?.getPanel(instance)?.api.setActive()
 }
 
-/** 关掉一个窗格（切换器行尾的「关闭」）。不切桌面：没挂过的桌面在后台挂上再关，插件照常 dispose */
+/** 关掉一个窗格（`shell.pane.close`）。不切桌面：没挂过的桌面在后台挂上再关，插件照常 dispose */
 export async function closeInstance(desktop: string, instance: string): Promise<void> {
   const api = await wellHub.deskOps()?.ensureMounted(desktop)
   api?.getPanel(instance)?.api.close()
@@ -81,7 +81,8 @@ export type SendTarget = { desktop: string } | { newDesktop: string }
  * **送到别的桌面**。dockview 没有跨实例搬面板的接口，所以是一次关闭加一次打开：取这一份的定义、
  * key、件那半参数与标题 → 在源桌面关掉（插件 dispose）→ 在目标桌面按 `planSend` 开一份正式的。
  * 两张桌面都没挂过的话先在后台挂上（不显示）。**当前桌面不变**，状态栏出一句「已送到『X』·
- * 切过去」；`follow` 送完跟过去（显式切换）。插件的状态只靠参数带过去。
+ * 切过去」；`follow` 送完跟过去（显式切换）。插件的状态只靠参数带过去。**拉到本桌**就是送到当前
+ * 桌面（「桌面」面板里把别的桌面上的窗格拖到当前桌面上），送到之后激活它，不涉及切桌面。
  *
  * 定义已经不在注册表里（件卸了）就什么都不做——关得掉、开不回来的话，这一份就凭空没了。
  */
@@ -119,11 +120,6 @@ export async function sendPane(instance: string, to: SendTarget, follow: boolean
   applyPlan(targetApi, planSend(spec, content, title, context))
   if (follow) ops.switchTo(target)
   else if (target !== wellHub.activeDesktop()) ops.notifySent(target)
-}
-
-/** 拉到本桌（切换器里别的桌面上那一行）：送到当前桌面，送到之后激活它，不涉及切桌面 */
-export function pullPane(instance: string): Promise<void> {
-  return sendPane(instance, { desktop: wellHub.activeDesktop() }, false)
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */

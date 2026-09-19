@@ -21,7 +21,6 @@ import {
   launchSpec,
   launchWillFocus,
   openRegisteredPane,
-  pullPane,
   sendPane,
   TAB_COMPONENT,
 } from './open.js'
@@ -43,7 +42,7 @@ import {
 import { afterDelete, defaultDesktopName, isDesktopAction, renameDesktop, resolveDesktop } from '../desktops.js'
 import { isOpenPaneAction, openPaneOptionsOf, openPaneSourceOf } from '../open-pane.js'
 import { isPaneAction } from '../pane-actions.js'
-import { entriesOfLayout, orderForSwitcher } from '../pane-list.js'
+import { desktopSections, entriesOfLayout } from '../pane-list.js'
 import { ENV_COMMAND, PANE_SYNC_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
@@ -63,6 +62,9 @@ const SAVE_DEBOUNCE_MS = 400
 
 /** 「已送到『X』· 切过去」亮多久 */
 const SENT_NOTICE_MS = 10_000
+
+/** 切完桌面隔多久扫 body：等点出这次切换的状态栏浮层走完退场动画（见 sweepBodyPortals） */
+const SWEEP_DELAY_MS = 500
 
 /** 把所有桌面上开着的窗格推给 node 半缓存（`shell.pane.sync`）。推不上只记一句，不拦别的 */
 function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string): void {
@@ -89,19 +91,21 @@ const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeade
  * 切换后扫一眼 body：**探雷器，不是灭火器**。件的浮层若没把 radix Portal 的 container
  * 指到 `args.shell.portal`，它就挂在 body 上、不跟任何桌面走——藏掉桌面也藏不掉它。
  * 扫到只点名（console.warn），
- * **不删别人的 DOM**。状态栏自己的菜单也挂 body——它在桌面体系之外，应该常驻；radix
- * 的菜单在焦点离开时自己关，所以扫到的多半是没接容器那半的残影。
+ * **不删别人的 DOM**。状态栏自己的菜单、面板、确认框也挂 body——它们在桌面体系之外，应该常驻。
  *
- * radix 的**焦点护栏**（`data-radix-focus-guard` 的两个 span）也不算：模态菜单开着时 radix 往
- * body 首尾各塞一个，菜单关了才摘。菜单项里直接切桌面（按住 Shift 送过去、切换器点别桌那一行）
- * 时，切换那一刻菜单还没关，护栏还在——那不是谁的浮层。
+ * **切完隔一会儿再扫**（`SWEEP_DELAY_MS`）：切桌面常常就是在状态栏的面板、菜单、确认框里点出来的，
+ * 切换那一刻它们还没关（关还要走一段退场动画），当场扫就把状态栏自己点成「漏接线」——实机日志里
+ * 从桌面菜单、切换器、删当前桌面的确认框切过去，回回都报。真漏接线的件浮层藏不掉、隔一会儿照样在。
+ * radix 的**焦点护栏**（`data-radix-focus-guard` 的两个 span，模态菜单开着时挂在 body 首尾）也不算；
+ * 标了 `data-gwb-status-layer` 的状态栏浮层（「桌面」面板，切完桌面它可能还开着）也不算。
  */
 function sweepBodyPortals(activeName: string): void {
   const strays: string[] = []
   for (const el of document.body.children) {
-    // 根节点、三类非浮层的常态节点、radix 的焦点护栏不算
+    // 根节点、三类非浮层的常态节点、radix 的焦点护栏、状态栏自己的浮层不算
     if (el.id === 'root' || /^(STYLE|SCRIPT|LINK|NOSCRIPT)$/.test(el.tagName)) continue
     if (el.hasAttribute('data-radix-focus-guard')) continue
+    if (el.matches('[data-gwb-status-layer]') || el.querySelector('[data-gwb-status-layer]') !== null) continue
     const cls = el.getAttribute('class') ?? ''
     strays.push(`<${el.tagName.toLowerCase()}${cls === '' ? '' : ` class="${cls}"`}>`)
   }
@@ -136,8 +140,6 @@ function App({
   const [mountedIds, setMountedIds] = useState<string[]>(() => [initialDoc.active])
   const [desktops, setDesktops] = useState<DesktopRow[]>(initialDoc.desktops)
   const [activeId, setActiveId] = useState(initialDoc.active)
-  /** 当前桌面上开着几个窗格（状态栏「窗格 N」那个 N） */
-  const [paneCount, setPaneCount] = useState(0)
   /** 人起名存下来的布局清单，档里那半 */
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
@@ -230,14 +232,9 @@ function App({
     for (const spec of specs) addInstance(target, spec)
   }
 
-  /** 「窗格 N」重算：当前桌面上开着几个窗格 */
-  const syncCount = useCallback((): void => {
-    setPaneCount(apisRef.current[activeIdRef.current]?.panels.length ?? 0)
-  }, [])
-
   /**
    * 把一张桌面的井挂上：已经挂着就直接回；没挂过就排进 mountedIds（在后台冷挂、不显示），
-   * 等 onWellReady 挂好再回。桌面不存在回 undefined。切换器关别桌的窗格、送到还没去过的桌面
+   * 等 onWellReady 挂好再回。桌面不存在回 undefined。面板里点没挂过的桌面上的窗格、送到还没去过的桌面
    * 都靠它——**挂井不等于切过去**
    */
   const ensureMounted = useCallback((id: string): Promise<DockviewApi | undefined> => {
@@ -276,13 +273,10 @@ function App({
     wellHub.addWell(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
-    // 井一变：活动的那口顺带重算「已开」记号（**换 params 也在这条上**——dockview 8.2.0
-    // 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange）；哪口变了都要落盘。
+    // 井一变就落盘（**换 params 也在这条上**——dockview 8.2.0 把每一组的
+    // onDidPanelParametersChange 接进了 onDidLayoutChange）。
     // 组被激活、拖放落进哪一组，记进「最近用过的组」——订在恢复之后，重载后的账从空开始
-    const layoutSub = event.api.onDidLayoutChange(() => {
-      if (activeIdRef.current === id) syncCount()
-      scheduleSave()
-    })
+    const layoutSub = event.api.onDidLayoutChange(() => scheduleSave())
     const activeSub = event.api.onDidActiveGroupChange((group) => {
       if (group !== undefined) wellHub.noteActiveGroup(id, group.id)
     })
@@ -303,11 +297,6 @@ function App({
     const host = wellHub.host()
     if (host !== undefined && wellHub.deskOps() !== undefined) pushPanes(host, rowsRef.current, activeIdRef.current)
   }
-
-  // 切到一口已挂井的桌面时「窗格 N」也得重算（那口井没有新事件）
-  useEffect(() => {
-    syncCount()
-  }, [activeApi, syncCount])
 
   /** 切桌面。顺序是机制的一部分：先记账再 flush（档里的 active 跟这一趟走），显隐交给
    * React，可见性通知与焦点接管跟在后面。 */
@@ -330,7 +319,7 @@ function App({
       requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(`[${DESKTOP_ATTR}="${id}"]`)?.focus({ preventScroll: true })
       })
-      sweepBodyPortals(row.name)
+      window.setTimeout(() => sweepBodyPortals(row.name), SWEEP_DELAY_MS)
     },
     [flushSave],
   )
@@ -587,14 +576,11 @@ function App({
         })}
       </div>
       <StatusBar
-        paneCount={paneCount}
         onLaunchList={launchList}
         onLaunch={launchSpec}
-        onListPanes={() => orderForSwitcher(rowsRef.current, activeIdRef.current, wellHub.entries())}
+        onSections={() => desktopSections(rowsRef.current, activeIdRef.current, wellHub.entries())}
         onFocusPane={(desktop, instance) => void focusInstance(desktop, instance)}
-        onClosePane={closeInstance}
         onSendPane={(instance, to, follow) => sendPane(instance, to, follow)}
-        onPullPane={pullPane}
         sent={sent}
         onFollowSent={(desktop) => {
           setSent(null)
@@ -602,7 +588,6 @@ function App({
         }}
         onRenameDesktop={renameDesk}
         onDeleteDesktop={deleteDesk}
-        paneCountOf={(desktop) => wellHub.entries().filter((e) => e.desktop === desktop).length}
         home={home}
         versions={versions}
         desktops={desktops}

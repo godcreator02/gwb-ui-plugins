@@ -3,6 +3,7 @@ import {
   DESKTOP_EVENT,
   afterDelete,
   defaultDesktopName,
+  deleteConfirmText,
   isDesktopAction,
   parseDeleteArgs,
   parseRenameArgs,
@@ -83,6 +84,15 @@ describe('afterDelete：删掉一张之后切到哪张', () => {
   })
   it('认不出的 id 回 undefined', () => {
     expect(afterDelete(rows, 'd9')).toBeUndefined()
+  })
+})
+
+describe('deleteConfirmText：删桌面一律先确认，确认框里写什么', () => {
+  it('上面有窗格：点名会一起关掉几个', () => {
+    expect(deleteConfirmText('写作', 3)).toEqual({ title: '删除『写作』？', description: '上面 3 个窗格会一起关掉。' })
+  })
+  it('空桌面也确认，只是不提窗格', () => {
+    expect(deleteConfirmText('写作', 0)).toEqual({ title: '删除『写作』？', description: '这张桌面是空的。' })
   })
 })
 
