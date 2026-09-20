@@ -37,9 +37,13 @@ import {
 } from './rows'
 import {
   acceptSettings,
+  dirtySlots,
+  fieldState,
   formatDefault,
+  LABEL_SLOT,
   orphanSettings,
   parseSlotKey,
+  secretPlaceholder,
   settingsForEntry,
   slotKey,
   type SettingRow,
@@ -81,7 +85,9 @@ import {
  *
  * 三层数据各走各的命令，取表谁挂了就取谁的：
  * - `plugin-manager.list`：包 → 条目两层，装卸启停全在这层
- * - `settings.all`：设置项与值，按 section（home 级 = 条目裸 id，machine 级 = 包名）join
+ * - `settings.all`：设置项与「设过没有」，按 section（home 级 = 条目裸 id，machine 级 = 包名）
+ *   join。**secret 行自 settings 0.3.0 起不回值**（只回 `isSet` 与掩码），要看明文走按位取用
+ *   的 `settings.get`——「看一眼」那颗按钮就是它。非 secret 行的值照旧
  * - `shell.plugins`：件自己 describe 的显示名与图标，认不出就回退
  *
  * 另有 `plugin-manager.outdated` 查新版本：窗格挂上自动查一次，「检查更新」随时重查；查出来的
@@ -108,6 +114,11 @@ const DISABLE = 'plugin-manager.disable'
 const SET_LABEL = 'plugin-manager.set-label'
 const REMOVE_ENTRY = 'plugin-manager.remove-entry'
 const SETTINGS_ALL = 'settings.all'
+/**
+ * 按位取用口：**secret 项照旧回明文**（枚举口收口 ≠ 按位取用改口径）。它收 `{section, key}`，
+ * 是「看一眼」那颗按钮与插件读自己分区凭据走的那条
+ */
+const SETTINGS_GET = 'settings.get'
 const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
 const SHELL_PLUGINS = 'shell.plugins'
@@ -206,20 +217,37 @@ type Filter = 'all' | 'on' | 'off' | 'bad'
 const FILTER_LABEL: Record<Filter, string> = { all: '全部', on: '启用', off: '停用', bad: '异常' }
 
 /**
+ * 「看一眼」那颗按钮的取用态。**取回来的明文只留在这个组件里，一个字节都不进草稿**——
+ * 进了草稿就分不清「看过一眼」与「改了」，保存时会把没编辑过的 secret 格当新值提交。
+ */
+type Peek =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'shown'; text: string }
+  | { kind: 'failed'; reason: string }
+
+/**
  * 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那五个值一一对应。
  * **没设过值的项把声明方的默认画成灰占位**——空框不再让人以为没配好；`string-list`
  * 是整行宽的 textarea，不走这儿的右列小控件，布局在 `SettingLine` 里分流。
+ *
+ * secret 那格特殊：枚举口（`settings.all`）不回值，所以框里**平常就是空的**，画成哪一态
+ * 看 `isSet`（判定在 `settings.ts` 的 `fieldState`）；要看明文点「看一眼」，它走按位取用的
+ * `settings.get`，取不回来就把原因如实摆出来，不摆一个空框。
  */
 function SettingField({
   row,
   value,
   onChange,
+  onReveal,
 }: {
   row: SettingRow
   value: unknown
   onChange: (next: unknown) => void
+  /** 按位取这一格的明文（`settings.get`）。取不到就抛，由这一格如实画出原因 */
+  onReveal: (row: SettingRow) => Promise<string>
 }): ReactElement {
-  const [bare, setBare] = useState(false)
+  const [peek, setPeek] = useState<Peek>({ kind: 'idle' })
   /** secret 的默认不画——默认值不该往明文占位符里放 */
   const fallback = row.type !== 'secret' && row.default !== undefined ? formatDefault(row.default) : undefined
 
@@ -247,22 +275,83 @@ function SettingField({
     )
   }
   if (row.type === 'secret') {
+    const state = fieldState(row)
+    // 三样按这个次序画：草稿（人正在改）→ 按位取回来的明文 → 空框。枚举口不回值，所以
+    // 平常落到最后一样，靠占位符说「设过了 / 没设过」
+    const edited = typeof value === 'string'
+    const shown = edited ? value : peek.kind === 'shown' ? peek.text : ''
+    const revealed = !edited && peek.kind === 'shown'
+    /**
+     * 框里空着时摆哪句占位符。**草稿在时不能再摆「已设置」**——人刚把这一格清空，
+     * 摆回去会被念成「没改」；枚举口不回值，平常那三种态全靠这一句说
+     */
+    const hint = revealed
+      ? '（盘上就是个空串）'
+      : edited
+        ? '（空着保存就是清空这一格）'
+        : secretPlaceholder(row)
+    const why = revealed
+      ? '这是按位取回来的明文（settings.get）。改它再点「保存」才会写回盘上'
+      : edited
+        ? '改了还没存。点「保存」才写回盘上'
+        : state === 'secret-set'
+          ? '已设置。枚举口 settings.all 不回 secret 的值（只回设过没有与掩码），所以这框里平常是空的——点右边的眼睛按位取明文'
+          : '没设过。填一格再点「保存」就设上了'
+    const look = (): void => {
+      // 草稿在时那颗按钮是灰的（按不到），这一句只是把语义写死：取的是盘上那份，不是草稿
+      if (edited || peek.kind === 'loading') return
+      if (peek.kind === 'shown') {
+        setPeek({ kind: 'idle' })
+        return
+      }
+      setPeek({ kind: 'loading' })
+      void onReveal(row).then(
+        (text) => setPeek({ kind: 'shown', text }),
+        // 取不到就说为什么。**不画成空**——空框会被念成「没设过」，而这两件事差得远
+        (err: unknown) => setPeek({ kind: 'failed', reason: err instanceof Error ? err.message : String(err) }),
+      )
+    }
     return (
-      <div className="baseui:flex baseui:items-center baseui:gap-1">
-        <Input
-          type={bare ? 'text' : 'password'}
-          className="baseui:h-8 baseui:w-56 baseui:font-mono baseui:text-xs"
-          value={typeof value === 'string' ? value : ''}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          title={bare ? '遮起来' : '看一眼。注意：secret 只影响这里的显示，盘上照样明文'}
-          onClick={() => setBare((v) => !v)}
-        >
-          {bare ? <EyeOff /> : <Eye />}
-        </Button>
+      <div className="baseui:flex baseui:flex-col baseui:items-end baseui:gap-0.5">
+        <div className="baseui:flex baseui:items-center baseui:gap-1">
+          <Input
+            type={revealed ? 'text' : 'password'}
+            className="baseui:h-8 baseui:w-56 baseui:font-mono baseui:text-xs"
+            placeholder={shown === '' ? hint : undefined}
+            title={why}
+            value={shown}
+            onChange={(e) => {
+              // 一动就是编辑：取回来的那份明文先放下，往后画的是草稿（枚举口不回值，回不去原样）
+              setPeek({ kind: 'idle' })
+              onChange(e.target.value)
+            }}
+          />
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            disabled={peek.kind === 'loading' || edited}
+            title={
+              revealed
+                ? '遮起来（取回来的明文只在这框里，不写回盘）'
+                : edited
+                  ? '这一格改了还没存——先「保存」或「放弃」，再看盘上那一份明文'
+                  : peek.kind === 'loading'
+                    ? '取着…'
+                    : '看一眼：调 settings.get 按位取一次明文。注意：secret 只影响这里的显示，盘上照样明文；枚举口 settings.all 不回值，所以这框里平常是空的'
+            }
+            onClick={look}
+          >
+            {revealed ? <EyeOff /> : <Eye />}
+          </Button>
+        </div>
+        {peek.kind === 'failed' && (
+          <span
+            className="baseui:max-w-56 baseui:text-[10px] baseui:break-all baseui:text-destructive"
+            title={peek.reason}
+          >
+            看不了：{peek.reason}
+          </span>
+        )}
       </div>
     )
   }
@@ -288,10 +377,12 @@ function SettingLine({
   row,
   value,
   onChange,
+  onReveal,
 }: {
   row: SettingRow
   value: unknown
   onChange: (next: unknown) => void
+  onReveal: (row: SettingRow) => Promise<string>
 }): ReactElement {
   const label = (
     <div className="baseui:min-w-0 baseui:flex-1">
@@ -307,7 +398,7 @@ function SettingLine({
           <Badge
             variant="outline"
             className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
-            title="secret 只影响显示打码，盘上存的是明文"
+            title="secret 只影响显示打码，盘上存的是明文；枚举口 settings.all 不回它的值，要看明文点右边那颗眼睛按位取"
           >
             明文落盘
           </Badge>
@@ -336,7 +427,7 @@ function SettingLine({
     <div className="baseui:flex baseui:items-start baseui:justify-between baseui:gap-4 baseui:px-3 baseui:py-2">
       {label}
       <div className="baseui:shrink-0 baseui:pt-0.5">
-        <SettingField row={row} value={value} onChange={onChange} />
+        <SettingField row={row} value={value} onChange={onChange} onReveal={onReveal} />
       </div>
     </div>
   )
@@ -354,6 +445,7 @@ function EntryCard({
   saveError,
   saving,
   onValue,
+  onReveal,
   onSave,
   onDiscard,
   onToggleEnabled,
@@ -383,6 +475,8 @@ function EntryCard({
   saveError: string | undefined
   saving: boolean
   onValue: (slot: string, next: unknown) => void
+  /** 按位取一格的明文（`settings.get`），供 secret 那格的「看一眼」用 */
+  onReveal: (row: SettingRow) => Promise<string>
   onSave: () => void
   onDiscard: () => void
   onToggleEnabled: (next: boolean) => void
@@ -402,10 +496,10 @@ function EntryCard({
   const entry = card.entry
   const Icon = ICONS[face?.icon ?? ''] ?? Puzzle
   const badge = STATE_BADGE[entry.state]
-  // __label__ 是改名行借道的槽，不算「改了设置」——它有自己的按钮与回执
-  const dirtyCount = Object.keys(draft ?? {}).filter((slot) => slot !== '__label__').length
+  // 改名行借道的槽不算「改了设置」——它有自己的按钮与回执。**判据是「槽在不在」，不是值**
+  const dirtyCount = dirtySlots(draft).length
   // 改名行输入框里的字：借道的槽里只有名字，多半是字符串；不是就回落到现在的显示名
-  const labelDraft = draft?.['__label__']
+  const labelDraft = draft?.[LABEL_SLOT]
   const labelValue = typeof labelDraft === 'string' ? labelDraft : (entry.label ?? '')
   const title = entry.label ?? face?.title ?? entry.id
 
@@ -543,6 +637,7 @@ function EntryCard({
                     row={s}
                     value={draft?.[slot] !== undefined ? draft[slot] : s.value}
                     onChange={(next) => onValue(slot, next)}
+                    onReveal={onReveal}
                   />
                 )
               })}
@@ -807,6 +902,22 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
 
+  /**
+   * 按位取一格的明文。**走的正是 `settings.get`**——枚举口（`settings.all`）对 secret 收口之后，
+   * 这条口照旧回明文（插件读自己分区的凭据走的也是它）。取不到就抛，由那一格如实画出原因：
+   * 画成空框会被念成「没设过」。
+   */
+  const revealSecret = async (row: SettingRow): Promise<string> => {
+    const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
+    if (!result.ok) throw new Error(result.error ?? '取不到')
+    const value = result.data
+    // 命令回了个「ok 但没值」＝这一格盘上就是空的。**如实说没设过**，不画成空框
+    if (value === undefined) throw new Error('这一格盘上没有值（没设过）')
+    // secret 的值就是字符串。真回了别的形状说明这格与声明对不上，也如实说，不把它 String() 成一句话
+    if (typeof value !== 'string') throw new Error(`这一格的值不是字符串：${typeof value}`)
+    return value
+  }
+
   const onValue = (entryId: string, slot: string, next: unknown): void =>
     setDrafts((prev) => ({ ...prev, [entryId]: { ...prev[entryId], [slot]: next } }))
 
@@ -817,10 +928,15 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
 
-  /** 保存一条条目的草稿：逐键 settings.set，**有一个失败就全留在草稿里** */
+  /**
+   * 保存一条条目的草稿：逐键 settings.set，**有一个失败就全留在草稿里**。
+   *
+   * 提交的这份清单只认**草稿里有的槽**（`dirtySlots` 按「键在不在」判，不按值）——枚举口
+   * 对 secret 行不回值之后，「没动过这一格」与「把这一格改成空」的值长得一模一样，
+   * 拿值筛就会把没动过的 secret 格当「清空」写回盘上。
+   */
   const saveEntry = async (entryId: string): Promise<void> => {
-    const draft = drafts[entryId]
-    const slots = Object.entries(draft ?? {}).filter(([slot]) => slot !== '__label__')
+    const slots = dirtySlots(drafts[entryId])
     if (slots.length === 0) return
     setSavingId(entryId)
     const failures: string[] = []
@@ -854,7 +970,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const saveLabel = async (): Promise<void> => {
     if (editing === null) return
     const entry = cards.find((card) => card.entry.entryId === editing)?.entry
-    const value = drafts[editing]?.['__label__']
+    const value = drafts[editing]?.[LABEL_SLOT]
     const text = typeof value === 'string' ? value : (entry?.label ?? '')
     setEditing(null)
     discardEntry(editing)
@@ -1142,6 +1258,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 saveError={saveErrors[card.entry.entryId]}
                 saving={savingId === card.entry.entryId}
                 onValue={(slot, next) => onValue(card.entry.entryId, slot, next)}
+                onReveal={revealSecret}
                 onSave={() => void saveEntry(card.entry.entryId)}
                 onDiscard={() => discardEntry(card.entry.entryId)}
                 onToggleEnabled={(next) =>
@@ -1162,7 +1279,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   setEditing(card.entry.entryId)
                   setDrafts((prev) => ({ ...prev, [card.entry.entryId]: { ...prev[card.entry.entryId] } }))
                 }}
-                onRenameChange={(value) => onValue(card.entry.entryId, '__label__', value)}
+                onRenameChange={(value) => onValue(card.entry.entryId, LABEL_SLOT, value)}
                 onRenameSave={() => void saveLabel()}
                 onRenameCancel={() => {
                   setEditing(null)
