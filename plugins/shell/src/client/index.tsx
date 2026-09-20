@@ -584,7 +584,7 @@ function App({
                   components={COMPONENTS}
                   tabComponents={TAB_COMPONENTS}
                   theme={GWB_THEME}
-                  onReady={(event) => onWellReady(id, event)}
+                  onReady={(event: DockviewReadyEvent) => onWellReady(id, event)}
                 />
               </div>
               {/* 这口桌面的浮层户口：件里 radix Portal 的 container 指到它（args.shell.portal）。

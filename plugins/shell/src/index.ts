@@ -3,10 +3,11 @@ import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
 import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator/gwb-plugin-api'
-// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
+// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字。
+// **类型本身也在这儿 import 进来**：下面那份本文件自己的声明要用它（理由见那段注释）
 import type { GwbCommands } from '@godcreator/gwb-commands'
 // 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
-import type {} from '@godcreator/gwb-data'
+import type { GwbDataApi } from '@godcreator/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
@@ -28,6 +29,25 @@ export type { SavedLayout, LayoutDoc } from './layout.js'
  * node 半：窗格注册服务。件在自己的 `apply` 里说「我有一格窗格」，浏览器那半经
  * `shell.panes` 这条命令把表取过去。运行时注册与表经命令过桥的判据见文档站。
  */
+
+/**
+ * 本件要用的那两项服务在 cordis 的 `Context` 上。
+ *
+ * **为什么在自己这儿再声明一遍**（2026-09-20 实测）：件各自发的 `declare module 'cordis'`
+ * 在 pnpm 的 store 布局下落空——store 里那份件的依赖各自软到带 peer 后缀的目录，同一个
+ * cordis 以两条物理路径进程序，TS 7 当成两个模块，增强就加在了另一个 `Context` 上
+ * （`pnpm check` 报「属性不存在」，而代码一个字没错；shell 0.13.1 的提交态同样报，
+ * 与包的版本无关）。试过的两条路都不通：`preserveSymlinks` 治好了它却让 `dockview-react`
+ * 的类型解析不了；把增强从 `declare module` 换成 `declare global` 一样落空。
+ * 所以按 import 拿真类型、在本文件声明——语义与那两份 d.ts 里的**逐字一致**，只是换了落点。
+ * 上游把软链布局那件事解决了就可以删掉这一段。
+ */
+declare module 'cordis' {
+  interface Context {
+    gwbCommands?: GwbCommands
+    gwbData: GwbDataApi
+  }
+}
 
 /** 跨半的命令名与环境形状。常量本体住 `protocol.ts`（纯模块，浏览器半 import 它不带 cordis） */
 export { PANES_COMMAND, PLUGINS_COMMAND, ENV_COMMAND } from './protocol.js'

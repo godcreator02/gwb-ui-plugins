@@ -1,9 +1,38 @@
+import type { Context } from 'cordis'
 import type { GwbContext } from '@godcreator/gwb-plugin-api'
-// 只为激活那几个件的 `declare module 'cordis'`——它们给 ctx 加上各自那个名字
-import type {} from '@godcreator/gwb-commands'
-import type {} from '@godcreator/gwb-settings'
+// 只为激活那几个件的 `declare module 'cordis'`——它们给 ctx 加上各自那个名字。
+// **类型本身也 import 进来**：下面那份本文件自己的声明要用它（理由见那段注释）
+import type { GwbCommands } from '@godcreator/gwb-commands'
+import type { GwbSettingsApi } from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-shell'
 import { buildStartupCss } from './startup-css.js'
+
+/**
+ * 本件要用的那两项服务在 cordis 的 `Context` 上。
+ *
+ * **为什么在自己这儿再声明一遍**（2026-09-20 实测）：件各自发的 `declare module 'cordis'`
+ * 在 pnpm 的 store 布局下落空——store 里那份件的依赖各自软到带 peer 后缀的目录，同一个
+ * cordis 以两条物理路径进程序，TS 7 当成两个模块，增强就加在了另一个 `Context` 上
+ * （`pnpm check` 报「属性不存在」，而代码一个字没错）。试过的两条路都不通：
+ * `preserveSymlinks` 治好了它却让 `dockview-react` 的类型解析不了；换成 `declare global`
+ * 一样落空。所以按 import 拿真类型、在本文件声明——语义与那两份 d.ts 里的**逐字一致**。
+ * 上游把软链布局那件事解决了就可以删掉这一段。
+ *
+ * `Context` 这个名字只为让下面的增强有个落脚点：本件不认识 cordis 的服务表，
+ * 只从 `gwb-plugin-api` 拿 `GwbContext`。**依赖面那一格也得有 cordis**——清单里少了它，
+ * 这句 `declare module 'cordis'` 会报「找不到模块名」（2026-09-20 补上）。
+ * 下面那行 `void` 是给 lint 看的：`Context` 是「具名导入只用于模块增强」，
+ * oxlint 的 no-unused-vars 会把不带 `type` 修饰的那句判成没用过（`import type` 的写法
+ * 在这一版 TS 里认不出增强），所以立一个引用把它压住
+ */
+declare module 'cordis' {
+  interface Context {
+    gwbSettings: GwbSettingsApi
+    gwbCommands?: GwbCommands
+  }
+}
+
+void (undefined as unknown as Context)
 
 /**
  * 外观件：正文字体、等宽字体、自定义样式表。
