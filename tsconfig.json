@@ -1,7 +1,14 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // **这份要 DOM**：件的 tsconfig 只收 src/（node 半），而这份收编的是它们的 tests——
+    // 有的 test 直接 import 件的 client 半（`plugins/shell/tests/well-hub.test.ts` 拉进
+    // `src/client/types.ts`），那份用了 `HTMLElement`。base 的 lib 只有 ES2023，于是仓根
+    // 的 tsc 报 TS2304，`pnpm check` 第一步整条红——**不是某次改动引入的，是这份收编范围
+    // 与 base 的 lib 一直对不上**。加 DOM 只影响本程序的全局声明，不影响任何产物
+    // （这份 noEmit；件的构建各自走自己的 tsconfig）
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
   // 各包有自己的 tsconfig，这份只收编它们漏下的：仓根脚本、构建脚本、件的 tests。
   // 件的 tsconfig 有 rootDir: "src"，tests 加不进去（不在 rootDir 下）——所以在这儿通配收编，
