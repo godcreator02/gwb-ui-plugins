@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
+import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
 
 /**
  * 「可装」那段的纯逻辑。原先筛一份手工白名单，2026-09-08 起筛的是 **registry 检索结果**
@@ -47,6 +47,56 @@ describe('scopeOf：行上源徽章的判据', () => {
     expect(scopeOf('gwb-shell')).toBe('')
     expect(scopeOf('@')).toBe('')
     expect(scopeOf('@joke')).toBe('')
+  })
+})
+
+describe('scopeOptions：源筛选项从已加载的行现推', () => {
+  it('按首次出现次序列、带计数——聚合回执本来就官方线在前，不另排', () => {
+    const rows = [
+      row('@godcreator/gwb-shell'),
+      row('@godcreator/gwb-theme'),
+      row('@god-private/gwb-cgm-alert'),
+      row('@godcreator/gwb-devkit'),
+      row('@j/gwb-daily-planner'),
+    ]
+    expect(scopeOptions(rows)).toEqual([
+      { scope: '@godcreator', count: 3 },
+      { scope: '@god-private', count: 1 },
+      { scope: '@j', count: 1 },
+    ])
+  })
+
+  it('裸名包不进筛选项；一条没有回空数组（下拉里只剩「全部源」）', () => {
+    expect(scopeOptions([row('plain-pkg'), row('@a/x')])).toEqual([{ scope: '@a', count: 1 }])
+    expect(scopeOptions([row('plain-pkg')])).toEqual([])
+    expect(scopeOptions([])).toEqual([])
+  })
+})
+
+describe('toRows 的源筛：与文本筛 AND 叠加', () => {
+  const packages = [
+    row('@godcreator/gwb-shell', { description: '外壳' }),
+    row('@godcreator/gwb-theme', { description: '外观' }),
+    row('@j/gwb-daily-planner', { description: '每日计划' }),
+  ]
+
+  it('选了源只留那条线，顺序照检索结果', () => {
+    expect(toRows(packages, NO_INDEX, '', '@j').map((one) => one.pkg)).toEqual(['@j/gwb-daily-planner'])
+    expect(toRows(packages, NO_INDEX, '', '@godcreator').map((one) => one.pkg)).toEqual([
+      '@godcreator/gwb-shell',
+      '@godcreator/gwb-theme',
+    ])
+  })
+
+  it('源筛与文本筛一起收：交集；选了不存在的源回空（界面层保证不出现这种选项）', () => {
+    expect(toRows(packages, NO_INDEX, 'theme', '@godcreator').map((one) => one.pkg)).toEqual(['@godcreator/gwb-theme'])
+    expect(toRows(packages, NO_INDEX, '每日', '@j').map((one) => one.pkg)).toEqual(['@j/gwb-daily-planner'])
+    expect(toRows(packages, NO_INDEX, 'theme', '@j')).toEqual([])
+    expect(toRows(packages, NO_INDEX, '', '@nope')).toEqual([])
+  })
+
+  it('scope 缺省（空串）＝不筛，老行为原样', () => {
+    expect(toRows(packages, NO_INDEX, '')).toHaveLength(3)
   })
 })
 

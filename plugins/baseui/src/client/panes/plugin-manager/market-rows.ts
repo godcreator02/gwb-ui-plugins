@@ -27,6 +27,29 @@ export function scopeOf(pkg: string): string {
   return cut === -1 ? '' : pkg.slice(0, cut)
 }
 
+/** 源筛选项：scope + 该源在列里的件数 */
+export interface ScopeOption {
+  scope: string
+  count: number
+}
+
+/**
+ * 从**当前已加载的行**现推源筛选项——列里有什么源就筛什么源，一条没有的源不占位；
+ * 顺序照首次出现的次序（node 半的聚合回执本来就官方线在前、其余按名排），不再另排。
+ * 不去问 `source.list`：筛选项跟着眼前的表走，比跟着配置走诚实。
+ */
+export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
+  const order: string[] = []
+  const counts = new Map<string, number>()
+  for (const item of packages) {
+    const scope = scopeOf(item.pkg)
+    if (scope === '') continue
+    if (!counts.has(scope)) order.push(scope)
+    counts.set(scope, (counts.get(scope) ?? 0) + 1)
+  }
+  return order.map((scope) => ({ scope, count: counts.get(scope)! }))
+}
+
 /** 聚合回执里的 `note`：有就是「哪几条源没查成」那句，没有（或不是字符串）回空串 */
 export function acceptNote(raw: unknown): string {
   return typeof raw === 'string' ? raw : ''
@@ -89,10 +112,14 @@ export function matchesQuery(row: SearchRow, query: string): boolean {
   )
 }
 
-/** 检索结果 + 已装的那份 → 要画的那几行。**顺序照检索结果**（node 半已按包名收），装没装不参与排序 */
-export function toRows(packages: readonly SearchRow[], index: InstalledIndex, query: string): MarketRow[] {
+/**
+ * 检索结果 + 已装的那份 → 要画的那几行。**顺序照检索结果**（node 半已按源稳定排序），装没装不参与排序。
+ * `scope` 给了就先按源筛（与 `query` 的文本筛 AND 叠加）；空串＝不筛。
+ */
+export function toRows(packages: readonly SearchRow[], index: InstalledIndex, query: string, scope = ''): MarketRow[] {
   const out: MarketRow[] = []
   for (const item of packages) {
+    if (scope !== '' && scopeOf(item.pkg) !== scope) continue
     if (!matchesQuery(item, query)) continue
     const spec = index.get(item.pkg)
     if (spec === undefined && !index.has(item.pkg)) {

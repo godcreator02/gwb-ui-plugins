@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { RotateCw, Search } from 'lucide-react'
 import { asResult } from './rows'
-import { acceptNote, acceptPackages, scopeOf, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
+import { acceptNote, acceptPackages, scopeOf, scopeOptions, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
 import { describePeers } from './peers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /**
  * 「可装」那段：**全部配好的源**上有什么，就摆什么——node 半的 `plugins.search` 无参一把
@@ -23,6 +24,9 @@ import { Input } from '@/components/ui/input'
 const SEARCH = 'plugin-manager.search'
 const INSTALL = 'plugin-manager.install'
 
+/** 源下拉里「不筛」那个哨兵——radix 的 SelectItem 不收空串 value */
+const ALL_SOURCES = 'all'
+
 /** 父格给的那几样。host 按形状收（正本在 shell 件的 client/types.ts） */
 export interface MarketTabProps {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
@@ -32,10 +36,14 @@ export interface MarketTabProps {
   busy: boolean
   /** 装成了一个之后喊父格重取表——没有事件推送，不重取的话「已装」那段会停在旧样子上 */
   onChanged: () => Promise<void> | void
+  /** radix 浮层挂哪（跟着本桌面走），正本在 shell 件的窗格契约 */
+  portal: HTMLElement
 }
 
-export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps): ReactElement {
+export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTabProps): ReactElement {
   const [query, setQuery] = useState('')
+  /** 源筛选：ALL_SOURCES＝不筛。选项从已加载的行现推，不问配置 */
+  const [source, setSource] = useState(ALL_SOURCES)
   /** null 是「还没查到」。跟「查到了、源上一个都没有」（空数组）分得开 */
   const [rows, setRows] = useState<SearchRow[] | null>(null)
   /** 聚合回执的 note：哪几条源没查成（好源照常）。空串＝没有坏源 */
@@ -125,7 +133,10 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
   /** 表还没取到时按只读摆：装没装一概不说 */
   const readOnly = installed === null
   const index = installed ?? NO_INDEX
-  const shown = useMemo(() => toRows(rows ?? [], index, query), [rows, index, query])
+  const scopes = useMemo(() => scopeOptions(rows ?? []), [rows])
+  /** 选中的源在重查后没了（那条源撤了或没件了）——当没筛，别留一个选不回去的死值 */
+  const active = source === ALL_SOURCES || scopes.some((one) => one.scope === source) ? source : ALL_SOURCES
+  const shown = useMemo(() => toRows(rows ?? [], index, query, active === ALL_SOURCES ? '' : active), [rows, index, query, active])
   const summary = useMemo(() => summarize(rows ?? [], index, shown), [rows, index, shown])
   const working = busyPkg !== '' || busy
 
@@ -142,11 +153,24 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <Select value={active} onValueChange={setSource}>
+          <SelectTrigger size="sm" className="baseui:h-8" title="按源筛，与搜索框叠加">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent container={portal}>
+            <SelectItem value={ALL_SOURCES}>全部源</SelectItem>
+            {scopes.map((one) => (
+              <SelectItem key={one.scope} value={one.scope}>{`${one.scope} (${String(one.count)})`}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span className="baseui:shrink-0 baseui:text-xs baseui:text-muted-foreground">
           {rows === null
             ? '查 registry…'
             : `${String(summary.total)} 个 gwb 件 · 已装 ${String(summary.installed)}${
-                query.trim() === '' ? '' : ` · 筛出 ${String(summary.shown)}`
+                query.trim() === '' && active === ALL_SOURCES
+                  ? ''
+                  : ` · 筛出 ${String(summary.shown)}`
               }`}
         </span>
         <Button
@@ -185,9 +209,9 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
       <div className="baseui:flex-1 baseui:overflow-auto">
         {rows !== null && shown.length === 0 && (
           <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">
-            {query.trim() === ''
+            {query.trim() === '' && active === ALL_SOURCES
               ? '配好的源上一个 gwb 件都没有。'
-              : `配好的源里没有匹配「${query.trim()}」的（共 ${String(summary.total)} 个）。清单外的包名，直接用上面那个「直接装包名」。`}
+              : `配好的源里没有同时过「${[active === ALL_SOURCES ? null : active, query.trim() === '' ? null : query.trim()].filter((part): part is string => part !== null).join('」+「')}」这两道筛的（共 ${String(summary.total)} 个）。放宽一道试试，清单外的包名直接用上面那个「直接装包名」。`}
           </p>
         )}
 

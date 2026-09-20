@@ -1092,7 +1092,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       </div>
 
       {tab === 'market' ? (
-        <MarketTab host={args.host} installed={marketIndex} busy={busy} onChanged={refresh} />
+        <MarketTab host={args.host} installed={marketIndex} busy={busy} onChanged={refresh} portal={args.shell.portal} />
       ) : (
         <>
           <div className="baseui:flex baseui:flex-wrap baseui:items-center baseui:gap-x-2 baseui:gap-y-2 baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
