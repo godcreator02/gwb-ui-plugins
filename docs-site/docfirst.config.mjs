@@ -22,6 +22,9 @@ export default {
   outputs: {
     'content/outputs/agents.mdx': ['../AGENTS.md'],
     'content/outputs/readme.mdx': ['../README.md'],
+    'content/outputs/skills/gwb-shell.mdx': [
+      { to: '../plugins/shell/skills/gwb-shell/SKILL.md', frontmatter: ['name', 'description'] },
+    ],
   },
   components: {
     // 讲机制的 html 动画住 public/，正文里的 <iframe> 只按原文压平

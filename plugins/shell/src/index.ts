@@ -8,6 +8,7 @@ import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator/g
 import type { GwbCommands } from '@godcreator/gwb-commands'
 // 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
 import type { GwbDataApi } from '@godcreator/gwb-data'
+import type { GwbSkillsApi } from '@godcreator/gwb-skills'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
@@ -189,6 +190,12 @@ export default class GwbShell extends Service implements GwbShellApi {
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
+    // 说明书随外壳挂载；skills 可选，晚装也能登记，卸载时自动摘掉。
+    this.ctx.inject(['gwbSkills'], (scoped) => {
+      // inject 已保证服务存在；仅在实现内补类型，避免把 skills 带进 shell 的公开声明。
+      const skills = (scoped as typeof scoped & { gwbSkills: GwbSkillsApi }).gwbSkills
+      scoped.effect(() => skills.register(new URL('../skills/', import.meta.url)))
+    })
     this.ctx.logger('gwb-shell').info(
       `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND} / ${DESKTOP_RENAME_COMMAND} / ${DESKTOP_DELETE_COMMAND}，跨件开格走 ${OPEN_PANE_COMMAND}，窗格走 ${PANE_LIST_COMMAND} / ${PANE_FOCUS_COMMAND} / ${PANE_SEND_COMMAND} / ${PANE_CLOSE_COMMAND}；页面根已要来，入口 ${entry}`,
     )

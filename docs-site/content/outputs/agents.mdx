@@ -55,6 +55,9 @@ pnpm check        # typecheck + lint + test
 改插件后的发版与实机验（隔离 home 验、发本机 registry、升 default）照内核仓 AGENTS「外循环」；
 写插件的整条路在 `gwb-devkit` 插件的 skill。
 
+下游 UI 接入规范随 shell 的 `gwb-shell` skill 发布；正本是 `content/outputs/skills/gwb-shell.mdx`，
+由本站 render 到 `plugins/shell/skills/`。改接入要求时同步检查 devkit 模板。
+
 ## 门禁
 
 提交前都要绿：`pnpm check`；文档检查单独 `cd docs-site && pnpm doc`。

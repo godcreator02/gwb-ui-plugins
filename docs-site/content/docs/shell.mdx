@@ -12,6 +12,12 @@ docfirst: none
 - **浏览器半**——多个 dockview 窗格容器（well，代码模块 `well-hub`；**一张桌面一个、
   容器常驻保活**），把注册表里的每个窗格开出来
 
+下游开发入口是随本包发布的 `gwb-shell` 说明书：`skill.read {"name":"gwb-shell"}`。
+它统一规定窗格接入、shadcn 官方源码、配套 tokens 与多桌面浮层；正本在
+`content/outputs/skills/gwb-shell.mdx`，生成到 `plugins/shell/skills/gwb-shell/SKILL.md`。
+`gwbSkills` 通过局部注入登记该目录：缺席时外壳照常运行，服务后到时补登记，卸载时自动注销。
+devkit 只引用这份说明书并提供模板，不复制 UI 规则。
+
 分四个阶段做：前三个阶段与状态栏都完成了；第四阶段的**布局落盘**也落地——每个容器的
 布局自动存档、可起名存布局、点开哪套铺哪套；**多桌面（保活）落地**，见下文专节；只剩
 导航。四个阶段各是什么、到哪了，见[路线](/future/roadmap)。

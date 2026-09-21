@@ -1,0 +1,30 @@
+---
+born-at: 2026-09-21T16:28
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 指南归壳
+domain: shell
+---
+
+## 背景
+
+下游插件从 shadcn 官方复制组件，共用 shell 配套的 tokens。UI 接入说明却住在 devkit 的附件里，
+多桌面新增 portal 接口后，该附件仍只讲挂 body 的样式有效性，没有跟上浮层归属要求。
+
+用户提出：「那我感觉这个skill 是不是应该跟着shell走？然后devkit去借这个skill来用？」
+并明确：「tokens不是随shell发包吗，那我觉得一个shell对应一个token没啥问题」。
+
+## 结论与边界
+
+由用户拍板，UI 接入说明书归 shell，名为 `gwb-shell`，与该平台的 tokens 使用规则一起维护并随包发布。
+devkit 的开发流程引用它；旧 `references/ui.md` 保留指路。shell 经可选的 skills 服务注册说明书，
+不因缺少说明书服务而阻止界面运行。
+
+本次保留 shadcn 官方源码分发方式，不增加共享组件库或自建 registry。tokens 仍单独发 npm 包供
+构建期引用，但它是这套 shell 的配套视觉契约，不为假想的另一套 shell 抽象适配层。
+
+## 否掉的候选
+
+继续把 UI 全文放在 devkit：接入规则受 shell 代码驱动，却要跨仓才能同步更新，责任与发布节奏错位。
+在两边各保留一份：只能增加同步点，不能保证开发者读到当前规则。devkit 模板继续消费规则，
+模板与 shell 接口的兼容性仍需要验证，迁移说明书不能消除这项跨仓工作。

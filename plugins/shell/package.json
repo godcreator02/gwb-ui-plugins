@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "author": {
     "name": "godcreator"
   },
-  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；浏览器半与样式表的地址由 node 半算成 file:// 报给页面。服务 gwbShell；skill 0 份；命令 17 条。",
+  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；随包提供窗格、shadcn 与 tokens 的 UI 接入说明书。服务 gwbShell；skill 1 份；命令 17 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,6 +17,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "src"
   ],
   "//gwb": "只有 provides 一格（devkit.services 读它把服务的用法带进回执，repo-kit 自述守卫钉它与源码提供的服务互为充要）。「我是外壳」这件事靠 node 半调 kernel.setShell 说，不靠包清单；共享包那格 gwb.shared 这个件没有，它不是共享包",
@@ -48,6 +49,7 @@
     "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
+    "@godcreator/gwb-skills": "0.4.3",
     "@godcreator/gwb-tokens": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",
