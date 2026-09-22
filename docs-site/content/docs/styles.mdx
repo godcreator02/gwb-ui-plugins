@@ -261,7 +261,7 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 **映射面**是插件在构建期引的那份，它把「类名怎么解析到变量」这件事告诉编译器，但**一个变量
 声明都不输出**：
 
-{/* ref file="../packages/tokens/src/theme.reference.css" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" */}
 
 两个面**必须是两个文件**，理由钉在它自己的头注里（下一节展开）。插件那边引的形态是固定的一行，
 第六节抄得到。
@@ -348,7 +348,7 @@ logger / plugin-manager 的 home 里，基础界面件只是少画那一格。�
 
 ### 映射面为什么单独一个文件
 
-{/* ref file="../packages/tokens/src/theme.reference.css" lines="1-13" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-13" */}
 
 **这段说明什么**：以引用的方式导入只拦得住主题块的输出，**拦不住普通规则**。把带
 `:root { … }` 的声明面一起引进插件的构建里，每个插件的表里都会多出一整份 `:root`，跟页面上那张
@@ -357,7 +357,7 @@ logger / plugin-manager 的 home 里，基础界面件只是少画那一格。�
 
 同一个包清单里还钉着一条**这条路的边界**：
 
-{/* has file="../packages/tokens/package.json" text="//prefix" */}
+{/* has file="../plugins/shell/package.json" text="//tokens-prefix" */}
 
 前缀会把 Tailwind **内置的**主题变量名也改掉（每个插件的前缀不同，名字对不上），所以指望在
 页面上全局声明一份 Tailwind 默认主题变量去影响所有插件是行不通的。**语义令牌只能经映射面
