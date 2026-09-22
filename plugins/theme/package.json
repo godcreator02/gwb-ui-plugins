@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-theme",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "author": {
     "name": "godcreator"
   },
@@ -26,12 +26,12 @@
   },
   "peerDependencies": {
     "@godcreator/gwb-commands": "^0.4.5",
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-settings": "^0.3.1",
     "@godcreator/gwb-shared-react": "^0.1.1"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-commands": "0.4.5",
     "@godcreator/gwb-settings": "0.3.1",

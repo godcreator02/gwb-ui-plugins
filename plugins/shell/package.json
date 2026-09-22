@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "author": {
     "name": "godcreator"
   },
@@ -38,14 +38,14 @@
   "peerDependencies": {
     "@godcreator/gwb-commands": "^0.4.5",
     "@godcreator/gwb-data": "^0.1.5",
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-shared-react": "^0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "0.4.5",
     "@godcreator/gwb-data": "0.1.5",
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
     "@godcreator/gwb-skills": "0.4.3",

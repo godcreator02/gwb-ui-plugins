@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": {
     "name": "godcreator"
   },
@@ -27,12 +27,12 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-shared-react": "^0.1.1"
   },
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.3",
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-plugin-manager": "0.6.1",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
