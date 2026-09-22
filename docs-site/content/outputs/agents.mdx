@@ -15,22 +15,21 @@ description: 仓根 AGENTS.md 的正本——render 摆过去，只写仓专属�
 
 **gwb 的 UI 平台仓**——2026-09-12 三仓拆分从 `gwb-base-plugins` 分出（方案页在旧仓 spec 区
 `2026-09-12-three-repos-split`）。立场先立住：**shell 是一个 UI 平台的整体，要换整套换**；
-tokens（视觉契约）与 shared-react（react 运行时口粮）跟 shell 同仓同进退，不为假想的第二
-外壳实现维护独立契约包。
+令牌表（视觉契约）与 react 运行时口粮已于 D7 并进 shell 包本身（原 `gwb-tokens` /
+`gwb-shared-react` 两个共享包停发，registry 上的旧版别再引），不为假想的第二外壳实现维护独立契约包。
 
 |      | 插件 / 包                                              |
 | ---- | -------------------------------------------------- |
-| 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口）                   |
+| 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；`gwb.shared` 供 react 四名，子路径 `theme.css` / `theme.reference.css` 供令牌表） |
 | 外观   | `theme`（全局启动样式 + 外观窗格；没外壳也照常挂）                     |
 | 基础界面 | `baseui`（基础插件的官方窗格集：日志、插件管理）                    |
-| 共享包  | `shared-react`（react 系经内核 importmap）、`tokens`（令牌表） |
 
 ## 依赖纪律
 
 * peer 范围怎么写：正本在 devkit 的 release skill「gwb-release」，本页不复述
 * **跨仓基础插件**（commands / data / settings / logger / plugin-manager / plugin-api）的
   dev 写 **registry 精确版本**——本仓没有它们，`workspace:*` 解析不到
-* **同仓包**（shell / theme / baseui / shared-react / tokens 之间）dev 照旧 `workspace:*`
+* **同仓包**（shell / theme / baseui 之间）dev 照旧 `workspace:*`
 * 依赖流向单向：本仓 peer 基础仓，永不反向
 
 ## baseui 三规矩（哪条破了它就吸成上帝插件）

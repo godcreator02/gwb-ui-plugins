@@ -7,8 +7,9 @@ description: 开发或修改 gwb 插件界面时读——接入 shell 窗格、�
 
 **本页回答**：下游插件怎样接入这套 shell，并保持统一的默认视觉与交互。
 
-shell 与 `@godcreator/gwb-tokens` 是一套 UI 平台：shell 装载页面唯一的令牌值表，插件构建期引用
-tokens 的映射面。组件从 **shadcn 官方源**复制到插件自己的目录、随插件构建，按业务需要定制。
+令牌表随 `@godcreator/gwb-shell` 包发（原 `gwb-tokens` / `gwb-shared-react` 两个共享包已并进 shell、
+停发，别再依赖）：shell 装载页面唯一的令牌值表，插件构建期引用 shell 子路径 `theme.reference.css`
+这张映射面。组件从 **shadcn 官方源**复制到插件自己的目录、随插件构建，按业务需要定制。
 同一份令牌控制主题；复制后的组件结构与行为由插件维护，上游更新不会自动改写本地文件。
 
 建仓和内循环读 `skill.read {"name":"gwb-devkit"}`。`devkit.scaffold` 提供浏览器半、样式入口与守卫的
@@ -70,14 +71,14 @@ CLI 添加的组件依赖打进浏览器束，按本生态规则放 devDependenc
 
 ```css
 @import 'tailwindcss/theme.css' theme(reference) prefix(demo);
-@import '@godcreator/gwb-tokens/theme.reference.css' theme(reference);
+@import '@godcreator/gwb-shell/theme.reference.css' theme(reference);
 @import 'tailwindcss/utilities.css' layer(utilities) source(none);
 @import 'tw-animate-css';
 @source "./";
 ```
 
 构建 `tailwindcss -i src/client/styles.css -o dist/style.css`。页面值表、preflight 与层顺序由 shell 装载，
-插件只编自己的规则；不要把 tokens 的 `theme.css` 或整份 Tailwind preflight 再打进插件样式。
+插件只编自己的规则；不要把 shell 的 `theme.css` 或整份 Tailwind preflight 再打进插件样式。
 React 的四个裸名 `react` / `react/jsx-runtime` / `react-dom` / `react-dom/client` 由页面 importmap 提供，
 构建时外置；普通组件依赖打进本束。其他裸名只有确认宿主 importmap 提供时才能外置。
 
@@ -95,9 +96,9 @@ CSS 前缀只用小写字母，脚手架按插件短名剔除其他字符。前�
   映射成插件工具类。只声明自己的变量，不覆盖全局语义令牌。
 * 一次性且不随主题的装饰可明示任意值，如 `demo:bg-[#abc]`。
 
-映射面的刻度以 `@godcreator/gwb-tokens/theme.reference.css` 为准。没有映射的语义先找既有语义；
-确需跨插件共用再补 tokens。局部尺寸可用任意值，不能靠字面 fallback 掩盖缺失的公共令牌。
-新增令牌的消费者需要匹配的 tokens 运行时版本；改已有令牌值则通过页面共享表生效。
+映射面的刻度以 `@godcreator/gwb-shell/theme.reference.css` 为准。没有映射的语义先找既有语义；
+确需跨插件共用再补进 shell 的令牌表。局部尺寸可用任意值，不能靠字面 fallback 掩盖缺失的公共令牌。
+新增令牌的消费者需要匹配的 shell 运行时版本（peer 下限跟到带那个令牌的 shell）；改已有令牌值则通过页面共享表生效。
 
 ## 4. 浮层与多桌面
 
@@ -119,7 +120,7 @@ Popover 等包含 Portal 的组件逐个检查。可参考本仓 `plugins/baseui
 ## 5. 验收
 
 先 build，再运行插件的 check，让产物守卫检查本次产物：前缀选择器、零字面 fallback、浏览器裸名与
-资源完整性。颜色类白名单按 tokens 映射面与本插件 `@theme` 现扫，参考 shell / baseui 的
+资源完整性。颜色类白名单按 shell 的令牌映射面与本插件 `@theme` 现扫，参考 shell / baseui 的
 `tests/artifact.test.ts`；脚手架尚未默认包含这项，需要补上。升级 Tailwind 时复核映射面和全局机制的兼容性。
 
 经 `gwb-devkit` 在隔离 home 验收：亮暗两套主题；窄窗格与宽窗格；控件 hover / focus / disabled / error；
