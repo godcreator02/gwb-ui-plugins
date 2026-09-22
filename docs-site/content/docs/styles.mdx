@@ -191,9 +191,9 @@ hook 当场炸。现在把这条留着，比将来再统一便宜得多。
 （第四步用）。地址由 node 半算（自身的表从 `import.meta.url` 算，令牌表经 fileUrl 解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="38-51" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="60-73" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="220-244" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="248-272" */}
 
 **第三步：三张表全注上、并且全等到位，才往下走。** 令牌那张必须最先——层顺序是它声明的；
 dockview 那张管的类名不经我们的手（改不了名，也就加不上前缀），所以它整张不套围栏；
@@ -309,9 +309,9 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 **主题插件**：`gwbSettings` 与 `gwbCommands` 是硬等待——没有设置存不了三项外观，没有命令总线
 三条命令出不了进程；`gwbShell` 是局部注入——没外壳也照常挂，只是没有「外观」那一格。
 
-{/* ref file="../plugins/theme/src/index.ts" lines="31-32" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="60-61" */}
 
-{/* ref file="../plugins/theme/src/index.ts" lines="123-134" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="152-163" */}
 
 **基础界面插件**：硬等待只有 `gwbShell`——没有窗格容器就没有「窗格集」；`gwbLogger` 与
 `gwbPluginManager` 都是局部注入，缺谁少画谁的窗格，其余照常。
@@ -449,7 +449,7 @@ logger / plugin-manager 的 home 里，基础界面件只是少画那一格。�
 未分层的规则优先级高于所有分层规则（跟 preflight 那条是同一个语法事实的两面），所以它压得过
 令牌的默认值，也压得过任何一个插件的工具类。设置项的说明里就是这么写的：
 
-{/* ref file="../plugins/theme/src/index.ts" lines="89-95" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="118-124" */}
 
 ---
 
@@ -518,7 +518,7 @@ logger / plugin-manager 的 home 里，基础界面件只是少画那一格。�
 
 **三、构建脚本补一步**：编译本插件那张表，输入就是那份入口，扫描面由入口里最后那条说了算。
 
-{/* ref file="../plugins/baseui/package.json" lines="21-26" */}
+{/* ref file="../plugins/baseui/package.json" lines="23-28" */}
 
 **四、拉组件**：`shadcn add` 什么就有什么，拉下来是本插件目录里的文件，跟着本插件的束一起打包。
 组件的运行时依赖**打进本束**，别外置（不在 importmap 里的裸名，外置就是运行期炸）。

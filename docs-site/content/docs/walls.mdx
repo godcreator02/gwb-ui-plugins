@@ -118,14 +118,14 @@ dispose、再 release」，所以插件在自己的 dispose 里喊一嗓子有�
 
 ### 打 ESM 只能用 esbuild，rolldown 会留 `require`
 
-{/* ref file="../plugins/shell/build.ts" lines="117-120" */}
+{/* ref file="../plugins/shell/build.ts" lines="113-117" */}
 
 rolldown 在 browser 平台对「CJS require 外置包」**刻意保留 `require`**，而浏览器里没有
 这个东西——产物一加载就炸。esbuild 会把它提升成顶层 `import`。
 
 ### react-dom 在工厂函数内部 require，esbuild 也提不出来
 
-{/* ref file="../plugins/shell/build.ts" lines="141-149" */}
+{/* ref file="../plugins/shell/build.ts" lines="126-136" */}
 
 它那句 `require('react')` 不在顶层，而在工厂函数**内部**。esbuild 提不动，于是产物里留下
 一个 `__require` 探针，跑到那一句才炸。修补是 banner 提一句 `import * as __gwb_react`，

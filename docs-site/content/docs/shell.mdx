@@ -24,7 +24,7 @@ devkit 只引用这份说明书并提供模板，不复制 UI 规则。
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="114-135" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="115-136" */}
 
 插件给的那几样，与服务替它填上的身份：
 
@@ -100,7 +100,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 `registerPane` 只收 `{ id, title, icon?, client?, style?, kind? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="490-516" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="491-517" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。插件报不出名字，也就没法冒充别人的窗格。
@@ -151,7 +151,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 布局就活不过一次重启。缺谁本件就不挂，cordis 在日志里明说它在等谁——而不是挂上一个开不出
 窗格、也存不下布局的空外壳。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="137-141" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="138-142" */}
 
 两样都是**基础仓的件**（commands / data），落的是全生态那条「本仓 → 基础仓」的箭头：本仓的
 件 peer 它们，永不反向。
@@ -658,7 +658,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="275-295" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="276-296" */}
 
 **启动与切换分开**（判据见轨迹卡[启动器与切换器分开](/trajectory/2026-09-19-launcher-switcher)）：
 「新建」只管开一个新的，「桌面」面板只管切到已开的。一个列表同时干两件事，对文档窗格就说不清点下去
@@ -765,7 +765,7 @@ dragstart 把单例填上）——放下之后的处理全走真代码，「人�
 
 产物守卫把两张表的两套规矩分开钉着：
 
-{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="130-142" */}
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="132-144" */}
 
 `data-gwb-plugin` 出现在**任何一张**表里都算失败——那说明构建又走回了选择器 scope 那条路，
 而症状（状态栏菜单裸奔）得开菜单才看得见，构建照样是绿的。
