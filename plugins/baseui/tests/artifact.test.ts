@@ -155,7 +155,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
-      path.join(root, 'node_modules/@godcreator/gwb-tokens/dist/theme.reference.css'),
+      path.join(root, 'node_modules/@godcreator/gwb-shell/dist/theme.reference.css'),
       'utf8',
     )
     const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')

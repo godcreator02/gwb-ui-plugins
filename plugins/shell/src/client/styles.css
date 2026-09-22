@@ -37,7 +37,7 @@
  */
 
 @import 'tailwindcss/theme.css' theme(reference) prefix(shell);
-@import '@godcreator/gwb-tokens/theme.reference.css' theme(reference);
+@import '../tokens/theme.reference.css' theme(reference);
 @import 'tailwindcss/utilities.css' layer(utilities) source(none);
 @import 'tw-animate-css';
 @source "./";

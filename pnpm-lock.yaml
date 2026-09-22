@@ -76,36 +76,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  packages/shared-react:
-    devDependencies:
-      '@types/react':
-        specifier: 19.2.18
-        version: 19.2.18
-      '@types/react-dom':
-        specifier: 19.2.5
-        version: 19.2.5(@types/react@19.2.18)
-      esbuild:
-        specifier: ^0.27.0
-        version: 0.27.7
-      react:
-        specifier: 19.2.8
-        version: 19.2.8
-      react-dom:
-        specifier: 19.2.8
-        version: 19.2.8(react@19.2.8)
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
-  packages/tokens:
-    devDependencies:
-      tailwindcss:
-        specifier: ^4.3.0
-        version: 4.3.3
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
   plugins/baseui:
     devDependencies:
       '@godcreator/gwb-logger':
@@ -120,15 +90,9 @@ importers:
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
-      '@godcreator/gwb-shared-react':
-        specifier: workspace:*
-        version: link:../../packages/shared-react
       '@godcreator/gwb-shell':
         specifier: workspace:*
         version: link:../shell
-      '@godcreator/gwb-tokens':
-        specifier: workspace:*
-        version: link:../../packages/tokens
       '@tailwindcss/cli':
         specifier: ^4.3.0
         version: 4.3.3
@@ -192,15 +156,9 @@ importers:
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
-      '@godcreator/gwb-shared-react':
-        specifier: workspace:*
-        version: link:../../packages/shared-react
       '@godcreator/gwb-skills':
         specifier: 0.4.3
         version: 0.4.3(@godcreator/gwb-commands@0.4.5(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9)))(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-tokens':
-        specifier: workspace:*
-        version: link:../../packages/tokens
       '@tailwindcss/cli':
         specifier: ^4.3.0
         version: 4.3.3
@@ -270,15 +228,9 @@ importers:
       '@godcreator/gwb-settings':
         specifier: 0.3.1
         version: 0.3.1(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-shared-react':
-        specifier: workspace:*
-        version: link:../../packages/shared-react
       '@godcreator/gwb-shell':
         specifier: workspace:*
         version: link:../shell
-      '@godcreator/gwb-tokens':
-        specifier: workspace:*
-        version: link:../../packages/tokens
       '@tailwindcss/cli':
         specifier: ^4.3.0
         version: 4.3.3

@@ -75,7 +75,9 @@ function classSelectors(css: string): string[] {
 
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
-  const nodeHalf = all.filter((f) => f !== CLIENT)
+  /** 吸收进来的共享 react 系（实施 Spec D7）：它们是浏览器半，裸名 react 由 importmap 钉 */
+  const VENDOR = new Set(['react.js', 'react-jsx-runtime.js', 'react-dom.js', 'react-dom-client.js'])
+  const nodeHalf = all.filter((f) => f !== CLIENT && !VENDOR.has(f))
 
   it('两半都有产物可查', () => {
     expect(nodeHalf.length).toBeGreaterThan(0)
@@ -187,7 +189,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
-      path.join(root, 'node_modules/@godcreator/gwb-tokens/dist/theme.reference.css'),
+      path.join(root, 'src/tokens/theme.reference.css'),
       'utf8',
     )
     const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')

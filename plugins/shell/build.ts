@@ -16,7 +16,7 @@ import postcss from 'postcss'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-/** 这四个名字由 gwb-shared-react 提供，跟它 package.json 里的 gwb.shared 一一对应 */
+/** 这四个名字由本包自己的 gwb.shared 提供（吸收自 gwb-shared-react，实施 Spec D7），跟 package.json 里一一对应 */
 const SHARED = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
 
 await build({
@@ -108,3 +108,94 @@ console.log(
   `[shell] dist/dockview.css ← 基础规则 + gwb theme（${Buffer.byteLength(out, 'utf8').toLocaleString()} 字节，` +
     `裁掉他们的主题省了 ${saved.toLocaleString()}）`,
 )
+
+/* ──────────────────────────────────────────────────────────
+ * 共享 react 系（吸收自 gwb-shared-react，实施 Spec D7）。
+ * react 系 CJS→ESM：用 esbuild 而不是 tsdown/rolldown——rolldown 在 browser 平台对
+ * 「CJS require 外置包」刻意保留 require，产物进浏览器即炸；esbuild 会把它提升成 import。
+ * ────────────────────────────────────────────────────────── */
+
+/** react-dom 两份把 react 外置：它俩要跟 react.js 那份是同一个实例，由页面 importmap 钉住 */
+const VENDOR = [
+  { entry: 'src/shared/react.ts', out: 'react.js', external: [] as string[] },
+  { entry: 'src/shared/react-jsx-runtime.ts', out: 'react-jsx-runtime.js', external: [] as string[] },
+  { entry: 'src/shared/react-dom.ts', out: 'react-dom.js', external: ['react'] },
+  { entry: 'src/shared/react-dom-client.ts', out: 'react-dom-client.js', external: ['react'] },
+]
+
+/**
+ * require 探针修补：react-dom 系在工厂函数**内部**调 `require('react')`（不是顶层），
+ * esbuild 提不出来，产物里留一个 `__require` 探针——浏览器没有 require，一跑就炸。
+ * 修补 = banner 提一句 import，再把探针换成只认 react 的同步解析器。
+ *
+ * 认的是 esbuild 生成代码的形状，所以**匹配不上就抛**：它哪天变了要当场知道，
+ * 不能把一份带探针的产物发出去——那要到页面上打开窗格才看得见。
+ */
+const SHIM_RE = /var __require = \/\* @__PURE__ \*\/ \(\(x\) => typeof require[\s\S]*?is not supported'\);\s*\n\}\);/
+
+function patchRequireShim(name: string): void {
+  const file = path.join(here, 'dist', name)
+  const code = fs.readFileSync(file, 'utf8')
+  if (!code.includes('__require')) return
+  if (!SHIM_RE.test(code)) {
+    throw new Error(`${name}：产物里有 __require，但补丁认不出它的形状——esbuild 变了，去对一下 SHIM_RE`)
+  }
+  const patched = code.replace(
+    SHIM_RE,
+    'var __require = (id) => {\n' +
+      // 回 default（CJS 的 module.exports 原对象）：react-dom 要摸 React 的内部件
+      '  if (id === "react") return __gwb_react.default;\n' +
+      '  throw new Error("gwb-shell：想不到的 require：" + id);\n' +
+      '};',
+  )
+  fs.writeFileSync(file, `import * as __gwb_react from "react";\n${patched}`)
+  console.log(`[shell] ${name}：require 探针已修补`)
+}
+
+for (const t of VENDOR) {
+  await build({
+    entryPoints: [t.entry],
+    outfile: path.join(here, 'dist', t.out),
+    external: t.external,
+    absWorkingDir: here,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    bundle: true,
+    minify: false,
+    legalComments: 'none',
+    define: { 'process.env.NODE_ENV': '"production"' },
+    logLevel: 'warning',
+  })
+  console.log(`[shell] dist/${t.out} ← ${t.entry}`)
+}
+
+for (const t of VENDOR) if (t.external.includes('react')) patchRequireShim(t.out)
+
+/* ──────────────────────────────────────────────────────────
+ * 令牌两张表（吸收自 gwb-tokens，实施 Spec D7）。
+ * theme.css 不跑 Tailwind 编译——这张表里没有一个工具类，只有 preflight、令牌值与两条
+ * base 规则；工具类归各个件自己在构建期编（它们引的是映射面 theme.reference.css）。
+ * ────────────────────────────────────────────────────────── */
+
+/**
+ * 层顺序由这张表声明，而且它得**第一个**加载：件的表只写 `@layer utilities { … }`、
+ * 自己不声明顺序。而 CSS 里**未分层的规则优先级高于所有分层规则**——preflight
+ * 不包进 base 层的话，它会盖掉件表里的工具类。
+ */
+const LAYERS = '@layer theme, base, components, utilities;'
+
+const preflight = fs.readFileSync(require.resolve('tailwindcss/preflight.css'), 'utf8')
+const tokensCss = fs.readFileSync(path.join(here, 'src', 'tokens', 'tokens.css'), 'utf8')
+
+fs.writeFileSync(
+  path.join(here, 'dist', 'theme.css'),
+  `${LAYERS}\n\n@layer base {\n${preflight}\n}\n\n${tokensCss}`,
+  'utf8',
+)
+
+// 映射面原样发出去：件的构建期引的就是这个形态
+fs.copyFileSync(path.join(here, 'src', 'tokens', 'theme.reference.css'), path.join(here, 'dist', 'theme.reference.css'))
+
+console.log('[shell] dist/theme.css ← preflight + src/tokens/tokens.css')
+console.log('[shell] dist/theme.reference.css ← 原样拷')

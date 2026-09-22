@@ -64,7 +64,7 @@ function shellEnv(home: string, versions: Versions): ShellEnv {
   return {
     home,
     styles: [
-      fileUrl('@godcreator/gwb-tokens/theme.css'),
+      fileUrl('@godcreator/gwb-shell/theme.css'),
       new URL('./dockview.css', import.meta.url).href,
       new URL('./style.css', import.meta.url).href,
     ],
