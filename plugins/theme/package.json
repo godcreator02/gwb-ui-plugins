@@ -25,21 +25,13 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-commands": "^0.4.5",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-settings": "^0.3.1",
-    "@godcreator/gwb-shared-react": "^0.1.1",
-    "@godcreator/gwb-shell": "^0.13.2",
-    "@godcreator/gwb-tokens": "^0.1.4",
-    "cordis": "^4.0.0-rc.9"
-  },
-  "peerDependenciesMeta": {
-    "@godcreator/gwb-shell": {
-      "optional": true
-    }
+    "@godcreator/gwb-shared-react": "^0.1.1"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-commands": "0.4.5",
     "@godcreator/gwb-settings": "0.3.1",
@@ -62,5 +54,8 @@
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
   },
-  "keywords": ["gwb", "gwb-plugin"]
+  "keywords": [
+    "gwb",
+    "gwb-plugin"
+  ]
 }

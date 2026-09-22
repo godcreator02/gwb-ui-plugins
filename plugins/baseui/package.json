@@ -1,7 +1,9 @@
 {
   "name": "@godcreator/gwb-baseui",
   "version": "0.1.7",
-  "author": {"name": "godcreator"},
+  "author": {
+    "name": "godcreator"
+  },
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。插件管理的「可装」表吃多源聚合（源徽章 + 按源下拉筛选）；设置那格适配 settings 0.3.0——枚举口不回 secret 的值，按 isSet 画「已设置 / 未设置」，「看一眼」走 settings.get 按位取明文。服务无；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
@@ -25,25 +27,12 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-logger": "^0.4.3",
     "@godcreator/gwb-plugin-api": "^0.1.2",
-    "@godcreator/gwb-plugin-manager": "^0.6.1",
-    "@godcreator/gwb-shared-react": "^0.1.1",
-    "@godcreator/gwb-shell": "^0.13.2",
-    "@godcreator/gwb-tokens": "^0.1.4",
-    "cordis": "^4.0.0-rc.9"
-  },
-  "peerDependenciesMeta": {
-    "@godcreator/gwb-logger": {
-      "optional": true
-    },
-    "@godcreator/gwb-plugin-manager": {
-      "optional": true
-    }
+    "@godcreator/gwb-shared-react": "^0.1.1"
   },
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.3",
-    "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-plugin-manager": "0.6.1",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shared-react": "workspace:*",
@@ -70,5 +59,8 @@
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
   },
-  "keywords": ["gwb", "gwb-plugin"]
+  "keywords": [
+    "gwb",
+    "gwb-plugin"
+  ]
 }

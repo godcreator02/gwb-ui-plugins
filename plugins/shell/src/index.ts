@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
-import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-plugin-api'
+import { requireKernel } from './vocab.js'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字。
 // **类型本身也在这儿 import 进来**：下面那份本文件自己的声明要用它（理由见那段注释）
 import type { GwbCommands } from '@godcreator/gwb-commands'

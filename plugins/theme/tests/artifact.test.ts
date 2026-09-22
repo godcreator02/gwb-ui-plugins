@@ -178,6 +178,7 @@ describe('包清单', () => {
     files?: string[]
     peerDependencies?: Record<string, string>
     peerDependenciesMeta?: Record<string, { optional?: boolean }>
+    devDependencies?: Record<string, string>
   }
 
   it('dist 和 src 都进了 files——client 的守卫要照着 src 扫', () => {
@@ -185,8 +186,8 @@ describe('包清单', () => {
     expect(manifest.files).toContain('src')
   })
 
-  it('外壳是可选 peer——没装外壳本件照常挂,启动样式照样全局生效', () => {
-    expect(manifest.peerDependencies?.['@godcreator/gwb-shell']).toBeDefined()
-    expect(manifest.peerDependenciesMeta?.['@godcreator/gwb-shell']?.optional).toBe(true)
+  it('外壳只进 dev（类型用途）——没装外壳本件照常挂由 inject 不含 gwbShell 保证', () => {
+    expect(manifest.peerDependencies?.['@godcreator/gwb-shell']).toBeUndefined()
+    expect(manifest.devDependencies?.['@godcreator/gwb-shell']).toBeDefined()
   })
 })
