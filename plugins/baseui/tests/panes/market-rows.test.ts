@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
 
 /**
- * 「可装」那段的纯逻辑。原先筛一份手工白名单，2026-09-08 起筛的是 **registry 检索结果**
- * ——`plugin-manager.search` 一把抓回全量，搜索框纯本地筛。acceptPackages 的判形也在这一组里。
- * 2026-09-19 起检索是**多源聚合**（官方线 + source.add 配的第三方源），行上的源徽章与
- * 聚合 note 的收窄（scopeOf / acceptNote）也钉在这组。
+ * 「可装」那一栏的纯逻辑。2026-09-08 起筛选的是 **registry 检索结果**——`plugin-sources.search`
+ * 一次取回全部结果，搜索框只在本地筛选。acceptPackages 的形状检查也在这一组里。
+ * 2026-09-19 起检索**合并多条源**（@godcreator 加上 plugin-sources.add 配的第三方源），每行的来源标签与
+ * 检索回执 note 的处理（scopeOf / acceptNote）也在这一组测。
  */
 
 const row = (pkg: string, patch: Partial<SearchRow> = {}): SearchRow => ({

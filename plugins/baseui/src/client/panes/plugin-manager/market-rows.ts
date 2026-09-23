@@ -1,17 +1,17 @@
 /**
- * 「可装」那段的纯逻辑：检索结果与已装索引的对账、搜索框的本地筛、汇总。
- * 不碰 DOM、**也不碰网络**——网络那半在 node 半（`plugins.search`），这儿只管拿到手之后的事。
+ * 「可装」那一栏的纯逻辑：检索结果与已装列表的对照、搜索框的本地筛选、汇总。
+ * 不碰 DOM、**也不碰网络**——检索由主进程里的 gwb-plugin-sources（`plugin-sources.search`）做，这里只管拿到结果之后的事。
  *
- * **不 import node 半的类型**：检索结果跨 IPC 过来，本来就得当 `unknown` 收窄一次；
- * node 半的 `search.ts` 里有一份同形的 `SearchRow`，两边各认各的（跟 `rows.ts` 对
- * `PackageView` 的规矩同一款）。
+ * **不 import 主进程插件的类型**：检索结果经 IPC 传过来，本来就要当 `unknown` 收窄一次；
+ * gwb-plugin-sources 的 `search.ts` 里有一份同样形状的 `SearchRow`，两边各写各的（和 `rows.ts` 对
+ * `PackageView` 的做法一样）。
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 一条检索结果过桥之后的样子。跟 node 半 `search.ts` 的 `SearchRow` 是同一个形状 */
+/** 一条检索结果经 IPC 传过来之后的样子。和 gwb-plugin-sources `search.ts` 的 `SearchRow` 是同一个形状 */
 export interface SearchRow {
   pkg: string
   /** registry 上的最新版 */
@@ -20,23 +20,23 @@ export interface SearchRow {
   description?: string
 }
 
-/** 包名里的 scope：`@j/gwb-x` → `@j`；裸名（没 scope）回空串。行上的源徽章从这儿来 */
+/** 包名里的 scope：`@j/gwb-x` → `@j`；没有 scope 的包名返回空串。每行的来源标签由它得出 */
 export function scopeOf(pkg: string): string {
   if (!pkg.startsWith('@')) return ''
   const cut = pkg.indexOf('/')
   return cut === -1 ? '' : pkg.slice(0, cut)
 }
 
-/** 源筛选项：scope + 该源在列里的件数 */
+/** 按源筛选的一项：scope 和这个源在列表里的插件数 */
 export interface ScopeOption {
   scope: string
   count: number
 }
 
 /**
- * 从**当前已加载的行**现推源筛选项——列里有什么源就筛什么源，一条没有的源不占位；
- * 顺序照首次出现的次序（node 半的聚合回执本来就官方线在前、其余按名排），不再另排。
- * 不去问 `source.list`：筛选项跟着眼前的表走，比跟着配置走诚实。
+ * 从**当前已加载的行**算出按源筛选的选项——列表里有什么源就列什么源，一个插件都没有的源不列；
+ * 顺序按第一次出现的先后（检索回执本来就是 @godcreator 在前、其余按名字排），不再另外排序。
+ * 不去问 `plugin-sources.list`：筛选项跟着眼前的列表走，比跟着配置走更准确。
  */
 export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
   const order: string[] = []
@@ -50,12 +50,12 @@ export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
   return order.map((scope) => ({ scope, count: counts.get(scope)! }))
 }
 
-/** 聚合回执里的 `note`：有就是「哪几条源没查成」那句，没有（或不是字符串）回空串 */
+/** 检索回执里的 `note`：有就是「哪几条源没查成」那句，没有（或不是字符串）返回空串 */
 export function acceptNote(raw: unknown): string {
   return typeof raw === 'string' ? raw : ''
 }
 
-/** 判形。**认不出的丢掉、不崩**——node 半改了形状时宁可少显示几行，不要整段白屏 */
+/** 检查形状。**认不出的丢掉、不报错**——检索回执改了形状时宁可少显示几行，也不要整栏空白 */
 export function acceptPackages(raw: unknown): SearchRow[] {
   if (!Array.isArray(raw)) return []
   const out: SearchRow[] = []
@@ -73,16 +73,16 @@ export function acceptPackages(raw: unknown): SearchRow[] {
   return out
 }
 
-/** 包名 → 它在 home 里的版本范围。`undefined` 就是没装。由窗格已取的那份 `plugins.list` 推导 */
+/** 包名 → 它在 home 里的版本范围。`undefined` 表示没装。由窗格已经取到的 `plugin-manager.list` 结果得出 */
 export type InstalledIndex = ReadonlyMap<string, string | undefined>
 
-/** 表还没取到时用的那份。**空表不等于「一个都没装」**，界面得靠别的信号分开这两种 */
+/** 表还没取到时用的那份。**空表不等于「一个都没装」**，界面要靠别的状态区分这两种情况 */
 export const NO_INDEX: InstalledIndex = new Map<string, string | undefined>()
 
 /**
- * 本件窗格已取的包行 → 已装索引。**只收 `installed === true` 那些**——那张表还会列出
- * 「cordis.yml 里有条目、可包不在 home 里」的包，那种在这一段里就是**没装**，点「装」
- * 正是该做的事。
+ * 窗格已经取到的包 → 已装列表。**只收 `installed === true` 的**——那张表还会列出
+ * 「cordis.yml 里有条目、但包不在 home 里」的包，这种在这一栏里就是**没装**，点「装」
+ * 正是应该做的事。
  */
 export function installedIndex(rows: readonly { pkg: string; installed: boolean; spec?: string }[]): InstalledIndex {
   const map = new Map<string, string | undefined>()
@@ -99,8 +99,8 @@ export interface MarketRow extends SearchRow {
 }
 
 /**
- * 搜索框的本地筛：包名与 registry 那句话一起筛，子串、不区分大小写。
- * 检索本身是挂上时一把抓回全量（这条线就几十个包），筛是纯本地的。
+ * 搜索框的本地筛选：包名与 registry 上的简介一起筛，匹配子串、不区分大小写。
+ * 检索在窗格打开时一次取回全部结果（总共几十个包），筛选完全在本地。
  * **不做正则**：写错的表达式静默匹配不到。
  */
 export function matchesQuery(row: SearchRow, query: string): boolean {
@@ -113,8 +113,8 @@ export function matchesQuery(row: SearchRow, query: string): boolean {
 }
 
 /**
- * 检索结果 + 已装的那份 → 要画的那几行。**顺序照检索结果**（node 半已按源稳定排序），装没装不参与排序。
- * `scope` 给了就先按源筛（与 `query` 的文本筛 AND 叠加）；空串＝不筛。
+ * 检索结果 + 已装列表 → 要显示的行。**顺序照检索结果**（已按源排好），装没装不参与排序。
+ * 给了 `scope` 就先按源筛（和 `query` 的文本筛选同时生效）；空串表示不筛。
  */
 export function toRows(packages: readonly SearchRow[], index: InstalledIndex, query: string, scope = ''): MarketRow[] {
   const out: MarketRow[] = []
@@ -132,11 +132,11 @@ export function toRows(packages: readonly SearchRow[], index: InstalledIndex, qu
 }
 
 export interface Summary {
-  /** registry 上这条线一共几个 */
+  /** 配好的源上一共几个 */
   total: number
-  /** 其中已经装了几条。**数的是筛选之前的全量** */
+  /** 其中已经装了几个。**数的是筛选之前的全部** */
   installed: number
-  /** 这次筛出来几行 */
+  /** 这次筛选出几行 */
   shown: number
 }
 

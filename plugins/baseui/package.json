@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "author": {
     "name": "godcreator"
   },
-  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一窗格一模块；硬注入只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律嵌套注入；只收「劈过插件的界面」，UI 即本体的插件不进。插件管理的「可装」表吃多源聚合（源徽章 + 按源下拉筛选）；设置那格适配 settings 0.3.0——枚举口不回 secret 的值，按 isSet 画「已设置 / 未设置」，「看一眼」走 settings.get 按位取明文。服务无；skill 0 份；命令 0 条。",
+  "description": "基础界面：基础插件的官方窗格（日志、插件管理），一个窗格一个模块；硬依赖只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律局部注入；只收拆掉了界面的 core 插件的窗格，界面本身就是全部功能的插件不放这里。插件管理的「可装」列表来自 plugin-sources.search，合并多条源（来源标签 + 按源筛选）；设置部分适配 settings 0.3.0——列表不返回 secret 的值，按 isSet 显示「已设置 / 未设置」，「看一眼」用 settings.get 按位置读取明文。服务无；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

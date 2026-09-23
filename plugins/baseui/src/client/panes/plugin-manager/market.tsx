@@ -9,58 +9,58 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /**
- * 「可装」那段：**全部配好的源**上有什么，就摆什么——node 半的 `plugins.search` 无参一把
- * 抓回多源全量（官方线在前、第三方按 scope 名排；某条源挂了进 `note` 点名，不塌整表），
- * 搜索框只在本地筛。
+ * 「可装」那一栏：**全部配好的源**上有什么就列什么——不带参数调一次 `plugin-sources.search`，
+ * 拿回所有源的全部结果（@godcreator 在前、第三方按 scope 名排；某条源没查成会在 `note` 里点名，
+ * 不影响别的），搜索框只在本地筛选。
  *
- * **registry 在哪儿，这段不知道也不想知道**：基址由 node 半从 pnpm 配置解析——装从哪条
- * 源来，搜就到哪去。**第三方件打源徽章**（包名里的 scope，官方线不打——满屏徽章是噪音）。
+ * **registry 地址这里不管**：由 gwb-plugin-sources 按 scope 从 npmrc 里找——从哪装就在哪搜。
+ * **第三方插件显示来源标签**（包名里的 scope；@godcreator 的不显示——满屏标签只会干扰）。
  *
- * **装的动作照旧走本件的服务**：`plugins.install`。已装的不给「再装一份」按钮：多数件
- * 是服务提供方，第二条条目会抛 `service ... has been registered` 根本挂不上。真要第二条
- * 走「已装」那段（`plugins.add-entry`）。直接装包名的框在父格头部，这儿不重复。
+ * **安装用 `plugin-manager.install`**。已装的不给「再装一份」按钮：多数插件提供服务，第二条条目会报
+ * `service ... has been registered`，加载不了。真要第二条，去「已装」那一栏用 `plugin-manager.add-entry`。
+ * 直接输入包名安装的输入框在窗格顶部，这里不重复。
  */
 
-const SEARCH = 'plugin-manager.search'
+const SEARCH = 'plugin-sources.search'
 const INSTALL = 'plugin-manager.install'
 
-/** 源下拉里「不筛」那个哨兵——radix 的 SelectItem 不收空串 value */
+/** 源下拉里「不筛」那一项——radix 的 SelectItem 不接受空串 value */
 const ALL_SOURCES = 'all'
 
-/** 父格给的那几样。host 按形状收（正本在 shell 件的 client/types.ts） */
+/** 父窗格传进来的东西。host 只按用到的形状声明（完整类型在 shell 插件的 client/types.ts） */
 export interface MarketTabProps {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
-  /** 已装的包 → 版本范围。null 是「表还没取到」，那时装没装一概不显示 */
+  /** 已装的包 → 版本范围。null 表示「表还没取到」，那时装没装一概不显示 */
   installed: InstalledIndex | null
-  /** 父格在忙着别的操作时整段禁用 */
+  /** 父窗格在做别的操作时，整栏禁用 */
   busy: boolean
-  /** 装成了一个之后喊父格重取表——没有事件推送，不重取的话「已装」那段会停在旧样子上 */
+  /** 装成一个之后通知父窗格重新取表——没有事件推送，不重新取的话「已装」那一栏会停在旧的样子 */
   onChanged: () => Promise<void> | void
-  /** radix 浮层挂哪（跟着本桌面走），正本在 shell 件的窗格契约 */
+  /** radix 弹出层放在哪个元素下（跟着本窗格所在的桌面），约定在 shell 插件的窗格接口里 */
   portal: HTMLElement
 }
 
 export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTabProps): ReactElement {
   const [query, setQuery] = useState('')
-  /** 源筛选：ALL_SOURCES＝不筛。选项从已加载的行现推，不问配置 */
+  /** 按源筛选：ALL_SOURCES 表示不筛。选项从已加载的行里算出来，不读配置 */
   const [source, setSource] = useState(ALL_SOURCES)
-  /** null 是「还没查到」。跟「查到了、源上一个都没有」（空数组）分得开 */
+  /** null 表示「还没查到」，和「查到了、源上一个都没有」（空数组）分得开 */
   const [rows, setRows] = useState<SearchRow[] | null>(null)
-  /** 聚合回执的 note：哪几条源没查成（好源照常）。空串＝没有坏源 */
+  /** 检索回执的 note：哪几条源没查成（其余照常）。空串表示都查成了 */
   const [sourceNote, setSourceNote] = useState('')
-  /** 查询本身没成的那句话。跟「装失败」（按包名放在行上）分开 */
+  /** 检索本身没成时的那句话。和「安装失败」（按包名显示在那一行上）分开 */
   const [loadError, setLoadError] = useState('')
   const [loading, setLoading] = useState(false)
-  /** 正在装的那个包名。空串是没在装——pnpm 要几秒到几十秒，这段时间整段禁用 */
+  /** 正在安装的包名。空串表示没在安装——pnpm 要几秒到几十秒，这段时间整栏禁用 */
   const [busyPkg, setBusyPkg] = useState('')
-  /** 装失败的原话，按包名放。**就地显示全文**：pnpm 输出的尾巴就在这里头 */
+  /** 安装失败的原话，按包名存。**在那一行显示全文**：pnpm 输出的最后几行就在里面 */
   const [failed, setFailed] = useState<Record<string, string>>({})
-  /** 刚装成的那句话 */
+  /** 刚装成时的那句话 */
   const [done, setDone] = useState('')
 
   /**
-   * 查一遍 registry。命令的信封里还套着一层回执（search 自己的 ok/error），同样不吞。
-   * **查完不本地筛**——筛由 query 的派生做，这儿只管把全量摆上。
+   * 查一遍 registry。命令返回的结果里还包着一层回执（search 自己的 ok/error），两层的错误都要显示。
+   * **查完不在这里筛选**——筛选由 query 算出，这里只负责把全部结果放上去。
    */
   const searchNow = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -101,8 +101,8 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
   }, [searchNow])
 
   /**
-   * 装一个包。**装完一定喊父格重取**——没有事件推送，不重取的话这一行会停在「装」上，
-   * 而那正是「点了没反应」这种最难查的现象。
+   * 装一个包。**装完一定通知父窗格重新取表**——没有事件推送，不重新取的话这一行会一直显示「装」，
+   * 看起来就是「点了没反应」，这种现象最难查。
    */
   const install = async (pkg: string): Promise<void> => {
     setBusyPkg(pkg)
@@ -115,14 +115,14 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
     try {
       const result = asResult(await host.call(INSTALL, { pkg }))
       if (result.ok) {
-        // peer 没装上时件本身照样是装上了的，可那条得跟着说——不说就是一条会扑空的依赖
+        // peer 没装上时插件本身照样装上了，但要把没装上的 peer 说出来——不说的话，那条依赖运行时会找不到
         const peers = describePeers(result.data)
-        const line = `${pkg} 装上了，条目也加进 cordis.yml 了。挂上没有去「已装」那段看。${peers.line}`
+        const line = `${pkg} 装上了，条目也加进 cordis.yml 了。加载成功没有，去「已装」那一栏看。${peers.line}`
         if (peers.ok) setDone(line)
         else setFailed((prev) => ({ ...prev, [pkg]: line }))
         await onChanged()
       }
-      // error 里带着 pnpm 输出的尾巴，一个字都不许吞
+      // error 里带着 pnpm 输出的最后几行，一个字都不能丢
       else setFailed((prev) => ({ ...prev, [pkg]: result.error ?? '' }))
     } catch (err: unknown) {
       setFailed((prev) => ({ ...prev, [pkg]: String(err) }))
@@ -130,11 +130,11 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
     setBusyPkg('')
   }
 
-  /** 表还没取到时按只读摆：装没装一概不说 */
+  /** 表还没取到时只读显示：装没装一概不显示 */
   const readOnly = installed === null
   const index = installed ?? NO_INDEX
   const scopes = useMemo(() => scopeOptions(rows ?? []), [rows])
-  /** 选中的源在重查后没了（那条源撤了或没件了）——当没筛，别留一个选不回去的死值 */
+  /** 选中的源在重新检索后没了（那条源删了或上面没有插件了）——当作不筛，别留一个选不回去的值 */
   const active = source === ALL_SOURCES || scopes.some((one) => one.scope === source) ? source : ALL_SOURCES
   const shown = useMemo(() => toRows(rows ?? [], index, query, active === ALL_SOURCES ? '' : active), [rows, index, query, active])
   const summary = useMemo(() => summarize(rows ?? [], index, shown), [rows, index, shown])
@@ -167,7 +167,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         <span className="baseui:shrink-0 baseui:text-xs baseui:text-muted-foreground">
           {rows === null
             ? '查 registry…'
-            : `${String(summary.total)} 个 gwb 件 · 已装 ${String(summary.installed)}${
+            : `${String(summary.total)} 个 gwb 插件 · 已装 ${String(summary.installed)}${
                 query.trim() === '' && active === ALL_SOURCES
                   ? ''
                   : ` · 筛出 ${String(summary.shown)}`
@@ -201,8 +201,11 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
 
       {loadError !== '' && (
         <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
-          <p className="baseui:text-sm baseui:text-destructive">查不到 registry，下面空着不是没有件。</p>
+          <p className="baseui:text-sm baseui:text-destructive">查不到 registry，下面空着不代表没有插件。</p>
           <p className="baseui:mt-1 baseui:whitespace-pre-wrap baseui:break-all baseui:text-xs baseui:text-destructive">{loadError}</p>
+          <p className="baseui:mt-1 baseui:text-xs baseui:text-muted-foreground">
+            搜索由 @godcreator/gwb-plugin-sources 提供；没装它时这里查不到，可以用顶部的「直接装包名」先装上它。
+          </p>
         </div>
       )}
 
@@ -210,8 +213,8 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         {rows !== null && shown.length === 0 && (
           <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">
             {query.trim() === '' && active === ALL_SOURCES
-              ? '配好的源上一个 gwb 件都没有。'
-              : `配好的源里没有同时过「${[active === ALL_SOURCES ? null : active, query.trim() === '' ? null : query.trim()].filter((part): part is string => part !== null).join('」+「')}」这两道筛的（共 ${String(summary.total)} 个）。放宽一道试试，清单外的包名直接用上面那个「直接装包名」。`}
+              ? '配好的源上一个 gwb 插件都没有。'
+              : `配好的源里没有同时满足「${[active === ALL_SOURCES ? null : active, query.trim() === '' ? null : query.trim()].filter((part): part is string => part !== null).join('」+「')}」这两个筛选条件的（共 ${String(summary.total)} 个）。放宽一个条件试试；列表里没有的包名，用顶部的「直接装包名」。`}
           </p>
         )}
 
@@ -220,11 +223,11 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
             <div className="baseui:flex baseui:items-baseline baseui:gap-2">
               <span className="baseui:font-mono baseui:text-sm baseui:break-all">{row.pkg}</span>
               {scopeOf(row.pkg) !== '' && scopeOf(row.pkg) !== '@godcreator' && (
-                // 官方线不打徽章——满屏徽章是噪音；第三方件亮出它来自哪条源
+                // @godcreator 的不显示标签——满屏标签只会干扰；第三方插件显示它来自哪条源
                 <Badge
                   variant="outline"
                   className="baseui:shrink-0"
-                  title="第三方源上的件（这个 scope 是 plugin-manager.source.add 配的）"
+                  title="第三方源上的插件（这个 scope 是用 plugin-sources.add 配的）"
                 >
                   {scopeOf(row.pkg)}
                 </Badge>
@@ -237,14 +240,14 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
               <span className="baseui:flex-1" />
 
               {readOnly ? null : row.installed ? (
-                // **已装的灰掉、写「已装」，不给「再装一份」按钮**：多数件是服务提供方，
-                // 第二条条目会抛 service ... has been registered 根本挂不上
+                // **已装的显示为灰色「已装」，不给「再装一份」按钮**：多数插件提供服务，
+                // 第二条条目会报 service ... has been registered，加载不了
                 <span className="baseui:flex baseui:items-baseline baseui:gap-2">
                   {row.spec !== undefined && <span className="baseui:font-mono baseui:text-xs baseui:text-muted-foreground">{row.spec}</span>}
                   <Badge
                     variant="outline"
                     className="baseui:opacity-60"
-                    title="这个包在 home 里了。要给它多挂一条条目，去「已装」那段走 plugins.add-entry"
+                    title="这个包已经在 home 里了。要给它多加一条条目，去「已装」那一栏用 plugin-manager.add-entry"
                   >
                     已装
                   </Badge>
@@ -266,7 +269,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
               <p className="baseui:mt-0.5 baseui:text-xs baseui:text-muted-foreground">{row.description}</p>
             )}
 
-            {/* 失败就地显示**全文**：pnpm 输出的尾巴就在这里头，截一半等于没有 */}
+            {/* 失败时在这一行显示**全文**：pnpm 输出的最后几行就在里面，只显示一半等于没有 */}
             {failed[row.pkg] !== undefined && (
               <pre className="baseui:mt-1 baseui:rounded-md baseui:bg-destructive/10 baseui:p-2 baseui:text-xs baseui:whitespace-pre-wrap baseui:break-all baseui:text-destructive">
                 {failed[row.pkg]}

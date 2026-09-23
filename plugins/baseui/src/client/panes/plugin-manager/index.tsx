@@ -75,25 +75,25 @@ import {
 } from '@/components/ui/alert-dialog'
 
 /**
- * 浏览器半：插件管理那一格，**装卸与设置在同一格**。
+ * 页面上的插件管理窗格，**安装卸载与设置在同一个窗格里**。
  *
- * 一格两段：**「已装」与「可装」**。已装那条骨架是「一条目一条横条」，点开是那件自己的
- * 设置项——找一个件的设置，人先想到的是「哪个件」而不是「哪个分区」；`settings.all` 交
- * 出来的按 section 平铺的表不是给人读的，join 到条目上它才是。可装那段是 **registry 检索**
- * （`plugin-manager.search`，装从哪条源来搜就到哪去），见 `market.tsx`。段切换之上摆着「直接装
- * 包名」的框——检索结果之外的包名，两段里都走它。
+ * 窗格分两栏：**「已装」与「可装」**。「已装」每条条目一行，点开是那个插件自己的设置项——找一个
+ * 插件的设置，人先想到的是「哪个插件」而不是「哪个分区」；`settings.all` 返回的按 section 平铺的表
+ * 不适合人读，按条目对应起来才适合。「可装」是 **registry 检索**（`plugin-sources.search`，
+ * 从哪条源装就在哪条源搜），见 `market.tsx`。两栏上方是「直接装包名」的输入框——检索结果以外的包名，
+ * 两栏都用它装。
  *
- * 三层数据各走各的命令，取表谁挂了就取谁的：
- * - `plugin-manager.list`：包 → 条目两层，装卸启停全在这层
- * - `settings.all`：设置项与「设过没有」，按 section（home 级 = 条目裸 id，machine 级 = 包名）
- *   join。**secret 行自 settings 0.3.0 起不回值**（只回 `isSet` 与掩码），要看明文走按位取用
- *   的 `settings.get`——「看一眼」那颗按钮就是它。非 secret 行的值照旧
- * - `shell.plugins`：件自己 describe 的显示名与图标，认不出就回退
+ * 三类数据各用各的命令，哪一类没取到就只缺那一类：
+ * - `plugin-manager.list`：包 → 条目两层，安装、卸载、启用、停用都在这一层
+ * - `settings.all`：设置项与「设过没有」，按 section（home 级 = 条目 id，machine 级 = 包名）
+ *   对应到条目上。**secret 项自 settings 0.3.0 起不返回值**（只返回 `isSet` 与遮掉的值），要看明文用按位置读取
+ *   的 `settings.get`——「看一眼」那个按钮就是它。非 secret 项的值照常返回
+ * - `shell.plugins`：插件自己报的显示名与图标，没有就用包名
  *
- * 另有 `plugin-manager.outdated` 查新版本：窗格挂上自动查一次，「检查更新」随时重查；查出来的
- * 按包名 join 到条目卡上。有过期包时「全部更新」才亮——先在格内列 `from → to` 确认，再调
- * `plugin-manager.update-all` 一键热升（不重启），回执贴上来；页面随后会被 `shell.reload` 整页重载，
- * 所以那之前 busy 态一直挂着。没有事件推送，所以每次操作完把该重取的都重取一遍。
+ * 另有 `plugin-manager.outdated` 查新版本：窗格打开时自动查一次，「检查更新」随时重查；查出来的结果
+ * 按包名对应到条目卡上。有过期包时「全部更新」才亮——先在窗格里列出 `from → to` 确认，再调
+ * `plugin-manager.update-all` 一键热升（不重启），显示回执；页面随后会被 `shell.reload` 整页重新加载，
+ * 所以在那之前一直保持忙碌状态。没有事件推送，所以每次操作完都把需要重新取的数据重新取一遍。
  */
 
 const PANE_ID = 'plugin-manager'
