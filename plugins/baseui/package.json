@@ -32,7 +32,7 @@
   "devDependencies": {
     "@godcreator/gwb-logger": "0.4.3",
     "@godcreator/gwb-plugin-api": "^0.2.7",
-    "@godcreator/gwb-plugin-manager": "0.6.1",
+    "@godcreator/gwb-plugin-manager": "0.7.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",

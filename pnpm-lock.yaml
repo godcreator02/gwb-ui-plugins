@@ -85,8 +85,8 @@ importers:
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-plugin-manager':
-        specifier: 0.6.1
-        version: 0.6.1(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
+        specifier: 0.7.0
+        version: 0.7.0(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -722,10 +722,10 @@ packages:
     peerDependencies:
       cordis: ^4.0.0-rc.9
 
-  '@godcreator/gwb-plugin-manager@0.6.1':
-    resolution: {integrity: sha512-uyTddOdwER9lpjt3Yr16zbmXb1wf9+R4n4nO2K+xLEbZcYb2IQ1CnhHHwONtcStESO+J1PHmNryhDVW5claVcQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-manager/-/0.6.1/gwb-plugin-manager-0.6.1.tgz}
+  '@godcreator/gwb-plugin-manager@0.7.0':
+    resolution: {integrity: sha512-knmmM/N8SCcq1Dy6nnir9gD9v+e4WXQFsUQrR2j5WPH0Nnyfdl07ZmyFtXhyCJrV5kt9yHryavCw9LmmF/JQGA==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-manager/-/0.7.0/gwb-plugin-manager-0.7.0.tgz}
     peerDependencies:
-      '@godcreator/gwb-plugin-api': ^0.1.2
+      '@godcreator/gwb-plugin-api': ^0.2.7
       cordis: ^4.0.0-rc.9
 
   '@godcreator/gwb-repo-kit@0.3.0':
@@ -3979,7 +3979,7 @@ snapshots:
     dependencies:
       cordis: 4.0.0-rc.9
 
-  '@godcreator/gwb-plugin-manager@0.6.1(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
+  '@godcreator/gwb-plugin-manager@0.7.0(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
     dependencies:
       '@godcreator/gwb-plugin-api': 0.2.7(cordis@4.0.0-rc.9)
       cordis: 4.0.0-rc.9
