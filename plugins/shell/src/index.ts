@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
-import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
 import type { GwbDataApi } from '@godcreator/gwb-data'
@@ -218,7 +218,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerEnvCommand(commandBus: GwbCommands): void {
     // Electron 主进程的 process.versions 带 electron / chrome，@types/node 的形状里没有
     const runtimeVersions = process.versions as unknown as RuntimeVersions
-    const versions = versionsOf(this.kernel.version, readFileSync(MANIFEST_URL, 'utf8'), runtimeVersions)
+    const versions = versionsOf(this.kernel, readFileSync(MANIFEST_URL, 'utf8'), runtimeVersions)
     const envWithoutStartupCss = shellEnvWithoutStartupCss(this.kernel.dataDir, versions)
     this.registerCommand(
       commandBus,
@@ -226,7 +226,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: ENV_COMMAND,
         description: '外壳浏览器侧开机要的环境（home、样式表的地址、用户外观样式、版本）',
         usage:
-          '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
+          '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, launcher?, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），launcher 取 gwbKernel.launcherVersion（安装包的版本，内核从源码启动或安装包早于 0.3.1 时没有这一项），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
       },
       async (): Promise<ShellEnv> => {
         const userStartupCss = await startupCss(commandBus)
@@ -416,7 +416,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: OPEN_PANE_COMMAND,
         description: '打开一个窗格（任何插件的）',
         usage:
-          "参数 { entryId, paneId, key?, params?, preview?, from?, placement? }——entryId+paneId 是注册表的键（用 shell.panes 查），选项与插件开自己窗格时相同：key 命中本桌已开的那份就激活、preview 放进目标组的预览窗格、params 随这一份保存；from 是来源窗格的实例 id（插件手上的 pane.instance），新窗格开在它旁边、它那张桌面上，页面上找不到就当没给；placement 'auto'（缺省，按目标组规则）或 'side'（开到来源旁边，没有来源就是活动组旁边）。从不切桌面。窗格容器在页面上，回执 ok 代表转发了不是开完了",
+          "参数 { entryId, paneId, key?, params?, preview?, from?, placement? }——entryId+paneId 是注册表的键（用 shell.panes 查），选项与插件开自己窗格时相同：key 命中当前桌面已开的那份就激活、preview 放进目标组的预览窗格、params 随这一份保存；from 是来源窗格的实例 id（插件手上的 pane.instance），新窗格开在它旁边、它那张桌面上，页面上找不到就当没给；placement 'auto'（缺省，按目标组规则）或 'side'（开到来源旁边，没有来源就是活动组旁边）。从不切桌面。窗格容器在页面上，回执 ok 代表转发了不是开完了",
       },
       (args) => {
         const parsed = parseOpenPaneArgs(args)

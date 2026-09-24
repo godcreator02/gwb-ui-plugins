@@ -66,14 +66,15 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 来源：gwb-kernel（内核仓），2026-09-24。
 
 内核 0.5.0 起词汇表包 `@godcreator/gwb-plugin-api` 不再发布，它的类型（`GwbContext`、`GwbKernelApi`、`GwbResult`、`GwbWindowApi`、`ShellBoot`、`window.gwb` 的全局声明）
-改由内核包 `@godcreator/gwb-kernel-desktop` 的包根导出。baseui、shell、theme 三个插件都要改：
+改由内核包 `@godcreator/gwb-kernel-desktop` 的包根导出。shell 已在 0.13.8 改完（2026-09-25，见轨迹卡「状态栏两个版本」），baseui、theme 还要改：
 
-- `import type { … } from '@godcreator/gwb-plugin-api'` 改成 `from '@godcreator/gwb-kernel-desktop'`（`import type {} from '@godcreator/gwb-plugin-api'` 也一样改），本仓有 9 个文件；`tests/artifact.test.ts` 里允许出现的 `@godcreator/gwb-plugin-api` 一并换掉
+- `import type { … } from '@godcreator/gwb-plugin-api'` 改成 `from '@godcreator/gwb-kernel-desktop'`（`import type {} from '@godcreator/gwb-plugin-api'` 也一样改）：baseui 的 `src/index.ts` 与 `src/client/panes/logger/index.tsx`、theme 的 `src/index.ts`；两个 `tests/artifact.test.ts` 里 node 侧允许的包名 import 去掉词汇表包、不换成内核包（内核包的包根一加载就启动 Electron 应用，只能 `import type`，产物里不该出现它）
 - devDependencies 删掉词汇表包：内核包已经写在 peer 里，pnpm 会把它装进包的 node_modules，类型检查从那里取
-- peer 里内核包的范围（baseui 是 `^0.4.0`，shell、theme 是 `^0.4.1`）改成 `^0.5.0`，在跑内核 0.5.0 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
-- 页面 importmap 只剩内核包 `gwb.shared` 里的名字（react 的四个），内核不再收集别的包的 `gwb.shared`。本仓没有包写 `gwb.shared`，但三个插件的 `build.ts` 与 `tests/artifact.test.ts` 里 `SHARED` 是手写的四个名字，改成从内核包清单读（devkit 模板的做法）
+- peer 里内核包的范围（baseui 是 `^0.4.0`，theme 是 `^0.4.1`）改成 `^0.5.0` 起，在跑内核 0.5 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
+- 两个插件的 `build.ts` 与 `tests/artifact.test.ts` 里 `SHARED` 是手写的四个名字，改成从内核包清单的 `gwb.shared` 读（shell 的 `build.ts` 已是这个写法）
+- theme 的 dev 里命令总线已改到 `^0.5.0`（仓里类型检查要求和 shell 用同一条线）；baseui 发版前还要先做下面插件管理 0.9、0.10 两条
 
-内核 0.5.0 发布之后再改；改的时候照说明书 `gwb-release` 升各插件自己的版本号。
+改的时候照说明书 `gwb-release` 升各插件自己的版本号。
 
 ## 2026-09-24 要跟插件管理 0.9：用到的插件改写进 peer，list 换成 unmetPeers，update-all 回执加 dependents
 

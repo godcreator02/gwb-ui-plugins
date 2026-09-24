@@ -185,11 +185,11 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 - 浏览器侧调命令用 `args.host.call(name, args)`
 - `mountPane` 用到的类型都从 `@godcreator/gwb-shell/pane` `import type`：`PaneArgs`、`PaneHandle`、`ShellBridge`、
   `HostBridge`，以及 `OpenPaneOptions`、`Placement`、`PaneKind`、`PaneContent`。这个子路径只有类型，按值 import 在构建时报错
-- 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-plugin-api'`
+- 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-kernel-desktop'`（内核包的包根一加载就启动 Electron 应用，只能写 `import type`）
 
 ## 规矩
 
-- peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围（带界面的插件从 `^0.4.1` 起：页面的 react 由它提供），node 侧按值 import 了 `cordis` 再写 `cordis`；外壳、词汇表包、react 与组件依赖写 dev——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
+- peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围（带界面的插件从 `^0.4.1` 起：页面的 react 由它提供；内核的接口类型也从它的包根 `import type`），node 侧按值 import 了 `cordis` 再写 `cordis`；外壳、react 与组件依赖写 dev——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
 - 浏览器侧构建产物里的包名 import 只留 react 的四个包名（内核包 `gwb.shared` 的键），其余依赖打包进 `client.js`——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
 - 外置名单在构建时从装好的内核包清单 `gwb.shared` 读——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
 - 只引类型写 `import type`——devkit 仓 `docs-site/content/docs/rules/deps.mdx`

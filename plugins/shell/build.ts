@@ -6,24 +6,30 @@ import { build } from 'esbuild'
 import postcss from 'postcss'
 
 /**
- * 浏览器半打包，外加拼那张**不 scope** 的样式表。
+ * 浏览器侧打包，再拼出几张样式表（dockview 那张不按选择器限定范围）。
  *
- * react 系**外置**——它们由页面 importmap 解析到内核包打包好的那一份，插件之间用同一个实例；
- * dockview 一律**打进本束**：它不在 importmap 里，外置成裸名就是运行期
+ * react 的几个包名**外置**——它们由页面 importmap 解析到内核包打包好的那一份，插件之间用同一个实例；
+ * dockview 一律**打包进 client.js**：它不在 importmap 里，外置成包名就是运行时
  * 「Failed to resolve module specifier」。
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-/** 这四个名字由内核包的 gwb.shared 提供 */
-const SHARED = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
+/** 外置名单只从提供方读：react 的包名由内核包提供，名单是它清单里 gwb.shared 的键（peer 写了内核包，pnpm 装在本包的 node_modules 里） */
+function sharedNamesOfKernel(): string[] {
+  const manifestPath = require.resolve('@godcreator/gwb-kernel-desktop/package.json')
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { gwb?: { shared?: Record<string, string> } }
+  const shared = manifest.gwb?.shared
+  if (shared === undefined) throw new Error(`${manifestPath} 里没有 gwb.shared：装的内核包版本不提供 react`)
+  return Object.keys(shared)
+}
 
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: SHARED,
-  // shadcn 拉下来的组件写的是 @/… 这种别名,跟 components.json 与两份 tsconfig 的
+  external: sharedNamesOfKernel(),
+  // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的
   // paths 是同一条约定（都指 src/client）
   alias: { '@': path.join(here, 'src', 'client') },
   absWorkingDir: here,
@@ -41,8 +47,8 @@ await build({
 console.log('[shell] dist/client.js ← src/client/index.tsx')
 
 /**
- * `dist/pane-icons.json` = 打进 client.js 的那份 lucide-react 的全集导出名 + 版本。node 半登记
- * 窗格时拿它认图标名：标签画得出哪些、登记就认哪些，两边吃的是同一份 lucide。
+ * `dist/pane-icons.json` = 打包进 client.js 的那份 lucide-react 的全部导出名 + 版本。node 侧登记
+ * 窗格时拿它认图标名：标签画得出哪些、登记就认哪些，两边用的是同一份 lucide。
  */
 const lucideDir = path.dirname(require.resolve('lucide-react/package.json'))
 const lucideVersion = (JSON.parse(fs.readFileSync(path.join(lucideDir, 'package.json'), 'utf8')) as { version: string }).version
@@ -56,17 +62,13 @@ fs.writeFileSync(
 console.log(`[shell] dist/pane-icons.json ← lucide-react ${lucideVersion}（${iconKeys.length} 枚）`)
 
 /**
- * `dist/dockview.css` = **裁过的** dockview 基础规则 + 我们自己那套 theme。
+ * `dist/dockview.css` = **裁剪过的** dockview 基础规则 + 我们自己那套主题。
  *
- * dockview 自带 18 套主题，我们一套都不挂——所以凡是**选择器里带 `.dockview-` 的块**
- * 整个剔掉。那不只是 18 套配色：`.dockview-spaced` 这个 modifier 也在其中，它装着圆角与
- * 间距的落地规则（我们那张 theme 表把用得上的复刻了一份）。
+ * dockview 自带 18 套主题，我们一套都不用——所以凡是**选择器里带 `.dockview-` 的规则**
+ * 整条删掉。那不只是 18 套配色：`.dockview-spaced` 这个 modifier 也在其中，它带着圆角与
+ * 间距的规则（我们的主题表把用得上的照写了一份）。
  *
- * **按选择器裁，不是按行猜**。第三刀写过「原表整张带上一行不裁——基础规则与主题规则
- * 交错着，裁错一条的症状是某个交互没样式」，那条判据当时成立：那时我们挂着它的
- * `dockview-theme-light`，没有可靠的切分依据。现在一个内置主题都不用了，整类可以按
- * 选择器整体剔除，风险从「猜」变成了「解析」。
- *
+ * **按选择器裁剪，不按行猜**：一个内置主题都不用，整类规则可以按选择器整体删除。
  * 用 postcss 解析、**不用字符串数括号**：CSS 的注释与字符串里都可能有括号。
  */
 const dockviewCss = require.resolve('dockview-react/dist/styles/dockview.css')
@@ -94,9 +96,9 @@ base.walkRules((rule) => {
 const baseCss = base.toString()
 
 const head =
-  `/* 由 build.ts 拼装：**裁过的** dockview 基础规则 + gwb 自己那套 theme。\n` +
-  ` * 它自带的 18 套主题连同 .dockview-spaced 那个 modifier 一起裁掉了——我们一套都不挂。\n` +
-  ` * 这张不 scope（.dv-* 不经我们的手，门户元素在 body 下）。\n` +
+  `/* 由 build.ts 拼装：**裁剪过的** dockview 基础规则 + gwb 自己那套主题。\n` +
+  ` * 它自带的 18 套主题连同 .dockview-spaced 那个 modifier 一起删掉了——我们一套都不用。\n` +
+  ` * 这张不按选择器限定范围（.dv-* 由 dockview 自己创建，portal 元素在 body 下）。\n` +
   ` * 改主题改 src/client/dockview-theme.css 重新构建，别手改这份 */\n`
 const out = head + baseCss + '\n' + themeCss
 const outFile = path.join(here, 'dist', 'dockview.css')
@@ -110,15 +112,15 @@ console.log(
 )
 
 /* ──────────────────────────────────────────────────────────
- * 令牌两张表（吸收自 gwb-tokens，实施 Spec D7）。
- * theme.css 不跑 Tailwind 编译——这张表里没有一个工具类，只有 preflight、令牌值与两条
- * base 规则；工具类归各个件自己在构建期编（它们引的是映射面 theme.reference.css）。
+ * 令牌的两张表。
+ * theme.css 不经 Tailwind 编译——这张表里没有一个工具类，只有 preflight、令牌值与两条
+ * base 规则；工具类由各个插件在自己构建时编译（它们引用的是映射表 theme.reference.css）。
  * ────────────────────────────────────────────────────────── */
 
 /**
- * 层顺序由这张表声明，而且它得**第一个**加载：件的表只写 `@layer utilities { … }`、
+ * 层顺序由这张表声明，而且它得**第一个**加载：插件的样式表只写 `@layer utilities { … }`、
  * 自己不声明顺序。而 CSS 里**未分层的规则优先级高于所有分层规则**——preflight
- * 不包进 base 层的话，它会盖掉件表里的工具类。
+ * 不包进 base 层的话，它会盖掉插件样式表里的工具类。
  */
 const LAYERS = '@layer theme, base, components, utilities;'
 
@@ -131,8 +133,8 @@ fs.writeFileSync(
   'utf8',
 )
 
-// 映射面原样发出去：件的构建期引的就是这个形态
+// 映射表原样发布：插件构建时引用的就是这份
 fs.copyFileSync(path.join(here, 'src', 'tokens', 'theme.reference.css'), path.join(here, 'dist', 'theme.reference.css'))
 
 console.log('[shell] dist/theme.css ← preflight + src/tokens/tokens.css')
-console.log('[shell] dist/theme.reference.css ← 原样拷')
+console.log('[shell] dist/theme.reference.css ← 原样复制')

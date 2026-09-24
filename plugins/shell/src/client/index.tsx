@@ -9,7 +9,7 @@ import {
   type SerializedDockview,
 } from 'dockview-react'
 // 页面上 `window.gwb` 的类型：词汇表包的全局声明，import 它就生效
-import type {} from '@godcreator/gwb-plugin-api'
+import type {} from '@godcreator/gwb-kernel-desktop'
 import { GwbTab } from './GwbTab.js'
 import { StatusBar, type LaunchGroup } from './StatusBar.js'
 import { PluginPanel } from './plugin-panel.js'

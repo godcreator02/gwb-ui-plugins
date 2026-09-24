@@ -472,7 +472,7 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 
 **不从主入口 `@godcreator/gwb-shell` 导出**，两个原因：
 
-- 主入口的声明 `dist/index.d.ts` 是 node 侧的：它引 `cordis`、`@godcreator/gwb-plugin-api`、`@godcreator/gwb-commands`、
+- 主入口的声明 `dist/index.d.ts` 是 node 侧的：它引 `cordis`、内核包 `@godcreator/gwb-kernel-desktop`（接口类型）、`@godcreator/gwb-commands`、
   `@godcreator/gwb-data` 的类型，还带着给 cordis `Context` 加字段的 `declare module 'cordis'`。浏览器侧 `import type`
   主入口，这些包全部进入浏览器侧的类型检查，调用方得把它们都列进 dev
 - `ShellBridge.portal` 是 `HTMLElement`，node 侧 tsconfig 没有 DOM 类型库，主入口转导出这几个类型当场报 TS2304；
@@ -708,15 +708,14 @@ orthogonalize 那个分支），贴的是整个容器的边、整片重新分宽
 | **桌面**（切换器） | 这一项上写当前桌面的名字；点开是[「桌面」面板](#桌面面板所有桌面与上面的窗格)：所有桌面与上面的窗格，点桌面切过去、点窗格激活，右键桌面名改名、删除钮先确认，拖窗格就送到别的桌面，最下面「新建桌面…」（这一行变内联输入框，空名由外壳用「桌面 N」补上，**新建的那张为空**——窗格由人自己开）。容器常驻保活，切走的那张原样活着 |
 | **布局** | 已存布局清单：点哪条就把哪条恢复到**活动那个容器**上、行尾 ✕ 删哪条；「把当前布局另存为…」（这一行变内联输入框，Enter 保存、Esc 取消、**同名覆盖**）；「重置布局（当前桌面回到默认布局）」：关掉当前桌面的窗格、按默认布局重新打开 |
 | **＋ 新建**（启动器） | 点开时**当场取**注册表与插件名表，按插件分组列出全部窗格；文档窗格选了就在当前桌面的活动组开一份新的；工具窗格全页一份——当前桌面开着就激活，开在别的桌面就**切过去**激活，哪儿都没有就开进活动组。**每一行行尾写点下去会怎样**：「＋」开一份新的，「→ 当前桌面」「→ 桌面 X」去已开的那份（那几行左边一道色条）。**选了之后菜单不关**，当场重新读取清单，点外面或 Esc 才关 |
-| **环境**（home · 版本） | 一项显示两样，都只读：home 目录的最后一段（一眼看出自己在哪个 home 里，开测试 home 时不用翻日志）与 `gwb <内核版>`（发行包就叫这个名字）；悬停列 home 全路径与内核、外壳、Electron · Node、Chromium |
+| **环境**（home · 版本） | 一项显示两样，都只读：home 目录的最后一段（一眼看出自己在哪个 home 里，开测试 home 时不用翻日志）与 `gwb-electron <安装包版> · gwb-kernel <内核版>`（安装包与内核分开发版，两个版本号都要看得到）；悬停列 home 全路径与安装包、内核、外壳、Electron · Node、Chromium。内核报不出安装包版本时写「未知」，悬停提示说明原因 |
 | **刷新** | `location.reload()` 重新加载整个页面——重新读取注册表、按布局文件恢复布局，主进程不重启。页面「boot 之后注册表就旧了」的手动解决办法 |
 | **亮暗** | 切 `html.dark`，令牌整套跟着换 |
 | （告警）**布局保存失败** | 只在保存失败时出现，点一下立刻重试 |
 | （提示）**… · 切过去** | 显示 10 秒，点一下切到那张桌面：送到别的桌面、没跟过去时写「已送到『X』」；插件或命令开的工具窗格在别的桌面上时写「『插件管理』在『X』」（经桌面操作的 `notify`） |
 
-**版本各自问出处**：内核版取 `gwbKernel.version`——内核读自己包清单报的，外壳不拿
-`app.getVersion()` 去猜（那是应用壳的清单，安装版里对不对全靠打包渲染）；外壳版读本包清单；
-Electron / Node / Chromium 是主进程的 `process.versions`。三样在 node 侧回应 `shell.env` 时拼好，
+**版本各自问出处**：内核版取 `gwbKernel.version`——内核读自己包清单报的；安装包版取 `gwbKernel.launcherVersion`——启动器把自己的版本交给内核，内核转交出来，外壳不自己调 `app.getVersion()` 去猜（从源码启动内核时那是别的包的清单）。内核从源码启动、或安装包早于 0.3.1 时没有 `launcherVersion`，内核分不出是哪一种，状态栏就写「未知」。外壳版读本包清单；
+Electron / Node / Chromium 是主进程的 `process.versions`。这几样在 node 侧回应 `shell.env` 时拼好，
 浏览器侧只负责显示：
 
 {/* ref file="../plugins/shell/src/versions.ts" */}

@@ -7,9 +7,9 @@ import { describe, expect, it } from 'vitest'
 /**
  * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
  *
- * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis 与词汇表包
- * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许** react 那四个包名——它们由
- *   页面 importmap 解析到内核包。多一个（比如 dockview 被误配成 external）就是运行时
+ * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis
+ * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许**内核包 `gwb.shared` 里的 react 包名——
+ *   它们由页面 importmap 解析到内核包。多一个（比如 dockview 被误配成 external）就是运行时
  *   一句 `Failed to resolve module specifier`，而那要打开窗格才看得见
  * - **子路径 `./pane`**（`dist/types/`，tsc 只输出声明）：只有 d.ts，引用到的文件里没有包名 import
  *
@@ -19,8 +19,14 @@ import { describe, expect, it } from 'vitest'
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-/** 内核给页面 importmap 提供的那四个，跟 build.ts 的 SHARED 一一对应 */
-const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
+/** 浏览器侧产物里允许留下的包名 import：内核包清单 gwb.shared 里声明的键，与 build.ts 外置的是同一份名单 */
+function sharedNamesOfKernel(): Set<string> {
+  const manifestPath = createRequire(import.meta.url).resolve('@godcreator/gwb-kernel-desktop/package.json')
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { gwb?: { shared?: Record<string, string> } }
+  const shared = manifest.gwb?.shared
+  if (shared === undefined) throw new Error(`${manifestPath} 里没有 gwb.shared：装的内核包版本不提供 react`)
+  return new Set(Object.keys(shared))
+}
 
 const CLIENT = 'client.js'
 
@@ -89,8 +95,8 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('node 侧：包名 import 只许 cordis 与词汇表包——Service 基类必须是宿主那一份，requireKernel 是真函数', () => {
-    const allowed = new Set(['cordis', '@godcreator/gwb-plugin-api'])
+  it('node 侧：包名 import 只许 cordis——Service 基类必须是 home 里那一份；内核包的包根一加载就启动 Electron 应用，只能 import type', () => {
+    const allowed = new Set(['cordis'])
     const bare: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), BARE)) {
@@ -100,8 +106,9 @@ describe.skipIf(!built)('产物', () => {
     expect(bare).toEqual([])
   })
 
-  it('浏览器侧：包名 import 只许 react 那四个，dockview 得打包进 client.js', () => {
-    const leaked = specsIn(read(CLIENT), BARE).filter((s) => !SHARED.has(s))
+  it('浏览器侧：包名 import 只许内核包 gwb.shared 里的名字，dockview 得打包进 client.js', () => {
+    const shared = sharedNamesOfKernel()
+    const leaked = specsIn(read(CLIENT), BARE).filter((s) => !shared.has(s))
     expect(leaked).toEqual([])
   })
 

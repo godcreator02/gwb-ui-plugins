@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.13.7",
+  "version": "0.13.8",
   "author": {
     "name": "godcreator"
   },
@@ -40,15 +40,14 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；0.4.1 起内核给页面 importmap 提供 react。命令总线、数据、词汇表包只取类型，写在 dev 里",
+  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；0.5.1 起内核报安装包的版本（gwbKernel.launcherVersion），状态栏要用。接口类型从内核包的包根 import type；命令总线、数据、说明书插件只取类型，写在 dev 里",
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-kernel-desktop": "^0.5.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "^0.4.5",
+    "@godcreator/gwb-commands": "^0.5.0",
     "@godcreator/gwb-data": "^0.1.5",
-    "@godcreator/gwb-plugin-api": "^0.4.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "^0.4.3",
     "@tailwindcss/cli": "^4.3.0",

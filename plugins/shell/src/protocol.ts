@@ -14,6 +14,8 @@ export const PANE_SYNC_COMMAND = 'shell.pane.sync'
 export interface Versions {
   /** `gwbKernel.version`，内核读自己的包清单报的 */
   kernel: string
+  /** `gwbKernel.launcherVersion`，安装包（启动器）的版本；内核从源码启动、或安装包早于 0.3.1 时没有 */
+  launcher?: string
   /** 外壳包清单里的版本 */
   shell: string
   /** 主进程 `process.versions` 里的三项 */
