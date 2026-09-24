@@ -1,9 +1,6 @@
 /**
- * 浏览器侧用到的类型。`bootShell` 的参数由内核的渲染层拼出，内核在另一个仓里，这里按形状声明、不引内核的类型。
- * `OpenPaneOptions` 从 `openable.ts` 引：`planOpen` 与窗格插件用的是同一个形状，各写一份就会不一致。
- *
- * `HostBridge` / `ShellBridge` / `PaneHandle` / `PaneArgs` 经子路径 `@godcreator/gwb-shell/pane`（`pane-api.ts`）
- * 对外导出，窗格插件 `import type` 它们——改这几个类型就是改外壳对插件的接口。
+ * `bootShell` 的参数由内核渲染层拼出，按形状声明、不引内核的类型。
+ * `HostBridge` / `ShellBridge` / `PaneHandle` / `PaneArgs` 经子路径 `@godcreator/gwb-shell/pane` 导出，改它们就是改外壳对插件的接口
  */
 
 import type { OpenPaneOptions, PaneKind } from '../openable.js'
