@@ -23,7 +23,7 @@ docfirst: none
 先逐条注销、再释放——顺序反过来的话分组可能已经删除，注销不起作用，而分组没删除的情况正是这几行
 要解决的。
 
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="121-132" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="90-99" */}
 
 同时定下的两条语义：`emit` 在 `release` 之后**什么都不做、也不报错**（外壳的清理顺序是「先让插件
 dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍然有效）；分组里存监听函数用的是 `Set`，
@@ -94,9 +94,9 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 迁移 shell 那批纯逻辑时遇到两条。**规则本身没错，是这两处代码故意违反它**：
 
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="92-106" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="68-80" */}
 
-- **`unicorn/no-useless-spread`** —— `for (const fn of [...set])` 那份拷贝是有意的：监听函数
+- **`unicorn/no-useless-spread`** —— `for (const listener of [...listenersOfType])` 那份拷贝是有意的：监听函数
   收到事件后注销自己是常见情况，直接遍历正在被修改的集合会漏掉或重复。规则看不出「遍历期间集合会被改」
 - **`unicorn/no-thenable`** —— 测试里 `describeHandle({ then() {} })` **故意**造一个
   thenable，检查的正是「遇到这种对象也认得出来」。规则防的是无意中把对象写成 thenable
@@ -422,7 +422,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 设置的正是分支的逻辑尺寸，渲染出来回到原高，多给出去的高度从同一列的其他组那里扣回。两组叠放、三组叠放时的
 上中下位置，加上根节点是纵向的情况，六种布局测下来，其他组的宽高偏差都不到 1px。
 
-{/* ref file="../plugins/shell/src/client/open.ts" lines="292-303" */}
+{/* ref file="../plugins/shell/src/client/open.ts" lines="260-271" */}
 
 ### 产物测试的正则要锚定在行首，否则会被 dockview 自己的错误消息误导
 

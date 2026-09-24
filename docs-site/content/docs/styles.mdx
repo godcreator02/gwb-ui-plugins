@@ -201,7 +201,7 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 **第一步：内核注入 importmap，然后才 import 外壳的浏览器端代码。** 顺序反了，外壳顶层那句
 `import { … } from 'react'` 就解析不到。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="736-742" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="636-640" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home、三张样式表的地址，外加这一刻的用户外观样式
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
@@ -220,17 +220,17 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 用户自己写的那段 CSS 要能覆盖令牌的默认值，同权重下靠文档顺序决定谁生效，所以它得是 head 里靠后的那张；
 而「重启后启动即生效」要求它在第一帧之前插入页面。
 
-{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="11-28" */}
+{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="6-18" */}
 
 **第五步：加上 `.dark`、加上身份标记，然后 `createRoot`。** 深色是默认状态，令牌的暗色那一套在这里
 生效。身份标记只用来辨认，不参与任何选择器（第四节「窗格容器上那两样东西」还会再说一遍）。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="681-692" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="594-602" */}
 
 **第六步：开一个窗格时**——从注册表里取这个插件注册时提供的两个地址 → **先注入它的样式表、等它加载完成**
 → 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="158-187" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="137-165" */}
 
 最后一步里「等它加载完成再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 发生在样式表加载完成之前，那一瞬间是一堆没有样式的元素。这两件事因此放在同一个清理单元里——拆成两处
@@ -434,7 +434,7 @@ import，只 import `components/` 下的共享组件。
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="242-254" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="209-211" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：
