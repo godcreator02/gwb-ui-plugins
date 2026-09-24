@@ -1,49 +1,43 @@
 import { PLUGIN_COMPONENT } from './panels.js'
 
-/**
- * 窗格清单：「此刻开着哪些窗格」的一行一个形状。切换器（状态栏「桌面」面板）列它，`shell.pane.list`
- * 回它。挂着的桌面从活井现摘，**没挂过的桌面从落盘的那份布局里读**（开机只挂活动那张，别的
- * 桌面没切去过就没有井）。纯模块，两半共用，node 里直接测。
- */
-
-/** 清单里的一行 */
+/** 窗格清单里的一行：「桌面」面板列它，`shell.pane.list` 回它 */
 export interface PaneEntry {
-  /** 这一份的实例 id（`pane.instance`），全页唯一 */
+  /** 实例 id（`pane.instance`），全页唯一 */
   instance: string
   desktop: string
-  /** 它在哪一组（dockview 的 group id，桌面内唯一） */
+  /** dockview 的 group id，桌面内唯一 */
   group: string
   pkg: string
   entryId: string
   paneId: string
-  /** 此刻装的内容（上报过就是上报的那个） */
+  /** 此刻装的内容，上报过就是上报的那个 */
   key: string
   title: string
   icon?: string
   preview: boolean
-  /** 它是不是那一组的活动标签 */
+  /** 是不是那一组的活动标签 */
   active: boolean
 }
 
-/** 一份面板在本模块眼里的样子：活井里的面板与落盘的面板都摆得成这样 */
+/** 正在运行的容器里的面板与布局文件里的面板都能整理成这个形状 */
 export interface PanelView {
   id: string
   title?: string
   params?: Record<string, unknown>
 }
 
-function str(value: unknown): string | undefined {
+function stringOrUndefined(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-/** 一份面板 → 一行。不是插件窗格（params 缺识别三件套）回 undefined */
+/** params 缺外壳的身份字段（不是插件窗格）回 undefined */
 export function entryOf(desktop: string, group: string, panel: PanelView, active: boolean): PaneEntry | undefined {
-  const p = panel.params ?? {}
-  const pkg = str(p.pluginKey)
-  const entryId = str(p.entryId)
-  const paneId = str(p.paneId)
+  const params = panel.params ?? {}
+  const pkg = stringOrUndefined(params.pluginKey)
+  const entryId = stringOrUndefined(params.entryId)
+  const paneId = stringOrUndefined(params.paneId)
   if (pkg === undefined || entryId === undefined || paneId === undefined) return undefined
-  const icon = str(p.icon)
+  const icon = stringOrUndefined(params.icon)
   return {
     instance: panel.id,
     desktop,
@@ -51,10 +45,10 @@ export function entryOf(desktop: string, group: string, panel: PanelView, active
     pkg,
     entryId,
     paneId,
-    key: str(p.key) ?? '',
+    key: stringOrUndefined(params.key) ?? '',
     title: panel.title ?? panel.id,
     ...(icon === undefined ? {} : { icon }),
-    preview: p.preview === true,
+    preview: params.preview === true,
     active,
   }
 }
@@ -63,54 +57,57 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** 落盘布局里的组（grid 的叶子），按深度优先的顺序 */
-function leavesOf(node: unknown, out: { id: string; views: string[]; activeView?: string }[]): void {
+interface SavedGroup {
+  id: string
+  views: string[]
+  activeView?: string
+}
+
+/** 布局文件里 grid 的叶子（组），深度优先 */
+function collectSavedGroups(node: unknown, savedGroups: SavedGroup[]): void {
   if (!isObject(node)) return
   if (node.type === 'leaf' && isObject(node.data)) {
-    const views = Array.isArray(node.data.views) ? node.data.views.filter((v): v is string => typeof v === 'string') : []
-    const id = str(node.data.id) ?? ''
-    const activeView = str(node.data.activeView)
-    out.push({ id, views, ...(activeView === undefined ? {} : { activeView }) })
+    const views = Array.isArray(node.data.views) ? node.data.views.filter((view): view is string => typeof view === 'string') : []
+    const id = stringOrUndefined(node.data.id) ?? ''
+    const activeView = stringOrUndefined(node.data.activeView)
+    savedGroups.push({ id, views, ...(activeView === undefined ? {} : { activeView }) })
     return
   }
-  if (node.type === 'branch' && Array.isArray(node.data)) for (const child of node.data) leavesOf(child, out)
+  if (node.type === 'branch' && Array.isArray(node.data)) for (const child of node.data) collectSavedGroups(child, savedGroups)
 }
 
 /**
- * 没挂过的桌面：从它落盘的那份 dockview `toJSON()` 里读出开着的窗格。形状归 dockview，这儿只读
- * 用得着的几格（grid 的叶子与 panels 表），认不出的一律略过——清单少一行比切换器整个打不开强。
+ * 没挂载过的桌面：从它保存的 dockview `toJSON()` 里读出开着的窗格。只读 grid 的叶子与 panels 表，
+ * 认不出的一律跳过——清单少一行好过「桌面」面板整个打不开
  */
 export function entriesOfLayout(desktop: string, layout: Record<string, unknown> | null): PaneEntry[] {
   if (layout === null || !isObject(layout.grid) || !isObject(layout.panels)) return []
-  const panels = layout.panels
-  const leaves: { id: string; views: string[]; activeView?: string }[] = []
-  leavesOf(layout.grid.root, leaves)
-  const rows: PaneEntry[] = []
-  for (const leaf of leaves) {
-    for (const id of leaf.views) {
-      const raw = panels[id]
-      if (!isObject(raw) || raw.contentComponent !== PLUGIN_COMPONENT) continue
-      const title = str(raw.title)
-      const row = entryOf(
+  const savedPanels = layout.panels
+  const savedGroups: SavedGroup[] = []
+  collectSavedGroups(layout.grid.root, savedGroups)
+  const entries: PaneEntry[] = []
+  for (const savedGroup of savedGroups) {
+    for (const panelId of savedGroup.views) {
+      const savedPanel = savedPanels[panelId]
+      if (!isObject(savedPanel) || savedPanel.contentComponent !== PLUGIN_COMPONENT) continue
+      const title = stringOrUndefined(savedPanel.title)
+      const entry = entryOf(
         desktop,
-        leaf.id,
-        { id, ...(title === undefined ? {} : { title }), ...(isObject(raw.params) ? { params: raw.params } : {}) },
-        leaf.activeView === id,
+        savedGroup.id,
+        { id: panelId, ...(title === undefined ? {} : { title }), ...(isObject(savedPanel.params) ? { params: savedPanel.params } : {}) },
+        savedGroup.activeView === panelId,
       )
-      if (row !== undefined) rows.push(row)
+      if (entry !== undefined) entries.push(entry)
     }
   }
-  return rows
+  return entries
 }
 
-/**
- * 标签菜单「关闭其他」「关闭右侧」要关哪几个：`order` 是这一组的标签顺序。自己不在这一组
- * （菜单开着时被拖走了）就什么都不关——关错别人的标签比少关一个难收拾得多。
- */
+/** 「关闭其他」「关闭右侧」要关哪几个；自己已不在这一组（菜单开着时被拖走了）就什么都不关 */
 export function tabsToClose(order: readonly string[], self: string, which: 'others' | 'right'): string[] {
-  const at = order.indexOf(self)
-  if (at < 0) return []
-  return which === 'others' ? order.filter((id) => id !== self) : order.slice(at + 1)
+  const selfIndex = order.indexOf(self)
+  if (selfIndex < 0) return []
+  return which === 'others' ? order.filter((id) => id !== self) : order.slice(selfIndex + 1)
 }
 
 /** 「桌面」面板里的一段：一张桌面与它上面的窗格 */
@@ -121,27 +118,21 @@ export interface DeskSection {
   rows: PaneEntry[]
 }
 
-/**
- * 按桌面分段，**照桌面本来的顺序**（像任务视图：桌面的位置不随当前那张变，删当前桌面切左邻
- * 说的「左」也是这个顺序），当前那张标「当前」；空桌面也列出来——窗格要能往上拖
- */
+/** 照桌面本来的顺序，不把当前那张提前；空桌面也列出来，窗格要能拖上去 */
 export function desktopSections(
   desktops: readonly { id: string; name: string }[],
   current: string,
   rows: readonly PaneEntry[],
 ): DeskSection[] {
-  return desktops.map((d) => ({
-    desktop: d.id,
-    name: d.name,
-    current: d.id === current,
-    rows: rows.filter((r) => r.desktop === d.id),
+  return desktops.map((desktop) => ({
+    desktop: desktop.id,
+    name: desktop.name,
+    current: desktop.id === current,
+    rows: rows.filter((row) => row.desktop === desktop.id),
   }))
 }
 
-/**
- * 拖着的窗格能不能放到这张桌面上：放回它本来在的那张不算送到；认不出它在哪张（拖的不是窗格，
- * 或者页面上找不到它）不接。当前桌面照接——把别的桌面上的窗格放到当前桌面上就是拉到本桌
- */
+/** 放回它本来那张不接，认不出它在哪张不接；当前桌面照接，那就是拉到本桌 */
 export function acceptsDrop(from: string | undefined, to: string): boolean {
   return from !== undefined && from !== to
 }
