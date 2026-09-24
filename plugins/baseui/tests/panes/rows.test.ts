@@ -166,39 +166,39 @@ describe('两层行', () => {
 })
 
 describe('没在当前内核上测过', () => {
-  it('testedKernel 与 kernelUntested 原样收下；kernelUntested 只认 true', () => {
+  it('kernelRange 与 kernelUntested 原样收下；kernelUntested 只认 true', () => {
     const got = acceptPackages([
-      { ...pkg(), testedKernel: '0.2.1', kernelUntested: true },
+      { ...pkg(), kernelRange: '^0.2.1', kernelUntested: true },
       { ...pkg({ pkg: 'b' }), kernelUntested: 'yes' },
     ])
-    expect(got[0]).toMatchObject({ testedKernel: '0.2.1', kernelUntested: true })
+    expect(got[0]).toMatchObject({ kernelRange: '^0.2.1', kernelUntested: true })
     expect(got[1]!.kernelUntested).toBe(false)
-    expect(got[1]!.testedKernel).toBeUndefined()
+    expect(got[1]!.kernelRange).toBeUndefined()
   })
 
-  it('空串的 testedKernel 当没声明', () => {
-    expect(acceptPackages([{ ...pkg(), testedKernel: '', kernelUntested: true }])[0]!.testedKernel).toBeUndefined()
+  it('空串的 kernelRange 当没声明', () => {
+    expect(acceptPackages([{ ...pkg(), kernelRange: '', kernelUntested: true }])[0]!.kernelRange).toBeUndefined()
   })
 
   it('toRows 把两个字段带到包那一行上', () => {
-    const row = toRows([pkg({ testedKernel: '0.1.0', kernelUntested: true })])[0]!
-    expect(row).toMatchObject({ testedKernel: '0.1.0', kernelUntested: true })
+    const row = toRows([pkg({ kernelRange: '^0.1.0', kernelUntested: true })])[0]!
+    expect(row).toMatchObject({ kernelRange: '^0.1.0', kernelUntested: true })
   })
 
   it('测过的包不标', () => {
-    expect(kernelTestMark({ kernelUntested: false, testedKernel: '0.2.1' })).toBeUndefined()
+    expect(kernelTestMark({ kernelUntested: false, kernelRange: '^0.3.0' })).toBeUndefined()
   })
 
-  it('没测过：标记上显示声明的内核版本号', () => {
-    const mark = kernelTestMark({ kernelUntested: true, testedKernel: '0.1.0' })!
-    expect(mark.text).toContain('0.1.0')
-    expect(mark.hint).toContain('0.1.0')
+  it('没测过：标记上显示声明的内核版本范围', () => {
+    const mark = kernelTestMark({ kernelUntested: true, kernelRange: '^0.1.0' })!
+    expect(mark.text).toContain('^0.1.0')
+    expect(mark.hint).toContain('^0.1.0')
   })
 
-  it('没声明：标记上写「未声明」', () => {
+  it('没声明：标记上写「未声明」，提示写在 peer 里', () => {
     const mark = kernelTestMark({ kernelUntested: true })!
     expect(mark.text).toContain('未声明')
-    expect(mark.hint).toContain('gwb.testedKernel')
+    expect(mark.hint).toContain('@godcreator/gwb-kernel-desktop')
   })
 })
 

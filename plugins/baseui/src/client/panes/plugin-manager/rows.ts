@@ -29,9 +29,9 @@ export interface PackageView {
   spec?: string
   installed: boolean
   entries: EntryView[]
-  /** 包的 `gwb.testedKernel`；没声明时没有这个字段 */
-  testedKernel?: string
-  /** 没在当前内核的版本线上测过（含没声明、声明的不是合法版本号） */
+  /** 包的 peerDependencies 里内核包 `@godcreator/gwb-kernel-desktop` 的范围；没声明时没有这个字段 */
+  kernelRange?: string
+  /** 范围不包含运行中的内核（含没声明、写的不是 ^x.y.z） */
   kernelUntested: boolean
 }
 
@@ -71,8 +71,8 @@ function acceptPackage(item: unknown): PackageView | undefined {
   const view: PackageView = { pkg, installed: item['installed'] === true, entries: acceptEntryList(item['entries']), kernelUntested: item['kernelUntested'] === true }
   const spec = item['spec']
   if (typeof spec === 'string') view.spec = spec
-  const testedKernel = item['testedKernel']
-  if (typeof testedKernel === 'string' && testedKernel !== '') view.testedKernel = testedKernel
+  const kernelRange = item['kernelRange']
+  if (typeof kernelRange === 'string' && kernelRange !== '') view.kernelRange = kernelRange
   return view
 }
 
@@ -160,7 +160,7 @@ export interface PackageRow {
   /** 包这一层的一句话，没有就不显示 */
   note?: string
   noteHint?: string
-  testedKernel?: string
+  kernelRange?: string
   kernelUntested: boolean
 }
 
@@ -176,7 +176,7 @@ function packageRowOf(view: PackageView): PackageRow | undefined {
     kernelUntested: view.kernelUntested,
   }
   if (view.spec !== undefined) row.spec = view.spec
-  if (view.testedKernel !== undefined) row.testedKernel = view.testedKernel
+  if (view.kernelRange !== undefined) row.kernelRange = view.kernelRange
   if (entries.length === 0) {
     // 如实说「没有条目」，不说「未启用」：跟「有条目但停用了」是两回事
     row.note = '没有条目'
@@ -201,16 +201,15 @@ export interface KernelTestMark {
   hint: string
 }
 
-/** 在当前内核的版本线上测过的包不标，回 undefined */
-export function kernelTestMark(row: Pick<PackageRow, 'kernelUntested' | 'testedKernel'>): KernelTestMark | undefined {
+/** 声明的范围包含当前内核的包不标，回 undefined */
+export function kernelTestMark(row: Pick<PackageRow, 'kernelUntested' | 'kernelRange'>): KernelTestMark | undefined {
   if (!row.kernelUntested) return undefined
-  const testedKernelText = row.testedKernel ?? '未声明'
   return {
-    text: `内核未测过 · ${testedKernelText}`,
+    text: `内核未测过 · ${row.kernelRange ?? '未声明'}`,
     hint:
-      row.testedKernel === undefined
-        ? '这个包的 package.json 没有声明 gwb.testedKernel（在哪个内核版本上测过），不知道它在当前内核上能不能用。不等于加载不了，出了问题先怀疑它'
-        : `这个包声明在内核 ${row.testedKernel} 上测过，和运行中的内核不在同一条版本线上（主版本号为 0 时比前两位，≥1 时只比主版本号）。不等于加载不了，出了问题先怀疑它`,
+      row.kernelRange === undefined
+        ? '这个包的 package.json 没有在 peerDependencies 里写内核包 @godcreator/gwb-kernel-desktop 的版本范围，不知道它在当前内核上能不能用。不等于加载不了，出了问题先怀疑它'
+        : `这个包声明兼容的内核是 ${row.kernelRange}，不包含运行中的内核（主版本号为 0 时次版本号要相同，≥1 时主版本号要相同，都不能低于下限）。不等于加载不了，出了问题先怀疑它`,
   }
 }
 
