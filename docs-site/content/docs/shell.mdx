@@ -54,10 +54,12 @@ export function apply(ctx: GwbContext) {
 `kind` 写错照 `tool` 进表、登记那一刻 `gwb.log` 里 warn 一句；`shell.panes` 的回执每条都带它。
 它只住注册表、不进面板 params，布局文件里没有它。
 
-**给人看的名字归运行时**（`describeSelf`），不进包清单——包清单里没人读的字段死掉时
-没有任何机制会发现。包清单里有人读的只剩 `gwb.shell` 与 `gwb.shared` 两个字段，外加
-`gwb.provides`（本件提供哪些服务、各自的一句话与用法：`devkit.services` 读它，repo-kit 的自述守卫钉它与
-源码里提供的服务互为充要——本件就一条 `gwbShell`）。
+**给人看的名字归运行时**（`describeSelf`），不写进包清单——包清单里没人读的字段失效时
+没有任何机制会发现。「我是外壳」也不写在包清单里，由 node 端调 `kernel.setShell` 声明。
+包清单 `gwb` 下有人读的只有三个字段：`gwb.shared`（给页面 importmap 的 react 四个裸名）、
+`gwb.provides`（本插件提供哪些服务、各自的一句话与用法：`devkit.services` 读它，repo-kit 的自述检查要求它与
+源码里提供的服务一一对应——本插件就一条 `gwbShell`）、`gwb.testedKernel`（本插件在哪个内核版本上测过：
+插件管理的 `plugin-manager.list` 据此标出没在当前内核上测过的插件，`devkit.release` 没写就拒发）。
 
 **跟 `gwb-commands` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：插件卸载时表上
 那几条自动摘掉。它们仍然回注销函数，那是给要提前摘的场景。

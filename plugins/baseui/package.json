@@ -19,7 +19,10 @@
     "dist",
     "src"
   ],
-  "//gwb": "没有 gwb 字段。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
+  "//gwb": "只有 testedKernel（这个插件在哪个内核版本上测过）。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
+  "gwb": {
+    "testedKernel": "0.2.7"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",

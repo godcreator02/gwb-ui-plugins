@@ -19,6 +19,9 @@
     "dist",
     "src"
   ],
+  "gwb": {
+    "testedKernel": "0.2.7"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
