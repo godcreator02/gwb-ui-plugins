@@ -8,6 +8,8 @@ import {
   type IDockviewPanelProps,
   type SerializedDockview,
 } from 'dockview-react'
+// 页面上 `window.gwb` 的类型：词汇表包的全局声明，import 它就生效
+import type {} from '@godcreator/gwb-plugin-api'
 import { GwbTab } from './GwbTab.js'
 import { StatusBar, type LaunchGroup } from './StatusBar.js'
 import { PluginPanel } from './plugin-panel.js'
@@ -629,17 +631,6 @@ function shellHandle(root: HTMLElement, prepare: Prepare): { dispose(): void } {
 /** 已有环境时的入口；默认导出问完 `shell.env` 也走这里 */
 export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void } {
   return shellHandle(root, () => prepareShell(args, root))
-}
-
-/** 页面上 `window.gwb` 里用到的两个方法，按形状声明 */
-declare global {
-  interface Window {
-    gwb: {
-      command(command: string, args?: unknown): Promise<unknown>
-      /** node 侧 gwbKernel.emit 推的事件都从这里收 */
-      on(listener: (payload: unknown) => void): () => void
-    }
-  }
 }
 
 /**
