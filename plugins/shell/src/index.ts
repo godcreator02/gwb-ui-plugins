@@ -199,7 +199,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerLayoutCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
-      { name: LAYOUT_GET_COMMAND, description: '外壳的布局文件（各桌面的布局、当前桌面、已存布局）', usage: '没存过回 null。无参数' },
+      { name: LAYOUT_GET_COMMAND, description: '外壳的布局文件（各桌面的布局、当前桌面、已存布局）', usage: '没存过回 undefined。无参数' },
       () => this.ctx.gwbData.readDoc(LAYOUT_DOC),
     )
     this.registerCommand(
