@@ -1,9 +1,9 @@
 /**
  * 「可装」那一栏的纯逻辑：检索结果与已装列表的对照、搜索框的本地筛选、汇总。
- * 不碰 DOM、**也不碰网络**——检索由主进程里的 gwb-plugin-sources（`plugin-sources.search`）做，这里只管拿到结果之后的事。
+ * 不碰 DOM、**也不碰网络**——检索由主进程里的插件管理（`plugin-manager.search`）做，这里只管拿到结果之后的事。
  *
- * **不 import 主进程插件的类型**：检索结果经 IPC 传过来，本来就要当 `unknown` 收窄一次；
- * gwb-plugin-sources 的 `search.ts` 里有一份同样形状的 `SearchRow`，两边各写各的（和 `rows.ts` 对
+ * **不 import 插件管理的类型**：检索结果经 IPC 传过来，本来就要当 `unknown` 收窄一次；
+ * 插件管理里有一份同样形状的 `SearchRow`，两边各写各的（和 `rows.ts` 对
  * `PackageView` 的做法一样）。
  */
 
@@ -11,7 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 一条检索结果经 IPC 传过来之后的样子。和 gwb-plugin-sources `search.ts` 的 `SearchRow` 是同一个形状 */
+/** 一条检索结果经 IPC 传过来之后的样子。和插件管理的 `SearchRow` 是同一个形状 */
 export interface SearchRow {
   pkg: string
   /** registry 上的最新版 */
@@ -36,7 +36,7 @@ export interface ScopeOption {
 /**
  * 从**当前已加载的行**算出按源筛选的选项——列表里有什么源就列什么源，一个插件都没有的源不列；
  * 顺序按第一次出现的先后（检索回执本来就是 @godcreator 在前、其余按名字排），不再另外排序。
- * 不去问 `plugin-sources.list`：筛选项跟着眼前的列表走，比跟着配置走更准确。
+ * 不去问 `plugin-manager.source.list`：筛选项跟着眼前的列表走，比跟着配置走更准确。
  */
 export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
   const order: string[] = []

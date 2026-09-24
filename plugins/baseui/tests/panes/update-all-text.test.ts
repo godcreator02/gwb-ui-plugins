@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { describeUpdateAll } from '../../src/client/panes/plugin-manager/update-all'
 
-/** 回执 → 窗格上的几行话。形状按 node 半的 UpdateAllResult 收，认不出的丢、不崩 */
+/** 回执 → 窗格上的几行话。形状按插件管理的 UpdateAllResult 收，认不出的丢掉、不崩 */
 
 describe('describeUpdateAll', () => {
-  it('升了几个包逐包一行，条目带去向与状态；reload 决定 busy 态撤不撤', () => {
+  it('升了几个包逐包一行，条目带处理结果与状态；reload 决定忙碌状态撤不撤', () => {
     const view = describeUpdateAll({
       ok: true,
       data: {
@@ -29,12 +29,12 @@ describe('describeUpdateAll', () => {
     expect(view.text.split('\n')).toEqual([
       '升了 2 个包：',
       '@x/gwb-hello 0.2.0 → 0.2.1：hello（remounted，ACTIVE）、hello-2（skipped，disabled）',
-      '@x/gwb-tokens 0.0.5 → 0.0.6（没挂条目）',
+      '@x/gwb-tokens 0.0.5 → 0.0.6（没有条目）',
       '界面已整页重载',
     ])
   })
 
-  it('自己也升了：说一声这一格会先关再开，重载是随后的', () => {
+  it('自己也升了：说一声这个窗格会先关再开，重载是随后的', () => {
     const view = describeUpdateAll({
       ok: true,
       data: { updated: [{ pkg: '@x/gwb-plugins', from: '0.2.1', to: '0.3.0', entries: [] }], selfDeferred: true, reload: 'deferred', note: '命令表里没有 shell.reload，界面要手动刷新' },
@@ -45,16 +45,25 @@ describe('describeUpdateAll', () => {
     expect(view.text).toContain('手动刷新')
   })
 
-  it('全都最新：贴 note，不是 busy', () => {
+  it('全都最新：显示 note，不进忙碌状态', () => {
     const view = describeUpdateAll({ ok: true, data: { updated: [], selfDeferred: false, note: '全都最新' } })
     expect(view).toEqual({ ok: true, text: '全都最新', reloading: false })
   })
 
-  it('没成：error 带上 tail，不吞', () => {
-    const view = describeUpdateAll({ ok: false, error: 'pnpm add 没成（退出码 1）', data: { ok: false, tail: 'ERR_PNPM_NO_MATCHING_VERSION' } })
+  it('单个包的「更新」（only）不在过期清单里：显示 note', () => {
+    const note = '全都最新；only 里这几个不在过期清单里，没动：@x/gwb-hello'
+    expect(describeUpdateAll({ ok: true, data: { updated: [], selfDeferred: false, note } }).text).toBe(note)
+  })
+
+  it('没成：error 里已经带着 pnpm 输出的最后几行，原样显示，不再拼一遍 data.tail', () => {
+    const view = describeUpdateAll({
+      ok: false,
+      error: 'pnpm add 没成（退出码 1）。一条条目都没动\nERR_PNPM_NO_MATCHING_VERSION',
+      data: { ok: false, tail: 'ERR_PNPM_NO_MATCHING_VERSION' },
+    })
     expect(view.ok).toBe(false)
     expect(view.reloading).toBe(false)
-    expect(view.text).toBe('pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION')
+    expect(view.text).toBe('pnpm add 没成（退出码 1）。一条条目都没动\nERR_PNPM_NO_MATCHING_VERSION')
   })
 
   it('data 形状坏了也不崩', () => {

@@ -30,9 +30,11 @@ import { cn } from 'cn'
 import {
   acceptPackages,
   asResult,
+  kernelTestMark,
   summarize,
   toRows,
   type EntryRow,
+  type KernelTestMark,
   type PackageRow,
 } from './rows'
 import {
@@ -50,7 +52,6 @@ import {
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
-import { describePeers } from './peers'
 import { describeUpdateAll } from './update-all'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -79,29 +80,31 @@ import {
  *
  * 窗格分两栏：**「已装」与「可装」**。「已装」每条条目一行，点开是那个插件自己的设置项——找一个
  * 插件的设置，人先想到的是「哪个插件」而不是「哪个分区」；`settings.all` 返回的按 section 平铺的表
- * 不适合人读，按条目对应起来才适合。「可装」是 **registry 检索**（`plugin-sources.search`，
+ * 不适合人读，按条目对应起来才适合。「可装」是 **registry 检索**（`plugin-manager.search`，
  * 从哪条源装就在哪条源搜），见 `market.tsx`。两栏上方是「直接装包名」的输入框——检索结果以外的包名，
  * 两栏都用它装。
  *
  * 三类数据各用各的命令，哪一类没取到就只缺那一类：
- * - `plugin-manager.list`：包 → 条目两层，安装、卸载、启用、停用都在这一层
+ * - `plugin-manager.list`：包 → 条目两层，安装、卸载、启用、停用都在这一层；每个包还带
+ *   `kernelUntested` / `testedKernel`，没在当前内核上测过的包在条目上标出来
  * - `settings.all`：设置项与「设过没有」，按 section（home 级 = 条目 id，machine 级 = 包名）
  *   对应到条目上。**secret 项自 settings 0.3.0 起不返回值**（只返回 `isSet` 与遮掉的值），要看明文用按位置读取
  *   的 `settings.get`——「看一眼」那个按钮就是它。非 secret 项的值照常返回
  * - `shell.plugins`：插件自己报的显示名与图标，没有就用包名
  *
  * 另有 `plugin-manager.outdated` 查新版本：窗格打开时自动查一次，「检查更新」随时重查；查出来的结果
- * 按包名对应到条目卡上。有过期包时「全部更新」才亮——先在窗格里列出 `from → to` 确认，再调
- * `plugin-manager.update-all` 一键热升（不重启），显示回执；页面随后会被 `shell.reload` 整页重新加载，
- * 所以在那之前一直保持忙碌状态。没有事件推送，所以每次操作完都把需要重新取的数据重新取一遍。
+ * 按包名对应到条目卡上。升级只有 `plugin-manager.update-all` 一条命令（一键热升，不重启）：「全部更新」
+ * 先在窗格里列出 `from → to` 确认再调它；条目卡上的「更新」给它 `{ only: [包名] }` 只升这一个包。
+ * 页面随后会被 `shell.reload` 整页重新加载，所以在那之前一直保持忙碌状态。
+ * 没有事件推送，所以每次操作完都把需要重新取的数据重新取一遍。
  */
 
 const PANE_ID = 'plugin-manager'
 
-/** 外壳调 `mountPane` 时给的那几样。按形状收，只收用得着的两格（正本在 shell 件的 client/types.ts） */
+/** 外壳调 `mountPane` 时传入的参数。按形状收，只声明用得到的字段（正本在 shell 插件的 client/types.ts） */
 interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
-  /** 本件眼下只用得着外壳那两样：浮层户口（下拉与确认框全挂它，跟着本桌桌面走） */
+  /** 弹出层的容器元素：下拉菜单与确认框都放在它下面，跟着本窗格所在的桌面显示和隐藏 */
   shell: { portal: HTMLElement }
   pane: { id: string; instance: string }
 }
@@ -115,24 +118,18 @@ const SET_LABEL = 'plugin-manager.set-label'
 const REMOVE_ENTRY = 'plugin-manager.remove-entry'
 const SETTINGS_ALL = 'settings.all'
 /**
- * 按位取用口：**secret 项照旧回明文**（枚举口收口 ≠ 按位取用改口径）。它收 `{section, key}`，
- * 是「看一眼」那颗按钮与插件读自己分区凭据走的那条
+ * 按位置读一项设置：**secret 项照样返回明文**（只有列表命令 `settings.all` 不返回 secret 的值）。
+ * 参数 `{section, key}`，「看一眼」按钮用它，插件读自己分区的凭据也用它
  */
 const SETTINGS_GET = 'settings.get'
 const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
 const SHELL_PLUGINS = 'shell.plugins'
-/**
- * 共享包那张表。问的是本件的 node 半——单进程内核没有自省命令；它去 home 的
- * node_modules 里逐包读 `gwb.shared`，跟内核算 importmap 时扫的是同一批声明
- */
-const SHARED = 'plugin-manager.shared'
 const OUTDATED = 'plugin-manager.outdated'
-const UPDATE = 'plugin-manager.update'
 const UPDATE_ALL = 'plugin-manager.update-all'
 const UNINSTALL = 'plugin-manager.uninstall'
 
-/** 本件自己的包名。一键热升的确认框要说一声「这一格会先关再开」 */
+/** 插件管理的包名。升级或卸载它时，这个窗格会关闭，确认框与回执要说明 */
 const OWN_PKG = '@godcreator/gwb-plugin-manager'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -140,8 +137,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * 件报的 lucide 图标名 → 组件。**写成映射表不做动态取**：动态取要把整个 lucide
- * 引进束（上千个图标），而件报的名字本来就是有限的一小撮。认不出的走 Puzzle。
+ * 插件报的 lucide 图标名 → 组件。**写成映射表，不按名字动态取**：动态取要把整个 lucide
+ * 打包进来（上千个图标），而插件报的名字本来就只有一小批。认不出的用 Puzzle。
  */
 const ICONS: Record<string, typeof Puzzle> = {
   'scroll-text': ScrollText,
@@ -160,7 +157,7 @@ const ICONS: Record<string, typeof Puzzle> = {
   'file-code': FileCode,
 }
 
-/** 件自己 describe 出来的那一格（shell.plugins 的形状，按形状收） */
+/** 插件自己报的显示名与图标（shell.plugins 的形状，按形状收） */
 interface Face {
   title?: string
   icon?: string
@@ -183,7 +180,7 @@ function acceptFaces(raw: unknown): Record<string, Face> {
   return out
 }
 
-/** 一个包的版本差距（`plugin-manager.outdated` 的形状，按形状收——不 import node 半的类型） */
+/** 一个包的版本差距（`plugin-manager.outdated` 的形状，按形状收——不 import 插件管理的类型） */
 interface UpdateInfo {
   current: string
   latest: string
@@ -206,10 +203,10 @@ function acceptUpdates(raw: unknown): Record<string, UpdateInfo> {
 
 /** 条目的四态 → 徽标。文案与提示的正本在 rows.ts 的 FACES，这儿只管颜色 */
 const STATE_BADGE: Record<EntryRow['state'], { text: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
-  active: { text: '挂上了', variant: 'secondary' },
-  stalled: { text: '没挂上', variant: 'destructive' },
+  active: { text: '已加载', variant: 'secondary' },
+  stalled: { text: '没加载起来', variant: 'destructive' },
   disabled: { text: '已停用', variant: 'outline' },
-  'disabled-running': { text: '停了还在跑', variant: 'destructive' },
+  'disabled-running': { text: '停用了还在运行', variant: 'destructive' },
 }
 
 type Filter = 'all' | 'on' | 'off' | 'bad'
@@ -217,8 +214,8 @@ type Filter = 'all' | 'on' | 'off' | 'bad'
 const FILTER_LABEL: Record<Filter, string> = { all: '全部', on: '启用', off: '停用', bad: '异常' }
 
 /**
- * 「看一眼」那颗按钮的取用态。**取回来的明文只留在这个组件里，一个字节都不进草稿**——
- * 进了草稿就分不清「看过一眼」与「改了」，保存时会把没编辑过的 secret 格当新值提交。
+ * 「看一眼」按钮的读取状态。**读回来的明文只留在这个组件里，一个字节都不进草稿**——
+ * 进了草稿就分不清「看过一眼」与「改了」，保存时会把没编辑过的 secret 项当新值提交。
  */
 type Peek =
   | { kind: 'idle' }
@@ -229,11 +226,11 @@ type Peek =
 /**
  * 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那五个值一一对应。
  * **没设过值的项把声明方的默认画成灰占位**——空框不再让人以为没配好；`string-list`
- * 是整行宽的 textarea，不走这儿的右列小控件，布局在 `SettingLine` 里分流。
+ * 是整行宽的 textarea，不用这里的右列小控件，布局在 `SettingLine` 里区分。
  *
- * secret 那格特殊：枚举口（`settings.all`）不回值，所以框里**平常就是空的**，画成哪一态
- * 看 `isSet`（判定在 `settings.ts` 的 `fieldState`）；要看明文点「看一眼」，它走按位取用的
- * `settings.get`，取不回来就把原因如实摆出来，不摆一个空框。
+ * secret 项特殊：列表命令（`settings.all`）不返回它的值，所以输入框里**平常就是空的**，显示哪种状态
+ * 看 `isSet`（判定在 `settings.ts` 的 `fieldState`）；要看明文点「看一眼」，它调按位置读取的
+ * `settings.get`，读不到就把原因如实显示出来，不显示一个空框。
  */
 function SettingField({
   row,
@@ -244,7 +241,7 @@ function SettingField({
   row: SettingRow
   value: unknown
   onChange: (next: unknown) => void
-  /** 按位取这一格的明文（`settings.get`）。取不到就抛，由这一格如实画出原因 */
+  /** 按位置读这一项的明文（`settings.get`）。读不到就抛，由这一项如实显示原因 */
   onReveal: (row: SettingRow) => Promise<string>
 }): ReactElement {
   const [peek, setPeek] = useState<Peek>({ kind: 'idle' })
@@ -276,29 +273,29 @@ function SettingField({
   }
   if (row.type === 'secret') {
     const state = fieldState(row)
-    // 三样按这个次序画：草稿（人正在改）→ 按位取回来的明文 → 空框。枚举口不回值，所以
-    // 平常落到最后一样，靠占位符说「设过了 / 没设过」
+    // 按这个次序显示：草稿（人正在改）→ 按位置读回来的明文 → 空框。列表命令不返回值，所以
+    // 平常显示空框，靠占位符说「设过了 / 没设过」
     const edited = typeof value === 'string'
     const shown = edited ? value : peek.kind === 'shown' ? peek.text : ''
     const revealed = !edited && peek.kind === 'shown'
     /**
-     * 框里空着时摆哪句占位符。**草稿在时不能再摆「已设置」**——人刚把这一格清空，
-     * 摆回去会被念成「没改」；枚举口不回值，平常那三种态全靠这一句说
+     * 框里空着时显示哪句占位符。**有草稿时不能再显示「已设置」**——人刚把这一项清空，
+     * 显示回去会被读成「没改」；列表命令不返回值，平常那三种状态全靠这一句说明
      */
     const hint = revealed
-      ? '（盘上就是个空串）'
+      ? '（磁盘上就是个空串）'
       : edited
-        ? '（空着保存就是清空这一格）'
+        ? '（空着保存就是清空这一项）'
         : secretPlaceholder(row)
     const why = revealed
-      ? '这是按位取回来的明文（settings.get）。改它再点「保存」才会写回盘上'
+      ? '这是按位置读回来的明文（settings.get）。改了再点「保存」才会写回磁盘'
       : edited
-        ? '改了还没存。点「保存」才写回盘上'
+        ? '改了还没保存。点「保存」才写回磁盘'
         : state === 'secret-set'
-          ? '已设置。枚举口 settings.all 不回 secret 的值（只回设过没有与掩码），所以这框里平常是空的——点右边的眼睛按位取明文'
-          : '没设过。填一格再点「保存」就设上了'
+          ? '已设置。列表命令 settings.all 不返回 secret 的值（只返回设过没有与遮掉的值），所以这个框平常是空的——点右边的眼睛按位置读明文'
+          : '没设过。填上再点「保存」就设上了'
     const look = (): void => {
-      // 草稿在时那颗按钮是灰的（按不到），这一句只是把语义写死：取的是盘上那份，不是草稿
+      // 有草稿时按钮是禁用的，这一句写明：读的是磁盘上那份，不是草稿
       if (edited || peek.kind === 'loading') return
       if (peek.kind === 'shown') {
         setPeek({ kind: 'idle' })
@@ -307,7 +304,7 @@ function SettingField({
       setPeek({ kind: 'loading' })
       void onReveal(row).then(
         (text) => setPeek({ kind: 'shown', text }),
-        // 取不到就说为什么。**不画成空**——空框会被念成「没设过」，而这两件事差得远
+        // 读不到就说为什么。**不显示成空**——空框会被读成「没设过」，而这两件事差得远
         (err: unknown) => setPeek({ kind: 'failed', reason: err instanceof Error ? err.message : String(err) }),
       )
     }
@@ -321,7 +318,7 @@ function SettingField({
             title={why}
             value={shown}
             onChange={(e) => {
-              // 一动就是编辑：取回来的那份明文先放下，往后画的是草稿（枚举口不回值，回不去原样）
+              // 一改就是编辑：读回来的明文不再显示，之后显示草稿（列表命令不返回值，回不到原样）
               setPeek({ kind: 'idle' })
               onChange(e.target.value)
             }}
@@ -332,12 +329,12 @@ function SettingField({
             disabled={peek.kind === 'loading' || edited}
             title={
               revealed
-                ? '遮起来（取回来的明文只在这框里，不写回盘）'
+                ? '遮起来（读回来的明文只在这个框里，不写回磁盘）'
                 : edited
-                  ? '这一格改了还没存——先「保存」或「放弃」，再看盘上那一份明文'
+                  ? '这一项改了还没保存——先「保存」或「放弃」，再看磁盘上那份明文'
                   : peek.kind === 'loading'
-                    ? '取着…'
-                    : '看一眼：调 settings.get 按位取一次明文。注意：secret 只影响这里的显示，盘上照样明文；枚举口 settings.all 不回值，所以这框里平常是空的'
+                    ? '读取中…'
+                    : '看一眼：调 settings.get 按位置读一次明文。注意：secret 只影响这里的显示，磁盘上照样是明文；列表命令 settings.all 不返回它的值，所以这个框平常是空的'
             }
             onClick={look}
           >
@@ -390,7 +387,7 @@ function SettingLine({
         <span className="baseui:text-sm">{row.title ?? row.key}</span>
         <code className="baseui:rounded baseui:bg-muted baseui:px-1 baseui:py-0.5 baseui:font-mono baseui:text-[10px] baseui:text-muted-foreground">{row.key}</code>
         {row.live === false && (
-          <Badge variant="outline" className="baseui:px-1 baseui:py-0 baseui:text-[10px]" title="此刻没有件声明它——件停着或者已经卸了">
+          <Badge variant="outline" className="baseui:px-1 baseui:py-0 baseui:text-[10px]" title="此刻没有插件声明它——插件停用了或者已经卸载">
             无主
           </Badge>
         )}
@@ -398,9 +395,9 @@ function SettingLine({
           <Badge
             variant="outline"
             className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
-            title="secret 只影响显示打码，盘上存的是明文；枚举口 settings.all 不回它的值，要看明文点右边那颗眼睛按位取"
+            title="secret 只影响显示时遮掉，磁盘上存的是明文；列表命令 settings.all 不返回它的值，要看明文点右边的眼睛按位置读"
           >
-            明文落盘
+            明文存储
           </Badge>
         )}
       </div>
@@ -433,7 +430,7 @@ function SettingLine({
   )
 }
 
-/** 展开区里的一格：设置行序列 + 暂存语义的 footer。数据与动作都由上层供 */
+/** 一条条目的卡片：头部一行，展开后是设置项列表与「保存 / 放弃」栏。数据与动作都由上层传入 */
 function EntryCard({
   card,
   portal,
@@ -464,8 +461,9 @@ function EntryCard({
     pkg: string
     spec?: string
     settings: SettingRow[]
+    kernelMark?: KernelTestMark
   }
-  /** 本格所在桌面的浮层户口：行尾那颗「更多」下拉挂它，桌面切走跟着藏 */
+  /** 弹出层的容器元素：行尾「更多」下拉菜单放在它下面，切走桌面时跟着隐藏 */
   portal: HTMLElement
   face: Face | undefined
   open: boolean
@@ -475,17 +473,17 @@ function EntryCard({
   saveError: string | undefined
   saving: boolean
   onValue: (slot: string, next: unknown) => void
-  /** 按位取一格的明文（`settings.get`），供 secret 那格的「看一眼」用 */
+  /** 按位置读一项的明文（`settings.get`），供 secret 项的「看一眼」用 */
   onReveal: (row: SettingRow) => Promise<string>
   onSave: () => void
   onDiscard: () => void
   onToggleEnabled: (next: boolean) => void
   onAskRemove: () => void
-  /** 卸载是**包级**动作：从这个条目进，摘的是这个包的全部条目 + 包本身 */
+  /** 卸载是**包级**动作：从这条条目进入，删除的是这个包的全部条目和包本身 */
   onAskUninstall: () => void
-  /** 这个包有新版本。undefined = 没查到它的份（没查、查失败、或者已是最新） */
+  /** 这个包有新版本。undefined = 没查到它的新版本（没查、查失败、或者已是最新） */
   update?: UpdateInfo
-  /** 给了才摆「更新」按钮 */
+  /** 给了才显示「更新」按钮 */
   onUpdate?: () => void
   editing: boolean
   onRenameStart: () => void
@@ -496,9 +494,9 @@ function EntryCard({
   const entry = card.entry
   const Icon = ICONS[face?.icon ?? ''] ?? Puzzle
   const badge = STATE_BADGE[entry.state]
-  // 改名行借道的槽不算「改了设置」——它有自己的按钮与回执。**判据是「槽在不在」，不是值**
+  // 改名行借用的草稿槽不算「改了设置」——它有自己的按钮与回执。**判据是「槽在不在」，不是值**
   const dirtyCount = dirtySlots(draft).length
-  // 改名行输入框里的字：借道的槽里只有名字，多半是字符串；不是就回落到现在的显示名
+  // 改名行输入框里的字：借用的槽里只有名字，多半是字符串；不是就用现在的显示名
   const labelDraft = draft?.[LABEL_SLOT]
   const labelValue = typeof labelDraft === 'string' ? labelDraft : (entry.label ?? '')
   const title = entry.label ?? face?.title ?? entry.id
@@ -506,13 +504,13 @@ function EntryCard({
   return (
     <Collapsible open={open} onOpenChange={onToggleOpen} className="baseui:border-b baseui:border-border baseui:last:border-b-0">
       <div className={cn('baseui:flex baseui:items-center baseui:gap-3 baseui:px-3 baseui:py-2.5 baseui:hover:bg-accent/40', entry.disabled && 'baseui:opacity-60')}>
-        {/* 展开热区只包住左半——右半有开关和菜单，点它们不该顺带展开 */}
+        {/* 点击展开的区域只包住左半边——右半边有开关和菜单，点它们不该顺带展开 */}
         <CollapsibleTrigger className="baseui:flex baseui:min-w-0 baseui:flex-1 baseui:items-center baseui:gap-3 baseui:text-left baseui:outline-none">
           <ChevronRight className={cn('baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground baseui:transition-transform', open && 'baseui:rotate-90')} />
           <Icon className="baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground" />
           {/*
-            两行的分工：第一行**只放认件用得着的三样**（名字、未保存、状态），第二行放
-            身份（裸 id）与包名。id 是身份，日志和 yml 里出现的是它，label 只是给人看的皮
+            两行的分工：第一行**只放认出插件用得到的几样**（名字、未保存、状态、版本提醒），第二行放
+            身份（不带前缀的 id）与包名。id 是身份，日志和 yml 里出现的是它，label 只是给人看的名字
           */}
           <div className="baseui:min-w-0 baseui:flex-1">
             <div className="baseui:flex baseui:items-center baseui:gap-2">
@@ -534,6 +532,7 @@ function EntryCard({
                   有新版 {update.current} → {update.latest}
                 </Badge>
               )}
+              <KernelTestBadge mark={card.kernelMark} />
             </div>
             <div className="baseui:flex baseui:items-baseline baseui:gap-2">
               <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={entry.entryId}>
@@ -551,22 +550,22 @@ function EntryCard({
         </CollapsibleTrigger>
 
         <div className="baseui:flex baseui:shrink-0 baseui:items-center baseui:gap-1">
-          {onUpdate !== undefined && (
+          {onUpdate !== undefined && update !== undefined && (
             <Button
               size="xs"
               variant="outline"
               disabled={busy}
-              title={`pnpm add ${card.pkg}@latest，不加条目。跑着的件重启内核后才换成新的`}
+              title={`一键热升级这一个包（plugin-manager.update-all 只升 ${card.pkg}）：升到 ${update.latest}，逐条重新加载它的条目，不重启，最后整页重载`}
               onClick={onUpdate}
             >
               更新
             </Button>
           )}
-          {/* 看的是 disabled 不是 active：没挂上的条目照样可以「停用」 */}
+          {/* 看的是 disabled 不是 active：没加载起来的条目照样可以「停用」 */}
           <Switch
             checked={!entry.disabled}
             disabled={busy}
-            title={!entry.disabled ? '停用（往 cordis.yml 写 disabled: true，当场卸下）' : '启用（抹掉 disabled，当场挂上）'}
+            title={!entry.disabled ? '停用（往 cordis.yml 写 disabled: true，立即卸载）' : '启用（删掉 disabled，立即加载）'}
             onCheckedChange={onToggleEnabled}
           />
           <DropdownMenu>
@@ -596,7 +595,7 @@ function EntryCard({
           <Input
             autoFocus
             className="baseui:h-7 baseui:w-56 baseui:text-xs"
-            placeholder="空着保存就是抹掉显示名"
+            placeholder="空着保存就是清除显示名"
             value={labelValue}
             onChange={(e) => onRenameChange(e.target.value)}
             onKeyDown={(e) => {
@@ -615,7 +614,7 @@ function EntryCard({
 
       <CollapsibleContent>
         <div className="baseui:border-t baseui:border-border baseui:bg-muted/30">
-          {/* 挂不上的原因人话先说——attention 的两态（没挂上、停了还在跑）都是最该被看见的 */}
+          {/* 先说明没加载起来的原因——attention 的两种状态（没加载起来、停用了还在运行）都是最该被看见的 */}
           {entry.attention && (
             <div className="baseui:flex baseui:items-start baseui:gap-2 baseui:border-b baseui:border-border baseui:px-3 baseui:py-2 baseui:text-xs baseui:text-warning">
               <TriangleAlert className="baseui:mt-0.5 baseui:size-3.5 baseui:shrink-0" />
@@ -624,8 +623,8 @@ function EntryCard({
           )}
           {card.settings.length === 0 ? (
             <p className="baseui:px-3 baseui:py-3 baseui:text-xs baseui:text-muted-foreground">
-              这件没声明设置项。
-              {entry.state !== 'active' && '（件挂上了才会声明——没挂上时这里多半是空的）'}
+              这个插件没声明设置项。
+              {entry.state !== 'active' && '（插件加载起来才会声明——没加载时这里多半是空的）'}
             </p>
           ) : (
             <div className="baseui:divide-y baseui:divide-border">
@@ -649,7 +648,7 @@ function EntryCard({
                 <span className="baseui:flex-1 baseui:text-xs baseui:break-all baseui:whitespace-pre-wrap baseui:text-destructive">{saveError}</span>
               ) : (
                 <span className="baseui:flex-1 baseui:text-xs baseui:text-muted-foreground">
-                  改了 {dirtyCount} 项，还没存盘
+                  改了 {dirtyCount} 项，还没保存
                 </span>
               )}
               <Button size="xs" variant="ghost" disabled={saving} onClick={onDiscard}>
@@ -666,34 +665,44 @@ function EntryCard({
   )
 }
 
+/** 「没在当前内核上测过」的标记，样式和「有新版」相同。mark 是 undefined（测过）时不显示 */
+function KernelTestBadge({ mark }: { mark: KernelTestMark | undefined }): ReactElement | null {
+  if (mark === undefined) return null
+  return (
+    <Badge
+      variant="outline"
+      className="baseui:shrink-0 baseui:border-warning/40 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-warning"
+      title={mark.hint}
+    >
+      {mark.text}
+    </Badge>
+  )
+}
+
 function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** null 是「还没取到」，跟「取到了但一个包都没有」不是一回事——三份表各自独立 */
   const [rows, setRows] = useState<PackageRow[] | null>(null)
   const [settingsRows, setSettingsRows] = useState<SettingRow[] | null>(null)
   const [faces, setFaces] = useState<Record<string, Face>>({})
-  /** 声明了 gwb.shared 的包（页面级共享基础设施）。内核没这字段时回退从 shared 表推导 */
-  const [sharedPkgs, setSharedPkgs] = useState<Set<string> | null>(null)
-  /** 共享包各自提供的裸名，展示用 */
-  const [provided, setProvided] = useState<Record<string, string[]>>({})
-  /** 取表本身没成时的那句话。跟操作的回执分开——它说的是整格都没有内容 */
+  /** 取表本身没成时的那句话。跟操作的回执分开——它说的是整个列表都没有内容 */
   const [listError, setListError] = useState('')
-  /** 上一次操作的回执。**不吞 error**，尤其 set-label 在没装数据件时会回一句话 */
+  /** 上一次操作的回执。**error 一个字都不丢**，尤其 set-label 在没装数据插件时会返回一句话 */
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
-  /** 展开着的条目。以 entryId 记——跨重取表稳定 */
+  /** 展开着的条目。按 entryId 记——重新取表后不变 */
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set())
-  /** 每条条目的设置草稿：slot（转义过的定位串）→ 新值。空对象 = 没 dirty */
+  /** 每条条目的设置草稿：slot（转义过的位置串）→ 新值。空对象 = 没改动 */
   const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
-  /** 就地改名：正在编的那条与输入框里的字（塞进 drafts 的 __label__ 槽里过渡） */
+  /** 就地改名：正在改名的那条条目（输入框里的字暂存在 drafts 的 __label__ 槽里） */
   const [editing, setEditing] = useState<string | null>(null)
-  /** 删条目确认框：对象 + 「一并抹掉设置值」 */
+  /** 删条目确认框：要删的条目 + 「一并删除设置值」 */
   const [asking, setAsking] = useState<{ card: Card; homeSettings: SettingRow[] } | null>(null)
   const [alsoDrop, setAlsoDrop] = useState(true)
-  /** 卸载确认框：**包级**——这个包的全部条目 + 包本身。isSelf 是「卸的是本件自己」 */
+  /** 卸载确认框：**包级**——这个包的全部条目和包本身。isSelf 表示卸载的是插件管理自己 */
   const [askingUninstall, setAskingUninstall] = useState<{
     pkg: string
     count: number
@@ -703,24 +712,22 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [uninstallDrop, setUninstallDrop] = useState(false)
   const [installInput, setInstallInput] = useState('')
   const [orphansOpen, setOrphansOpen] = useState(false)
-  const [sharedOpen, setSharedOpen] = useState(false)
   const [noEntryOpen, setNoEntryOpen] = useState(false)
   /** 「已装 / 可装」两段。可装那段见 market.tsx */
   const [tab, setTab] = useState<'installed' | 'market'>('installed')
   /** outdated 的表。null 是「还没查到」——跟「查到了、全都最新」（空对象）分得开 */
   const [updates, setUpdates] = useState<Record<string, UpdateInfo> | null>(null)
   const [checking, setChecking] = useState(false)
-  /** 一键热升的确认框开着；`updatingAll` 是点了确认、命令还没回来（或回来了、页面正等着被重载） */
+  /** 「全部更新」的确认框开着；`updatingAll` 是点了确认、命令还没返回（或返回了、页面正等着被重载） */
   const [askingUpdateAll, setAskingUpdateAll] = useState(false)
   const [updatingAll, setUpdatingAll] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
-    // 四份表**各取各的、各败各的**——设置件没装时插件管理照样能用，只是展开区空着
-    const [list, settings, faces, shared] = await Promise.allSettled([
+    // 三份表**各取各的、各自失败**——设置插件没装时插件管理照样能用，只是展开区空着
+    const [list, settings, faces] = await Promise.allSettled([
       args.host.call(LIST),
       args.host.call(SETTINGS_ALL),
       args.host.call(SHELL_PLUGINS),
-      args.host.call(SHARED),
     ])
     if (list.status === 'fulfilled') {
       const result = asResult(list.value)
@@ -743,25 +750,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       const result = asResult(faces.value)
       if (result.ok) setFaces(acceptFaces(result.data))
     }
-    if (shared.status === 'fulfilled') {
-      const result = asResult(shared.value)
-      // 形状是 { packages: { 包名 → 它提供的裸名 } }。**空数组也算共享包**：gwb-tokens 只出
-      // 一张令牌表、一个裸名都不提供，可它照样不该出现在「装了没挂条目」那一区里
-      const packages = isRecord(result.data) ? result.data['packages'] : undefined
-      if (result.ok && isRecord(packages)) {
-        const providedMap: Record<string, string[]> = {}
-        for (const [pkg, bares] of Object.entries(packages)) {
-          providedMap[pkg] = Array.isArray(bares) ? bares.filter((v): v is string => typeof v === 'string') : []
-        }
-        setSharedPkgs(new Set(Object.keys(providedMap)))
-        setProvided(providedMap)
-      }
-    }
   }, [args.host])
 
   /**
-   * 查一遍新版本。`manual` 说这次是谁发起的：按钮点的把失败摆上 notice；挂上时自动那次
-   * 失败就安静放下（`updates` 回 null，界面上什么都不标，也不挡清单）。
+   * 查一遍新版本。`manual` 说这次是谁发起的：点按钮查的把失败显示在 notice 上；窗格打开时自动查的
+   * 失败就不提示（`updates` 设回 null，界面上什么都不标，也不影响列表）。
    */
   const checkOutdated = useCallback(
     async (manual: boolean): Promise<void> => {
@@ -773,7 +766,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           if (manual) setNotice({ ok: false, text: result.error ?? '' })
           return
         }
-        // 命令的信封里还套着一层回执（outdated 自己的 ok/error），同样不吞
+        // 命令结果里还包着一层回执（outdated 自己的 ok/error），它的 error 同样要显示
         const receipt = isRecord(result.data) ? result.data : {}
         if (receipt['ok'] === true) {
           setUpdates(acceptUpdates(receipt['updates']))
@@ -798,8 +791,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     void refresh().catch((err: unknown) => {
       if (alive) setListError(`取不到表：${String(err)}`)
     })
-    // 挂上就顺手查一次新版本。查不成就安静放下——没有 pnpm 不该每开一次格都闹一场，
-    // 「检查更新」按钮点一下才把原因摆上脸
+    // 窗格打开时查一次新版本。查不成不提示——没有 pnpm 时不该每打开一次窗格都报一次错，
+    // 点「检查更新」按钮才显示原因
     void checkOutdated(false)
     return () => {
       alive = false
@@ -807,7 +800,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   }, [refresh, checkOutdated])
 
   /**
-   * 跑一条命令，然后**一定重新取一遍表**——没有事件推送，不重取的话界面会停在旧样子上，
+   * 执行一条命令，然后**一定重新取一遍表**——没有事件推送，不重取的话界面会停在旧样子上，
    * 而那正是「点了没反应」这种最难查的现象。
    */
   const run = async (command: string, params: unknown, done: string): Promise<void> => {
@@ -825,12 +818,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }
 
-  // ── 派生：把三层表摊平成「一条目一卡」────────────────────────────────────────
+  // ── 派生：把三份表摊平成「一条条目一张卡片」────────────────────────────────────
   interface Card {
     entry: EntryRow
     pkg: string
     spec?: string
     settings: SettingRow[]
+    kernelMark?: KernelTestMark
   }
 
   const cards = useMemo<Card[]>(() => {
@@ -842,13 +836,14 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           pkg: row.pkg,
           spec: row.spec,
           settings: settingsRows === null ? [] : settingsForEntry(settingsRows, entry.entryId),
+          kernelMark: kernelTestMark(row),
         })
       }
     }
     return out
   }, [rows, settingsRows])
 
-  /** 「可装」那段吃的已装索引：从已取的这份表推导，不再二次调 plugins.list */
+  /** 「可装」那一栏用的已装索引：从已取的这份表推导，不再调一次 plugin-manager.list */
   const marketIndex = useMemo<InstalledIndex | null>(() => (rows === null ? null : installedIndex(rows)), [rows])
 
   const shown = useMemo(() => {
@@ -871,17 +866,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     })
   }, [cards, filter, search])
 
-  /** 已装但没挂条目的包，按身份一分为二：共享基础设施（tokens、共享 react 这类）与待挂条目的件 */
+  /** 已装但没有条目的包：插件管理不区分插件与库，一律列在「已装、没有条目的包」里 */
   const noEntryRows = useMemo(() => (rows ?? []).filter((row) => row.entries.length === 0), [rows])
-  const sharedRows = useMemo(
-    () => noEntryRows.filter((row) => sharedPkgs?.has(row.pkg) === true),
-    [noEntryRows, sharedPkgs],
-  )
-  /** sharedPkgs 没取到（内核自省口挂了）时全按待挂算——那是旧行为，不添新错 */
-  const pendingRows = useMemo(
-    () => noEntryRows.filter((row) => sharedPkgs?.has(row.pkg) !== true),
-    [noEntryRows, sharedPkgs],
-  )
 
   const orphans = useMemo(() => {
     if (settingsRows === null) return []
@@ -903,18 +889,18 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     })
 
   /**
-   * 按位取一格的明文。**走的正是 `settings.get`**——枚举口（`settings.all`）对 secret 收口之后，
-   * 这条口照旧回明文（插件读自己分区的凭据走的也是它）。取不到就抛，由那一格如实画出原因：
-   * 画成空框会被念成「没设过」。
+   * 按位置读一项的明文，调的是 `settings.get`——列表命令（`settings.all`）不返回 secret 的值，
+   * 这条命令照样返回明文（插件读自己分区的凭据也用它）。读不到就抛，由那一项如实显示原因：
+   * 显示成空框会被读成「没设过」。
    */
   const revealSecret = async (row: SettingRow): Promise<string> => {
     const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
     if (!result.ok) throw new Error(result.error ?? '取不到')
     const value = result.data
-    // 命令回了个「ok 但没值」＝这一格盘上就是空的。**如实说没设过**，不画成空框
-    if (value === undefined) throw new Error('这一格盘上没有值（没设过）')
-    // secret 的值就是字符串。真回了别的形状说明这格与声明对不上，也如实说，不把它 String() 成一句话
-    if (typeof value !== 'string') throw new Error(`这一格的值不是字符串：${typeof value}`)
+    // 命令返回「ok 但没值」＝这一项磁盘上没有值。**如实说没设过**，不显示成空框
+    if (value === undefined) throw new Error('这一项磁盘上没有值（没设过）')
+    // secret 的值就是字符串。返回了别的形状说明这一项与声明对不上，也如实说，不把它 String() 成一句话
+    if (typeof value !== 'string') throw new Error(`这一项的值不是字符串：${typeof value}`)
     return value
   }
 
@@ -931,9 +917,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /**
    * 保存一条条目的草稿：逐键 settings.set，**有一个失败就全留在草稿里**。
    *
-   * 提交的这份清单只认**草稿里有的槽**（`dirtySlots` 按「键在不在」判，不按值）——枚举口
-   * 对 secret 行不回值之后，「没动过这一格」与「把这一格改成空」的值长得一模一样，
-   * 拿值筛就会把没动过的 secret 格当「清空」写回盘上。
+   * 提交的这份清单只认**草稿里有的槽**（`dirtySlots` 按「键在不在」判，不按值）——列表命令
+   * 不返回 secret 的值，「没动过这一项」与「把这一项改成空」的值一模一样，
+   * 按值筛选就会把没动过的 secret 项当「清空」写回磁盘。
    */
   const saveEntry = async (entryId: string): Promise<void> => {
     const slots = dirtySlots(drafts[entryId])
@@ -960,7 +946,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
     discardEntry(entryId)
-    // 设置落了盘，重取 settings 一份让「无主/全机」那几个徽标跟上
+    // 设置写进磁盘了，重新取一份 settings，让「无主」这类标记跟着更新
     const settings = await args.host.call(SETTINGS_ALL)
     const result = asResult(settings)
     if (result.ok) setSettingsRows(acceptSettings(result.data))
@@ -974,8 +960,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     const text = typeof value === 'string' ? value : (entry?.label ?? '')
     setEditing(null)
     discardEntry(editing)
-    // **空串是合法的，意思是抹掉**——不 trim 成 undefined、也不当成「没改」
-    await run(SET_LABEL, { entryId: editing, label: text }, text === '' ? '显示名抹掉了' : `显示名改成了「${text}」`)
+    // **空串是合法的，意思是清除**——不 trim 成 undefined、也不当成「没改」
+    await run(SET_LABEL, { entryId: editing, label: text }, text === '' ? '显示名清除了' : `显示名改成了「${text}」`)
   }
 
   const install = async (): Promise<void> => {
@@ -983,22 +969,14 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     if (pkg === '') return
     setBusy(true)
     try {
+      // 失败时插件管理已经把 pnpm 输出的最后几行拼进 error
       const result = asResult(await args.host.call(INSTALL, { pkg }))
       if (!result.ok) {
         setNotice({ ok: false, text: result.error ?? '' })
       } else {
-        const inner = isRecord(result.data) ? result.data : {}
-        if (inner['ok'] === false) {
-          const errText = inner['error']
-          const message = typeof errText === 'string' && errText !== '' ? errText : '装包没成'
-          const tail = typeof inner['tail'] === 'string' && inner['tail'] !== '' ? `\n${inner['tail']}` : ''
-          setNotice({ ok: false, text: `${message}${tail}` })
-        } else {
-          const entryId = typeof inner['entryId'] === 'string' ? `，条目 ${inner['entryId']}` : ''
-          // peer 没装上时件本身照样是装上了的，可提示不能是绿的——那条依赖跑起来会扑空
-          const peers = describePeers(inner)
-          setNotice({ ok: peers.ok, text: `装好了 ${pkg}${entryId}${peers.line}` })
-        }
+        const receipt = isRecord(result.data) ? result.data : {}
+        const entryId = typeof receipt['entryId'] === 'string' ? `，条目 ${receipt['entryId']}` : ''
+        setNotice({ ok: true, text: `装好了 ${pkg}${entryId}。加载成功没有，看这条条目的状态` })
       }
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
@@ -1008,12 +986,6 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setBusy(false)
   }
 
-  /** 升一个包到最新。run 自己会重取表；再把 outdated 重查一遍，让「有新版」徽标跟上 */
-  const updatePkg = (pkg: string): void => {
-    void run(UPDATE, { pkg }, `${pkg} 升到最新了。跑着的件重启内核后才换成新的（要热生效点「全部更新」）`).then(() => {
-      void checkOutdated(false)
-    })
-  }
 
   /** 过期清单，按包名排——确认框里列的、「全部更新」亮不亮，都看它 */
   const outdatedRows = useMemo(
@@ -1022,16 +994,17 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   )
 
   /**
-   * 一键热升。回执贴到 notice 上；**reload 在路上时 busy 不撤**——页面随时会被 `shell.reload`
-   * 整页重载（自己也升了的话先是这一格关掉再开），撤了只会让人在最后一帧点到什么。
-   * 没在路上（命令表里没 shell.reload、或者没成）才照常重取表、撤 busy
+   * 一键热升级：不给 `only` 升全部过期包（「全部更新」），给了只升这几个（条目卡片上的「更新」）。
+   * 回执显示在 notice 上；**整页重载已经开始时不撤忙碌状态**——页面随时会被 `shell.reload`
+   * 整页重载（插件管理自己也升了的话，这个窗格先关闭再打开），撤了只会让人在最后一刻点到什么。
+   * 没有开始重载（命令表里没有 shell.reload、或者没成）才照常重新取表、撤忙碌状态
    */
-  const updateAll = async (): Promise<void> => {
+  const updateAll = async (only?: readonly string[]): Promise<void> => {
     setBusy(true)
     setUpdatingAll(true)
     let reloading = false
     try {
-      const view = describeUpdateAll(asResult(await args.host.call(UPDATE_ALL)))
+      const view = describeUpdateAll(asResult(await args.host.call(UPDATE_ALL, only === undefined ? undefined : { only })))
       reloading = view.reloading
       setNotice({ ok: view.ok, text: view.text })
     } catch (err: unknown) {
@@ -1066,11 +1039,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
               wiped += 1
             } catch {
-              // 一条没抹掉不算整件事失败——它留在「无主的设置」里还找得到
+              // 一项没删掉不算整个操作失败——它留在「无主的设置」里还找得到
             }
           }
         }
-        setNotice({ ok: true, text: `条目 ${entry.id} 删了，包没动${wiped > 0 ? `，抹掉了 ${wiped} 项设置值` : ''}` })
+        setNotice({ ok: true, text: `条目 ${entry.id} 删了，包没动${wiped > 0 ? `，删除了 ${wiped} 项设置值` : ''}` })
       }
       await refresh()
     } finally {
@@ -1080,12 +1053,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   }
 
   const askRemove = (card: Card): void => {
-    // 设置没有第二份了：settings.json 一份，section 就是条目裸 id——展开区里那几张全是
+    // 设置只有 settings.json 一份，section 就是条目不带前缀的 id——展开区里列出的就是全部
     setAlsoDrop(true)
     setAsking({ card, homeSettings: card.settings })
   }
 
-  /** 弹卸载确认框。条目数现场数（cards 里这个包的条目），设置值也是现场收 */
+  /** 打开卸载确认框。条目数与设置值都从当前的 cards 里现算 */
   const askUninstall = (pkg: string): void => {
     const own = cards.filter((card) => card.pkg === pkg)
     setUninstallDrop(false)
@@ -1093,7 +1066,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       pkg,
       count: own.length,
       settings: own.flatMap((card) => card.settings),
-      isSelf: pkg === '@godcreator/gwb-plugin-manager',
+      isSelf: pkg === OWN_PKG,
     })
   }
 
@@ -1104,10 +1077,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     try {
       const result = asResult(await args.host.call(UNINSTALL, { pkg }))
       if (!result.ok) {
-        // 命令的信封里还套着一层回执（uninstall 自己的 ok/error），同样不吞
-        const inner = isRecord(result.data) ? result.data : {}
-        const detail = inner['ok'] === false && typeof inner['error'] === 'string' ? `\n${inner['error']}` : ''
-        setNotice({ ok: false, text: `${result.error ?? '卸载没成'}${detail}` })
+        // 失败时插件管理已经把原因与 pnpm 输出的最后几行拼进 error
+        setNotice({ ok: false, text: result.error ?? '' })
       } else {
         let wiped = 0
         if (uninstallDrop) {
@@ -1116,14 +1087,14 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
               wiped += 1
             } catch {
-              // 一条没抹掉不算整件事失败——它留在「无主的设置」里还找得到
+              // 一项没删掉不算整个操作失败——它留在「无主的设置」里还找得到
             }
           }
         }
         setNotice({
           ok: true,
-          text: `${pkg} 卸载了，包与条目一起拿掉${wiped > 0 ? `，抹掉了 ${wiped} 项设置值` : '；设置与数据留盘'}${
-            pkg === '@godcreator/gwb-plugin-manager' ? '。本件自己的格还开着，关掉它就没了' : ''
+          text: `${pkg} 卸载了，包与条目一起删除${wiped > 0 ? `，删除了 ${wiped} 项设置值` : '；设置与数据留在磁盘上'}${
+            pkg === OWN_PKG ? '。插件管理自己的窗格还开着，关掉它就没了' : ''
           }`,
         })
       }
@@ -1134,16 +1105,16 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setAskingUninstall(null)
   }
 
-  // ── 画─────────────────────────────────────────────────────────────────────
+  // ── 渲染───────────────────────────────────────────────────────────────────
 
   return (
     <div className="baseui:flex baseui:h-full baseui:flex-col baseui:bg-background baseui:text-foreground">
-      {/* 直接装包名的框摆在段切换之上：清单外的、第三方的件，两段里都走它 */}
+      {/* 直接装包名的输入框放在两栏切换之上：列表以外的、第三方的插件，两栏里都用它装 */}
       <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
         <div className="baseui:flex baseui:items-center baseui:gap-2">
           <Input
             className="baseui:h-8 baseui:flex-1 baseui:font-mono baseui:text-xs"
-            placeholder="直接装包名，如 @godcreator/gwb-hello（可带版本 @scope/name@^1.0）"
+            placeholder="直接装包名，如 @godcreator/gwb-hello（装最新版）"
             value={installInput}
             onChange={(e) => setInstallInput(e.target.value)}
             onKeyDown={(e) => {
@@ -1169,7 +1140,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         </div>
       )}
 
-      {/* 「已装」与「可装」两段。刷新按钮两段共用——可装那段的「装没装」吃同一份表 */}
+      {/* 「已装」与「可装」两栏。刷新按钮两栏共用——「可装」那一栏的「装没装」用的是同一份表 */}
       <div className="baseui:flex baseui:items-center baseui:gap-1 baseui:border-b baseui:border-border baseui:px-3 baseui:py-1.5">
         <Button size="sm" variant={tab === 'installed' ? 'secondary' : 'ghost'} onClick={() => setTab('installed')}>
           已装
@@ -1193,7 +1164,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           variant={outdatedRows.length > 0 ? 'secondary' : 'ghost'}
           title={
             outdatedRows.length > 0
-              ? `一键热升 ${outdatedRows.length} 个包：一趟 pnpm add，逐条停用→启用重挂新版本，不重启，最后整页重载`
+              ? `一键热升级 ${outdatedRows.length} 个包：一次 pnpm add，逐条停用→启用重新加载成新版本，不重启，最后整页重载`
               : '没有过期的包'
           }
           disabled={checking || busy || outdatedRows.length === 0}
@@ -1216,7 +1187,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <Search className="baseui:pointer-events-none baseui:absolute baseui:top-1/2 baseui:left-2 baseui:size-3.5 baseui:-translate-y-1/2 baseui:text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="搜件名、包名、设置项"
+                placeholder="搜插件名、包名、设置项"
                 className="baseui:h-8 baseui:pl-7"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1242,7 +1213,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             {listError !== '' && <p className="baseui:p-6 baseui:text-sm baseui:whitespace-pre-wrap baseui:text-destructive">{listError}</p>}
 
             {listError === '' && rows !== null && cards.length === 0 && (
-              <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">home 里一个件都没挂。</p>
+              <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">home 里一条条目都没有。</p>
             )}
 
             {shown.map((card) => (
@@ -1272,7 +1243,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 onAskUninstall={() => askUninstall(card.pkg)}
                 update={updates?.[card.pkg]}
                 onUpdate={
-                  updates?.[card.pkg] !== undefined ? () => updatePkg(card.pkg) : undefined
+                  updates?.[card.pkg] !== undefined ? () => void updateAll([card.pkg]) : undefined
                 }
                 editing={editing === card.entry.entryId}
                 onRenameStart={() => {
@@ -1307,8 +1278,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             )}
 
             {/*
-              无主的设置单独一块，压在最后：它们不属于画面上任何一个件，混进上面那张表只会
-              让人以为件还在。只在没筛选的时候出现——筛选中的清单应该是纯粹的
+              无主的设置单独一块，放在最后：它们不属于界面上任何一个插件，混进上面那张表只会
+              让人以为插件还在。只在没筛选的时候出现——筛选中的列表只列符合条件的条目
             */}
             {search === '' && filter === 'all' && orphans.length > 0 && (
               <Collapsible open={orphansOpen} onOpenChange={setOrphansOpen} className="baseui:border-t baseui:border-border">
@@ -1320,7 +1291,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {orphans.length}
                   </Badge>
-                  <span className="baseui:text-xs baseui:text-muted-foreground">盘上有值，此刻没有件认领</span>
+                  <span className="baseui:text-xs baseui:text-muted-foreground">磁盘上有值，此刻没有插件声明它</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="baseui:divide-y baseui:divide-border baseui:bg-muted/30">
@@ -1339,16 +1310,16 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           size="sm"
                           variant="ghost"
                           className="baseui:shrink-0 baseui:text-destructive"
-                          title="把这一格从盘上抹掉"
+                          title="把这一项从磁盘上删除"
                           onClick={() =>
                             void run(
                               SETTINGS_DELETE,
                               { section: s.section, key: s.key },
-                              `抹掉了 ${s.section}.${s.key}`,
+                              `删除了 ${s.section}.${s.key}`,
                             )
                           }
                         >
-                          <Trash2 /> 抹掉
+                          <Trash2 /> 删除
                         </Button>
                       </div>
                     ))}
@@ -1357,65 +1328,21 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               </Collapsible>
             )}
 
-            {sharedRows.length > 0 && (
-              <Collapsible open={sharedOpen} onOpenChange={setSharedOpen} className="baseui:border-t baseui:border-border">
-                <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
-                  <ChevronRight
-                    className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', sharedOpen && 'baseui:rotate-90')}
-                  />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">共享包</span>
-                  <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
-                    {sharedRows.length}
-                  </Badge>
-                  <span className="baseui:text-xs baseui:text-muted-foreground">页面级基础设施，没有条目也不会有</span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="baseui:divide-y baseui:divide-border baseui:bg-muted/30">
-                    {sharedRows.map((row) => (
-                      <div key={row.pkg} className="baseui:flex baseui:items-center baseui:justify-between baseui:gap-4 baseui:px-3 baseui:py-2">
-                        <div className="baseui:min-w-0">
-                          <div className="baseui:flex baseui:items-baseline baseui:gap-2">
-                            <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs">{row.pkg}</span>
-                            {row.spec !== undefined && (
-                              <span className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-muted-foreground">{row.spec}</span>
-                            )}
-                          </div>
-                          <p className="baseui:mt-0.5 baseui:text-xs baseui:text-muted-foreground">
-                            {provided[row.pkg]?.length
-                              ? `页面 importmap 提供 ${provided[row.pkg]?.join('、')}`
-                              : '页面级基础设施，没有可挂的窗格'}
-                          </p>
-                        </div>
-                        {updates?.[row.pkg] !== undefined && (
-                          <span
-                            className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-warning"
-                            title={`home 里是 ${updates[row.pkg]!.current}，registry 上最新是 ${updates[row.pkg]!.latest}`}
-                          >
-                            有新版 → {updates[row.pkg]!.latest}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {pendingRows.length > 0 && (
+            {noEntryRows.length > 0 && (
               <Collapsible open={noEntryOpen} onOpenChange={setNoEntryOpen} className="baseui:border-t baseui:border-border">
                 <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
                   <ChevronRight
                     className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', noEntryOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">已装、没挂条目的插件</span>
+                  <span className="baseui:text-sm baseui:text-muted-foreground">已装、没有条目的包</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
-                    {pendingRows.length}
+                    {noEntryRows.length}
                   </Badge>
-                  <span className="baseui:text-xs baseui:text-muted-foreground">装了还没往 cordis.yml 挂条目的件在这</span>
+                  <span className="baseui:text-xs baseui:text-muted-foreground">在 home 里、cordis.yml 里没有指向它的条目，所以没有加载</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="baseui:divide-y baseui:divide-border baseui:bg-muted/30">
-                    {pendingRows.map((row) => (
+                    {noEntryRows.map((row) => (
                       <div key={row.pkg} className="baseui:flex baseui:items-center baseui:justify-between baseui:gap-4 baseui:px-3 baseui:py-2">
                         <div className="baseui:min-w-0">
                           <div className="baseui:flex baseui:items-baseline baseui:gap-2">
@@ -1428,6 +1355,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                             {row.note}
                           </p>
                         </div>
+                        <KernelTestBadge mark={kernelTestMark(row)} />
                         {updates?.[row.pkg] !== undefined && (
                           <span
                             className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-warning"
@@ -1441,18 +1369,18 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           variant="ghost"
                           className="baseui:shrink-0"
                           disabled={busy}
-                          title={`往 cordis.yml 里加一条引 ${row.pkg} 的条目并当场挂上`}
-                          onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 挂了条目`)}
+                          title={`往 cordis.yml 里加一条指向 ${row.pkg} 的条目并立即加载`}
+                          onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 加了一条条目`)}
                         >
-                          挂条目
+                          加条目
                         </Button>
-                        {/* 没挂条目的包也能卸——卸载是包级动作，不走条目那一层 */}
+                        {/* 没有条目的包也能卸载——卸载是包级动作，不经过条目那一层 */}
                         <Button
                           size="sm"
                           variant="ghost"
                           className="baseui:shrink-0 baseui:text-destructive"
                           disabled={busy}
-                          title={`pnpm remove 掉 ${row.pkg}。设置与数据留盘`}
+                          title={`pnpm remove ${row.pkg}。设置与数据留在磁盘上`}
                           onClick={() => askUninstall(row.pkg)}
                         >
                           卸载
@@ -1473,7 +1401,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               {` · ${onCount} 个启用`}
               {badCount > 0 && ` · ${badCount} 个异常`}
             </span>
-            <span className="baseui:truncate baseui:font-mono" title="设置落在 <home>/settings.json，跟 cordis.yml 并排——home 自持全部配置">
+            <span className="baseui:truncate baseui:font-mono" title="设置存放在 <home>/settings.json，和 cordis.yml 在同一个目录——全部配置都在 home 里">
               settings.json
             </span>
           </div>
@@ -1487,13 +1415,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             <AlertDialogDescription asChild>
               <div className="baseui:space-y-2">
                 <p>
-                  会把 <code className="baseui:font-mono">{asking?.card.entry.id}</code> 这条条目从 cordis.yml 里摘掉，fiber
-                  当场卸下。**包不删**，还留在 home 里；要拿掉包自己去 home 里 pnpm remove。
+                  会把 <code className="baseui:font-mono">{asking?.card.entry.id}</code> 这条条目从 cordis.yml 里删除，插件
+                  立即卸载。**包不删**，还留在 home 里；要连包一起删，用「卸载这个包…」。
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* 设置值删不删要问：不问就静默留下一堆无主的值，问了正好接住列表末尾那一块 */}
+          {/* 设置值删不删要问：不问就静默留下一批无主的值，它们会出现在列表末尾「无主的设置」里 */}
           <label className="baseui:flex baseui:items-center baseui:gap-2 baseui:rounded-md baseui:border baseui:border-border baseui:px-3 baseui:py-2 baseui:text-sm">
             <input
               type="checkbox"
@@ -1502,9 +1430,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               onChange={(e) => setAlsoDrop(e.target.checked)}
             />
             <span>
-              一并抹掉它的设置值
+              一并删除它的设置值
               <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
-                不勾的话这些值留在盘上，之后会出现在「无主的设置」里
+                不勾的话这些值留在磁盘上，之后会出现在「无主的设置」里
               </span>
             </span>
           </label>
@@ -1521,7 +1449,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 一键热升：先把 from → to 列出来让人看一眼再动手，照卸载确认框的做法。升级中不许关（onOpenChange 不收） */}
+      {/* 全部更新：先把 from → to 列出来让人确认再执行，和卸载确认框一样。升级中不许关闭（onOpenChange 不处理） */}
       <AlertDialog open={askingUpdateAll} onOpenChange={(v) => !v && !updatingAll && setAskingUpdateAll(false)}>
         <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
@@ -1529,12 +1457,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             <AlertDialogDescription asChild>
               <div className="baseui:space-y-2">
                 <p>
-                  一趟 <code className="baseui:font-mono">pnpm add</code> 把下面这些升到 registry 上的最新版，再把它们的每条条目
-                  停用→启用重挂成新版本（本来就停用的保持停用），**不重启内核**；升完整页重载。
+                  一次 <code className="baseui:font-mono">pnpm add</code> 把下面这些升到 registry 上的最新版，再把它们的每条条目
+                  停用→启用重新加载成新版本（本来就停用的保持停用），**不重启内核**；升完整页重载。
                 </p>
                 {outdatedRows.some(([pkg]) => pkg === OWN_PKG) && (
                   <p className="baseui:text-warning">
-                    插件管理件自己也在清单里：回执发出之后这一格会先关再开，随后整页重载。
+                    插件管理自己也在清单里：回执发出之后这个窗格会先关再开，随后整页重载。
                   </p>
                 )}
               </div>
@@ -1568,14 +1496,14 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <div className="baseui:space-y-2">
                 <p>
                   会把这个包的 <code className="baseui:font-mono">{String(askingUninstall?.count ?? 0)}</code> 条条目从
-                  cordis.yml 里摘掉（fiber 当场卸下），再 pnpm remove 把包从 home 移走。
+                  cordis.yml 里删除（插件立即卸载），再 pnpm remove 把包从 home 移走。
                 </p>
                 <p>
-                  **设置与数据留在盘上**——重装回来还是那份。只想删一条条目、包留着的话，取消后走那条上的「删条目…」。
+                  **设置与数据留在磁盘上**——重装回来还是那份。只想删一条条目、包留着的话，取消后用那条条目上的「删条目…」。
                 </p>
                 {askingUninstall?.isSelf && (
                   <p className="baseui:text-destructive">
-                    这是插件管理件自己：卸了之后**这一格就没有了**，重启内核后界面退回阶段页。真要重来得回命令行装。
+                    这是插件管理自己：卸载之后**这个窗格就没有了**，重启内核后界面退回阶段页。要装回来只能用命令行。
                   </p>
                 )}
               </div>
@@ -1590,9 +1518,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 onChange={(e) => setUninstallDrop(e.target.checked)}
               />
               <span>
-                一并抹掉这 {askingUninstall.settings.length} 项设置值
+                一并删除这 {askingUninstall.settings.length} 项设置值
                 <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
-                  不勾的话这些值留在盘上，之后会出现在「无主的设置」里
+                  不勾的话这些值留在磁盘上，之后会出现在「无主的设置」里
                 </span>
               </span>
             </label>
@@ -1615,23 +1543,23 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
-  // 认不出的 paneId 报错、不回落——「注册了 x 却画出 installed」是那种没有任何现象的错
+  // 认不出的 paneId 报错、不改用别的窗格——「注册了 x 却显示成 installed」是那种没有任何现象的错
   if (args.pane.id === PANE_ID) {
-    // 弹层（下拉、两个确认框）**照 radix 的默认 portal 到 body**：围栏是类名前缀，规则
-    // 全页有效，挂到容器外面照样有样式（当初为什么曾要求挂回容器，见外壳页「菜单的
-    // portal」一节，防它回来）
+    // 弹出层（下拉、确认框）**照 radix 的默认 portal 到 body**：样式隔离靠的是类名前缀，规则
+    // 全页有效，放到容器外面照样有样式（当初为什么曾要求放回容器，见外壳页「菜单的
+    // portal」一节，别再改回去）
     root.render(<PluginsPane args={args} />)
   } else {
-    root.render(<p className="baseui:p-3 baseui:text-sm baseui:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
+    root.render(<p className="baseui:p-3 baseui:text-sm baseui:text-destructive">基础界面插件没有叫 {args.pane.id} 的窗格</p>)
   }
   return root
 }
 
-/** 窗格件那半的入口。导出名是 `mountPane`——外壳占整页那个根，窗格占井里一格 */
+/** 窗格插件浏览器端的入口。导出名是 `mountPane`——外壳占整个页面，窗格占窗格区里的一个位置 */
 export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
-  // **不给容器加 position:relative**：弹层走 radix 官方原样——portal 到 body、confirm
-  // 那层 fixed，用不着「最近的 positioned 祖先」那套参照系；遮罩因此盖整窗而不是只盖
-  // 这一格，模态对话框本该如此
+  // **不给容器加 position:relative**：弹出层用 radix 官方的默认做法——portal 到 body、确认框
+  // 那层 fixed，用不着「最近的 positioned 祖先」那套参照系；遮罩因此盖住整个窗口而不是只盖
+  // 这个窗格，模态对话框本该如此
   const root = boot(args, container)
   return {
     dispose() {

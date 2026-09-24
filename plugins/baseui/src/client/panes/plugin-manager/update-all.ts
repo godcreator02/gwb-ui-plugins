@@ -1,9 +1,9 @@
 import type { CallResult } from './rows'
 
 /**
- * `plugins.update-all` 的回执 → 贴在窗格上的那几行。纯逻辑，不碰 DOM；形状按 node 半的
- * `UpdateAllResult` 收，**不 import 那边的类型**（跨 IPC 过来的东西当 `unknown` 收窄，
- * 跟 rows.ts 一个规矩）。
+ * `plugin-manager.update-all` 的回执 → 显示在窗格上的那几行。纯逻辑，不碰 DOM；形状按插件管理的
+ * `UpdateAllResult` 收，**不 import 那边的类型**（经 IPC 传过来的值当 `unknown` 收窄，
+ * 和 rows.ts 一个规矩）。「全部更新」和单个包的「更新」（`only` 只列这一个包）共用它。
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -16,9 +16,9 @@ function str(value: unknown): string {
 
 export interface UpdateAllView {
   ok: boolean
-  /** 贴上去的话，多行 */
+  /** 显示的话，多行 */
   text: string
-  /** 整页重载已经在路上（done / deferred）——窗格随时会没，busy 态别撤 */
+  /** 整页重载已经开始（done / deferred）——窗格随时会被重新加载，忙碌状态不要撤 */
   reloading: boolean
 }
 
@@ -29,13 +29,9 @@ function describeEntry(raw: unknown): string {
 }
 
 export function describeUpdateAll(result: CallResult): UpdateAllView {
+  // 失败时插件管理已经把 pnpm 输出的最后几行拼进 error，这里原样显示，不再从 data.tail 拼一遍
+  if (!result.ok) return { ok: false, text: result.error ?? '一键更新没成', reloading: false }
   const data = isRecord(result.data) ? result.data : {}
-  if (!result.ok) {
-    // 命令的信封里还套着一层回执（update-all 自己的 error/tail），同样不吞
-    const tail = str(data['tail'])
-    const detail = tail === '' ? '' : `\n${tail}`
-    return { ok: false, text: `${result.error ?? '一键更新没成'}${detail}`, reloading: false }
-  }
   const updated = Array.isArray(data['updated']) ? (data['updated'] as unknown[]) : []
   const lines: string[] = []
   if (updated.length === 0) {
@@ -45,9 +41,9 @@ export function describeUpdateAll(result: CallResult): UpdateAllView {
     for (const item of updated) {
       if (!isRecord(item)) continue
       const entries = Array.isArray(item['entries']) ? (item['entries'] as unknown[]).map(describeEntry).filter((s) => s !== '') : []
-      lines.push(`${str(item['pkg'])} ${str(item['from'])} → ${str(item['to'])}${entries.length > 0 ? `：${entries.join('、')}` : '（没挂条目）'}`)
+      lines.push(`${str(item['pkg'])} ${str(item['from'])} → ${str(item['to'])}${entries.length > 0 ? `：${entries.join('、')}` : '（没有条目）'}`)
     }
-    if (data['selfDeferred'] === true) lines.push('插件管理件自己也升了：这一格随后先关再开')
+    if (data['selfDeferred'] === true) lines.push('插件管理自己也升级了：这个窗格随后先关再开')
     const reload = data['reload']
     if (reload === 'done') lines.push('界面已整页重载')
     else if (reload === 'deferred') lines.push('界面随后整页重载')

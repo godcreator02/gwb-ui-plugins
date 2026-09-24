@@ -2,18 +2,17 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from 're
 import { RotateCw, Search } from 'lucide-react'
 import { asResult } from './rows'
 import { acceptNote, acceptPackages, scopeOf, scopeOptions, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
-import { describePeers } from './peers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /**
- * 「可装」那一栏：**全部配好的源**上有什么就列什么——不带参数调一次 `plugin-sources.search`，
+ * 「可装」那一栏：**全部配好的源**上有什么就列什么——不带参数调一次 `plugin-manager.search`，
  * 拿回所有源的全部结果（@godcreator 在前、第三方按 scope 名排；某条源没查成会在 `note` 里点名，
  * 不影响别的），搜索框只在本地筛选。
  *
- * **registry 地址这里不管**：由 gwb-plugin-sources 按 scope 从 npmrc 里找——从哪装就在哪搜。
+ * **registry 地址这里不管**：由插件管理按 scope 从 npmrc 里找——从哪装就在哪搜。
  * **第三方插件显示来源标签**（包名里的 scope；@godcreator 的不显示——满屏标签只会干扰）。
  *
  * **安装用 `plugin-manager.install`**。已装的不给「再装一份」按钮：多数插件提供服务，第二条条目会报
@@ -21,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
  * 直接输入包名安装的输入框在窗格顶部，这里不重复。
  */
 
-const SEARCH = 'plugin-sources.search'
+const SEARCH = 'plugin-manager.search'
 const INSTALL = 'plugin-manager.install'
 
 /** 源下拉里「不筛」那一项——radix 的 SelectItem 不接受空串 value */
@@ -115,11 +114,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
     try {
       const result = asResult(await host.call(INSTALL, { pkg }))
       if (result.ok) {
-        // peer 没装上时插件本身照样装上了，但要把没装上的 peer 说出来——不说的话，那条依赖运行时会找不到
-        const peers = describePeers(result.data)
-        const line = `${pkg} 装上了，条目也加进 cordis.yml 了。加载成功没有，去「已装」那一栏看。${peers.line}`
-        if (peers.ok) setDone(line)
-        else setFailed((prev) => ({ ...prev, [pkg]: line }))
+        setDone(`${pkg} 装上了，条目也加进 cordis.yml 了。加载成功没有，去「已装」那一栏看。`)
         await onChanged()
       }
       // error 里带着 pnpm 输出的最后几行，一个字都不能丢
@@ -204,7 +199,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
           <p className="baseui:text-sm baseui:text-destructive">查不到 registry，下面空着不代表没有插件。</p>
           <p className="baseui:mt-1 baseui:whitespace-pre-wrap baseui:break-all baseui:text-xs baseui:text-destructive">{loadError}</p>
           <p className="baseui:mt-1 baseui:text-xs baseui:text-muted-foreground">
-            搜索由 @godcreator/gwb-plugin-sources 提供；没装它时这里查不到，可以用顶部的「直接装包名」先装上它。
+            搜索由插件管理的 plugin-manager.search 提供；插件管理版本太旧、还没有这条命令时这里查不到，先在「已装」那一栏把 @godcreator/gwb-plugin-manager 更新到最新版。
           </p>
         </div>
       )}
@@ -227,7 +222,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
                 <Badge
                   variant="outline"
                   className="baseui:shrink-0"
-                  title="第三方源上的插件（这个 scope 是用 plugin-sources.add 配的）"
+                  title="第三方源上的插件（这个 scope 是用 plugin-manager.source.add 配的）"
                 >
                   {scopeOf(row.pkg)}
                 </Badge>

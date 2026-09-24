@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
 
 /**
- * 「可装」那一栏的纯逻辑。2026-09-08 起筛选的是 **registry 检索结果**——`plugin-sources.search`
+ * 「可装」那一栏的纯逻辑。筛选的是 **registry 检索结果**——`plugin-manager.search`
  * 一次取回全部结果，搜索框只在本地筛选。acceptPackages 的形状检查也在这一组里。
- * 2026-09-19 起检索**合并多条源**（@godcreator 加上 plugin-sources.add 配的第三方源），每行的来源标签与
+ * 检索**合并多条源**（@godcreator 加上 plugin-manager.source.add 配的第三方源），每行的来源标签与
  * 检索回执 note 的处理（scopeOf / acceptNote）也在这一组测。
  */
 
@@ -19,7 +19,7 @@ const row = (pkg: string, patch: Partial<SearchRow> = {}): SearchRow => ({
 const index = (...pkgs: { pkg: string; installed: boolean; spec?: string }[]) => installedIndex(pkgs)
 const installed = (pkg: string, spec?: string) => ({ pkg, installed: true, spec })
 
-describe('acceptPackages：plugins.search 的 data 收窄', () => {
+describe('acceptPackages：plugin-manager.search 的 data 收窄', () => {
   it('一份正经的表原样收下', () => {
     expect(acceptPackages([{ pkg: 'a', version: '0.0.2', description: '甲' }])).toEqual([
       { pkg: 'a', version: '0.0.2', description: '甲' },
@@ -173,7 +173,7 @@ describe('对账：检索结果 + 已装的那份 → 要画的行', () => {
 describe('汇总', () => {
   const catalog = [row('a'), row('b'), row('c')]
 
-  it('**已装的数量数的是筛选之前的全量**，筛出来几行单独一格', () => {
+  it('**已装的数量数的是筛选之前的全量**，筛出来几行单独一个字段', () => {
     const idx = index(installed('a'), installed('c'))
     expect(summarize(catalog, idx, toRows(catalog, idx, 'b'))).toEqual({ total: 3, installed: 2, shown: 1 })
   })
