@@ -204,12 +204,12 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="736-742" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home、三张样式表的地址，外加这一刻的用户外观样式
-（第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 fileUrl 解析到本包自己的产物），**顺序是写死的**：
+（第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="60-73" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="41-54" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="248-272" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="218-236" */}
 
 **第三步：三张表全部注入、并且都等到加载完成，才往下走。** 令牌那张必须最先——层顺序是它声明的；
 dockview 那张表的类名不由我们写（改不了名，也就加不上前缀），所以它整张不做隔离；
@@ -304,7 +304,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 插件把自己浏览器端脚本与样式表的位置告诉外壳，值从自己的 `import.meta.url` 算成 `file://`：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="27-30" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-15" */}
 
 `style` **是可选的**——插件可以没有样式表，那是正常情况而不是错。取不到也不抛，调用方照常注册它。
 
@@ -329,7 +329,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 总线会记一条「执行了不存在的命令」warn，而没装可选插件不是问题，每个没装主题的 home 每次启动都
 带着这条 warn 只会让人去查一个不存在的问题。命令在但返回失败、返回空白，一律当没有：
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="11-19" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-14" */}
 
 这是用命令实现「可选依赖」的常规做法：**问总线有没有，不拿调用失败来判断在不在**。为什么查在 node 端、
 不在浏览器端，见轨迹卡[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。

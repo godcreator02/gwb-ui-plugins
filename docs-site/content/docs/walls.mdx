@@ -45,7 +45,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 所以窗格 id 是个**不透明的键**，不要从中拆出各段。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="149-159" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="102-105" */}
 
 ### `typeof` 一个类是 `function`，按「是对象」判断它就等于不存在
 
@@ -55,7 +55,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 `typeof` 是 `'function'`，而那句 `isRecord(bw)` 只认 `typeof === 'object'`——于是 `getAllWindows`
 永远是 undefined。0.2.3 以为是 ESM `default` 导出方式的问题，改错了地方；0.2.4 才改对：对象或函数都继续往下取。
 
-{/* ref file="../plugins/shell/src/reload.ts" lines="51-62" */}
+{/* ref file="../plugins/shell/src/reload.ts" lines="32-47" */}
 
 **判据**：凡是按形状收窄一个「可能是类」的东西（`BrowserWindow`、`Service` 子类、任何构造器），
 `isRecord` 那种「是对象」的类型守卫要配上 `typeof === 'function'`；而且**报错要说清是哪一层没认出**
@@ -107,6 +107,22 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 **不改全局配置**：内核仓 decisions 页选定 oxlint 时判断过，白名单的真正代价是「新规则永远进不来」。
 拿 111 条 correctness 规则去换这两条误报不划算。这也是那条决策第一次被实际检验：代价确实
 只是「几条误报要处理」。
+
+### 插件各自的 `declare module 'cordis'` 在 pnpm store 布局下加不到同一个 `Context` 上
+
+`@godcreator/gwb-commands` 与 `@godcreator/gwb-data` 各自发布一份 `declare module 'cordis'`，给 `Context` 加上
+`gwbCommands`、`gwbData`。在 pnpm 的 store 布局下这份增强不生效：store 里这两个包的依赖各自链接到带 peer 后缀的
+目录，同一个 cordis 经两条物理路径进入类型检查，TS 7 把它们当成两个模块，增强加在了另一个 `Context` 上。症状是
+`pnpm check` 报「属性不存在」，而代码没有错，与包的版本也无关。
+
+试过的两条路都不行：`preserveSymlinks` 能让增强生效，但 `dockview-react` 的类型从此解析不了；把增强改写成
+`declare global` 同样不生效。
+
+所以外壳按 import 拿到这两个服务的类型，在 `src/index.ts` 里自己再声明一遍，内容与那两份 d.ts 一致：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="27-33" */}
+
+pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这段声明就可以删掉。
 
 ### react 没有 ESM 入口，必须有一个中间包
 
