@@ -16,37 +16,26 @@ import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
-/**
- * 一格插件窗格：`mountPane` 契约的外壳这一侧。件的 `client.js` 按注册表里那条
- * `file://` 地址动态 import（件注册时自报的），件源码里的 react 裸名由内核注的
- * importmap 解析到共享包——件之间拿到的是同一份 React 实例。
- *
- * 样式与模块在同一个 effect 里（件的表要先注、等它真到位再 import，是一条时序上的
- * 承诺）；拿不到 `dispose` 报契约不符，不装作成功；换内容分软硬两条——件给了
- * `retarget` 就软换，没给就拆了重挂。判据见文档站。
- */
-
-/** 格间总线的桶。一份全局的：桶按条目共享，得活在组件实例之上，引用计数管拆 */
+/** 分组按条目在窗格之间共享，所以总线注册表放在组件实例之外 */
 const busRegistry = createBusRegistry()
 
-/** 注册表里这一格的自报地址：client 必有，style 可选。件卸了 / 没报地址都抛 */
+/** 当场取注册表里这个窗格的地址；插件卸载了或没给 client 都抛错 */
 async function fetchPaneModule(
   host: HostBridge,
   entryId: string,
   paneId: string,
 ): Promise<{ client: string; style?: string; kind: PaneKind }> {
   const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
-  if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——件卸了？`)
-  if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器半的地址（client）`)
+  if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——插件卸载了？`)
+  if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器侧的地址（client）`)
   return { client: row.client, style: row.style, kind: row.kind }
 }
 
-/** 动态 import 件的 client 模块，按契约取 `mountPane` 导出（缺了或不是函数都抛） */
+/** 缺 `mountPane` 导出或它不是函数都抛错 */
 async function importMountPane(url: string, who: string): Promise<MountLike> {
-  // 动态 import 回来的是 any，先落成 unknown 再按契约取
   const mod: unknown = await import(/* @vite-ignore */ url)
   const mount = pickMountPane(mod)
-  if (mount === undefined) throw new Error(`${who} 的 client.js 没有 mountPane 导出——那是窗格件的入口名`)
+  if (mount === undefined) throw new Error(`${who} 的 client.js 没有 mountPane 导出——那是窗格插件的入口名`)
   return mount
 }
 
@@ -64,27 +53,26 @@ export function PluginPane({
 }: {
   /** 完整包名 */
   pluginKey: string
-  /** 这一格属于哪条条目。总线的桶按它分，`openPane` 的安全边界也靠它 */
+  /** 总线按它分组，`openPane` 只开得了这条条目的窗格也靠它 */
   entryId: string
-  /** 这一格是这个件的哪一格，交给件自己分派 */
+  /** 注册时给的窗格 id */
   paneId: string
-  /** 这**一份**的唯一键（dockview 的 panel id）。开两份时两份的这个值不一样 */
+  /** 这一份的实例 id（dockview 的 panel id） */
   panelId: string
-  /** 这一份此刻装着什么（件传的那份参数，保留键已摘）。同一格开出的几份靠它彼此不同 */
+  /** 插件自己的那部分参数，保留键已移除 */
   paneParams: Record<string, unknown> | undefined
   host: HostBridge
-  /** 开本件另一格。entryId 已经由上层绑好，件报不出别人的 */
+  /** entryId 已由上层绑定，插件开不了别人的窗格 */
   openPane: ShellBridge['openPane']
-  /** 改这一格标签上的标题。绑的是这一份自己的 panel api，件改不到别人 */
+  /** 绑的是这一份自己的 panel api */
   setTitle: ShellBridge['setPaneTitle']
-  /** 把这一格留住（不再是预览格）。同样绑这一份自己的 panel api */
+  /** 转正；同样绑这一份自己的 panel api */
   keepPane: ShellBridge['keepPane']
-  /** 往这一份的面板 params 上「并」一份（dockview 的 updateParameters）。上报内容走它 */
+  /** 合并进这一份的面板 params（dockview 的 updateParameters），上报内容用它 */
   updateParams: (update: Record<string, unknown>) => void
 }): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null)
-  // **经 ref 转一道，不进依赖数组**：这几个函数在面板组件里每轮渲染都是个新闭包，
-  // 直接进依赖会让整个件被反复拆了重挂。件手上那个 shell 是挂载时给的一份
+  // 经 ref 读、不进依赖数组：这几个函数每轮渲染都是新闭包，进依赖会让插件被反复卸载重挂
   const openPaneRef = useRef(openPane)
   openPaneRef.current = openPane
   const setTitleRef = useRef(setTitle)
@@ -93,21 +81,16 @@ export function PluginPane({
   keepPaneRef.current = keepPane
   const updateParamsRef = useRef(updateParams)
   updateParamsRef.current = updateParams
-  // **同样经 ref、不进依赖数组**：这是从面板 params 摘出来的新对象，每轮渲染都换引用。
-  // 挂载时读一次（读到的一定是最新那份），之后由下面那条 effect 按**稳定序列化**比对着换
+  // 同样经 ref：每轮渲染都是新对象；换内容由下面那个 effect 按稳定序列化比对
   const paneParamsRef = useRef(paneParams)
   paneParamsRef.current = paneParams
-  /** 件给的那支软换。挂上了才有，硬换那条永远是 undefined */
+  /** 插件给的软换函数；没给（走硬换）就一直是 undefined */
   const retargetRef = useRef<((params: Record<string, unknown>) => void) | undefined>(undefined)
-  /** 件真挂上了没有。没挂上时换 params 什么都不用做——挂的时候读的就是最新那份 */
+  /** 没挂载完成时换 params 什么都不做：挂载流程读的就是最新那份 */
   const mountedRef = useRef(false)
-  /**
-   * **件手上此刻装的是哪份参数**（稳定序列化）。挂上时记挂载那份，软换 / 重挂后记新那份，
-   * 件自己上报内容时记上报那份——面板 params 换成它时下面那条 effect 认得出「这是件自己换的」，
-   * 不软换也不重挂
-   */
+  /** 插件手上此刻是哪份参数（稳定序列化）；面板 params 换成插件自己上报的那份时，软换 effect 据此什么都不做 */
   const heldRef = useRef<string | undefined>(undefined)
-  /** 硬换的扳手：加一下，下面那条挂载 effect 就重跑一遍（拆了重挂） */
+  /** 加一就让挂载 effect 重跑，即硬换 */
   const [remounts, setRemounts] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
@@ -117,12 +100,8 @@ export function PluginPane({
     if (container === null) return
     let disposed = false
     let dispose: (() => void) | undefined
-    // 桶按条目取。这一格松手时引用计数减一，最后一格走了整个桶才拆
     const bus = busRegistry.acquire(entryId)
-    // 桌面那两样**现查现给，不拍快照**：挂载那一刻 dockview 的面板 DOM 可能还没接进
-    // 桌面那一节，`closest` 找不到就兜底 body，而快照永不刷新——浮层从此一直挂 body、
-    // 桌面切走藏不掉（实机撞过：带着开着的菜单切桌面，菜单漏到别人的桌面上）。getter
-    // 在件真用它的那一刻解析（开菜单的 render、订可见性的调用），那时 DOM 早已就位
+    // portal 用 getter 在插件用它时才查：挂载那一刻面板 DOM 可能还不在桌面 section 里，提前算会退回 body、切桌面藏不掉
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
       setPaneTitle: (title) => setTitleRef.current(title),
@@ -130,17 +109,17 @@ export function PluginPane({
       setPaneContent: (raw) => {
         const parsed = parsePaneContent(raw)
         if (!parsed.ok) {
-          console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${parsed.error}，这次上报不作数`)
+          console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${parsed.error}，这次上报不生效`)
           return
         }
         const { content } = parsed
         const { update, notice } = contentUpdateOf(paneParamsRef.current, content)
         if (notice !== undefined) console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${notice}`)
         if (content.params !== undefined) {
-          // 先记下「件手上已经是这份了」再改面板：params 一变下面那条 effect 就会醒
+          // 先记下插件手上已是这份，再改面板：params 一变软换 effect 就会运行
           const mine = pluginParamsIn(content.params)
           heldRef.current = paramsKeyOf(mine)
-          // 连着上报两次、中间还没重渲染时，第二次要拿第一次之后的那半算删哪些键
+          // 连着上报两次、中间没重渲染时，第二次要按第一次之后的参数算删哪些键
           paneParamsRef.current = mine
         }
         updateParamsRef.current(update)
@@ -157,14 +136,13 @@ export function PluginPane({
 
     void (async () => {
       try {
-        // 地址每次开格现取：注册表是会变的
         const target = await fetchPaneModule(host, entryId, paneId)
-        // 件可以没有样式表——取到了才等它到位
+        // 插件可以没有样式表
         if (target.style !== undefined) await loadStyle(target.style)
         if (disposed) return
         const mountPane = await importMountPane(target.client, pluginKey)
         if (disposed) return
-        // 没传参数就不给这一项：件那头 `pane.params === undefined` 干脆地等于「没给」
+        // 没传参数就不给这一项，插件据 `pane.params === undefined` 判断
         const openParams = paneParamsRef.current
         const pane = {
           id: paneId,
@@ -174,7 +152,7 @@ export function PluginPane({
         }
         const handle = mountPane({ host, shell, pane }, container)
         dispose = pickDispose(handle)
-        // 软换那支是可选的：挑不到就是这个件走硬换，不是契约不符
+        // retarget 可选：取不到就走硬换，不是契约不符
         retargetRef.current = pickRetarget(handle)
         heldRef.current = paramsKeyOf(openParams)
         mountedRef.current = true
@@ -194,29 +172,19 @@ export function PluginPane({
       disposed = true
       mountedRef.current = false
       retargetRef.current = undefined
-      // 卸载路径上的异常没有别的出口，吞掉就等于件的清理从来没跑过而谁也不知道
+      // 卸载路径上的异常没有别的出口，必须记下来
       disposeOutsideCommit(dispose, () => bus.release(), (err) => {
         console.error(`[shell] ${pluginKey} 的 dispose 抛了：`, err)
       })
     }
-    // **`paneParams` 故意不在这张表里**：它每轮渲染都是个新对象，进来就是反复拆了重挂。
-    // 换内容走下面那条 effect，比的是它的稳定序列化；硬换要重挂时扳 `remounts`
+    // paneParams 故意不在依赖里：每轮渲染都是新对象；换内容走下面的 effect，硬换靠 remounts
   }, [pluginKey, entryId, paneId, panelId, host, remounts])
 
-  /**
-   * 这一格装的东西换了（外壳软换了面板 params）。**软换优先**：件给了 `retarget` 就调它，
-   * 那一格的 React 树、滚动位置、正在打的字全留着；没给才扳 `remounts` 拆了重挂。
-   *
-   * 比的是 `paramsKeyOf` 算出来的**稳定序列化**，不是对象引用——面板 params 每轮渲染都
-   * 摘出一个新对象，按引用比等于每轮都算「换了」。
-   *
-   * **件还没挂上时什么都不做**：挂载那条链读的是 `paneParamsRef.current`，读到的一定是
-   * 最新那份。这时候扳重挂只会把正在挂的那一次白白掐掉。
-   */
+  /** 外壳换了面板 params：插件给了 `retarget` 就软换，没给就硬换；比稳定序列化，不比引用；没挂载完成时什么都不做 */
   const paramsKey = paramsKeyOf(paneParams)
   useEffect(() => {
     if (!mountedRef.current) return
-    // 件手上本来就是这份（件自己上报的、或者挂载时就是它）：什么都不用做
+    // 插件手上本来就是这份（自己上报的，或挂载时就是它）
     if (paramsKey === heldRef.current) return
     heldRef.current = paramsKey
     const retarget = retargetRef.current
@@ -227,11 +195,10 @@ export function PluginPane({
     try {
       retarget(paneParamsRef.current ?? {})
     } catch (err) {
-      // 件的 retarget 抛了：这一格现在显示的是上一份内容，而人刚点的那下看着像没反应
+      // 插件的 retarget 抛错时窗格还显示上一份内容，人看到的是点了没反应
       console.error(`[shell] ${pluginKey} 的 retarget 抛了：`, err)
     }
-    // 只认 paramsKey（`pluginKey` 只是那句错话里的名字）：别的都经 ref 现读，
-    // 进来就是无谓的软换
+    // 只依赖 paramsKey（pluginKey 只用在报错里），别的都经 ref 读
   }, [paramsKey, pluginKey])
 
   if (error !== null) {
@@ -240,17 +207,7 @@ export function PluginPane({
 
   return (
     <div className="shell:relative shell:h-full">
-      {/*
-        `@container` 让这一格成为容器查询的根：**窗格不是视口**，件里写的 `@sm:` / `@md:`
-        这类变体按这一格现在有多宽来判，跟整窗大小无关——同一个件在窄格里竖排、在宽格里
-        横排，拖动分隔条当场变。类名带 `shell:` 是因为这条规则出自**外壳自己那张表**
-        （容器是外壳画的），件那边写的 `@md:` 用的是件自己的前缀，两者互不相干。
-
-        **`data-gwb-plugin` 只是身份标记**：围栏是类名前缀——每个件的类名从源头就带自己
-        那一份（`hello:flex` / `shell:flex`），规则全页有效但只匹配得上本件的元素，跟
-        DOM 祖先关系无关。挂这个属性是为了让人在 devtools 里一眼看出这一格是谁的，
-        以及给外部（探针、样式调试）一个认件的把手。
-      */}
+      {/* `@container` 让窗格成为容器查询的根，插件的 `@md:` 按窗格宽度判；`data-gwb-plugin` 只是身份标记，不参与选择器 */}
       <div ref={hostRef} data-gwb-plugin={pluginKey} className="shell:@container shell:h-full shell:overflow-auto" />
       {!ready && (
         <p className="shell:text-muted-foreground shell:pointer-events-none shell:absolute shell:inset-x-0 shell:top-2 shell:m-0 shell:text-center shell:text-sm">
