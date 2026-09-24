@@ -17,9 +17,8 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 | 外观 | `plugins/theme/src/` | 全局启动样式（字体＋自定义 CSS）＋「外观」窗格；没有外壳也照常加载 | [样式与组件](/docs/styles) |
 | 基础界面 | `plugins/baseui/src/` | 基础插件的官方窗格集（日志、插件管理），一个插件多个窗格、浏览器端按 `pane.id` 分派 | [样式与组件](/docs/styles) |
 | 令牌 | `plugins/shell/src/tokens/` | 语义变量亮暗两套＋preflight＋层顺序声明；没有 node 端代码，产物是外壳包里的两份 css（`theme.css`、`theme.reference.css`） | [令牌与颜色](/docs/tokens) |
-| 共享 react | `plugins/shell/src/shared/` | react 四个包名的 CJS→ESM 打包产物，随外壳包发布，经页面 importmap 让全页共用同一份实例 | [样式与组件](/docs/styles) |
 
-「一个 UI 平台的整体，要换整套换」——五个模块放在同一个仓、一起换的立场与判据在[样式与组件](/docs/styles)。
+「一个 UI 平台的整体，要换整套换」——四个模块放在同一个仓、一起换的立场与判据在[样式与组件](/docs/styles)。
 
 ## 依赖方向
 
@@ -29,7 +28,7 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 **peer 范围怎么写**：正本在 devkit 的 release skill「gwb-release」，本页不复述：
 
-{/* ref file="../plugins/shell/package.json" lines="54-59" */}
+{/* ref file="../plugins/shell/package.json" lines="43-47" */}
 
 **跨仓基础插件的 dev 写 registry 上的版本（`^` 范围或精确号），同仓包照旧 `workspace:*`**——本仓没有它们的 workspace，`workspace:*` 解析不到：
 
@@ -50,5 +49,5 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 代码地图（在哪、先读、读序、可跳过）。
 
 本仓的现状页按功能线组织、不按包分：[外壳](/docs/shell) 一页，[样式与组件](/docs/styles) 一页覆盖
-theme / baseui / 令牌 / 共享 react 的契约与原理，[令牌与颜色](/docs/tokens) 是令牌规则的
+theme / baseui / 令牌的契约与原理，以及页面上的 react 从哪来，[令牌与颜色](/docs/tokens) 是令牌规则的
 正本，[遇到过的问题](/docs/walls) 记录这个仓遇到过的问题。

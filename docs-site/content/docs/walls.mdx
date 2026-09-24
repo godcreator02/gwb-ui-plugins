@@ -124,32 +124,11 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这段声明就可以删掉。
 
-### react 没有 ESM 入口，必须有一个中间包
+### react 的打包在内核仓
 
-实测 react 19.2.8 的包清单：`exports` 里只有 `react-server` 与 `default`，`default` 指
-`index.js`，**没有 `module` 字段、没有 `"type": "module"`**——它是纯 CJS。
-
-所以「把 home 里的 react 按包名（bare specifier）直接交给浏览器」这条路走不通，必须先把它打包成 ESM
-再发布一个包。这是唯一可行的做法。
-
-### 打包成 ESM 只能用 esbuild，rolldown 会保留 `require`
-
-{/* ref file="../plugins/shell/build.ts" lines="113-117" */}
-
-rolldown 在 browser 平台对「CJS 里 require 一个 external 包」**有意保留 `require`**，而浏览器里没有
-`require`——产物一加载就报错。esbuild 会把它提升成顶层 `import`。
-
-### react-dom 在工厂函数内部 require，esbuild 也提升不了
-
-{/* ref file="../plugins/shell/build.ts" lines="126-136" */}
-
-它那句 `require('react')` 不在顶层，而在工厂函数**内部**。esbuild 无法提升，于是产物里留下
-一个 `__require` 占位函数，执行到那一句才报错。修补办法是在 banner 里加一句 `import * as __gwb_react`，
-再把占位函数换成只认 react 的同步解析器（返回 `default`——react-dom 要访问 React 的内部实现）。
-
-那条正则匹配的是 **esbuild 生成代码的格式**，显然容易失效。所以这里跟基础插件仓（gwb-base-plugins）的
-处理不同：**匹配不上直接抛错**，而不是打印一句「无探针，原样保留」就放过——带占位函数的产物发布出去，
-要到页面上打开窗格才发现。产物测试再检查一次：四份打包产物里不许出现 `typeof require` 或直接调用的 `require(`。
+react 没有 ESM 入口、只能用 esbuild 打包、react-dom 在工厂函数内部 `require('react')` 要修补——这三处问题随 react
+一起搬到了内核包，正本在内核仓文档站「页面上的包名」与内核仓的 `apps/desktop/scripts/build-react.ts`。本仓的插件只把
+react 的四个包名外置，不再自己打包 react。
 
 ---
 
@@ -436,7 +415,7 @@ shell 的产物测试第一次运行就报「`dockview-enterprise` 被打包进 
 
 第一版正则在整个文件里找 `import '…'`，773KB 的 client.js 里什么文本都有。改成用 `^import` 锚定行首：
 依据的是**产物的格式**——tsc 与 esbuild 都把顶层 import 写在行首，字符串字面量里的那种
-总带着缩进。跟上面 react-dom 那条补丁正则属于同一类，容易失效，但比在整个文件里搜索可靠得多。
+总带着缩进。跟内核仓打包 react-dom 时那条补丁正则属于同一类，容易失效，但比在整个文件里搜索可靠得多。
 
 同一个测试文件里检查「dockview.css 不许有 scope 规则」的那条也出过类似的错：两张样式表**开头的
 注释里都提到了这件事**，`toContain('data-gwb-plugin')` 查到的是说明文字而不是规则。检查规则之前先

@@ -57,10 +57,10 @@ export function apply(ctx: GwbContext) {
 
 **给人看的名字归运行时**（`describeSelf`），不写进包清单——包清单里没人读的字段失效时
 没有任何机制会发现。「我是外壳」也不写在包清单里，由 node 端调 `kernel.setShell` 声明。
-包清单 `gwb` 下有人读的只有三个字段：`gwb.shared`（给页面 importmap 的 react 四个裸名）、
-`gwb.provides`（本插件提供哪些服务、各自的一句话与用法：`devkit.services` 读它，repo-kit 的自述检查要求它与
-源码里提供的服务一一对应——本插件就一条 `gwbShell`）、`gwb.testedKernel`（本插件在哪个内核版本上测过：
-插件管理的 `plugin-manager.list` 据此标出没在当前内核上测过的插件，`devkit.release` 没写就拒发）。
+包清单 `gwb` 下有人读的只有一个字段：`gwb.provides`（本插件提供哪些服务、各自的一句话与用法：`devkit.services` 读它，
+repo-kit 的自述检查要求它与源码里提供的服务一一对应——本插件就一条 `gwbShell`）。兼容哪个内核写在 peer 里内核包
+`@godcreator/gwb-kernel-desktop` 的 `^` 范围，插件管理的 `plugin-manager.list` 拿它和运行中的内核比；页面 importmap 里 react 的
+四个裸名由内核包提供，所以这个范围从 `^0.4.1` 起。
 
 **跟 `gwb-commands` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：插件卸载时表上
 那几条自动注销。它们仍然返回注销函数，给要提前注销的场景用。
@@ -831,10 +831,10 @@ dragstart 把单例填上）——放下之后的处理全走真代码，「人�
 ### 菜单 portal 到哪都有样式——别把前缀隔离改回选择器限定范围
 
 外壳状态栏的浮层（「桌面」面板、「布局」「新建」两个菜单、删桌面的确认框）radix Portal 默认挂载到 `body`。
-外壳用 Tailwind 类名前缀隔离（类名自带 `shell:` 前缀、规则全页有效），这些浮层挂在 `body` 下照样有样式，
+外壳用 Tailwind 类名前缀隔离（类名自带 `shell:` 前缀、规则全页有效），这些浮层挂载在 `body` 下照样有样式，
 所以 `dropdown-menu.tsx` 是官方原样，不带 `container` 参数，也没有把外壳根节点往下传的 prop 链——实际
 量过，两个菜单都挂载在 `body` 下，底色等于 `--popover`。换成选择器限定范围（scope），规则只在外壳根节点
-下面生效，挂在 `body` 下的这些浮层整层没有样式。
+下面生效，挂载在 `body` 下的这些浮层整层没有样式。
 
 **这条写在这儿是为了防止改回去**：以后再看到「菜单得知道自己该挂载到哪个容器」这种要求，先确认
 是不是有人把前缀隔离又改回了选择器限定范围。判据见样式与组件的[隔离靠名字，不靠位置](/docs/styles#隔离靠名字不靠位置)。

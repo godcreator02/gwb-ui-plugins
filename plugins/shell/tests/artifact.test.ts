@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest'
  * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
  *
  * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis 与词汇表包
- * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许**那四个共享包名——它们由
- *   页面 importmap 解析到外壳。多一个（比如 dockview 被误配成 external）就是运行时
+ * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许** react 那四个包名——它们由
+ *   页面 importmap 解析到内核包。多一个（比如 dockview 被误配成 external）就是运行时
  *   一句 `Failed to resolve module specifier`，而那要打开窗格才看得见
  * - **子路径 `./pane`**（`dist/types/`，tsc 只输出声明）：只有 d.ts，引用到的文件里没有包名 import
  *
@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-/** 页面 importmap 提供的那四个，跟 build.ts 的 SHARED 一一对应 */
+/** 内核给页面 importmap 提供的那四个，跟 build.ts 的 SHARED 一一对应 */
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
 
 const CLIENT = 'client.js'
@@ -72,9 +72,7 @@ function classSelectors(css: string): string[] {
 
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
-  /** 外壳提供给页面 importmap 的 react 四个包：属于浏览器侧，里面的包名 import react 由 importmap 解析 */
-  const VENDOR = new Set(['react.js', 'react-jsx-runtime.js', 'react-dom.js', 'react-dom-client.js'])
-  const nodeHalf = all.filter((f) => f !== CLIENT && !VENDOR.has(f))
+  const nodeHalf = all.filter((f) => f !== CLIENT)
 
   it('两侧都有产物可查', () => {
     expect(nodeHalf.length).toBeGreaterThan(0)
@@ -102,7 +100,7 @@ describe.skipIf(!built)('产物', () => {
     expect(bare).toEqual([])
   })
 
-  it('浏览器侧：包名 import 只许那四个共享的，dockview 得打包进 client.js', () => {
+  it('浏览器侧：包名 import 只许 react 那四个，dockview 得打包进 client.js', () => {
     const leaked = specsIn(read(CLIENT), BARE).filter((s) => !SHARED.has(s))
     expect(leaked).toEqual([])
   })

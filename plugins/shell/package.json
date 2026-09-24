@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.13.6",
+  "version": "0.13.7",
   "author": {
     "name": "godcreator"
   },
@@ -13,10 +13,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./react": "./dist/react.js",
-    "./react-jsx-runtime": "./dist/react-jsx-runtime.js",
-    "./react-dom": "./dist/react-dom.js",
-    "./react-dom-client": "./dist/react-dom-client.js",
     "./theme.css": "./dist/theme.css",
     "./theme.reference.css": "./dist/theme.reference.css",
     "./pane": {
@@ -29,20 +25,13 @@
     "skills",
     "src"
   ],
-  "//gwb": "testedKernel 是这个插件在哪个内核版本上测过（plugin-manager.list 据此标出没在当前内核上测过的插件，devkit.release 没写就拒发）；provides 由 devkit.services 读取、把服务的用法带进回执，repo-kit 的自述检查要求它与源码提供的服务一一对应；shared 是给页面 importmap 的 react 四个包名。「我是外壳」这件事靠 node 端调 kernel.setShell 声明，不写在包清单里",
+  "//gwb": "provides 由 devkit.services 读取、把服务的用法带进回执，repo-kit 的自述检查要求它与源码提供的服务一一对应。页面 importmap 里 react 的四个包名由内核包的 gwb.shared 提供。「我是外壳」这件事靠 node 端调 kernel.setShell 声明，不写在包清单里",
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbShell": {
         "summary": "窗格注册服务：插件在 apply 里说「我有一个窗格」、报自己的名字",
         "usage": "inject: ['gwbShell']，在 apply 里 ctx.gwbShell.registerPane({ id, title, icon?, client?, style?, kind? })——kind 'tool'（缺省，整页一份）或 'document'（能多开）；ctx.gwbShell.describeSelf({ title, icon? }) 报件名。两个都回注销函数、件卸载时自动摘。panes() / plugins() 读此刻的两张表。身份（pkg、entryId）由服务从调用方的 fiber 上取，插件不用报"
       }
-    },
-    "shared": {
-      "react": "./react",
-      "react/jsx-runtime": "./react-jsx-runtime",
-      "react-dom": "./react-dom",
-      "react-dom/client": "./react-dom-client"
     }
   },
   "scripts": {
@@ -51,18 +40,17 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；0.4.1 起内核给页面 importmap 提供 react。命令总线、数据、词汇表包只取类型，写在 dev 里",
   "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.5",
-    "@godcreator/gwb-data": "^0.1.5",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "0.4.5",
-    "@godcreator/gwb-data": "0.1.5",
+    "@godcreator/gwb-commands": "^0.4.5",
+    "@godcreator/gwb-data": "^0.1.5",
     "@godcreator/gwb-plugin-api": "^0.4.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
-    "@godcreator/gwb-skills": "0.4.3",
+    "@godcreator/gwb-skills": "^0.4.3",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",
     "@types/node": "^24.0.0",
