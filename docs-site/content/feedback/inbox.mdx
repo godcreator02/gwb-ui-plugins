@@ -116,3 +116,9 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - 浏览器端构建（`build.ts` 或 `tools/build-plugin.ts`）里从内核包清单读 `gwb.shared` 的那段删掉，`external` 直接写上面四个名字；
   产物测试里读 `gwb.shared` 的名单一样写死。没有浏览器端产物的包只改 peer
 - 等 devkit 发了认 0.6 的新版再发：devkit 现在的发版检查还读内核包的 `gwb.shared`，装上 0.6 会被拒（已投 devkit 收件页）
+
+## 2026-09-25 插件管理 0.10.0 的 update-all 回执：dependents 不再有 because
+
+来源：总控台会话（devkit 仓插件管理 update-all 改成直接比真实目录，devkit c8a7293，与上面「要跟插件管理 0.10」同一版）。
+
+插件管理 0.10.0 的 `plugin-manager.update-all` 找跟着重新加载的包，从「按 peer 关系推 pnpm 的目录名」改成「`pnpm add` 之前与之后直接比每个依赖的真实目录」，给不出是因为 peer 里的哪个包，所以回执 `dependents[]` 从 `{ pkg, because, entries }` 改成 `{ pkg, entries }`。上面「要跟插件管理 0.9」第 3 条说的 `because` 作废：插件管理窗格（`describeUpdateAll` 或别处）如果读了 `because` 要删掉；只列 `pkg` 与 `entries` 的不用改。另外 `dependents` 现在按包名排，也会包含不是插件、但目录变了的包（这种包 `entries` 是空数组）。
