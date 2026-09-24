@@ -127,6 +127,13 @@ Tailwind，表合并成一张不就行了」。不行。得一步一步看清楚
 | 会怎么坏 | 三种，全部静默 | 只剩一种：忘写前缀 |
 | 什么时候看得见 | 某个弹层被打开、某两个插件同时装上的那天 | **当场**——那个类不生效，写的人打开页面就看见 |
 
+<Diagram name="name-isolation" title="按位置隔离与按名字隔离：portal 出去的菜单有没有样式">
+
+- 按位置隔离：规则写成 `[data-gwb-plugin="baseui"] .px-2`，只匹配那个窗格容器底下的元素；窗格里的按钮匹配得上，portal 到 body 下的下拉菜单匹配不上，整层没有样式，也不报错
+- 按名字隔离：类名写成 `baseui:px-2`，编出的规则 `.baseui\:px-2` 全页有效；按钮和 portal 出去的菜单都匹配得上，别的插件不会写出这个类名
+
+</Diagram>
+
 「忘写前缀」还能用一条守卫测试拦住（第四节），而上面那三种一条都拦不住。
 
 **工具链原生支持这个做法**，不用自己改写：Tailwind 4 的 `prefix()` 写在拆开的主题导入上、
@@ -171,6 +178,15 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 
 外置的判据很明确：**在 importmap 里的才许外置**。不在里头的（组件用的那些库）外置成裸名，
 就是运行期一句「解析不到这个模块」。
+
+<Diagram name="importmap-flow" title="react 的四个包名怎么全页只解析到一份">
+
+- 外壳在 `package.json` 的 `gwb.shared` 里声明 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 各对应本包的哪个导出子路径
+- 内核扫 home 里各包的 `gwb.shared`，解析成 file:// 地址拼成 importmap；它不认识 react，同一个包名只认第一个声明的包
+- 页面在 import 外壳的 client.js 之前注入这张 importmap，只注入一次
+- 外壳和各插件的 client.js 构建时都把这四个包名设成 external，浏览器按 importmap 把它们解析到外壳包里的同一份文件
+
+</Diagram>
 
 **这份共享现在换来的是什么，要说清楚**：一是字节——带界面的每个插件不必各带一份 React；二是
 **为将来留的余地**。眼下的窗格契约交给插件的是一个 DOM 容器加一个挂载函数，插件在容器里自己 `createRoot`，
@@ -234,6 +250,15 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 | 主题插件 | 用户覆盖：字体两项 + 一整段自定义 CSS，交给外壳在最后注入 | 不知道任何插件存在，也不知道外壳把它注入在第几位（它只交出一段字符串） |
 | 内核 | 只转交共享声明，拼 importmap | 不认识 `react`，不认识任何类名，不认识任何包名 |
 
+<Diagram name="module-deps" title="本仓各模块的依赖方向">
+
+- 带界面的插件依赖令牌表（构建期引用映射文件、运行期读页面上的变量值）与外壳（注册窗格时交出两个地址，浏览器侧 `import type` 外壳的类型）
+- 外壳经一条可选命令 `theme.startupCss` 用到主题插件，没装主题插件外壳照常运行
+- 本仓的插件以 peer 依赖基础仓插件（commands、data、settings、logger 等），基础仓不依赖本仓
+- 内核只读各包清单里的 `gwb.shared` 拼 importmap，不依赖任何插件
+
+</Diagram>
+
 依赖方向是：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值），**插件 → 外壳**
 （注册窗格时提供自己那两个地址），**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行），**内核 → 谁都不依赖**
 （它只读清单字段）。反向的箭头一条都没有：
@@ -265,6 +290,15 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 值和映射**必须分成两个文件**，理由写在映射文件自己的文件头注释里（下一节展开）。插件那边引用的写法是固定的一行，
 第六节有可以照抄的出处。
+
+<Diagram name="token-flow" title="颜色令牌在构建时与运行时各经过哪几处">
+
+- 构建时：外壳的 `theme.reference.css` 用 `@theme inline` 把颜色名映射到令牌变量（`--color-primary: var(--primary)`），不输出任何变量值
+- 插件的样式入口引入这个映射文件、写 `prefix(baseui)`，编出的类是 `.baseui\:bg-primary`，规则里只有 `var(--primary)`
+- 运行时：外壳最先注入令牌表 `tokens.css`，亮色值写在 `:root`、暗色值写在 `.dark`
+- 插件元素上的 `baseui:bg-primary` 读 `var(--primary)`，沿 DOM 继承读到页面上那一份值；状态栏切换 `<html>` 上的 `dark` 类，所有插件一起变
+
+</Diagram>
 
 ### 窗格注册时交出去的两个地址
 
@@ -321,6 +355,15 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 {/* ref file="../plugins/baseui/src/index.ts" lines="26-27" */}
 
 {/* ref file="../plugins/baseui/src/index.ts" lines="35-48" */}
+
+<Diagram name="baseui-panes" title="基础界面的两个窗格各调哪些命令">
+
+- 基础界面插件的必需依赖只有 `gwbShell`；装了 gwbLogger 才注册日志窗格（`id: 'logger'`），装了插件管理才注册插件管理窗格（`id: 'plugin-manager'`）
+- 日志窗格调 `logger.backlog` 取历史、`logger.where` 取日志文件位置；实时日志不经 `args.host`，订阅 `window.gwb.on`、只收 `t` 为 `gwb-logger` 的事件
+- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update-all`、`enable`、`disable`、`add-entry`、`remove-entry`、`set-label`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`
+- 两个窗格互不 import，只共用 `components/ui` 下的组件
+
+</Diagram>
 
 两条都不反向：没装主题插件的 home 里，外壳只是少一份启动样式（上一节那条可选命令）；没装
 logger / plugin-manager 的 home 里，基础界面插件只是少注册那个窗格。外壳自己那两条必需依赖
@@ -457,6 +500,18 @@ import，只 import `components/` 下的共享组件。
 令牌的默认值，也能覆盖任何一个插件的工具类。设置项的说明里就是这么写的：
 
 {/* ref file="../plugins/theme/src/index.ts" lines="118-124" */}
+
+整条路径，连同「外观」窗格的预览与保存、状态栏的亮暗开关：
+
+<Diagram name="theme-flow" title="外观设置怎么进页面，亮暗开关走哪条路">
+
+- 三项外观设置 `font-sans`、`font-mono`、`custom-css` 由主题插件用 gwbSettings 定义，存在这个 home 里
+- 开机时外壳 node 侧处理 `shell.env`，命令表里有 `theme.startupCss` 才调；主题插件用 `buildStartupCss` 把三项拼成一段 CSS
+- 外壳浏览器侧把它写进 `<style id="gwb-theme-style">`，排在三张样式表之后、第一帧之前
+- 「外观」窗格打开时调 `theme.values` 取当前值，输入时用同一个 `buildStartupCss` 改写那张样式表预览；点保存调 `theme.save` 写回设置，不保存就关窗格则退回已保存的样子
+- 状态栏的亮暗开关只切换 `<html>` 上的 `dark` 类，令牌表里 `.dark` 那套值随之生效，不经过主题插件
+
+</Diagram>
 
 ---
 

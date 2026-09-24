@@ -201,6 +201,16 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 开机时窗格容器的 onReady 比桌面操作的注入早）。这个默认只发生在三处：第一次开机、布局文件认不出回默认、
 状态栏「重置布局」；**运行时新建的桌面不用它，新建时为空**（见下文多桌面节）。
 
+<Diagram name="shell-takeover" title="外壳怎么接管内核的页面">
+
+- shell 插件的 node 侧调 `gwbKernel.setShell(client.js 的地址)`，包在 `ctx.effect` 里，插件卸载时自动撤销
+- 内核记下地址，经 `gwb:shell` 推给页面，同时带上按各包 `gwb.shared` 算好的 importmap
+- 页面先注入 importmap、再 import client.js，把 `#root` 交给它的默认导出 `mountShell`，留下返回的 `dispose`
+- `mountShell` 调 `shell.env` 取 home、三张样式表的地址、启动样式与版本号，交给 `bootShell`：注入样式表 → 注入启动样式 → 取注册表与布局文件 → 给 `<html>` 加 `dark` 类 → `createRoot(#root)` 渲染
+- shell 插件卸载时内核推 url 为 null，页面调 `dispose`，外壳同步卸载 React 树
+
+</Diagram>
+
 **卸载是同步的**：内核页面根节点换外壳时先调旧外壳的 `dispose()`、紧接着清空根节点，所以 `dispose`
 返回时整棵树必须已经卸载完。准备（异步的那一长段）与挂载 React 树（`createRoot` + `render` 那一小段）
 分开：`dispose` 在准备完成之前调用，挂载那段就永不执行；树已挂载就当场 `unmount()`。html 上的类、
@@ -210,10 +220,16 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 
 一个窗格由 `PluginPane` 承载，它是 `mountPane` 契约的外壳这一侧：
 
-```
-注入插件的样式表 → 等它加载完成 → 动态 import client.js
-→ mountPane({ host, shell, pane }, 容器) → 收下 dispose
-```
+<Diagram name="pane-mount" title="一个窗格从注册到关闭">
+
+- 插件在 `apply` 里调 `registerPane({ id, title, icon?, client, style?, kind? })`，`client` 与 `style` 是从 `import.meta.url` 算出的 file:// 地址
+- 打开窗格时 `PluginPane` 调 `shell.panes` 当场取这一条的地址
+- 有 `style` 就先注入样式表、等它加载完成
+- 动态 `import(client)`，取模块导出的 `mountPane`
+- 调 `mountPane({ host, shell, pane }, 容器)`，收下 `{ dispose, retarget? }`
+- 关窗格时 `dispose` 排进微任务、在 React 提交之外调用，随后释放窗格间总线的句柄
+
+</Diagram>
 
 **样式与模块在同一个 effect 里**：插件的样式表要先注入、而且要等它加载完成再 import，这两件事
 有先后顺序的保证；拆成两个 effect 就只能靠 effect 的排列顺序保证「谁先跑谁后跑」。窗格间总线的句柄
@@ -239,6 +255,16 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 | `shell.layout.get` | 读布局文件，没存过回 null（`readDoc` 对没有的文档回 undefined，**这不是错误、不告警**） |
 | `shell.layout.save` | **整份替换**。保存时校验一遍形状——浏览器侧自己的 bug 拼出的坏文件，不能覆盖磁盘上好的那份 |
 | `shell.openPane` | 跨插件开一个窗格（任何插件的），见[下文专节](#跨插件开窗格-shellopenpane) |
+
+<Diagram name="pane-layout" title="窗格容器、开两份的文档窗格与布局文件">
+
+- 每张桌面一个窗格容器（一个 dockview 实例）；开机只挂载活动那张，别的桌面第一次切过去才挂载
+- 同一个文档窗格用不同的 `key` 打开两次是两份实例：第一份的 id 是基名，第二份追加 `:2`；key 与插件的 params 存在面板的 params 里
+- 容器布局一变，400ms 防抖后经 `shell.layout.save` 整份替换 gwbData 的 `layout` 文档（desktops、active、saved）；切桌面时立刻保存
+- 开机经 `shell.layout.get` 读回，活动桌面的容器用 `fromJSON` 恢复，每份窗格拿回自己的 key 与 params；读不到或认不出就按默认布局打开
+- 状态栏「布局」菜单把活动容器的布局起名存进 saved，点哪一条就恢复到活动容器上
+
+</Diagram>
 
 几样东西几个节律：
 
@@ -281,6 +307,14 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
    删当前桌面的确认框切过去每次都报；真没接上 portal 的浮层藏不掉，隔一会儿照样在。radix 的焦点护栏
    （`data-radix-focus-guard` 那两个 span，模态菜单开着时挂在 body 首尾）与标了
    `data-gwb-status-layer` 的状态栏浮层（「桌面」面板，切完桌面它可能还开着）也不算
+
+<Diagram name="desktop-switch" title="切桌面：容器常驻，浮层跟着自己那张桌面">
+
+- 每张桌面是一个 section：窗格容器，加这张桌面的浮层挂载点（`args.shell.portal`）；不显示的那张加 `visibility:hidden`、`pointer-events:none` 与 `inert`，DOM 与订阅都还在
+- 插件的下拉菜单、确认框 portal 到自己那张桌面的挂载点，桌面藏起来时跟着一起藏
+- 切到另一张：先改 active 并立刻保存整份布局 → React 切换显示与隐藏（没挂载过的容器这时挂载）→ `onVisibility` 通知两张桌面上的插件、焦点交给新桌面 → 500ms 后检查 body 下有没有没用 portal 的浮层，只报告不删除
+
+</Diagram>
 
 **本桌优先**（判据见轨迹卡[本桌优先](/trajectory/2026-09-19-desk-first)）：实例 id 全页唯一
 （`pane.instance` 可当全局键用），但**开窗格只看一张桌面**——有来源开在来源那张，否则开在当前

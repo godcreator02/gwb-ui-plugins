@@ -32,5 +32,7 @@ export default {
     // 讲机制的 html 动画存放在 public/，正文里的 <iframe> 在机读版里整个删掉
     iframe: 'drop',
     ...fumadocs.defaultRoster,
+    // 示意图：图本身 agent 看不见，生成 markdown 时只保留「[图] 标题」和子元素里的文字说明
+    Diagram: (node, h) => [h.paragraph(`[图] ${h.attr(node, 'title') ?? h.attr(node, 'name') ?? ''}`), ...h.children()],
   },
 }
