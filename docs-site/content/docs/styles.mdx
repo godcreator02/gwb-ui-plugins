@@ -596,7 +596,7 @@ import，只 import `components/` 下的共享组件。
 
 **三、构建脚本补一步**：编译本插件那张表，输入就是那份入口，扫描范围由入口里最后那条决定。
 
-{/* ref file="../plugins/baseui/package.json" lines="26-31" */}
+{/* ref file="../plugins/baseui/package.json" lines="23-28" */}
 
 **四、拉组件**：`shadcn add` 什么就有什么，拉下来是本插件目录里的文件，跟着本插件一起打包。
 组件的运行时依赖**打包进本插件的产物**，别外置（不在 importmap 里的裸名，外置就会在运行时报错）。
