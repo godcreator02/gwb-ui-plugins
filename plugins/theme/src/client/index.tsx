@@ -4,27 +4,14 @@ import type { HostBridge, PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pan
 import { buildStartupCss } from '../startup-css.js'
 
 /**
- * 浏览器侧：「外观」窗格。两个字体输入框加一块 CSS 文本域。
- * **输入后当场预览**（直接改页面上的启动样式表，外壳启动时建的那张），点保存才写到磁盘
- * （`theme.save`），重启后由外壳启动时恢复。**关窗格时丢弃没保存的预览**：dispose 时退回已保存的
- * 样子——否则页面上显示的样子重启后就没了，却没有任何提示。
- *
- * **这个文件里每一个类名都带 `theme:` 前缀**（Tailwind 的 prefix，见 `src/client/styles.css`）。
- * 本插件样式表里的规则只匹配这种类名：规则全页有效，但只可能匹配到本插件画出来的元素——隔离来自
- * 类名唯一，不靠 DOM 祖先关系。漏加前缀的类**不生成任何规则、构建照样通过**，所以由
- * `tests/prefix.test.ts` 检查。
- *
- * **样式表不由这里注入**：外壳的 PluginPane 在 import 这份 client.js 之前就注入了 style.css；令牌表
- * 是页面级的一份，也由外壳注入。容器上的 `data-gwb-plugin` 对这个插件**只是身份标记**，样式隔离靠类名前缀。
- *
- * 跟本插件的业务功能分开：用户填的自定义 CSS 经 `theme.startupCss` 注入成页面级的
- * `#gwb-theme-style`，作用于整页；这份编译产物只是这个窗格自己的工具类样式表。
+ * 「外观」窗格：输入后直接改页面上的启动样式表预览，点保存才写入（`theme.save`）；关窗格时退回已保存的样子，
+ * 否则没保存的预览重启后就没了却没有提示。类名一律带 `theme:` 前缀，漏加不报错，由 `tests/prefix.test.ts` 检查
  */
 
 const VALUES_COMMAND = 'theme.values'
 const SAVE_COMMAND = 'theme.save'
 
-/** 页面上启动样式表的 id，与外壳 client 里的同一个字符串一致——两边各写一份，不互相 import */
+/** 与外壳浏览器侧的同一个字符串，两边各写一份、不互相 import */
 const STYLE_ID = 'gwb-theme-style'
 
 interface ValuesReply {
@@ -33,7 +20,7 @@ interface ValuesReply {
   'custom-css'?: unknown
 }
 
-/** 把一段 css 写进页面上的启动样式表，没有就新建；按 id 查找，调多少次页面上也只有一张 */
+/** 按 id 查找，没有就新建，页面上始终只有一张 */
 function applyToPage(css: string): void {
   let el = document.getElementById(STYLE_ID)
   if (el === null) {
@@ -56,8 +43,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
   /** 已保存的设置对应的整段 css。null 表示还没取到，这时既不预览也不退回 */
   const savedRef = useRef<string | null>(null)
 
-  // 打开窗格时取一次当前值。取到之前不改页面上的启动样式表：预览会用空值覆盖它，
-  // 外壳启动时注入的样式就会闪一下消失
+  // 取到当前值之前不改页面上的启动样式表：否则预览会用空值覆盖它，外壳注入的样式会闪一下消失
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -90,7 +76,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
     }
   }, [host])
 
-  // 任何一个输入框变了就当场预览；取到当前值之前不预览，理由同上
+  // 任何一个输入框变了就预览；取到当前值之前不预览
   const preview = buildStartupCss({ fontSans, fontMono, customCss })
   useEffect(() => {
     if (loaded) applyToPage(preview)
@@ -171,13 +157,13 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
   )
 }
 
-/** 外壳调的入口，参数与返回值的类型从外壳的子路径 `@godcreator/gwb-shell/pane` 引 */
+/** 外壳调的入口 */
 export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   const reactRoot: Root = createRoot(container)
   reactRoot.render(<Appearance host={args.host} />)
   return {
     dispose() {
-      // 退回已保存的样子在组件卸载时的清理函数里做，这里只卸载 React 树
+      // 退回已保存的样子在组件卸载时的清理函数里做
       reactRoot.unmount()
     },
   }
