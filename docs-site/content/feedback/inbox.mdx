@@ -94,3 +94,12 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 4. pnpm 由插件管理与 devkit 运行时一律带 `pnpm_config_auto_install_peers=false`，home 里没装的 peer 不会被自动装进来
 
 规矩正本：devkit 文档站的依赖规则页与说明书 `gwb-release`。
+
+## 2026-09-25 要跟插件管理 0.10：set-label 删了，list 条目不再带 label；gwb.provides 不用写了
+
+来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同批发）。
+
+devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成从 home 里各包的 `.d.ts` 现读：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
+插件管理 0.10.0 删了 `plugin-manager.set-label` 与显示名数据文档，`plugin-manager.list` 的条目上不再有 `label` 字段。baseui 的插件管理窗格要跟：`index.tsx` 里 `SET_LABEL` 那条改名入口、`entry.label` 的几处读取、`rows.ts` 解析 `label` 的地方，以及 `tests/panes/rows.test.ts` 与文档里提到显示名的段落，都删掉，显示名只用插件自报的名字（`shell.plugins` 的 title）。baseui 的 dev 写的插件管理范围到它下次发版时会被拦，按上面适配后抬到 `^0.10.0`。
+
+外壳的 `package.json` 里 `gwb.provides`、说明书 `gwb-shell` 里提到 `devkit.audit-structure` / `devkit.services` 旧用法的段落，下次改到时删掉或改成现状。
