@@ -701,28 +701,28 @@
     }
   },
   "content/docs/system-map.mdx": {
-    "../plugins/baseui/package.json:35-40": {
-      "kind": "git",
-      "blob": "f2471dd4aba0acf7fe8806c4070a4283b477f7f4",
-      "commit": "1f7ffc3ec8376c136d20c6d635efa8674215c5fe",
-      "lines": [
-        35,
-        40
-      ],
-      "hash": "b4dbd9b8eebf9142d1708a3a11442db7ac10329816bf5b56cba1def356da69fb"
-    },
-    "has ../plugins/theme/package.json \"testedKernel\"": {
-      "kind": "has"
-    },
     "../plugins/shell/package.json:54-59": {
       "kind": "git",
-      "blob": "6a291a649f38b22148598aa295b1b1fa2a0d5d66",
-      "commit": "1f7ffc3ec8376c136d20c6d635efa8674215c5fe",
+      "blob": "a42b09b7912d72ff77375f2f50f1d02f2f1a217a",
+      "commit": "02682fef419ac0a5d2040bf5f6a46316f04ec262",
       "lines": [
         54,
         59
       ],
       "hash": "5bec039f0cf9ef2b8f2ed2bb1b6dc98038da31d7d72fe4cc6e4e4469d25eb0f3"
+    },
+    "../plugins/baseui/package.json:33-38": {
+      "kind": "git",
+      "blob": "0639c68f8a4fdd4337c14d3d7e2810b60044ebf2",
+      "commit": "02682fef419ac0a5d2040bf5f6a46316f04ec262",
+      "lines": [
+        33,
+        38
+      ],
+      "hash": "b3db6c8a8b9eab2393d469322f648448595ac15d6fdf0524b531128f5ccc0d5e"
+    },
+    "has ../plugins/baseui/package.json \"gwb-kernel-desktop\"": {
+      "kind": "has"
     }
   }
 }
