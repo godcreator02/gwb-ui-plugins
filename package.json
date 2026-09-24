@@ -9,7 +9,7 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "doc": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst check",
-    "doc:render": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst render --target ai"
+    "doc:render": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst render"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
