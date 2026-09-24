@@ -36,10 +36,10 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 **每个插件在 peer 里写兼容哪个内核**：peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围。插件管理的
 `plugin-manager.list` 拿这个范围和运行中的内核版本比，范围不含当前内核的标出来；`devkit.release` 发版前检查它，
-没写或不是 `^` 就拒发。内核换了版本线，先在新内核上测过插件，再抬这个范围并发版。基础界面已经这样写；外壳和外观
-还写着旧字段 `gwb.testedKernel`，下次发版时迁：
+没写或不是 `^` 就拒发。内核换了版本线，先在新内核上测过插件，再抬这个范围并发版。外壳与外观写的是 `^0.4.1`：页面的 react
+从内核 0.4.1 起由内核包提供，带界面的插件配更早的内核就没有 react：
 
-{/* has file="../plugins/baseui/package.json" text="gwb-kernel-desktop" */}
+{/* has file="../plugins/theme/package.json" text="gwb-kernel-desktop" */}
 
 ## 每块一页
 
