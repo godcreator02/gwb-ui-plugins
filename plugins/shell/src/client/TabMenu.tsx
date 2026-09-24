@@ -16,20 +16,10 @@ import { openRegisteredPane, sendPane, type SendTarget } from './open.js'
 import { desktopIdOf, portalHostOf } from './desktop-context.js'
 import { wellHub } from './well-hub.js'
 
-/**
- * 标签右键菜单：留住、在旁边再开一份、送到 ▸ 桌面 X / 新桌面、关闭 / 关闭其他 / 关闭右侧。挂在
- * 本桌面的浮层户口上（桌面切走跟着藏），跟状态栏菜单同一套组件。
- *
- * 「在旁边再开一份」只给**文档窗格**：用这一份此刻的 key 与参数、`placement: 'side'` 开一份
- * 正式标签，来源就是这一份；原来那份是预览就先转正。工具窗格一张桌面至多一份，没有这一项。
- * 这一格是哪一类问注册表缓存（`wellHub.paneKind`），面板 params 里不存它。
- */
+/** 标签右键菜单，挂在本桌面的浮层挂载点上；「在旁边再开一份」只给文档窗格，类别问 `wellHub.paneKind` */
 export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; children: ReactNode }): ReactElement {
   const anchor = useRef<HTMLSpanElement>(null)
-  /**
-   * 菜单挂哪：**打开那一刻**按锚点找本桌面的浮层户口。渲染时就算的话，标签第一次渲染那会儿锚点
-   * 还没挂上，`portalHostOf(null)` 退回 body——这一枚标签只要没再重渲染过，菜单就一直挂在 body 上
-   */
+  /** 打开那一刻才找挂载点：标签第一次渲染时锚点还不在 DOM 里，那时算会退回 body */
   const [host, setHost] = useState<HTMLElement | null>(null)
   const params = (tab.params ?? {}) as Record<string, unknown>
   const entryId = typeof params.entryId === 'string' ? params.entryId : undefined
@@ -59,7 +49,7 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
     for (const id of tabsToClose(order(), self, which)) tab.containerApi.getPanel(id)?.api.close()
   }
 
-  /** 送到：别的桌面（这一枚所在那张除外）或一张新桌面；选的时候按住 Shift 就送完跟过去 */
+  /** 送到别的桌面或新桌面；选的时候按住 Shift 就送完跟过去 */
   const here = desktopIdOf(anchor.current)
   const targets = (wellHub.deskOps()?.rows() ?? []).filter((row) => row.id !== here)
   const shift = useRef(false)
@@ -76,7 +66,7 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
   return (
     <ContextMenu onOpenChange={(open) => open && setHost(portalHostOf(anchor.current))}>
       <ContextMenuTrigger asChild>
-        {/* 触发区就是整枚标签；锚点只用来找本桌面的浮层户口 */}
+        {/* 触发区是整个标签；锚点只用来找本桌面的浮层挂载点 */}
         <span ref={anchor} className="shell:contents">
           {children}
         </span>
