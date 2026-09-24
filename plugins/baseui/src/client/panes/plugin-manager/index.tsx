@@ -77,27 +77,10 @@ import {
 } from '@/components/ui/alert-dialog'
 
 /**
- * 页面上的插件管理窗格，**安装卸载与设置在同一个窗格里**。
- *
- * 窗格分两栏：**「已装」与「可装」**。「已装」每条条目一行，点开是那个插件自己的设置项——找一个
- * 插件的设置，人先想到的是「哪个插件」而不是「哪个分区」；`settings.all` 返回的按 section 平铺的表
- * 不适合人读，按条目对应起来才适合。「可装」是 **registry 检索**（`plugin-manager.search`，
- * 从哪条源装就在哪条源搜），见 `market.tsx`。两栏上方是「直接装包名」的输入框——检索结果以外的包名，
- * 两栏都用它装。
- *
- * 三类数据各用各的命令，哪一类没取到就只缺那一类：
- * - `plugin-manager.list`：包 → 条目两层，安装、卸载、启用、停用都在这一层；每个包还带
- *   `kernelUntested` / `testedKernel`，没在当前内核上测过的包在条目上标出来
- * - `settings.all`：设置项与「设过没有」，按 section（home 级 = 条目 id，machine 级 = 包名）
- *   对应到条目上。**secret 项自 settings 0.3.0 起不返回值**（只返回 `isSet` 与遮掉的值），要看明文用按位置读取
- *   的 `settings.get`——「看一眼」那个按钮就是它。非 secret 项的值照常返回
- * - `shell.plugins`：插件自己报的显示名与图标，没有就用包名
- *
- * 另有 `plugin-manager.outdated` 查新版本：窗格打开时自动查一次，「检查更新」随时重查；查出来的结果
- * 按包名对应到条目卡上。升级只有 `plugin-manager.update-all` 一条命令（一键热升级，不重启）：「全部更新」
- * 先在窗格里列出 `from → to` 确认再调它；条目卡上的「更新」给它 `{ only: [包名] }` 只升这一个包。
- * 页面随后会被 `shell.reload` 整页重新加载，所以在那之前一直保持忙碌状态。
- * 没有事件推送，所以每次操作完都把需要重新取的数据重新取一遍。
+ * 插件管理窗格：「已装」每条条目一行、展开是那个插件的设置（人先想到的是哪个插件，不是哪个分区）；「可装」见 `market.tsx`。
+ * 三份数据各取各的、各自失败：`plugin-manager.list`（包与条目）、`settings.all`（按 section 对应到条目，secret 行不回值，
+ * 看明文用 `settings.get`）、`shell.plugins`（显示名与图标）。升级只有 `plugin-manager.update-all`，之后页面会被整页重载，
+ * 所以在那之前一直保持忙碌。没有事件推送，每次操作完重新取数据
  */
 
 const PANE_ID = 'plugin-manager'
@@ -110,10 +93,7 @@ const DISABLE = 'plugin-manager.disable'
 const SET_LABEL = 'plugin-manager.set-label'
 const REMOVE_ENTRY = 'plugin-manager.remove-entry'
 const SETTINGS_ALL = 'settings.all'
-/**
- * 按位置读一项设置：**secret 项照样返回明文**（只有列表命令 `settings.all` 不返回 secret 的值）。
- * 参数 `{section, key}`，「看一眼」按钮用它，插件读自己分区的凭据也用它
- */
+/** 按位置读一项设置，secret 项照样回明文（只有列表命令 `settings.all` 不回），「看一眼」按钮用它 */
 const SETTINGS_GET = 'settings.get'
 const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
@@ -129,10 +109,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * 插件报的 lucide 图标名 → 组件。**写成映射表，不按名字动态取**：动态取要把整个 lucide
- * 打包进来（上千个图标），而插件报的名字本来就只有一小批。认不出的用 Puzzle。
- */
+/** 写成映射表、不按名字动态取：动态取要把整个 lucide 打包进来。认不出的用 Puzzle */
 const ICONS: Record<string, typeof Puzzle> = {
   'scroll-text': ScrollText,
   store: Store,
@@ -206,10 +183,7 @@ type Filter = 'all' | 'on' | 'off' | 'bad'
 
 const FILTER_LABEL: Record<Filter, string> = { all: '全部', on: '启用', off: '停用', bad: '异常' }
 
-/**
- * 「看一眼」按钮的读取状态。**读回来的明文只留在这个组件里，一个字节都不进草稿**——
- * 进了草稿就分不清「看过一眼」与「改了」，保存时会把没编辑过的 secret 项当新值提交。
- */
+/** 「看一眼」读回的明文只留在组件里、不进草稿，否则保存时会把没编辑过的 secret 项当新值提交 */
 type Peek =
   | { kind: 'idle' }
   | { kind: 'loading' }
@@ -217,13 +191,8 @@ type Peek =
   | { kind: 'failed'; reason: string }
 
 /**
- * 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那五个值一一对应。
- * **没设过值的项把声明方的默认值显示成灰色占位符**，免得空框让人以为没配好；`string-list`
- * 是整行宽的 textarea，不用这里的右列小控件，布局在 `SettingLine` 里区分。
- *
- * secret 项特殊：列表命令（`settings.all`）不返回它的值，所以输入框里**平常就是空的**，显示哪种状态
- * 看 `isSet`（判定在 `settings.ts` 的 `fieldState`）；要看明文点「看一眼」，它调按位置读取的
- * `settings.get`，读不到就把原因如实显示出来，不显示一个空框。
+ * 按 `type` 挑控件；没设过值的项把默认值显示成灰色占位符。secret 项的框平常是空的（列表命令不回值），
+ * 状态看 `isSet`，「看一眼」读不到时如实显示原因，不显示空框
  */
 function SettingField({
   row,
@@ -271,10 +240,7 @@ function SettingField({
     const edited = typeof value === 'string'
     const shown = edited ? value : peek.kind === 'shown' ? peek.text : ''
     const revealed = !edited && peek.kind === 'shown'
-    /**
-     * 框里空着时显示哪句占位符。**有草稿时不能再显示「已设置」**——人刚把这一项清空，
-     * 显示回去会被读成「没改」；列表命令不返回值，平常那三种状态全靠这一句说明
-     */
+    /** 有草稿时不能再显示「已设置」：人刚清空这一项，显示回去会被读成没改 */
     const hint = revealed
       ? '（磁盘上就是个空串）'
       : edited
@@ -792,10 +758,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }, [refresh, checkOutdated])
 
-  /**
-   * 执行一条命令，然后**一定重新取一遍表**——没有事件推送，不重取的话界面会停在旧样子上，
-   * 而那正是「点了没反应」这种最难查的现象。
-   */
+  /** 执行完一定重新取表：没有事件推送，不重取的话界面停在旧样子上，看起来就是点了没反应 */
   const run = async (command: string, params: unknown, done: string): Promise<void> => {
     setBusy(true)
     try {
@@ -811,7 +774,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }
 
-  // ── 派生：把三份表摊平成「一条条目一张卡片」────────────────────────────────────
+  // ── 派生：三份表合成「一条条目一张卡片」────────────────────────────────────
   interface Card {
     entry: EntryRow
     pkg: string
@@ -881,11 +844,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
 
-  /**
-   * 按位置读一项的明文，调的是 `settings.get`——列表命令（`settings.all`）不返回 secret 的值，
-   * 这条命令照样返回明文（插件读自己分区的凭据也用它）。读不到就抛，由那一项如实显示原因：
-   * 显示成空框会被读成「没设过」。
-   */
+  /** 读不到就抛，由那一项如实显示原因：显示成空框会被读成「没设过」 */
   const revealSecret = async (row: SettingRow): Promise<string> => {
     const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
     if (!result.ok) throw new Error(result.error ?? '取不到')
@@ -907,13 +866,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
 
-  /**
-   * 保存一条条目的草稿：逐键 settings.set，**有一个失败就全留在草稿里**。
-   *
-   * 提交的这份清单只认**草稿里有的槽**（`dirtySlots` 按「键在不在」判，不按值）——列表命令
-   * 不返回 secret 的值，「没动过这一项」与「把这一项改成空」的值一模一样，
-   * 按值筛选就会把没动过的 secret 项当「清空」写回磁盘。
-   */
+  /** 逐键 settings.set，有一个失败就全留在草稿里；只提交草稿里有的槽（`dirtySlots`），没动过的 secret 不会被当成清空 */
   const saveEntry = async (entryId: string): Promise<void> => {
     const slots = dirtySlots(drafts[entryId])
     if (slots.length === 0) return
@@ -987,10 +940,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   )
 
   /**
-   * 一键热升级：不给 `only` 升全部过期包（「全部更新」），给了只升这几个（条目卡片上的「更新」）。
-   * 回执显示在 notice 上；**整页重载已经开始时不解除忙碌状态**——页面随时会被 `shell.reload`
-   * 整页重载（插件管理自己也升了的话，这个窗格先关闭再打开），解除了只会让人在最后一刻误点按钮。
-   * 没有开始重载（命令表里没有 shell.reload、或者调用失败）才照常重新取表、解除忙碌状态
+   * 不给 `only` 升全部过期包，给了只升这几个。整页重载已经开始时不解除忙碌状态，免得人在最后一刻误点；
+   * 没有开始重载才照常重新取表
    */
   const updateAll = async (only?: readonly string[]): Promise<void> => {
     setBusy(true)
