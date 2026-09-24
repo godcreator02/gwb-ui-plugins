@@ -16,14 +16,14 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 | 外壳 | `plugins/shell/src/` | 窗格注册服务（node 端）＋ 多个 dockview 窗格容器（well，代码模块 `well-hub`；浏览器端）——内核页面根的唯一入口 | [外壳](/docs/shell) |
 | 外观 | `plugins/theme/src/` | 全局启动样式（字体＋自定义 CSS）＋「外观」窗格；没有外壳也照常加载 | [样式与组件](/docs/styles) |
 | 基础界面 | `plugins/baseui/src/` | 基础插件的官方窗格集（日志、插件管理），一个插件多个窗格、浏览器端按 `pane.id` 分派 | [样式与组件](/docs/styles) |
-| 令牌 | `packages/tokens/src/` | 语义变量亮暗两套＋preflight＋层顺序声明；没有 node 端代码，产物是两份 css | [令牌与颜色](/docs/tokens) |
-| 共享 react | `packages/shared-react/src/` | react 系四个裸名的 CJS→ESM 打包产物，经页面 importmap 让全页共用同一份实例 | [样式与组件](/docs/styles) |
+| 令牌 | `plugins/shell/src/tokens/` | 语义变量亮暗两套＋preflight＋层顺序声明；没有 node 端代码，产物是外壳包里的两份 css（`theme.css`、`theme.reference.css`） | [令牌与颜色](/docs/tokens) |
+| 共享 react | `plugins/shell/src/shared/` | react 四个包名的 CJS→ESM 打包产物，随外壳包发布，经页面 importmap 让全页共用同一份实例 | [样式与组件](/docs/styles) |
 
 「一个 UI 平台的整体，要换整套换」——五个模块放在同一个仓、一起换的立场与判据在[样式与组件](/docs/styles)。
 
 ## 依赖方向
 
-单向，四条箭头：**插件 → 令牌**（构建期引映射面、运行期读页面那份值）、**插件 → 外壳**（注册窗格时报两个地址）、**外壳 → 主题插件**（一条软契约命令）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
+单向，四条箭头：**插件 → 令牌**（构建期引映射面、运行期读页面那份值）、**插件 → 外壳**（注册窗格时报两个地址；浏览器侧 `import type` 外壳子路径 `@godcreator/gwb-shell/pane` 的类型，见[外壳](/docs/shell)「类型从 `@godcreator/gwb-shell/pane` 引」一节）、**外壳 → 主题插件**（一条软契约命令）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
 
 版本上三条规矩，都写在包清单里：
 

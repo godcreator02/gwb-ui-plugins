@@ -19,6 +19,9 @@
     "./react-dom-client": "./dist/react-dom-client.js",
     "./theme.css": "./dist/theme.css",
     "./theme.reference.css": "./dist/theme.reference.css",
+    "./pane": {
+      "types": "./dist/types/client/pane-api.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -26,7 +29,7 @@
     "skills",
     "src"
   ],
-  "//gwb": "testedKernel 是这个插件在哪个内核版本上测过（plugin-manager.list 据此标出没在当前内核上测过的插件，devkit.release 没写就拒发）；provides 由 devkit.services 读取、把服务的用法带进回执，repo-kit 的自述检查要求它与源码提供的服务一一对应；shared 是给页面 importmap 的 react 四个裸名。「我是外壳」这件事靠 node 端调 kernel.setShell 声明，不写在包清单里",
+  "//gwb": "testedKernel 是这个插件在哪个内核版本上测过（plugin-manager.list 据此标出没在当前内核上测过的插件，devkit.release 没写就拒发）；provides 由 devkit.services 读取、把服务的用法带进回执，repo-kit 的自述检查要求它与源码提供的服务一一对应；shared 是给页面 importmap 的 react 四个包名。「我是外壳」这件事靠 node 端调 kernel.setShell 声明，不写在包清单里",
   "gwb": {
     "testedKernel": "0.2.7",
     "provides": {
@@ -43,7 +46,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
+    "build": "tsc -p tsconfig.json && tsc -p src/client/tsconfig.pane-types.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
@@ -87,5 +90,5 @@
     "gwb",
     "gwb-plugin"
   ],
-  "//tokens-prefix": "前缀会改掉 Tailwind 内置的主题变量名（各件前缀不同，名字对不上）——语义令牌只能经映射面送值；指望页面上全局声明一份 Tailwind 默认主题变量去影响所有件，走不通"
+  "//tokens-prefix": "前缀会改掉 Tailwind 内置的主题变量名（各插件前缀不同，名字对不上）——语义令牌只能经映射面提供值；在页面上全局声明一份 Tailwind 默认主题变量去影响所有插件，做不到"
 }

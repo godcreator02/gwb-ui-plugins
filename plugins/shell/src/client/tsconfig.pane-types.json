@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "..",
+    "outDir": "../../dist/types"
+  },
+  // 只输出 pane-api.ts 及它引用到的文件的 d.ts（子路径 ./pane）。include 显式清空：不写的话会继承
+  // tsconfig.json 的 include ["."]，把整个浏览器侧的 d.ts 都输出一遍
+  "include": [],
+  "files": ["pane-api.ts"]
+}

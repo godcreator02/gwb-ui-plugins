@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
 import {
   BookOpen,
   ChevronRight,
@@ -93,21 +94,13 @@ import {
  * - `shell.plugins`：插件自己报的显示名与图标，没有就用包名
  *
  * 另有 `plugin-manager.outdated` 查新版本：窗格打开时自动查一次，「检查更新」随时重查；查出来的结果
- * 按包名对应到条目卡上。升级只有 `plugin-manager.update-all` 一条命令（一键热升，不重启）：「全部更新」
+ * 按包名对应到条目卡上。升级只有 `plugin-manager.update-all` 一条命令（一键热升级，不重启）：「全部更新」
  * 先在窗格里列出 `from → to` 确认再调它；条目卡上的「更新」给它 `{ only: [包名] }` 只升这一个包。
  * 页面随后会被 `shell.reload` 整页重新加载，所以在那之前一直保持忙碌状态。
  * 没有事件推送，所以每次操作完都把需要重新取的数据重新取一遍。
  */
 
 const PANE_ID = 'plugin-manager'
-
-/** 外壳调 `mountPane` 时传入的参数。按形状收，只声明用得到的字段（正本在 shell 插件的 client/types.ts） */
-interface PaneArgs {
-  host: { call: (command: string, args?: unknown) => Promise<unknown> }
-  /** 弹出层的容器元素：下拉菜单与确认框都放在它下面，跟着本窗格所在的桌面显示和隐藏 */
-  shell: { portal: HTMLElement }
-  pane: { id: string; instance: string }
-}
 
 const LIST = 'plugin-manager.list'
 const INSTALL = 'plugin-manager.install'
@@ -157,7 +150,7 @@ const ICONS: Record<string, typeof Puzzle> = {
   'file-code': FileCode,
 }
 
-/** 插件自己报的显示名与图标（shell.plugins 的形状，按形状收） */
+/** 插件自己报的显示名与图标（shell.plugins 的形状，按形状校验后接收） */
 interface Face {
   title?: string
   icon?: string
@@ -180,13 +173,13 @@ function acceptFaces(raw: unknown): Record<string, Face> {
   return out
 }
 
-/** 一个包的版本差距（`plugin-manager.outdated` 的形状，按形状收——不 import 插件管理的类型） */
+/** 一个包的版本差距（`plugin-manager.outdated` 的形状，按形状校验后接收——不 import 插件管理的类型） */
 interface UpdateInfo {
   current: string
   latest: string
 }
 
-/** `plugin-manager.outdated` 的 data → 包名 → 版本差距。认不出的丢掉、不崩，跟 rows.ts 一个规矩 */
+/** `plugin-manager.outdated` 的 data → 包名 → 版本差距。认不出的项丢弃、不抛错，与 rows.ts 同一规则 */
 function acceptUpdates(raw: unknown): Record<string, UpdateInfo> {
   const out: Record<string, UpdateInfo> = {}
   if (!isRecord(raw)) return out
@@ -225,7 +218,7 @@ type Peek =
 
 /**
  * 一项设置的编辑控件。按 `type` 挑，跟 `SettingDef.type` 那五个值一一对应。
- * **没设过值的项把声明方的默认画成灰占位**——空框不再让人以为没配好；`string-list`
+ * **没设过值的项把声明方的默认值显示成灰色占位符**，免得空框让人以为没配好；`string-list`
  * 是整行宽的 textarea，不用这里的右列小控件，布局在 `SettingLine` 里区分。
  *
  * secret 项特殊：列表命令（`settings.all`）不返回它的值，所以输入框里**平常就是空的**，显示哪种状态
@@ -245,7 +238,7 @@ function SettingField({
   onReveal: (row: SettingRow) => Promise<string>
 }): ReactElement {
   const [peek, setPeek] = useState<Peek>({ kind: 'idle' })
-  /** secret 的默认不画——默认值不该往明文占位符里放 */
+  /** secret 项不显示默认值——默认值不该以明文出现在占位符里 */
   const fallback = row.type !== 'secret' && row.default !== undefined ? formatDefault(row.default) : undefined
 
   if (row.type === 'boolean') {
@@ -295,7 +288,7 @@ function SettingField({
           ? '已设置。列表命令 settings.all 不返回 secret 的值（只返回设过没有与遮掉的值），所以这个框平常是空的——点右边的眼睛按位置读明文'
           : '没设过。填上再点「保存」就设上了'
     const look = (): void => {
-      // 有草稿时按钮是禁用的，这一句写明：读的是磁盘上那份，不是草稿
+      // 有草稿时按钮已禁用，这里再拦一次，写明读的是磁盘上那份、不是草稿
       if (edited || peek.kind === 'loading') return
       if (peek.kind === 'shown') {
         setPeek({ kind: 'idle' })
@@ -995,9 +988,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
   /**
    * 一键热升级：不给 `only` 升全部过期包（「全部更新」），给了只升这几个（条目卡片上的「更新」）。
-   * 回执显示在 notice 上；**整页重载已经开始时不撤忙碌状态**——页面随时会被 `shell.reload`
-   * 整页重载（插件管理自己也升了的话，这个窗格先关闭再打开），撤了只会让人在最后一刻点到什么。
-   * 没有开始重载（命令表里没有 shell.reload、或者没成）才照常重新取表、撤忙碌状态
+   * 回执显示在 notice 上；**整页重载已经开始时不解除忙碌状态**——页面随时会被 `shell.reload`
+   * 整页重载（插件管理自己也升了的话，这个窗格先关闭再打开），解除了只会让人在最后一刻误点按钮。
+   * 没有开始重载（命令表里没有 shell.reload、或者调用失败）才照常重新取表、解除忙碌状态
    */
   const updateAll = async (only?: readonly string[]): Promise<void> => {
     setBusy(true)
@@ -1158,7 +1151,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         >
           {checking ? '查着…' : '检查更新'}
         </Button>
-        {/* 有过期包才亮：没查过（null）与查了全新（空表）都是灰的 */}
+        {/* 有过期包才高亮可点：没查过（null）与查了全是最新（空表）都是灰的 */}
         <Button
           size="sm"
           variant={outdatedRows.length > 0 ? 'secondary' : 'ghost'}
@@ -1545,9 +1538,8 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
   // 认不出的 paneId 报错、不改用别的窗格——「注册了 x 却显示成 installed」是那种没有任何现象的错
   if (args.pane.id === PANE_ID) {
-    // 弹出层（下拉、确认框）**照 radix 的默认 portal 到 body**：样式隔离靠的是类名前缀，规则
-    // 全页有效，放到容器外面照样有样式（当初为什么曾要求放回容器，见外壳页「菜单的
-    // portal」一节，别再改回去）
+    // 弹出层（下拉、确认框）portal 到 `args.shell.portal`（本窗格所在桌面的浮层挂载点），桌面切走时一起隐藏；
+    // 样式靠类名前缀隔离，不依赖放在窗格容器里（见外壳页「菜单 portal 到哪都有样式」一节）
     root.render(<PluginsPane args={args} />)
   } else {
     root.render(<p className="baseui:p-3 baseui:text-sm baseui:text-destructive">基础界面插件没有叫 {args.pane.id} 的窗格</p>)
@@ -1555,11 +1547,10 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
   return root
 }
 
-/** 窗格插件浏览器端的入口。导出名是 `mountPane`——外壳占整个页面，窗格占窗格区里的一个位置 */
-export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
-  // **不给容器加 position:relative**：弹出层用 radix 官方的默认做法——portal 到 body、确认框
-  // 那层 fixed，用不着「最近的 positioned 祖先」那套参照系；遮罩因此盖住整个窗口而不是只盖
-  // 这个窗格，模态对话框本该如此
+/** 窗格插件浏览器侧的入口。导出名是 `mountPane`——外壳占整个页面，窗格占窗格容器里的一个窗格 */
+export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
+  // **不给容器加 position:relative**：确认框用 fixed 定位，不依赖最近的 positioned 祖先，遮罩盖住整张桌面
+  // 而不是只盖这个窗格
   const root = boot(args, container)
   return {
     dispose() {

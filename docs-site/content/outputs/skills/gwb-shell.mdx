@@ -8,7 +8,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 **本页回答**：带界面的插件怎样接进外壳的窗格、组件、令牌与浮层，做完怎样验收。
 
-建仓、改一版看一版（`devkit.dev`）、测试 home 与发版读 `skill.read {"name":"gwb-devkit"}`。下面各节从
+建仓、改完装进测试 home 查看（`devkit.dev`）、测试 home 与发版读 `skill.read {"name":"gwb-devkit"}`。下面各节从
 `devkit.scaffold` 生成的插件出发：它已带一个窗格、样式入口 `src/client/styles.css`、前缀测试与产物测试。
 
 ## 给插件加一个窗格
@@ -21,8 +21,16 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
    外壳在本插件卸载时自动注销这个窗格；返回的注销函数只在要提前注销时调。
 2. 调 `ctx.gwbShell.describeSelf({ title, icon })` 报插件的显示名，状态栏「新建」按它给窗格分组。
-3. 浏览器侧 `src/client/index.tsx` 导出 `mountPane(args, container)`，返回 `{ dispose() }`：在 `container`
-   里 `createRoot` 渲染；`dispose` 依次停掉订阅与定时器、同步 `root.unmount()`、清空 `container`。
+3. 浏览器侧 `src/client/index.tsx` 导出 `mountPane`，参数与返回值的类型从外壳的子路径 `@godcreator/gwb-shell/pane` 引：
+
+   ```tsx
+   import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
+
+   export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
+   ```
+
+   在 `container` 里 `createRoot` 渲染；返回的 `dispose` 依次停掉订阅与定时器、同步 `root.unmount()`、清空 `container`。
+   这些类型不在自己代码里手写，也不用 `as` 转成它们；dev 里外壳的版本要带 `./pane` 子路径（外壳 `package.json` 的 `exports` 里有它）。
 4. 窗格里有轮询、动画或媒体时，用 `args.shell.onVisibility((visible) => …)` 在 `false` 时暂停、`true` 时恢复。
    它注册时先回一次当前值；返回的注销函数在 `dispose` 里调。桌面切走后窗格不卸载，业务状态照常保留。
 5. `devkit.dev` 把这一版装进隔离 home。
@@ -105,9 +113,8 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 ## 视觉验收
 
 1. `pnpm build`，再 `pnpm check`：产物测试与前缀测试检查的是这次构建出的 `dist/`。
-2. 本插件的 `tests/artifact.test.ts` 还没有颜色类白名单时，从 UI 平台仓 `plugins/baseui/tests/artifact.test.ts`
-   复制「颜色类只在白名单内」那一条：白名单在测试时读取外壳 `theme.reference.css` 与本插件样式入口里的
-   `--color-*`。
+2. 颜色类白名单由 devkit 建仓模板的产物测试自带（`tests/artifact.test.ts` 里「颜色类只在白名单内」那一条）：
+   白名单在测试时读取外壳 `theme.reference.css` 与本插件样式入口里的 `--color-*`。
 3. `devkit.dev` 把这一版装进隔离 home，回执 `ok: true`。
 4. 用 `devkit.cdp` 在那个 home 里逐项操作并截图（先点窗格标签再截图、量颜色前关掉过渡，做法见
    `skill.read {"name":"gwb-devkit","file":"references/evidence.md"}`）：
@@ -164,7 +171,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
   官方组件的 `animate-in` 一族全空
 - 插件的样式表只含本插件的工具类与本插件前缀的变量；页面的令牌值、preflight 与层顺序由外壳加载
 - 映射面没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
-- CSS 前缀只含小写字母，脚手架从插件短名去掉其他字符得到
+- CSS 前缀只含小写字母，`devkit.scaffold` 从插件短名去掉其他字符得到
 - 漏写前缀不报错、构建照样通过；前缀测试抓得到漏写前缀的工具类，抓不到 `group` / `peer` 标记类
 - 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的头注重核键名
 - 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
@@ -175,8 +182,8 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 - `openPane`、`shell.openPane` 都不切桌面；命令回执 `ok` 表示已转交页面执行，结果用 `shell.pane.list` 查
 - `args.shell.bus` 的消息按条目分发，同一条目在各桌面上的窗格都收得到；监听的注销函数在 `dispose` 里调
 - 浏览器侧调命令用 `args.host.call(name, args)`
-- `mountPane` 参数的形状在外壳包源码 `src/client/types.ts`（`PaneArgs`、`ShellBridge`、`PaneHandle`）；外壳没有
-  导出这个入口，插件按用到的字段在自己代码里声明
+- `mountPane` 用到的类型都从 `@godcreator/gwb-shell/pane` `import type`：`PaneArgs`、`PaneHandle`、`ShellBridge`、
+  `HostBridge`，以及 `OpenPaneOptions`、`Placement`、`PaneKind`、`PaneContent`。这个子路径只有类型，按值 import 在构建时报错
 - 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-plugin-api'`
 
 ## 规矩
@@ -185,6 +192,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 - 浏览器侧构建产物里的包名 import 只留外壳 `gwb.shared` 的键，其余依赖打包进 `client.js`——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
 - 外置名单在构建时从装好的外壳包清单 `gwb.shared` 读——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
 - 只引类型写 `import type`——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
+- 外壳接口的类型从外壳引，不手写、不用 `as` 转——devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
 - 源码里不指回别的仓——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
 - 往继承 `Service` 的服务（`gwbShell`）注册时直接调，注册随插件卸载撤销——devkit 仓 `docs-site/content/docs/rules/services.mdx`
 - 插件之间只经服务和命令交互，组件复制进自己的目录，运行时不依赖别的插件——devkit 仓 `docs-site/content/docs/rules/interaction.mdx`

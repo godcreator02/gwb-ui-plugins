@@ -1,16 +1,16 @@
 /**
- * 浏览器半用得着的几个形状。**按形状收，不牵别处的类型**（同 `bus` / `panels`
- * 的做法）：`bootShell` 的参数由内核的渲染层拼，那半在另一个仓里。
+ * 浏览器侧用到的类型。`bootShell` 的参数由内核的渲染层拼出，内核在另一个仓里，这里按形状声明、不引内核的类型。
+ * `OpenPaneOptions` 从 `openable.ts` 引：`planOpen` 与窗格插件用的是同一个形状，各写一份就会不一致。
  *
- * `OpenPaneOptions` 是例外：它不过 IPC、也不跨仓，`planOpen` 与这份契约吃的是同一个
- * 形状，各存一份就是两份真相。
+ * `HostBridge` / `ShellBridge` / `PaneHandle` / `PaneArgs` 经子路径 `@godcreator/gwb-shell/pane`（`pane-api.ts`）
+ * 对外导出，窗格插件 `import type` 它们——改这几个类型就是改外壳对插件的接口。
  */
 
 import type { OpenPaneOptions, PaneKind } from '../openable.js'
 import type { PaneContent } from '../panels.js'
 import type { Versions } from '../protocol.js'
 
-/** 内核交出来的命令口。整条链路是：界面 → IPC → 主进程里的 ctx.gwbCommands */
+/** 内核提供的调用命令的接口。整条链路是：界面 → IPC → 主进程里的 ctx.gwbCommands */
 export interface HostBridge {
   call(command: string, args?: unknown): Promise<unknown>
 }
@@ -18,31 +18,31 @@ export interface HostBridge {
 /** 入口模块（boot.ts）调 `bootShell` 时给的那几样，全从 `shell.env` 那条命令来 */
 export interface ShellArgs {
   host: HostBridge
-  /** 这个 home 的目录，眼下只用来在状态里显示 */
+  /** 这个 home 的目录，只在状态栏显示 */
   home: string
-  /** 按序加载的样式表地址：令牌表、dockview 表、本件自己的表 */
+  /** 按顺序加载的样式表地址：令牌表、dockview 样式表、外壳自己的样式表 */
   styles: string[]
-  /** 用户外观样式，注在三张表之后。theme 没装或没设就没有 */
+  /** 用户外观样式，在三张样式表之后注入。theme 插件没装或没设置就没有 */
   startupCss?: string
-  /** 状态栏版本那一格报的：内核、外壳、运行时 */
+  /** 状态栏版本那一项显示的：内核、外壳、运行时 */
   versions: Versions
 }
 
-/** 注册表里一条过桥之后的样子。跟 node 半的 `RegisteredPane` 是同一个形状 */
+/** 注册表里一条经 `shell.panes` 命令传到浏览器侧之后的样子。跟 node 侧的 `RegisteredPane` 是同一个形状 */
 export interface PaneRow {
   entryId: string
   pkg: string
   id: string
   title: string
   icon?: string
-  /** 浏览器半与样式表的地址，件注册时自报。见 pane-registry 的 PaneSpec */
+  /** 浏览器侧脚本与样式表的地址，插件注册时给出。见 pane-registry 的 PaneSpec */
   client?: string
   style?: string
   /** 工具窗格还是文档窗格（注册时不说就是 tool） */
   kind: PaneKind
 }
 
-/** 件名表里一条（`shell.plugins`）。启动器按插件分组时拿它的名字当组名 */
+/** 插件名表里一条（`shell.plugins`）。启动器按插件分组时拿它的名字当组名 */
 export interface PluginRow {
   entryId: string
   pkg: string
@@ -51,97 +51,97 @@ export interface PluginRow {
 }
 
 /**
- * 外壳交给窗格件的那一层。件只操作得了**自己**那几格——`entryId` 由 `PluginPane`
- * 造这个对象时闭包绑定，件报不出别人的。
+ * 外壳交给窗格插件的接口。插件只能操作**自己**的窗格——`entryId` 由 `PluginPane`
+ * 创建这个对象时闭包绑定，插件给不出别人的。
  */
 export interface ShellBridge {
   /**
-   * 打开本件的另一格。**来源就是调它的这一份**：新窗格落在它旁边（`placement` 缺省按目标组
+   * 打开本插件的另一个窗格。**来源就是调它的这一份**：新窗格开在它旁边（`placement` 缺省按目标组
    * 规则，`'side'` 开到旁边）、开在它所在的那张桌面上，**从不切桌面**。**身份是
-   * `options.key`**：本桌已经开着装这份内容的那一格就激活它，没开着才开新的一份
-   * （`preview: true` 时优先放进目标组的预览格）。认不出 paneId 什么都不做。
+   * `options.key`**：本桌面已经开着装这份内容的窗格就激活它，没开着才开新的一份
+   * （`preview: true` 时优先放进目标组的预览窗格）。认不出 paneId 什么都不做。
    *
-   * `options.params` 是**让开出来的几份彼此不同**的那条路：它原样到那一份的
-   * `mountPane` 手上（`pane.params`），并且跟着布局落盘、重启后还在。必须可 JSON
+   * `options.params` 用来**让开出来的几份彼此不同**：它原样传给那一份的
+   * `mountPane`（`pane.params`），并且随布局保存、重启后还在。必须可 JSON
    * 序列化，保留键与代价见 `OpenPaneOptions`。
    */
   openPane(paneId: string, options?: OpenPaneOptions): void
   /**
-   * 改**这一格**标签上的标题。dockview 的 `setTitle` 转了一道——原文格把标签改成
-   * 当前文件名就是走这里。初始标题归 `registerPane`，这里只管运行时改。
+   * 改**这个窗格**标签上的标题，转调 dockview 的 `setTitle`。初始标题由 `registerPane` 定，
+   * 这里只管运行时改。
    */
   setPaneTitle(title: string): void
   /**
-   * **上报这一格此刻装的内容**：件在窗格里原地换了内容（点链接跳转、后退前进）之后报一声。
-   * 外壳把这一份的 key 换成新的；给了 `params` 就整份替换件那半参数（保留键摘掉）；给了
-   * `title` 等于顺带 `setPaneTitle`。**不调 `retarget`、不重挂**——内容已经在件手里换好了。
-   * 之后布局照常落盘，整页重载回到上报的内容。预览格上报之后仍是预览格，转正归 `keepPane`。
+   * **上报这个窗格此刻装的内容**：插件在窗格里原地换了内容（点链接跳转、后退前进）之后调它。
+   * 外壳把这一份的 key 换成新的；给了 `params` 就整份替换插件那部分参数（去掉保留键）；给了
+   * `title` 等于同时 `setPaneTitle`。**不调 `retarget`、不重新挂载**——内容已经由插件换好了。
+   * 之后布局照常保存，整页重载回到上报的内容。预览窗格上报之后仍是预览窗格，转正由 `keepPane` 做。
    *
-   * 新外壳才有这一支：件按形状判（`typeof shell.setPaneContent === 'function'`），没有就退回老行为。
+   * 旧版外壳没有这个方法：插件按 `typeof shell.setPaneContent === 'function'` 判断，没有就保持旧行为。
    */
   setPaneContent(content: PaneContent): void
   /**
-   * 把**这一格**留住：它不再是预览格，下一次 preview 打开不会顶掉它。
+   * 把**这个窗格**留住：它不再是预览窗格，下一次 preview 打开不会替换它。
    *
-   * 件该在「人真的开始用这一格」的那一刻调它（开始编辑、改了什么），**不是挂上就调**
-   * ——挂上就调等于这个件没有预览格。已经是正式格时调它是空操作，重复调不要紧。
-   * 人**双击标签**是同一个动作的手势版。没有反方向：正式格变不回预览格。
+   * 插件该在「人真的开始用这个窗格」的那一刻调它（开始编辑、改了什么），**不是挂载时就调**
+   * ——挂载时就调等于这个插件没有预览窗格。已经是正式窗格时调它什么都不做，重复调不要紧。
+   * 人**双击标签**是同一个动作。没有反方向：正式窗格变不回预览窗格。
    */
   keepPane(): void
-  /** 格间小总线。桶按条目分，所以同一条条目的几格（含重复实例）在同一个桶里 */
+  /** 窗格间的消息总线。按条目分组，同一条目的几个窗格（含同一窗格开的几份）收发同一组消息 */
   bus: {
     emit(type: string, detail?: unknown): void
-    /** 挂一个听众，回注销函数 */
+    /** 注册一个监听函数，返回注销函数 */
     on(type: string, listener: (detail: unknown) => void): () => void
   }
   /**
-   * 本格所在桌面的**浮层户口**：件里 radix Portal 的 `container` 指到它。指过去之后
-   * 浮层物理上住在本桌桌面里，桌面切走它跟着一起藏——挂 `body` 的浮层不属于任何桌面，
-   * 藏不掉，那正是多桌面要防的那类「后面的桌面盖住前面的」。不在井里（或外壳是旧版）
-   * 时它是 `document.body`，跟 radix 缺省一个效果，件不必判空。
+   * 本窗格所在桌面的**浮层挂载点**：插件里 radix Portal 的 `container` 指向它。这样浮层的 DOM
+   * 在这张桌面里，桌面切走时跟着一起隐藏——挂在 `body` 下的浮层不属于任何桌面，隐藏不了，
+   * 会盖在别的桌面上。不在窗格容器里（或外壳是旧版）时它是 `document.body`，跟 radix 缺省
+   * 效果相同，插件不必判空。
    */
   portal: HTMLElement
   /**
-   * 本格所在桌面的可见性：切走收 `false`、切回收 `true`，**注册时先回一次当下值**，
-   * 回注销函数。协作式——件拿它停订阅、停渲染、停媒体（视频音频切走照响，DOM 副作用
-   * 谁也替你停不了），外壳只通知不强制。不需要的件一个字都不用写。
+   * 本窗格所在桌面的可见性：切走收到 `false`、切回收到 `true`，**注册时先回调一次当前值**，
+   * 返回注销函数。插件用它暂停订阅、渲染、媒体（切走后视频音频照样播放，DOM 副作用
+   * 外壳停不了），外壳只通知不强制。不需要的插件不用调。
    */
   onVisibility(listener: (visible: boolean) => void): () => void
 }
 
 /**
- * 件的 `mountPane` 回的那个句柄。**`dispose` 是硬的，`retarget` 是可选的**：
+ * 插件的 `mountPane` 返回的句柄。**`dispose` 必须有，`retarget` 可选**：
  *
- * - 给了 `retarget`：外壳换了这一格的 params 之后调它（**软换**），件自己决定怎么换
- *   内容、保住哪些状态（滚动位置、前进后退、正在打的字）
- * - 没给：外壳**拆了重挂**（硬换）。简单的件不必为此写一行代码，代价是那一格的
- *   内部状态跟着重来一遍
+ * - 给了 `retarget`：外壳换了这个窗格的 params 之后调它（**软换**），插件自己决定怎么换
+ *   内容、保留哪些状态（滚动位置、前进后退、正在输入的文字）
+ * - 没给：外壳**卸载后重新挂载**（硬换）。简单的插件不必为此写代码，代价是这个窗格的
+ *   内部状态重新开始
  */
 export interface PaneHandle {
   dispose(): void
   retarget?(params: Record<string, unknown>): void
 }
 
-/** 外壳调件的 `mountPane` 时给的那几样 */
+/** 外壳调插件的 `mountPane` 时传入的参数 */
 export interface PaneArgs {
   host: HostBridge
   shell: ShellBridge
   pane: {
-    /** 这一格是本件的哪一格（注册时给的那个 id） */
+    /** 这个窗格是本插件的哪个窗格（注册时给的那个 id） */
     id: string
     /** 这**一份**的唯一键（dockview 的 panel id）。开两份时两份的这个值不一样 */
     instance: string
-    /** 外壳把这一格当哪一类挂的（注册时说的 kind，不说就是 tool） */
+    /** 外壳把这个窗格当哪一类挂载的（注册时给的 kind，没给就是 tool） */
     kind: PaneKind
     /**
-     * 开这一份时件自己传的那份参数（`openPane` 的 `options.params`），**不含外壳的
-     * 保留键**——件看不见 `entryId` 这类外壳内部的东西。
+     * 开这一份时插件自己传的参数（`openPane` 的 `options.params`），**不含外壳的
+     * 保留键**——插件看不到 `entryId` 这类外壳内部的字段。
      *
-     * **没传就没有这一项**，不是空对象。它跟着布局落盘，所以重启之后这一份拿到的
-     * 还是当初那一份。
+     * **没传就没有这一项**，不是空对象。它随布局保存，所以重启之后这一份拿到的
+     * 还是当初那份参数。
      *
-     * **这是挂上那一刻的那份**。后来换了内容的话，新的那份走 `retarget(params)`
-     * 到件手上（件没给 `retarget` 就是拆了重挂，那时这儿拿到的本来就是新的）。
+     * **这是挂载那一刻的参数**。后来换了内容的话，新参数经 `retarget(params)` 传给插件
+     * （插件没给 `retarget` 就是卸载后重新挂载，那时这里拿到的就是新参数）。
      */
     params?: Record<string, unknown>
   }

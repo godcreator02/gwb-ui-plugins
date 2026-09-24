@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
 import {
   acceptEntries,
   clockOf,
@@ -23,29 +24,29 @@ import {
 } from '@/components/ui/select'
 
 /**
- * 浏览器半：一格日志窗格。
+ * 浏览器侧：日志窗格。
  *
- * **实时那段不从 `args` 来**——`mountPane` 给的是 `{ host, shell, pane }`，而实时行走的是
- * 页面的公共面 `window.gwb.on`：node 半经 `gwbKernel.emit` 推，载荷上带自己的记号 `t`。
- * 外壳不该转发它：它凭什么认识「日志」。历史段与脚注那两条才走 `args.host` 的命令。
+ * **实时日志不经 `args`**——`mountPane` 只给 `{ host, shell, pane }`，实时日志订阅的是
+ * 页面的公共接口 `window.gwb.on`：node 侧经 `gwbKernel.emit` 推送，载荷带本插件的标记 `t`。
+ * 外壳不转发它，因为外壳不该认识「日志」。历史段与脚注里的路径才走 `args.host` 的命令。
  *
- * 版面（**定稿就是本文件**，仓里没有另外的设计稿）：日志行 grid 定宽列齐头、error/warn
- * 整行色调加左缘色条、级别分段控件带门限可视化、路胶囊开关、吸附提示浮在右下角。
- * 行为语义：门限、多选路、复合键、seq 去重、吸附、上限切尾、空态双文案。
+ * 版面（**以本文件为准**，仓里没有另外的设计稿）：日志行用 grid 定宽列对齐、error/warn
+ * 整行色调加左边色条、级别分段控件显示门限、来源胶囊开关、吸附提示浮在右下角。
+ * 行为语义：级别门限、来源多选、复合键、seq 去重、吸附、超上限丢最早的行、空态两种文案。
  *
- * 类名一律带 `baseui:` 前缀——样式围栏就是这个前缀本身（见 `./styles.css`）。漏加是
- * **静默**的：那个类一个字节都不出，页面上就是那一处没样式，构建照样绿，所以
- * `tests/prefix.test.ts` 那条守卫把源码里每个字符串 token 逐个试编。
+ * 类名一律带 `baseui:` 前缀——前缀围栏就是这个前缀本身（见 `./styles.css`）。漏加没有任何
+ * 报错：那个类不生成任何 CSS，页面上就是那一处没样式，构建照样通过，所以
+ * `tests/prefix.test.ts` 那条测试把源码里每个字符串 token 逐个试编译。
  *
- * ⚠️ **这一格在收日志的路径上一个 `console` 都不许打。** 渲染层的 console 是三路之一：
- * 打一句 → 主进程收走 → 进缓冲 → 推回这儿 → 那条路上如果又打了一句，就是一变二、二变四，
- * 界面当场冻死。取表失败那种一次性的、非循环路径上的，走界面显示，也别打 console。
+ * ⚠️ **本窗格在接收日志的路径上不许调用 `console`。** 渲染层的 console 是三个日志来源之一：
+ * 打一条 → 主进程收集 → 进缓冲 → 推回本窗格 → 这条路径上再打一条，条数就成倍增长，
+ * 界面当场卡死。取历史段失败这类一次性、不在循环路径上的错误，也显示在界面上，不打 console。
  */
 
-/** 这一格最多挂多少行。**渲染成本定的**，不是缓冲大小——内核那圈比这个大，更早的去日志文件翻 */
+/** 本窗格最多保留多少行。**由渲染成本决定**，不是缓冲大小——内核的缓冲比这个大，更早的去日志文件查 */
 const CAP = 2000
 
-/** 离底多近算「跟着走」 */
+/** 离底部多少像素以内算作吸附（跟随最新行） */
 const STICK_SLACK = 24
 
 /** 「全部来源」那一项的值。Radix 的 SelectItem **不收空串**，得给它一个真值 */
@@ -54,9 +55,9 @@ const ALL_KEY = '*'
 const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
 
 /**
- * 三路的点色：**件域令牌**——tokens.css 那三个 --baseui-src-*，入口尾部的 @theme 段
- * 注册成 bg-src-* 类。用在两处：路胶囊上的小点、每行路标上的小点，让「筛选开关」
- * 和「流水行」用同一个颜色锚。值住 tokens.css 一处，这里只写类名。
+ * 三个来源的圆点颜色：**插件域令牌**——tokens.css 里的三个 --baseui-src-*，由入口末尾的
+ * @theme 段注册成 bg-src-* 类。用在两处：来源胶囊上的小圆点、每行来源标记上的小圆点，让
+ * 筛选开关和日志行用同一种颜色对应同一个来源。值只在 tokens.css 定义，这里只写类名。
  */
 const SOURCE_DOT: Record<LogSource, string> = {
   plugin: 'baseui:bg-src-plugin',
@@ -64,7 +65,7 @@ const SOURCE_DOT: Record<LogSource, string> = {
   renderer: 'baseui:bg-src-renderer',
 }
 
-/** 内核事件口上认自己那条的记号，跟 node 半的 EVENT 是同一个字符串 */
+/** 在内核事件里识别本插件事件的标记，与 node 侧的 EVENT 是同一个字符串 */
 const EVENT = 'gwb-logger'
 const BACKLOG_COMMAND = 'logger.backlog'
 const WHERE_COMMAND = 'logger.where'
@@ -81,7 +82,7 @@ const LEVEL_TONE: Record<LogLevel, string> = {
   debug: 'baseui:text-muted-foreground baseui:opacity-40',
 }
 
-/** 整行色调：error/warn 淡色底加左缘色条（DevTools 那个路数），其余素底只留 hover */
+/** 整行色调：error/warn 淡色底加左边色条（仿 DevTools），其余无底色、只有 hover 色 */
 const ROW_TONE: Record<LogLevel, string> = {
   error:
     'baseui:bg-destructive/[0.08] baseui:shadow-[inset_2px_0_0_var(--destructive)] baseui:hover:bg-destructive/[0.14]',
@@ -90,24 +91,7 @@ const ROW_TONE: Record<LogLevel, string> = {
   debug: 'baseui:hover:bg-accent',
 }
 
-/** 外壳调 `mountPane` 时给的那几样。按形状收，不牵 shell 那个包的类型 */
-interface PaneArgs {
-  host: { call: (command: string, args?: unknown) => Promise<unknown> }
-  shell: {
-    openPane: (paneId: string, options?: { key?: string; params?: Record<string, unknown>; preview?: boolean }) => void
-    /** 本格所在桌面的浮层户口：radix Portal 的挂载点指它，桌面切走浮层跟着一起藏 */
-    portal: HTMLElement
-    /** 本格所在桌面的可见性：切走 false、切回 true，注册即回当下值。本件拿它停渲染 */
-    onVisibility: (listener: (visible: boolean) => void) => () => void
-    bus: {
-      emit: (type: string, detail?: unknown) => void
-      on: (type: string, listener: (detail: unknown) => void) => () => void
-    }
-  }
-  pane: { id: string; instance: string }
-}
-
-/** 页面的公共面。同样按形状收——正本钉在内核的词汇表包上。实时那一路走 on，历史段走本件的命令 */
+/** 页面的公共接口，这里只按形状声明，正本在内核的词汇表包里。实时日志走 on，历史段走本插件的命令 */
 declare global {
   interface Window {
     gwb: {
@@ -136,13 +120,13 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       if (!alive) return
       setEntries((prev) => mergeEntries(prev, acceptEntries(batch), CAP))
     }
-    // **先订阅、后取历史**：反过来的话，订阅生效与历史截止之间那一瞬推来的条目会漏掉。
-    // 两段交叠的部分靠 seq 去重挡住。事件口上什么件的事件都有，只认带自己记号的
+    // **先订阅、后取历史**：反过来的话，历史截止到订阅生效之间推来的条目会漏掉。
+    // 两段交叠的部分靠 seq 去重。内核事件里有所有插件的事件，只处理带本插件标记的
     const off = window.gwb.on((payload) => {
       if (payload === null || typeof payload !== 'object') return
       const p = payload as { t?: unknown; line?: unknown }
-      // 桌面切走时到货的直接丢——本格还活着（保活），只是不显示；node 半照常缓冲，
-      // 切回那一刻重取历史段补上（见下面那条 onVisibility）
+      // 桌面切走时收到的直接丢弃——本窗格仍常驻，只是不显示；node 侧照常缓冲，
+      // 切回时重取历史段补上（见下面的 onVisibility）
       if (p.t === EVENT && visibleRef.current) take([p.line])
     })
     args.host.call(BACKLOG_COMMAND).then(
@@ -161,9 +145,9 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }, [])
 
-  // 协作式降级（`shell.onVisibility`，本件是第一个示范）：桌面切走时停渲染——实时事件
-  // 直接丢、重算全停；切回时重取一次历史段把丢的那段补上，seq 去重挡住交叠。不订这条
-  // 也完全合法（渲染照旧、只是白烧），这正是契约「通知不强制」的软义务形态
+  // 协作式降级（`shell.onVisibility`）：桌面切走时停止渲染——实时事件直接丢弃、不再重算；
+  // 切回时重取一次历史段补上丢掉的部分，交叠靠 seq 去重。契约只通知、不强制：不订阅也合法，
+  // 只是切走后照常渲染、白白耗资源
   const visibleRef = useRef(true)
   useEffect(() => {
     const off = args.shell.onVisibility((visible) => {
@@ -175,7 +159,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
           if (r.ok === true) setEntries((prev) => mergeEntries(prev, acceptEntries(r.data), CAP))
         },
         () => {
-          /* 补不上的话下一条实时事件照来，不值得打断什么 */
+          /* 补取失败不影响之后的实时事件，不报错 */
         },
       )
     })
@@ -190,7 +174,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
         if (alive && data !== undefined) setWhere({ home: data.home ?? '', logDir: data.logFile ?? '' })
       },
       () => {
-        /* 脚注上少两行路径而已，不值得打断什么 */
+        /* 取不到只是脚注少显示路径，不报错 */
       },
     )
     return () => {
@@ -202,7 +186,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const counts = useMemo(() => countBySource(entries), [entries])
   const groups = useMemo(() => groupNames(entries), [entries])
 
-  // 吸附：跟着走的时候每次有新行就贴到底
+  // 吸附：处于跟随状态时，每次有新行就滚到底部
   useEffect(() => {
     if (!stick) return
     const el = listRef.current
@@ -222,7 +206,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     setFilter({ level: 'debug', sources: ALL_SOURCES, key: '', search: '' })
   }
 
-  // 级别分段：选中挡实心，更严重的那几挡半亮——把「显示这一级及以上」画出来
+  // 级别分段：选中的级别实心，更严重的几级浅色高亮，表示「显示这一级及以上」
   const segTone = (l: LogLevel): string => {
     if (filter.level === l) return 'baseui:bg-primary baseui:text-primary-foreground baseui:font-medium'
     return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level)
@@ -234,8 +218,8 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     filter.level !== 'debug' || filter.sources.size !== ALL_SOURCES.size || filter.key !== '' || filter.search !== ''
 
   return (
-    /* baseui:relative 是吸附浮胶囊的定位参照：它必须挂在这层（窗格根），放进滚动容器的话
-       absolute+bottom 相对的是滚动内容，内容一长胶囊就漂出视口 */
+    /* baseui:relative 是「回到底部」浮动按钮的定位参照，必须放在窗格根这一层：放进滚动容器的话
+       absolute+bottom 相对的是滚动内容，内容一长按钮就移出视口 */
     <div className="baseui:relative baseui:flex baseui:h-full baseui:flex-col baseui:bg-background baseui:text-foreground">
       <div className="baseui:flex baseui:flex-wrap baseui:items-center baseui:gap-1.5 baseui:border-b baseui:border-border baseui:bg-card baseui:px-2.5 baseui:py-1.5">
         <div className="baseui:flex baseui:items-center baseui:gap-0.5 baseui:rounded-lg baseui:bg-muted/60 baseui:p-0.5">
@@ -357,7 +341,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
         {shown.length === 0 && (
           <div className="baseui:flex baseui:flex-col baseui:items-center baseui:gap-2.5 baseui:py-14 baseui:text-sm baseui:text-muted-foreground">
             <ScrollText size={26} className="baseui:opacity-25" aria-hidden />
-            {/* 空态得分得清「一条都没有」和「被筛掉了」——后者带一颗清筛选 */}
+            {/* 空态要区分「一条都没有」和「全被筛掉了」——后者带一个「清筛选」按钮 */}
             {entries.length === 0 ? (
               (failed === '' ? '还没有日志。' : failed)
             ) : (
@@ -402,7 +386,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
-  // 认不出的 paneId 报错、不回落到 main：「注册了 x 却画出 main」是那种没有任何现象的错
+  // 认不出的 paneId 直接报错、不改用 main：「注册了 x 却显示成 main」这种错不会有任何报错提示
   if (args.pane.id === 'logger') root.render(<LoggerPane args={args} />)
   else
     root.render(
@@ -412,10 +396,10 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
 }
 
 /**
- * 窗格件那半的入口。导出名是 `mountPane` 不是 `bootShell`——外壳占整页那个根，
- * 窗格占井里一格，单看导出名就知道自己是哪种件。
+ * 窗格插件浏览器侧的入口。导出名是 `mountPane` 不是 `bootShell`——外壳占整个页面的根元素，
+ * 窗格占窗格容器里的一个窗格，看导出名就知道是哪种插件。
  */
-export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
+export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   const root = boot(args, container)
   return {
     dispose() {

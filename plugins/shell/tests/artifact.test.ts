@@ -5,14 +5,15 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物守卫。这个件有两半，两半的规矩不一样：
+ * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
  *
- * - **node 半**（`dist/*.js`，tsc 出的）：相对 import 带扩展名、裸名只许 cordis 与词汇表包
- * - **浏览器半**（`dist/client.js`，esbuild 打的）：**只许**那四个共享名漏出去——它们由
- *   页面 importmap 解析到共享包。多漏一个（比如 dockview 被误配成 external）就是运行期
- *   一句 `Failed to resolve module specifier`，而那要开到窗格才看得见
+ * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis 与词汇表包
+ * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许**那四个共享名——它们由
+ *   页面 importmap 解析到外壳。多一个（比如 dockview 被误配成 external）就是运行时
+ *   一句 `Failed to resolve module specifier`，而那要打开窗格才看得见
+ * - **子路径 `./pane`**（`dist/types/`，tsc 只出声明）：只有 d.ts，链上没有包名 import
  *
- * 缺产物时整组跳过——门禁不依赖 build。
+ * 没有产物时整组跳过——门禁不依赖 build。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
@@ -27,7 +28,7 @@ function read(file: string): string {
   return fs.readFileSync(path.join(distDir, file), 'utf8')
 }
 
-/** 剥掉 css 注释。查规则的时候得先把讲这条规则的那段文案拿掉 */
+/** 去掉 css 注释。检查规则之前要先去掉讲这条规则的说明文字 */
 function stripComments(css: string): string {
   return css.replaceAll(/\/\*[\s\S]*?\*\//g, '')
 }
@@ -37,13 +38,9 @@ function specsIn(text: string, pattern: RegExp): string[] {
 }
 
 /**
- * **锚在行首**（`^` + `m`），不满文件乱找。第一版没锚，当场被 dockview 自己的一句
- * 错误消息骗了：它的文案里嵌着一段示例代码 `  import 'dockview-enterprise';`，
- * 于是守卫报「企业包泄漏进束里了」——而束其实是干净的。
- *
- * 认的是**产物的形状**：tsc 与 esbuild 都把顶层 import 顶格写，字符串字面量里的那种
- * 总带着缩进。这跟 shared-react 那条补丁正则同属一类，是个明摆着的脆弱点——但比
- * 「满文件找 import 三个字母」可靠得多。
+ * **只匹配行首**（`^` + `m`）：dockview 的一句错误消息里嵌着示例代码
+ * `  import 'dockview-enterprise';`，不限行首就会误报企业包打进了 client.js。
+ * 依据是 tsc 与 esbuild 都把顶层 import 写在行首，字符串字面量里的带缩进。
  */
 const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
@@ -51,15 +48,15 @@ const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 /**
  * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
  * **只在这一段里找类**——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
- * 也捞成类选择器
+ * 也当成类选择器
  */
 const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
-/** 一个类选择器。转义序列（`.shell\:flex` 里那个 `\:`）整体吃掉 */
+/** 一个类选择器。转义序列（`.shell\:flex` 里那个 `\:`）整体匹配 */
 const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
 /**
- * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，挂在 `<html>` 上、由令牌那张表
- * 与外壳的 boot 负责。它只以**祖先**的身份出现在 `shell:dark:*` 编出来的
- * `.shell\:dark\:…:is(.dark *)` 里，不是外壳自己元素身上的类
+ * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，加在 `<html>` 上、由令牌表
+ * 与外壳启动代码负责。它只作为**祖先**出现在 `shell:dark:*` 编译出的
+ * `.shell\:dark\:…:is(.dark *)` 里，不是外壳自己元素上的类
  */
 const DARK_FLAG = new Set(['.dark'])
 
@@ -75,16 +72,16 @@ function classSelectors(css: string): string[] {
 
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
-  /** 吸收进来的共享 react 系（实施 Spec D7）：它们是浏览器半，裸名 react 由 importmap 钉 */
+  /** 外壳提供给页面 importmap 的 react 四个包：属于浏览器侧，里面的包名 import react 由 importmap 解析 */
   const VENDOR = new Set(['react.js', 'react-jsx-runtime.js', 'react-dom.js', 'react-dom-client.js'])
   const nodeHalf = all.filter((f) => f !== CLIENT && !VENDOR.has(f))
 
-  it('两半都有产物可查', () => {
+  it('两侧都有产物可查', () => {
     expect(nodeHalf.length).toBeGreaterThan(0)
     expect(all).toContain(CLIENT)
   })
 
-  it('node 半：相对 import 一律带扩展名', () => {
+  it('node 侧：相对 import 一律带扩展名', () => {
     const bad: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), RELATIVE)) {
@@ -94,7 +91,7 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('node 半：裸名只许 cordis 与词汇表包——Service 基类必须是宿主那一份，requireKernel 是真函数', () => {
+  it('node 侧：包名 import 只许 cordis 与词汇表包——Service 基类必须是宿主那一份，requireKernel 是真函数', () => {
     const allowed = new Set(['cordis', '@godcreator/gwb-plugin-api'])
     const bare: string[] = []
     for (const file of nodeHalf) {
@@ -105,26 +102,26 @@ describe.skipIf(!built)('产物', () => {
     expect(bare).toEqual([])
   })
 
-  it('浏览器半：裸名只许那四个共享的，dockview 得打进本束', () => {
+  it('浏览器侧：包名 import 只许那四个共享的，dockview 得打包进 client.js', () => {
     const leaked = specsIn(read(CLIENT), BARE).filter((s) => !SHARED.has(s))
     expect(leaked).toEqual([])
   })
 
-  it('浏览器半：dockview 真的在束里（外置了的话这条会空）', () => {
+  it('浏览器侧：dockview 真的在 client.js 里（外置了的话这条会失败）', () => {
     expect(read(CLIENT)).toContain('dv-groupview')
   })
 
   /**
-   * 登记认图标名、标签画图标，吃的必须是同一份 lucide：名单是 build.ts 从 lucide-react 抄的，
-   * 束里是 esbuild 打进去的全集。任一头缩水（名单旧了、全集被摇树摇成几枚），就回到「登记说认得、
-   * 标签画成 #」或反过来，两头都不报错
+   * 登记时认图标名、标签上画图标，用的必须是同一份 lucide：名单是 build.ts 从 lucide-react 读出的，
+   * client.js 里是 esbuild 打包进去的全集。任一边变少（名单旧了、全集被 tree-shaking 删成几个），就会「登记说认得、
+   * 标签画成 #」或反过来，两边都不报错
    */
-  it('图标名单跟打进束的 lucide 全集是同一份', () => {
+  it('图标名单跟打包进 client.js 的 lucide 全集是同一份', () => {
     const require = createRequire(import.meta.url)
     const icons = Object.keys((require('lucide-react') as { icons: Record<string, unknown> }).icons).sort()
     const version = (require('lucide-react/package.json') as { version: string }).version
     expect(JSON.parse(read('pane-icons.json'))).toEqual({ lucide: version, keys: icons })
-    // 全集真在束里：挑几枚八个老名字之外的正名，它们的名字随图标数据一起进束
+    // 全集真在 client.js 里：挑几个最早那八个名字之外的正式名字，它们随图标数据一起打包进去
     const client = read(CLIENT)
     for (const name of ['layout-grid', 'receipt', 'gauge', 'zap']) expect(client).toContain(`name: "${name}"`)
   })
@@ -144,8 +141,8 @@ describe.skipIf(!built)('产物', () => {
   })
 
   /**
-   * 裁表那步是**每次构建都在跑的代码**，写坏了的症状分两头：裁多了是某个交互没样式，
-   * 裁少了是他们的主题偷偷生效、把我们的值盖掉。两头都不报错，所以钉住。
+   * 裁剪 dockview 样式表是**每次构建都在跑的代码**，写坏了有两种症状：裁多了是某个交互没样式，
+   * 裁少了是它自带的主题生效、盖掉我们的值。两种都不报错，所以在这里检查。
    */
   it('dockview 自带的主题一个都不许剩，除了我们自己那个', () => {
     const css = stripComments(fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8'))
@@ -155,25 +152,25 @@ describe.skipIf(!built)('产物', () => {
     expect([...new Set(theirs)]).toEqual([])
   })
 
-  it('裁完之后基础规则还在——别把井本身也裁没了', () => {
+  it('裁完之后基础规则还在——窗格容器本身的规则不能被裁掉', () => {
     const css = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
-    // 这几个类是井的骨架，全由 dockview 的 JS 建，规则少一条就是一处没样式
+    // 这几个类是窗格容器的基本结构，全由 dockview 的 JS 创建，规则少一条就是一处没样式
     for (const cls of ['.dv-groupview', '.dv-tabs-and-actions-container', '.dv-tab', '.dv-sash', '.dv-drop-target']) {
       expect(css).toContain(cls)
     }
-    // 裁掉的是三分之二那批主题，剩下的应该在 50–70KB 这一档；掉出去说明裁法出事了
+    // 裁掉的是约三分之二（那批主题），剩下的应该在 50–70KB 之间；超出这个范围说明裁剪逻辑出错了
     const bytes = Buffer.byteLength(css, 'utf8')
     expect(bytes).toBeGreaterThan(45_000)
     expect(bytes).toBeLessThan(75_000)
   })
 
-  /* —— 零字面 fallback 与颜色白名单（令牌国有化，tokens ≥0.1.1）——
-   * 规矩正本：docs-site「令牌与颜色：共享规则」第六节。两条都现扫正本、不手写名单。 */
+  /* —— 零字面 fallback 与颜色白名单 ——
+   * 规则正本：docs-site「令牌与颜色：共享规则」第六节。两条都在测试时读取正本，不手写名单。 */
 
   it('style.css 零字面 fallback——值只许查表（令牌变量或 currentcolor 关键字）', () => {
     const css = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
-    /** tw-animate-css 包内写死的机制缺省（animation 简写连排、enter/exit 变换那一族），
-     *  映射面够不着：动画机制的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
+    /** tw-animate-css 包内写死的动画默认值（animation 简写、enter/exit 变换那一组），
+     *  映射面管不到：它们是动画的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
     const mechanismDefault = (key: string, fb: string) =>
       key.startsWith('--tw-animation-') ||
       key.startsWith('--tw-enter-') ||
@@ -186,7 +183,7 @@ describe.skipIf(!built)('产物', () => {
     expect([...new Set(bad)].sort()).toEqual([])
   })
 
-  it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
+  it('style.css 颜色类只在白名单内——令牌映射面 ∪ 本插件样式入口 @theme 注册的', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
       path.join(root, 'src/tokens/theme.reference.css'),
@@ -213,5 +210,49 @@ describe.skipIf(!built)('产物', () => {
       }
     }
     expect([...bad].sort()).toEqual([])
+  })
+
+  describe('子路径 ./pane：窗格浏览器侧入口的类型', () => {
+    const typesDir = path.join(distDir, 'types')
+    const declarationFiles = (): string[] =>
+      fs
+        .readdirSync(typesDir, { recursive: true, encoding: 'utf8' })
+        .filter((entry) => fs.statSync(path.join(typesDir, entry)).isFile())
+
+    it('package.json 的 exports 只给 types 条件——没有运行时入口，按值 import 会在构建时报错', () => {
+      const manifest = JSON.parse(fs.readFileSync(path.join(distDir, '../package.json'), 'utf8')) as {
+        exports: Record<string, unknown>
+      }
+      expect(manifest.exports['./pane']).toEqual({ types: './dist/types/client/pane-api.d.ts' })
+    })
+
+    it('dist/types 下只有 d.ts，构建产物里不多出运行时代码', () => {
+      expect(declarationFiles().filter((file) => !file.endsWith('.d.ts'))).toEqual([])
+    })
+
+    it('入口导出 mountPane 用到的类型', () => {
+      const entry = read('types/client/pane-api.d.ts')
+      for (const name of [
+        'PaneArgs',
+        'PaneHandle',
+        'ShellBridge',
+        'HostBridge',
+        'OpenPaneOptions',
+        'Placement',
+        'PaneKind',
+        'PaneContent',
+      ]) {
+        expect(entry).toMatch(new RegExp(`export type \\{[^}]*\\b${name}\\b`))
+      }
+    })
+
+    it('d.ts 链上没有包名 import——调用方的浏览器侧类型检查不用为它多列依赖', () => {
+      const packageSpecifiers = declarationFiles().flatMap((file) =>
+        [...read(path.join('types', file)).matchAll(/from\s*['"]([^'".][^'"]*)['"]/g)].map(
+          (m) => `${file}: ${m[1]!}`,
+        ),
+      )
+      expect(packageSpecifiers).toEqual([])
+    })
   })
 })

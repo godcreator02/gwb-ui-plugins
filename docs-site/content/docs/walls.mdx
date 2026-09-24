@@ -1,10 +1,10 @@
 ---
-title: 撞过的墙（UI 半）
+title: 撞过的墙（UI 侧）
 description: UI 平台仓撞过的坑——2026-09-12 三仓拆分从 gwb-base-plugins 的 walls 迁来，钉码在新仓继续有效
 docfirst: none
 ---
 
-# 撞过的墙（UI 半）
+# 撞过的墙（UI 侧）
 
 **本页回答**：这个仓的代码为什么长这样——每一段是一面撞过的墙。迁自 gwb-base-plugins 的「撞过的墙」（2026-09-12 三仓拆分）；钉码路径相对本仓根，在本仓继续钉得住。无头侧的墙（服务、发版、MCP 与 skill）留在旧仓站，装配验收的墙在验收仓。
 
@@ -70,7 +70,7 @@ dispose、再 release」，所以插件在自己的 dispose 里喊一嗓子有�
 不换壳。
 
 **根因**：「先清容器、后拆 React 树」，两层各犯一次。
-1. 外壳层：旧 `dispose` 把 `reactRoot.unmount()` 挂在 Promise 链上（微任务），同步那半就清了根，
+1. 外壳层：旧 `dispose` 把 `reactRoot.unmount()` 挂在 Promise 链上（微任务），同步执行的那部分就清空了根，
    内核页面根随后也清一遍；拆树落在清空之后
 2. 窗格层：`PluginPane` 的清理 effect 跑在外壳的 React 提交里，件的 `dispose` 在那儿同步
    `root.unmount()` 会被 React 推迟，件紧跟着的 `container.textContent = ''` 抢在前面。普通关窗格

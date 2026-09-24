@@ -1,0 +1,47 @@
+---
+born-at: 2026-09-24T12:30
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 窗格类型子路径
+domain: shell
+---
+
+## 背景
+
+devkit 仓的规矩页 `rules/interaction.mdx` 要求「谁提供接口谁定义类型，调用方 `import type`、不手写、不用 `as` 转」。
+窗格插件浏览器侧入口 `mountPane` 的参数与返回值（`PaneArgs`、`ShellBridge`、`PaneHandle`、`HostBridge`）当时只写在
+外壳源码 `plugins/shell/src/client/types.ts` 里，外壳包没有导出它们；baseui 的三个浏览器侧模块与 devkit 的建仓模板
+各自按用到的字段手写了一份。
+
+要让外壳导出这些类型，得先定从哪导出：主入口 `@godcreator/gwb-shell`，还是另开一个只有类型的子路径。
+
+## 结论与边界
+
+开子路径 `@godcreator/gwb-shell/pane`，只有类型：`src/client/pane-api.ts` 只写 `export type`，构建时用单独的
+`src/client/tsconfig.pane-types.json` 只输出声明到 `dist/types/`，`package.json` 的 `exports["./pane"]` 只给
+`types` 条件。导出 `PaneArgs`、`PaneHandle`、`ShellBridge`、`HostBridge`，以及它们引用到的 `OpenPaneOptions`、
+`Placement`、`PaneKind`、`PaneContent`。baseui 同一提交改成 `import type`；devkit 模板的外壳 dev 下限是已发布的
+版本，要等外壳带着这个子路径发版后再改。
+
+这个子路径引用到的文件（`openable`、`panels`、`protocol`、`pane-registry` 的声明）里没有包名 import，调用方
+不用为它多列依赖；以后往 `pane-api.ts` 加导出，也要守住这一点，产物测试会检查。
+
+## 否掉的候选
+
+**从主入口导出**，实测两处不通：
+
+- 在 baseui 浏览器侧 tsconfig（`lib` 只有 ES2023 与 DOM、`types: []`，`skipLibCheck: false`）里写一句
+  `import type { PaneSpec } from '@godcreator/gwb-shell'`，`tsc --listFiles` 列出的文件除了外壳自己的声明，还有
+  `cordis`（连带 `cosmokit`、`@standard-schema/spec`）、`@godcreator/gwb-plugin-api`、`@godcreator/gwb-commands`、
+  `@godcreator/gwb-data` 的声明。这次没报错，是因为这些包的声明碰巧不依赖 node 类型；但按 devkit 规矩页
+  `rules/deps.mdx`「类型引用到的包由使用方列全」，调用方得把它们全列进自己的 dev，node 侧的
+  `declare module 'cordis'` 也进了浏览器侧的类型检查
+- 在外壳 node 侧源码里加一句 `export type { PaneArgs } from './client/types.js'`，`tsc -p tsconfig.json` 当场报
+  `src/client/types.ts(103,11): error TS2304: Cannot find name 'HTMLElement'`——node 侧 tsconfig 没有 DOM 类型库，
+  而 `ShellBridge.portal` 是 `HTMLElement`。给 node 侧加上 DOM 能消掉这条错，代价是 node 侧代码写 `document`
+  也不再报错
+
+子路径这边同样实测过：同一份浏览器侧 tsconfig 引 `@godcreator/gwb-shell/pane` 的八个类型，`--listFiles` 只列出
+外壳 `dist/types/` 下的六个声明文件；按值写 `import { x } from '@godcreator/gwb-shell/pane'`，esbuild 报
+「The path "./pane" is not currently exported」。以上都是手工跑的命令，没有留探针目录（无物证）；
+子路径的几条性质由同一提交里 `plugins/shell/tests/artifact.test.ts` 的「子路径 ./pane」一组测试守着。

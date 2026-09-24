@@ -73,7 +73,7 @@ description: 注册时说清是工具窗格还是文档窗格；文档窗格的�
 
 **三、新窗格摆在哪，跟你在哪儿点的无关，还会挤压整张桌面。** `placeNext` 按「这个窗格定义此刻在本容器开了几份」分三档：0 份落活动组当标签；1 份给 `{ direction: 'right' }`、不给参照；2 份以上叠在最后一份非基名实例下面。shell.mdx 说第二档「相对当前活动的那一个窗格」，但 dockview 8.3.1 的 `_doAddPanel` 里不带参照的方向走 `orthogonalize`，贴的是**整个容器的边**，整片布局重新分宽——这就是「开了以后窗格自动缩放」。就算带了参照（第三档），`addPanel` 走的 `createGroupAtLocation` 不给尺寸时用 `Sizing.Distribute`，**同一排的组全部均分**，照样牵动别的组；dockview 里只有拖放那条路（`moveGroupOrPanel` 用 `dropSizing`）才是「只切参照组的一半、兄弟不动」，源码注释引的是它自己的 issue #1612。第一档落「活动组」，活动组可能是别的插件的窗格，于是新窗格盖住了它。
 
-**四、外壳不知道是谁发起的打开。** 桥上的 `openPane` 在 `plugin-panel.tsx` 里只绑了条目与窗格 id，没带发起的那个窗格；跨插件的 `shell.openPane` 走 node 半转发，更不知道来源。所以「开在来源旁边」根本无从做起。
+**四、外壳不知道是谁发起的打开。** 桥上的 `openPane` 在 `plugin-panel.tsx` 里只绑了条目与窗格 id，没带发起的那个窗格；跨插件的 `shell.openPane` 走 node 侧转发，更不知道来源。所以「开在来源旁边」根本无从做起。
 
 **五、状态栏那个「打开窗格」一个列表干两件事。** 它列的是窗格**定义**，点下去走同一个 `planOpen`：已开（任何桌面）就切过去聚焦，没开就开「没带 key 的那一份」。对工具窗格这够用；对文档窗格，「没带内容的那一份」本身就是个奇怪的东西，而它又兼着切换。另外它用的是开机那一刻的注册表快照（`prepareShell` 里取一次），热装的插件要点「刷新」才出现。
 
@@ -180,7 +180,7 @@ description: 注册时说清是工具窗格还是文档窗格；文档窗格的�
 
 | 操作 | 发生什么 | 参考 |
 | --- | --- | --- |
-| 插件在窗格里换了内容（点链接原地跳转、后退前进），调 `setPaneContent` | 这个实例的内容 key 换成新的；给了 `params` 就整份替换插件那半参数（保留键照旧摘掉）；给了 `title` 等于顺带 `setPaneTitle`。**不调 `retarget`、不重挂**——内容已经在插件手里换好了 | [R10][R13] 浏览器标签页的地址随导航变 |
+| 插件在窗格里换了内容（点链接原地跳转、后退前进），调 `setPaneContent` | 这个实例的内容 key 换成新的；给了 `params` 就整份替换插件那部分参数（保留键照旧摘掉）；给了 `title` 等于顺带 `setPaneTitle`。**不调 `retarget`、不重挂**——内容已经在插件手里换好了 | [R10][R13] 浏览器标签页的地址随导航变 |
 | 之后布局自动落盘 | 存的是上报后的 key 与参数，整页重载、重启都回到这里 | — |
 | 这个实例是预览标签 | 保持预览，外壳不因上报内容自动转正；插件认为「这算开始用了」就自己调 `keepPane` | — |
 | 上报的 key 跟同组另一个标签撞了 | 两个都留着，不合并。查重只发生在打开那一刻 | [R12] |
@@ -222,7 +222,7 @@ description: 注册时说清是工具窗格还是文档窗格；文档窗格的�
 
 | 步骤 | 发生什么 | 参考 |
 | --- | --- | --- |
-| 1 | 取这个实例的定义、内容 key、插件那半参数、标题，然后在源桌面关掉它（插件 `dispose`） | dockview 没有跨实例搬 panel 的接口 [R24] |
+| 1 | 取这个实例的定义、内容 key、插件那部分参数、标题，然后在源桌面关掉它（插件 `dispose`） | dockview 没有跨实例搬 panel 的接口 [R24] |
 | 2 | 目标桌面的容器还没挂上（从没切去过）：先在后台把它挂上，不显示 | 本仓容器常驻保活 |
 | 3 | 文档窗格：按目标组规则在目标桌面开一份正式标签（没有来源，所以取目标桌面上最近用过的同类组，否则活动组，桌面空就新建一组）。工具窗格：目标桌面已有同一定义、同一 key 的就只激活那一份（源桌面那份照样关掉），没有就照文档窗格那样开 | [R15] |
 | 4 | 预览状态不带过去：送过去的一律是正式标签 | 送过去本身就是「我要留着它」 |
@@ -336,7 +336,7 @@ Shift + 单击（Chrome 与 Obsidian 里是新窗口 [R9][R13]）先不占：外
 
 全部是加法；老插件不改一行照跑，但会拿到新的**行为**（查重范围、摆放、不再自动切桌面），见「消费方怎么跟」。
 
-**node 半**
+**node 侧**
 
 - `registerPane` 的 `PaneSpec` 多一个可选字段 `kind: 'tool' | 'document'`，缺省 `tool`
 - `shell.panes` 每条多带 `kind`
@@ -352,9 +352,9 @@ Shift + 单击（Chrome 与 Obsidian 里是新窗口 [R9][R13]）先不占：外
 | `shell.desktop.rename` | `{ id, name }` | 改名 |
 | `shell.desktop.delete` | `{ id }` | 删除，上面的窗格一起关掉（不弹确认），回执带关掉了几个；只剩一张时回错 |
 
-`shell.pane.list` 要页面回答，node 半没有容器：页面在每次布局变化时把清单推给 node 半缓存，命令读缓存（已定）。
+`shell.pane.list` 要页面回答，node 侧没有容器：页面在每次布局变化时把清单推给 node 侧缓存，命令读缓存（已定）。
 
-**浏览器半（`mountPane` 的 args）**
+**浏览器侧（`mountPane` 的 args）**
 
 - `shell.openPane(paneId, { key?, params?, preview?, placement? })`：多一个 `placement`；外壳自动把调用它的这个实例当来源
 - `shell.setPaneContent({ key, params?, title? })`：新
@@ -430,7 +430,7 @@ shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不
 
 5. ~~**工具窗格每张桌面各一份**，不做「全页一份、在别的桌面打开就拉过来」~~（第三轮推翻，见第 13 条：全页一份，打开时回它那张桌面——不是拉过来）
 6. **预览标签里上报了新内容，外壳不自动转正**，插件自己定（块笔记可以定成「在预览里主动跳转一次就转正」）
-7. **`shell.pane.list` 由页面在每次布局变化时推给 node 半缓存**
+7. **`shell.pane.list` 由页面在每次布局变化时推给 node 侧缓存**
 
 **第二轮（2026-09-19，人在本仓会话里看过第三期做完的实机状态栏之后定的）**：
 
@@ -462,17 +462,17 @@ shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不
 | R3 | VS Code「Open to the Side」（资源管理器右键；Ctrl+Enter，macOS ⌃Enter；Alt / ⌥ + 单击）：在活动组的首选方向上找相邻组，有就复用，没有或那组被锁定才新建；方向由 `workbench.editor.openSideBySideDirection` 定，缺省 right | [User interface · Side by side editing](https://code.visualstudio.com/docs/editing/getting-started/userinterface)、R1 的 editorGroupFinder.ts | 官方＋源码 |
 | R4 | VS Code `workbench.editor.openPositioning` 缺省 right：新编辑器开在活动标签右边（总在已固定的标签之后） | R1 的 workbench.contribution.ts、R2 的 editorGroupModel.ts | 源码 |
 | R5 | VS Code `workbench.editor.focusRecentEditorAfterClose` 缺省 true：关掉活动编辑器后激活最近用过的那个；关了才按左右位置 | 同上 | 源码 |
-| R6 | VS Code 的视图住在视图容器里（活动栏 / 侧栏、面板），能拖到别的容器，「View: Open View」打开任意视图；编辑器住在编辑器区的编辑器组里。多窗口时各窗口打开各自的工作区，视图内容互不相干，但视图摆在哪个容器按配置档存、同一配置档的各窗口共享 | [UX guidelines · Overview](https://code.visualstudio.com/api/ux-guidelines/overview)、[UX guidelines · Views](https://code.visualstudio.com/api/ux-guidelines/views)、[viewDescriptorService.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/views/browser/viewDescriptorService.ts) | 官方＋源码（「每窗口」那半是源码推断） |
+| R6 | VS Code 的视图住在视图容器里（活动栏 / 侧栏、面板），能拖到别的容器，「View: Open View」打开任意视图；编辑器住在编辑器区的编辑器组里。多窗口时各窗口打开各自的工作区，视图内容互不相干，但视图摆在哪个容器按配置档存、同一配置档的各窗口共享 | [UX guidelines · Overview](https://code.visualstudio.com/api/ux-guidelines/overview)、[UX guidelines · Views](https://code.visualstudio.com/api/ux-guidelines/views)、[viewDescriptorService.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/views/browser/viewDescriptorService.ts) | 官方＋源码（「每窗口」那部分是源码推断） |
 | R7 | VS Code「Open Editors」视图按编辑器组分组列出已开的编辑器（1.53 起对新用户默认隐藏）；Ctrl+Tab（两个平台都是 ⌃Tab）在**当前组**的最近使用列表里切换 | [Release notes 1.53](https://code.visualstudio.com/updates/v1_53)、[Default keybindings](https://code.visualstudio.com/docs/reference/default-keybindings) | 官方 |
 | R8 | VS Code 编辑器组：Split Editor（Ctrl+\ / ⌘\）在新组里再开一份；Move Editor into Next / Previous Group（Ctrl+Alt+→/← ，macOS ⌃⌘→/←）；Move Editor into New Window（浮动窗口 1.85 起，1.86 起重启恢复） | [Custom layout](https://code.visualstudio.com/docs/configure/custom-layout)、[Release notes 1.85](https://code.visualstudio.com/updates/v1_85)、[editorCommands.ts](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/parts/editor/editorCommands.ts) | 官方＋源码（命令 ID 以源码为准） |
-| R9 | Obsidian 点内部链接：无修饰键在当前标签打开；Ctrl / ⌘ 新标签；Ctrl+Alt / ⌘⌥ 新标签组（官方没说一定在右边）；Ctrl+Alt+Shift / ⌘⌥⇧ 新窗口。钉住的标签里点链接总在别的标签打开。「Always focus new tabs」设置官方没写默认值，二手来源说默认开 | [Tabs](https://obsidian.md/help/tabs)、[Settings](https://obsidian.md/help/settings)；二手：[obsidian-journal PR #462](https://github.com/srg-kostyrko/obsidian-journal/pull/462) | 官方（默认值那半是二手） |
+| R9 | Obsidian 点内部链接：无修饰键在当前标签打开；Ctrl / ⌘ 新标签；Ctrl+Alt / ⌘⌥ 新标签组（官方没说一定在右边）；Ctrl+Alt+Shift / ⌘⌥⇧ 新窗口。钉住的标签里点链接总在别的标签打开。「Always focus new tabs」设置官方没写默认值，二手来源说默认开 | [Tabs](https://obsidian.md/help/tabs)、[Settings](https://obsidian.md/help/settings)；二手：[obsidian-journal PR #462](https://github.com/srg-kostyrko/obsidian-journal/pull/462) | 官方（默认值那部分是二手） |
 | R10 | Obsidian 每个标签页有自己的导航历史，标题栏带前进 / 后退（0.16.3 起） | [Changelog 0.16.3](https://obsidian.md/changelog/2022-09-19-desktop-v0.16.3/) | 官方 |
 | R11 | Obsidian 弹出窗口（0.15 起，仅桌面版）：标签右键「Move to new window」「Open in new window」、对应命令、把标签拖出窗口或拖进别的窗口；只能在同一个库的窗口之间移 | [Pop-out windows](https://obsidian.md/help/pop-out-windows) | 官方 |
 | R12 | Obsidian 核心不给同一篇笔记去重，没有「已开就聚焦」的核心设置；功能请求在论坛挂着，去重靠社区插件（如 Mononote） | [论坛：IDE style navigation](https://forum.obsidian.md/t/ide-style-navigation-tab-reuse-on-link-opening-tab-management-switch-to-already-open-note/46671)、[论坛：Switch to tab when already opened](https://forum.obsidian.md/t/switch-to-tab-when-a-note-is-already-opened-instead-of-opening-the-note-in-a-new-tab/50332)、[Mononote](https://github.com/czottmann/obsidian-mononote) | 间接证据（论坛＋插件） |
 | R13 | Chrome：Ctrl / ⌘ + 单击 = 新标签后台打开；Ctrl / ⌘ + Shift + 单击 = 新标签并切过去；Shift + 单击 = 新窗口；中键同 Ctrl（帮助页没写，源码里同样处理）。前进后退作用于当前标签页 | [Chrome keyboard shortcuts · Mouse shortcuts](https://support.google.com/chrome/answer/157179)、[window_open_disposition_utils.cc](https://github.com/chromium/chromium/blob/main/ui/base/window_open_disposition_utils.cc) | 官方＋源码 |
 | R14 | Chrome 标签右键「Move tab to another window」（只有一个窗口时是「Move tab to new window」），也能把标签拖出成新窗口、拖进别的窗口。源码：移过去的标签追加在目标窗口末尾、设为活动标签，并把目标窗口带到前台 | [Manage tabs](https://support.google.com/chrome/answer/2391819)、Chromium 源码 `browser_commands.cc`（MoveTabsToWindowImpl）、`tab_menu_model.cc` | 官方＋源码 |
 | R15 | Windows 任务视图：右键窗口「Move to」选桌面，或把窗口拖到目标桌面的缩略图上。「移到新桌面」这一项、移完切不切桌面，官方与能访问的二手来源都没写 | [How to multitask in Windows](https://support.microsoft.com/en-us/windows/how-to-multitask-in-windows-b4fa0333-98f8-ef43-e25c-06d4fb1d6960) | 官方（后两点查不到） |
-| R16 | Windows 11 快捷键：Win+Ctrl+D 新建桌面，Win+Ctrl+←/→ 切换，Win+Ctrl+F4 关闭当前桌面。新建后切过去只有二手来源 | [Keyboard shortcuts in Windows](https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)；二手：[itechguides](https://www.itechguides.com/shortcut-key-for-windows-11-virtual-desktop-create-view-close-tutorial/) | 官方（切过去那半是二手） |
+| R16 | Windows 11 快捷键：Win+Ctrl+D 新建桌面，Win+Ctrl+←/→ 切换，Win+Ctrl+F4 关闭当前桌面。新建后切过去只有二手来源 | [Keyboard shortcuts in Windows](https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)；二手：[itechguides](https://www.itechguides.com/shortcut-key-for-windows-11-virtual-desktop-create-view-close-tutorial/) | 官方（切过去那部分是二手） |
 | R17 | 删除桌面时窗口不关：Windows 移到「下一个可用的桌面」（官方没说方向，二手说是左边那张）；macOS 删除空间时窗口移到另一个空间 | R15 的微软页面、[Work in multiple spaces on Mac](https://support.apple.com/guide/mac-help/work-in-multiple-spaces-mh14112/mac)；二手：[How-To Geek](https://www.howtogeek.com/796349/how-to-use-virtual-desktops-on-windows-11/) | 官方（「左边」是二手） |
 | R18 | Windows 设置 › 系统 › 多任务 › 桌面：任务栏与 Alt+Tab 各有「Only on the desktop I'm using / On all desktops」一项。默认值官方没写，二手来源说两项默认都是只显示本桌面（另有一篇二手说法相反，可信度较低） | [Configure multiple desktops](https://support.microsoft.com/en-us/windows/experience/configure-multiple-desktops-in-windows)；二手：[NinjaOne](https://www.ninjaone.com/blog/how-to-show-all-open-windows-on-taskbar/)、[Geek Rewind](https://geekrewind.com/how-to-show-all-open-windows-on-alttab-on-all-desktops-in-windows-11) | 官方（默认值是二手） |
 | R19 | macOS 系统设置 › 桌面与程序坞 › 调度中心：「切换到某个应用程序时，会切换到包含该应用程序的打开窗口的空间」开关，默认开（二手）。在调度中心里把窗口拖到空间栏上的另一个空间，就是移过去 | [Change Desktop & Dock settings](https://support.apple.com/zh-cn/guide/mac-help/mchlp1119/mac)、R17 的 Apple 页面；二手：[macos-defaults.com](https://macos-defaults.com/mission-control/applespacesswitchonactivate.html) | 官方（默认值是二手） |
@@ -499,8 +499,8 @@ shell.mdx 里「第二档相对当前活动窗格」那句与 dockview 源码不
 - 2026-09-19 第三期补·发版：shell **0.12.1** 发团队源（插件面与命令不变，补丁号）。新开隔离 home `shell-0121-2609191540`，底座装上的就是源上最新的 0.12.1：`shell.env` 报 0.12.1，面板里把插件管理拖到「乙」送过去、落点亮底色、出「已送到『乙』」，日志零 warn、零 error。在装过 dev 版的 home 里 `plugin-manager.update` 挪不动（dev 预发布号钉死在清单里，且排在正式号前面），复验正式版改用新开 home
 - 2026-09-19 第三期补·状态栏第二轮（人看过实机状态栏之后定的，见「已拍板」第二轮）：「桌面」「窗格 N」两格并成「桌面」面板（`DesktopPanel.tsx`，shadcn `popover`——下拉菜单点一项就关、按键拿去做首字母跳转，跟改名框和拖拽对着干）；面板照桌面本来的顺序列（`desktopSections`，不再把当前那张提到最前），行内关闭 / 送到 / 拉到本桌拿掉；拖放判断 `acceptsDrop`，删桌面的确认文字 `deleteConfirmText`，拖的是哪个窗格在 `pane-drag.ts`（面板行 dragstart 时记下；标签读 dockview 的页内单例 `getPanelData`）；home 与版本并成右边一格。顺手修两处：body 探雷改成切完隔 500ms 再扫并认得状态栏自己的面板（`data-gwb-status-layer`）——`pane-p2` / `pane-p3` 的日志里从桌面菜单、切换器、删当前桌面的确认框切过去回回误报；产物守卫抓到 `font-normal` 带出的字面 fallback `400`，改成只给桌面名加粗。隔离 home `desk-panel-2609191528`（shell `0.12.1-dev.202609191535`，探针件），合成拖放事件（`DragEvent` 带 `DataTransfer`，标签那条经 dockview 自己的 dragstart 填单例）走真代码：① 面板里拖文档 A 到「写作」→ 那边多一份、本桌少一份、当前桌面不变、出「已送到『写作』」；放回它本来那张 dragover 不接；从「写作」拖回当前桌面 = 拉到本桌；拖到「新建桌面…」建出「桌面 4」；② 标签拖到状态栏格子停 700ms 面板自己弹开、放到「空桌」上送过去；停 200ms 就松手，面板不弹（先前一版到点照弹，改成到点再问一次还拖着没有）；③ Shift 放下跟过去、面板收起；落点悬停亮底色；④ 真右键桌面名 → 输入框，Enter 改名落盘（`shell.desktop.list` 对得上），Esc 只弃输入不关面板；⑤ 删空桌面弹「这张桌面是空的」、取消不动；删有 1 个窗格的桌面弹「上面 1 个窗格会一起关掉」、确认删掉；删当前桌面切到左邻；只剩一张时没有删除钮；⑥ 点桌面切过去、点别桌的窗格切过去再激活，面板都收起。改完日志零 warn、零 error。**人手按住标签拖到状态栏那一下 CDP 模拟不了，要人验**。落卡[桌面面板](/trajectory/2026-09-19-desk-panel)
 - 2026-09-19 第三期·发版：shell **0.12.0** 发团队源（`devkit.release` 检票过）。装进 `pane-p3-2609191309` 冒烟：`shell.env` 报 0.12.0；新建桌面「冒烟」、切回「丁」、`shell.pane.send` 把文档 C 送过去——笔记跟过去、状态栏出「已送到『冒烟』· 切过去」；`shell.desktop.delete` 删它回 `closed: 1`；`shell.pane.list` 对得上。冒烟时用 `plugin-manager.install` 换版本，它另加了一条 `home:shell-2`、挂不上（`gwbShell` 已由 `home:shell` 提供），日志里那两条 error 就是它，已 `remove-entry` 摘掉——是换版本的手法不对，与 shell 无关；往后在已装的 home 里换版本用 `plugin-manager.update` 加 remount。home 里 peer 对不上的几处（theme、baseui、探针件还要 `^0.9.2` / `^0.10.0`）照人的指示留到第四期一起跟
-- 2026-09-19 第三期·隔离 home 验收与文档（`pane-p3-2609191309`，shell `0.11.1-dev.202609191310`、探针件 `0.1.1-dev.202609191231`）：① 标签菜单「送到 ▸ 写作」：d1 少了文档 A、d2 多一份正式的，笔记「草稿一」随参数带过去（重挂了，挂载序号变），当前桌面仍是 d1，状态栏「已送到『写作』· 切过去」，10 秒后自己消失；`shell.pane.send` 送插件管理再点那句提示 → 切到 d2；② 工具窗格送到已有它的桌面：源那份关掉、目标那份只激活，不多开；③ `shell.pane.send { newDesktop: '草稿箱', follow: true }` 建 d3 并跟过去；④ `shell.pane.focus` 从 d3 激活 d2 上的一格 → 切到 d2；`shell.pane.close` 关不在当前桌面的一格，不切；实例不在清单、目标桌面不存在、`desktop` 与 `newDesktop` 都给，三条都当场回错；⑤ `shell.desktop.rename` 改名成功，id 不存在、空名两条回错；`shell.desktop.delete` 删当前桌面 d2（上面两格）→ 回 `closed: 2`、切到左邻 d1；删空桌面回 `closed: 0`；删最后一张回错；⑥ 切换器「送到 ▸ 乙」送一份**预览**文档 → 到那边是正式的，源组空了自己收掉；「拉到本桌」拉回来并激活；「送到 ▸ 新桌面」建出「桌面 3」、不切过去；⑦ 状态栏桌面菜单改名：Enter 定、Esc 弃；删有窗格的桌面弹确认「删除『丙号』？上面 1 个窗格会一起关掉。」，取消不动、确认删掉；删空桌面不弹；只剩一张时「删除」灰着；⑧ 整页重载后别的桌面没挂：从没挂过的桌面送出去（后台挂上再关），和按住 Shift 从标签菜单送到没挂过的桌面（后台挂上、开进去、跟过去）都对；`shell.pane.list` 对没挂过的桌面读落盘布局，kind / key / preview / active 都对；再重载一次，布局回到最后那样。第二期那次「空桌面上多出一份插件管理」本期没再出现。撞到一处并修掉：按住 Shift 送过去时 `gwb.log` 里多一条「切到『丁』时 body 上还挂着 2 个节点」——是 radix 模态菜单的焦点护栏（`data-radix-focus-guard`，菜单没关它就在 body 首尾），body 探雷跳过它。日志零 error。shell.mdx 写送到 / 拉到本桌、桌面改名与删除、`shell.pane.*` 命令与页面推给 node 半的清单缓存、「只有这几种动作会切桌面」、状态栏与标签菜单新增的几项；术语表加「送到 / 拉到本桌」。推翻的判据五条在第一、二期都已落卡，这一期没有新推翻的，不落卡
-- 2026-09-19 第三期·代码（提交时漏写进度，这条补上）：送到别的桌面是一次关闭加一次打开（`open.ts` 的 `sendPane`：取定义、key、件那半参数与标题 → 两张桌面没挂过的先后台挂上 → 源桌面关掉 → 目标桌面按 `planSend` 开，标题按 `carriedTitle` 带）；拉到本桌就是送到当前桌面；桌面改名（`renameDesktop`）与删除（`afterDelete` 算删当前时切到哪张，页面上逐个关窗格再删井、落盘）；命令 `shell.pane.list / focus / send / close`、`shell.desktop.rename / delete`，参数判断在纯模块 `pane-actions.ts` 与 `desktops.ts`；list 读页面每次落盘推来的缓存（`shell.pane.sync`，页面专用）。状态栏：桌面菜单每行「改名」「删除」（改名是那一格内联输入框、删有窗格的先弹 shadcn `alert-dialog`）、切换器每行「送到 ▸」与别桌那行的「拉到本桌」、「已送到 · 切过去」那句。实现上的两处取舍：菜单里「新桌面」直接用缺省名，不当场起名（要改走桌面菜单）；「送到新桌面」建桌时不落盘，免得档里先写进一个 null、重启被铺满
+- 2026-09-19 第三期·隔离 home 验收与文档（`pane-p3-2609191309`，shell `0.11.1-dev.202609191310`、探针件 `0.1.1-dev.202609191231`）：① 标签菜单「送到 ▸ 写作」：d1 少了文档 A、d2 多一份正式的，笔记「草稿一」随参数带过去（重挂了，挂载序号变），当前桌面仍是 d1，状态栏「已送到『写作』· 切过去」，10 秒后自己消失；`shell.pane.send` 送插件管理再点那句提示 → 切到 d2；② 工具窗格送到已有它的桌面：源那份关掉、目标那份只激活，不多开；③ `shell.pane.send { newDesktop: '草稿箱', follow: true }` 建 d3 并跟过去；④ `shell.pane.focus` 从 d3 激活 d2 上的一格 → 切到 d2；`shell.pane.close` 关不在当前桌面的一格，不切；实例不在清单、目标桌面不存在、`desktop` 与 `newDesktop` 都给，三条都当场回错；⑤ `shell.desktop.rename` 改名成功，id 不存在、空名两条回错；`shell.desktop.delete` 删当前桌面 d2（上面两格）→ 回 `closed: 2`、切到左邻 d1；删空桌面回 `closed: 0`；删最后一张回错；⑥ 切换器「送到 ▸ 乙」送一份**预览**文档 → 到那边是正式的，源组空了自己收掉；「拉到本桌」拉回来并激活；「送到 ▸ 新桌面」建出「桌面 3」、不切过去；⑦ 状态栏桌面菜单改名：Enter 定、Esc 弃；删有窗格的桌面弹确认「删除『丙号』？上面 1 个窗格会一起关掉。」，取消不动、确认删掉；删空桌面不弹；只剩一张时「删除」灰着；⑧ 整页重载后别的桌面没挂：从没挂过的桌面送出去（后台挂上再关），和按住 Shift 从标签菜单送到没挂过的桌面（后台挂上、开进去、跟过去）都对；`shell.pane.list` 对没挂过的桌面读落盘布局，kind / key / preview / active 都对；再重载一次，布局回到最后那样。第二期那次「空桌面上多出一份插件管理」本期没再出现。撞到一处并修掉：按住 Shift 送过去时 `gwb.log` 里多一条「切到『丁』时 body 上还挂着 2 个节点」——是 radix 模态菜单的焦点护栏（`data-radix-focus-guard`，菜单没关它就在 body 首尾），body 探雷跳过它。日志零 error。shell.mdx 写送到 / 拉到本桌、桌面改名与删除、`shell.pane.*` 命令与页面推给 node 侧的清单缓存、「只有这几种动作会切桌面」、状态栏与标签菜单新增的几项；术语表加「送到 / 拉到本桌」。推翻的判据五条在第一、二期都已落卡，这一期没有新推翻的，不落卡
+- 2026-09-19 第三期·代码（提交时漏写进度，这条补上）：送到别的桌面是一次关闭加一次打开（`open.ts` 的 `sendPane`：取定义、key、插件那部分参数与标题 → 两张桌面没挂过的先后台挂上 → 源桌面关掉 → 目标桌面按 `planSend` 开，标题按 `carriedTitle` 带）；拉到本桌就是送到当前桌面；桌面改名（`renameDesktop`）与删除（`afterDelete` 算删当前时切到哪张，页面上逐个关窗格再删井、落盘）；命令 `shell.pane.list / focus / send / close`、`shell.desktop.rename / delete`，参数判断在纯模块 `pane-actions.ts` 与 `desktops.ts`；list 读页面每次落盘推来的缓存（`shell.pane.sync`，页面专用）。状态栏：桌面菜单每行「改名」「删除」（改名是那一格内联输入框、删有窗格的先弹 shadcn `alert-dialog`）、切换器每行「送到 ▸」与别桌那行的「拉到本桌」、「已送到 · 切过去」那句。实现上的两处取舍：菜单里「新桌面」直接用缺省名，不当场起名（要改走桌面菜单）；「送到新桌面」建桌时不落盘，免得档里先写进一个 null、重启被铺满
 - 2026-09-19 第二期·发版（提交时漏写进度，这条补上）：shell **0.11.0** 发团队源。装进 `pane-p2-2609191229` 冒烟：`shell.env` 报 0.11.0，启动器按插件分组、「本桌已开」照常。下游 peer 的跟进按人的指示放到第四期一起做
 - 2026-09-19 第二期·隔离 home 验收（`pane-p2-2609191229`，shell `0.10.1-dev`，探针件 `@godcreator/gwb-pane-probe` 住测试单元 `26091912jvs`：文档窗格 `doc`、工具窗格 `tools`，`window.__paneProbe` 按实例给出挂载序号、软换次数与当前内容，走真插件手里的桥开窗格）：① `shell.panes` 带 `kind`（探针 doc=document、tools=tool，baseui 的插件管理不写 kind → tool）；② 启动器按插件分组（组名取件报的名字、没报用包名），文档窗格点两次开两份（插在活动标签右边），工具窗格点两次只一份，本桌已开的工具标「本桌已开」、空桌面上不标；热装 theme 之后不刷新，「新建」里就有「外观」；③ 上报内容：doc 原地换到 B → key、参数、标题都成 B，挂载序号与软换次数不变（不重挂、不软换）；整页重载后冷挂回来装的仍是 B；预览格里原地换内容仍是预览；④ 文档表实机：同组同 key 只激活、别组同 key 不算命中另开一份、side 第一次对半分（1070 → 531 / 531）第二次命中侧边组；⑤ 切换器：当前桌面在最前、空桌面标「（空桌面）」，没挂过的桌面从落盘布局读（标题是上报过的那个），点别桌一行显式切过去、没挂过的先冷挂再激活，行尾 ✕ 关别桌的窗格不切桌面，「窗格 N」计数对；⑥ 标签菜单挂本桌浮层户口，文档预览标签五项、文档正式标签无「留住」、工具标签只有关闭三项，留住 / 在旁边再开一份（原来那份转正、侧边组多一份正式的）/ 关闭其他 / 关闭右侧都对。撞到一处并修掉：菜单挂载点原先在标签第一次渲染时算，那会儿锚点还没挂上，退回 body——改成打开那一刻算。另有一次没复现的怪事：切换器开着时点「新建」之后，空的 d2 上多出一份「插件管理 (2)」（只含开机那一刻注册表里的格，像是某口井被按默认布局铺了一次），照原步骤重放两次都没再出现，第三期接着盯。日志零 error
 - 2026-09-19 第二期·代码（待隔离 home 验）：注册表收 `kind`（缺省 `tool`，写错照 `tool` 进表并 warn），`shell.panes` 回执带它，`PaneKind` 的正本挪到 `pane-registry.ts`；`planOpen` 改从定义上取 `kind`（第一期那个写死 `tool` 的常量撤掉）；桥上加 `setPaneContent`（纯判断 `parsePaneContent` / `contentUpdateOf` 在 `panels.ts`，`PluginPane` 记「件手上此刻是哪份参数」，件自己上报的那一变不软换、不重挂）、挂载参数带 `pane.kind`；状态栏拆「新建」（每次点开现取注册表与件名表、按插件分组，`planLaunch`：文档窗格在活动组开新的、工具窗格本桌已有就激活）与「窗格 N」（切换器，所有桌面，没挂过的桌面从落盘布局读——`pane-list.ts`；点别桌的一行显式切过去，那张没挂过就先挂上）；标签右键菜单（留住 / 在旁边再开一份 / 关闭 / 关闭其他 / 关闭右侧，挂本桌浮层户口；「送到」随第三期加）。shadcn 的 `context-menu` 用 CLI 拉官方原样，只给 `ContextMenuContent` 加了一格 `container`。版本号照本页「每期抬 minor」，这一期发 0.11.0
