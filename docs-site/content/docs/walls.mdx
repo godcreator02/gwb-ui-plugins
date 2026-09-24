@@ -166,7 +166,7 @@ CSS 里**未分层的规则优先级高于所有分层规则**。插件的样式
 
 ### 变量值与类名映射必须拆成两个文件
 
-{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-14" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" */}
 
 `theme(reference)` 只阻止 `@theme` 块的输出，**阻止不了普通规则**。把写着 `:root { --background: … }`
 的变量值文件（tokens.css）一起引进插件的构建里，每个插件的样式表都会多出一整份 `:root`，与页面上令牌表
@@ -511,9 +511,9 @@ CLI 把 `cn` 装进 **`dependencies`**。按本仓规则「打包进本插件产
 拼出的输入里也没有这一行，所以那些插件的菜单本来就没有过渡动画。是给 hello 写独立样式入口时
 逐条确认「这行不引入会怎样」才发现的，不是出了问题才发现的。
 
-写在样式入口开头的注释里，跟另外三条 import 一起，一条都不能省：
+样式入口开头的注释写明四行 import 一行都不能省，也写了它带出的那批全局规则无害：
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="20-24" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="2-3" */}
 
 ### CSS 注释里写 `--tw-enter-*` 时那个 `*/` 会提前结束注释，报错完全不指向根因
 

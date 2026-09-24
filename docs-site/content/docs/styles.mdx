@@ -48,7 +48,7 @@ docfirst: none
 所以外壳里那张令牌表只做一件事：把语义变量的值在页面上写一份。亮色写在 `:root`、暗色写在 `.dark`
 （`<html>` 上的一个类）：
 
-{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="1-9" */}
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="1-1" */}
 
 **换主题＝换这一份值。** 插件那边的规则里写的是 `var(--primary)` 而不是某个具体颜色，所以
 页面上这份值一变，所有插件立即跟着变，**一个都不用重新构建**。状态栏的亮暗开关做的事就是
@@ -56,10 +56,24 @@ docfirst: none
 
 同一份表还负责两件全页只该有一份的事——给所有元素一个默认边框色、给 `body` 定底色与字体：
 
-{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="99-112" */}
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="98-111" */}
 
 字体那一行尤其要紧：**不经 Tailwind 工具类的那些 DOM**（dockview 渲染的标签条、插件里没写工具类的
 普通 HTML）全靠从 `body` 继承。
+
+表里几个取值各有理由：
+
+- **整个工作台一种字体：更纱黑体等宽（Sarasa Mono SC）**，正文与代码同一个字体族。中日韩文字与拉丁字母
+  在同一套字形里，中英混排的字重、基线、字宽都对得齐，不靠系统回退去挑一个不受控的中文字体；机器上
+  没装它时按后面的字体栈回退。正文与等宽仍是两个变量（`--gwb-font-sans` / `--gwb-font-mono`）：插件写
+  `font-mono` 表达的是「这里是代码」，将来给代码换字体只改一处；主题插件的字体覆盖写的也是这两个名字
+- **字号沿用 Tailwind 通行的刻度，行高按中文放宽**：方块字在拉丁文字的紧行高下显得挤，正文 1.65、
+  小字 1.5；标题反过来越大行高越小，不然大标题的行与行之间会散
+- **暗色底不用纯黑**：页面底色与卡片底色分两级，卡片更亮——纯黑底上没有东西能显得浮起来
+- **Tailwind 出厂的刻度（间距、字重、阴影、过渡、容器断点）也写在这张表里**：前缀会改写出厂变量名，
+  页面上没人声明改写后的名字，插件产物里就会留下 `var(--前缀-spacing, 0.25rem)` 这种带字面默认值的引用。
+  值写进令牌表、映射文件接管这些键之后，产物里不再有字面默认值，这些尺寸也能随主题换；值照抄 Tailwind
+  4.3.3 的出厂默认，观感不变
 
 ### 第二问：规则——各一份，而且必须互相隔离
 
@@ -73,7 +87,7 @@ Tailwind，表合并成一张不就行了」。不行。得一步一步看清楚
 **第二步：子集本身没问题，问题出在几张子集表放进了同一个层（layer）。** Tailwind 的工具类全在
 `@layer utilities` 里，插件的表只写这一层、不声明层与层的顺序：
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="31-35" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" */}
 
 顺序由**先加载的那张令牌表**声明，而这张表还得把 preflight 包进 `base` 层——CSS 里
 **未分层的规则优先级高于所有分层规则**，preflight 原样放进去就是一份未分层的规则，会覆盖每一个
@@ -288,7 +302,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 {/* ref file="../plugins/shell/src/tokens/theme.reference.css" */}
 
-值和映射**必须分成两个文件**，理由写在映射文件自己的文件头注释里（下一节展开）。插件那边引用的写法是固定的一行，
+值和映射**必须分成两个文件**，理由见下一节。插件那边引用的写法是固定的一行，
 第六节有可以照抄的出处。
 
 <Diagram name="token-flow" title="颜色令牌在构建时与运行时各经过哪几处">
@@ -399,7 +413,7 @@ import，只 import `components/` 下的共享组件。
 
 ### `theme.reference.css` 为什么单独一个文件
 
-{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-13" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" */}
 
 **这段说明什么**：以引用的方式导入只能阻止主题块输出，**阻止不了普通规则输出**。把带
 `:root { … }` 的变量值文件（`tokens.css`）一起引进插件的构建里，每个插件的表里都会多出一整份 `:root`，和页面上那张
@@ -416,13 +430,14 @@ import，只 import `components/` 下的共享组件。
 
 ### 插件的样式入口：五行，一行都不能省
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="31-35" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" */}
 
 **这段说明什么**：第一行把内置主题引进来**只为让类名解析得出来**，一个变量声明都不输出，
 前缀写在这条拆开的导入上才生效；第二行是令牌的映射文件，**不引它颜色类整个是空的**；
 第三行只引工具类、不引 preflight（那是页面级的一份），并关掉自动扫描、由最后那条指定扫描
-范围；第四行给的是动画那一类类名，**不引就一个字节都不输出**。四条 import 全是「不引就静默
-为空」，所以理由写在这个文件的头注释里。
+范围——不关的话 `dist/` 里的产物也会被扫进来，凭空多出一批没人用的类，也不报错；第四行给的是动画
+那一类类名，**不引就一个字节都不输出**，它顺带输出的一批不带前缀的全局 `@keyframes` 与 `@property`
+每张表各一份、内容相同，无害。四条 import 全是「不引就静默为空」，所以文件头的注释写明一行都不能省。
 
 ### 注入样式表：等它加载完成，而且永不移除
 
