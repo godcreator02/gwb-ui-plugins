@@ -137,7 +137,7 @@ react 的四个包名外置，不再自己打包 react。
 
 ### preflight 必须放进 `@layer base`，否则它的优先级高于所有插件的工具类
 
-{/* ref file="../plugins/shell/build.ts" lines="118-123" */}
+{/* ref file="../plugins/shell/build.ts" lines="120-125" */}
 
 CSS 里**未分层的规则优先级高于所有分层规则**。插件的样式表只写 `@layer utilities { … }`、自己
 不声明层顺序，所以顺序得由先加载的令牌表来声明；而 Tailwind 的 `preflight.css` 是一份
