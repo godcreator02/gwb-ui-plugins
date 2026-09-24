@@ -26,48 +26,30 @@ import {
 } from '@/components/ui/select'
 
 /**
- * 浏览器侧：日志窗格。
- *
- * **实时日志不经 `args`**——`mountPane` 只给 `{ host, shell, pane }`，实时日志订阅的是
- * 页面的公共接口 `window.gwb.on`：node 侧经 `gwbKernel.emit` 推送，载荷带本插件的标记 `t`。
- * 外壳不转发它，因为外壳不该认识「日志」。历史段与脚注里的路径才走 `args.host` 的命令。
- *
- * 版面（**以本文件为准**，仓里没有另外的设计稿）：日志行用 grid 定宽列对齐、error/warn
- * 整行色调加左边色条、级别分段控件显示门限、来源胶囊开关、吸附提示浮在右下角。
- * 行为语义：级别门限、来源多选、复合键、seq 去重、吸附、超上限丢最早的行、空态两种文案。
- *
- * 类名一律带 `baseui:` 前缀——样式隔离靠的就是这个前缀（见 `../../styles.css`）。漏加没有任何
- * 报错：那个类不生成任何 CSS，页面上就是那一处没样式，构建照样通过，所以
- * `tests/prefix.test.ts` 那条测试把源码里每个字符串 token 逐个试编译。
- *
- * ⚠️ **本窗格在接收日志的路径上不许调用 `console`。** 渲染层的 console 是三个日志来源之一：
- * 打一条 → 主进程收集 → 进缓冲 → 推回本窗格 → 这条路径上再打一条，条数就成倍增长，
- * 界面当场卡死。取历史段失败这类一次性、不在循环路径上的错误，也显示在界面上，不打 console。
+ * 实时日志订阅页面的 `window.gwb.on`（node 侧 `gwbKernel.emit` 推送、带本插件的标记 `t`），外壳不转发、不认识日志；
+ * 历史段与脚注里的路径走 `args.host` 的命令。类名一律带 `baseui:` 前缀，漏加不报错，由 `tests/prefix.test.ts` 检查。
+ * 本窗格不许调用 `console`：渲染层 console 是日志来源之一，接收路径上打一条会被推回来再打，条数成倍增长、界面卡死
  */
 
-/** 本窗格最多保留多少行。**由渲染成本决定**，不是缓冲大小——内核的缓冲比这个大，更早的去日志文件查 */
+/** 由渲染成本决定，不是缓冲大小；更早的去日志文件查 */
 const CAP = 2000
 
 /** 离底部多少像素以内算作吸附（跟随最新行） */
 const STICK_SLACK = 24
 
-/** 「全部来源」那一项的值。Radix 的 SelectItem **不接受空串**，得给它一个非空值 */
+/** 「全部来源」那一项的值：Radix 的 SelectItem 不接受空串 */
 const ALL_KEY = '*'
 
 const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
 
-/**
- * 三个来源的圆点颜色：**插件域令牌**——tokens.css 里的三个 --baseui-src-*，由入口末尾的
- * @theme 段注册成 bg-src-* 类。用在两处：来源胶囊上的小圆点、每行来源标记上的小圆点，让
- * 筛选开关和日志行用同一种颜色对应同一个来源。值只在 tokens.css 定义，这里只写类名。
- */
+/** 来源圆点的颜色：插件域令牌 --baseui-src-*（值只在 tokens.css），来源开关与日志行共用 */
 const SOURCE_DOT: Record<LogSource, string> = {
   plugin: 'baseui:bg-src-plugin',
   kernel: 'baseui:bg-src-kernel',
   renderer: 'baseui:bg-src-renderer',
 }
 
-/** 在内核事件里识别本插件事件的标记，与 node 侧的 EVENT 是同一个字符串 */
+/** 内核事件里本插件事件的标记，与 node 侧的 EVENT 是同一个字符串 */
 const EVENT = 'gwb-logger'
 const BACKLOG_COMMAND = 'logger.backlog'
 const WHERE_COMMAND = 'logger.where'
@@ -76,7 +58,7 @@ const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I',
 
 const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', info: 'Info', debug: 'Debug' }
 
-/** 级别字母的颜色。只有 error/warn 有色，info/debug 显示成灰色——一行里颜色太多就没有重点了 */
+/** 只有 error/warn 有色：一行里颜色太多就没有重点了 */
 const LEVEL_TONE: Record<LogLevel, string> = {
   error: 'baseui:text-destructive',
   warn: 'baseui:text-warning',
@@ -84,7 +66,7 @@ const LEVEL_TONE: Record<LogLevel, string> = {
   debug: 'baseui:text-muted-foreground baseui:opacity-40',
 }
 
-/** 整行色调：error/warn 淡色底加左边色条（仿 DevTools），其余无底色、只有 hover 色 */
+/** error/warn 淡色底加左边色条（仿 DevTools），其余只有 hover 色 */
 const ROW_TONE: Record<LogLevel, string> = {
   error:
     'baseui:bg-destructive/[0.08] baseui:shadow-[inset_2px_0_0_var(--destructive)] baseui:hover:bg-destructive/[0.14]',
@@ -112,13 +94,11 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       if (!alive) return
       setEntries((prev) => mergeEntries(prev, acceptEntries(batch), CAP))
     }
-    // **先订阅、后取历史**：反过来的话，历史截止到订阅生效之间推来的条目会漏掉。
-    // 两段交叠的部分靠 seq 去重。内核事件里有所有插件的事件，只处理带本插件标记的
+    // 先订阅、后取历史：反过来会漏掉两者之间推来的条目；交叠部分靠 seq 去重
     const off = window.gwb.on((payload) => {
       if (payload === null || typeof payload !== 'object') return
       const p = payload as { t?: unknown; line?: unknown }
-      // 桌面切走时收到的直接丢弃——本窗格仍常驻，只是不显示；node 侧照常缓冲，
-      // 切回时重取历史段补上（见下面的 onVisibility）
+      // 桌面切走时收到的直接丢弃，切回时重取历史段补上
       if (p.t === EVENT && visibleRef.current) take([p.line])
     })
     args.host.call(BACKLOG_COMMAND).then(
@@ -137,9 +117,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }, [])
 
-  // 协作式降级（`shell.onVisibility`）：桌面切走时停止渲染——实时事件直接丢弃、不再重算；
-  // 切回时重取一次历史段补上丢掉的部分，交叠靠 seq 去重。契约只通知、不强制：不订阅也合法，
-  // 只是切走后照常渲染、白白耗资源
+  // 桌面切走时停止渲染，切回时重取一次历史段补上，交叠靠 seq 去重
   const visibleRef = useRef(true)
   useEffect(() => {
     const off = args.shell.onVisibility((visible) => {
@@ -178,7 +156,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const counts = useMemo(() => countBySource(entries), [entries])
   const groups = useMemo(() => groupNames(entries), [entries])
 
-  // 吸附：处于跟随状态时，每次有新行就滚到底部
+  // 跟随最新行时，每次有新行就滚到底部
   useEffect(() => {
     if (!stick) return
     const el = listRef.current
@@ -198,7 +176,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     setFilter({ level: 'debug', sources: ALL_SOURCES, key: '', search: '' })
   }
 
-  // 级别分段：选中的级别实心，更严重的几级浅色高亮，表示「显示这一级及以上」
+  // 选中的级别实心，更严重的几级浅色高亮，表示显示这一级及以上
   const segTone = (l: LogLevel): string => {
     if (filter.level === l) return 'baseui:bg-primary baseui:text-primary-foreground baseui:font-medium'
     return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level)
@@ -378,19 +356,15 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
-  // 认不出的 paneId 直接报错、不改用 main：「注册了 x 却显示成 main」这种错不会有任何报错提示
+  // 认不出的 paneId 直接报错、不改用日志窗格：否则「注册了 x 却显示成日志」不会有任何提示
   if (args.pane.id === 'logger') root.render(<LoggerPane args={args} />)
   else
     root.render(
-      <p className="baseui:p-3 baseui:text-sm baseui:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>,
+      <p className="baseui:p-3 baseui:text-sm baseui:text-destructive">本插件没有叫 {args.pane.id} 的窗格</p>,
     )
   return root
 }
 
-/**
- * 窗格插件浏览器侧的入口。导出名是 `mountPane` 不是 `bootShell`——外壳占整个页面的根元素，
- * 窗格占窗格容器里的一个窗格，看导出名就知道是哪种插件。
- */
 export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   const root = boot(args, container)
   return {
