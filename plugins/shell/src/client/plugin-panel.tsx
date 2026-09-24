@@ -19,7 +19,7 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
     wellHub.host() === undefined
   ) {
     // params 是外壳自己拼的，缺项是外壳的 bug；显示出来而不是留白，留白跟加载慢分不开
-    return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">这一格缺 params（外壳的 bug）</p>
+    return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">这个窗格缺 params（外壳的 bug）</p>
   }
   const bridge = wellHub.host()!
   const openPane: ShellBridge['openPane'] = (target, options) => {

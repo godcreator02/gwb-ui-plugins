@@ -77,7 +77,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 /**
- * 插件管理窗格：「已装」每条条目一行、展开是那个插件的设置（人先想到的是哪个插件，不是哪个分区）；「可装」见 `market.tsx`。
+ * 插件管理窗格：「已安装」每条条目一行、展开是那个插件的设置（人先想到的是哪个插件，不是哪个分区）；「可安装」见 `market.tsx`。
  * 三份数据各取各的、各自失败：`plugin-manager.list`（包与条目）、`settings.all`（按 section 对应到条目，secret 行不回值，
  * 看明文用 `settings.get`）、`shell.plugins`（显示名与图标）。升级只有 `plugin-manager.update-all`，之后页面会被整页重载，
  * 所以在那之前一直保持忙碌。没有事件推送，每次操作完重新取数据
@@ -183,7 +183,7 @@ type Filter = 'all' | 'on' | 'off' | 'bad'
 
 const FILTER_LABEL: Record<Filter, string> = { all: '全部', on: '启用', off: '停用', bad: '异常' }
 
-/** 「看一眼」读回的明文只留在组件里、不进草稿，否则保存时会把没编辑过的 secret 项当新值提交 */
+/** 「查看明文」读回的明文只留在组件里、不进草稿，否则保存时会把没编辑过的 secret 项当新值提交 */
 type Peek =
   | { kind: 'idle' }
   | { kind: 'loading' }
@@ -242,7 +242,7 @@ function SettingField({
     const revealed = !edited && peek.kind === 'shown'
     /** 有草稿时不能再显示「已设置」：人刚清空这一项，显示回去会被读成没改 */
     const hint = revealed
-      ? '（磁盘上就是个空串）'
+      ? '（磁盘上的值是空字符串）'
       : edited
         ? '（空着保存就是清空这一项）'
         : secretPlaceholder(row)
@@ -293,7 +293,7 @@ function SettingField({
                   ? '这一项改了还没保存——先「保存」或「放弃」，再看磁盘上那份明文'
                   : peek.kind === 'loading'
                     ? '读取中…'
-                    : '看一眼：调 settings.get 按位置读一次明文。注意：secret 只影响这里的显示，磁盘上照样是明文；列表命令 settings.all 不返回它的值，所以这个框平常是空的'
+                    : '查看明文：调 settings.get 按位置读一次明文。注意：secret 只影响这里的显示，磁盘上照样是明文；列表命令 settings.all 不返回它的值，所以这个框平常是空的'
             }
             onClick={look}
           >
@@ -305,7 +305,7 @@ function SettingField({
             className="baseui:max-w-56 baseui:text-[10px] baseui:break-all baseui:text-destructive"
             title={peek.reason}
           >
-            看不了：{peek.reason}
+            无法查看：{peek.reason}
           </span>
         )}
       </div>
@@ -347,7 +347,7 @@ function SettingLine({
         <code className="baseui:rounded baseui:bg-muted baseui:px-1 baseui:py-0.5 baseui:font-mono baseui:text-[10px] baseui:text-muted-foreground">{row.key}</code>
         {row.live === false && (
           <Badge variant="outline" className="baseui:px-1 baseui:py-0 baseui:text-[10px]" title="此刻没有插件声明它——插件停用了或者已经卸载">
-            无主
+            未声明
           </Badge>
         )}
         {row.type === 'secret' && (
@@ -535,10 +535,10 @@ function EntryCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" container={portal}>
               <DropdownMenuItem onSelect={onRenameStart}>
-                <Pencil /> 改名
+                <Pencil /> 改显示名
               </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={onAskRemove}>
-                <Trash2 /> 删条目…
+                <Trash2 /> 删除条目…
               </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={onAskUninstall}>
                 <PackageX /> 卸载这个包…
@@ -614,7 +614,7 @@ function EntryCard({
                 放弃
               </Button>
               <Button size="xs" disabled={saving} onClick={onSave}>
-                {saving ? '存着…' : '保存'}
+                {saving ? '保存中…' : '保存'}
               </Button>
             </div>
           )}
@@ -672,7 +672,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [installInput, setInstallInput] = useState('')
   const [orphansOpen, setOrphansOpen] = useState(false)
   const [noEntryOpen, setNoEntryOpen] = useState(false)
-  /** 「已装 / 可装」两段。可装那段见 market.tsx */
+  /** 「已安装 / 可安装」两段。可安装那段见 market.tsx */
   const [tab, setTab] = useState<'installed' | 'market'>('installed')
   /** outdated 的表。null 是「还没查到」——跟「查到了、全都最新」（空对象）分得开 */
   const [updates, setUpdates] = useState<Record<string, UpdateInfo> | null>(null)
@@ -697,7 +697,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         setListError(result.error ?? '')
       }
     } else {
-      setListError(`取不到表：${String(list.reason)}`)
+      setListError(`读取插件列表失败：${String(list.reason)}`)
     }
     if (settings.status === 'fulfilled') {
       const result = asResult(settings.value)
@@ -732,7 +732,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         } else {
           setUpdates(null)
           if (manual) {
-            setNotice({ ok: false, text: typeof receipt['error'] === 'string' ? receipt['error'] : '查新版本没成' })
+            setNotice({ ok: false, text: typeof receipt['error'] === 'string' ? receipt['error'] : '检查新版本失败' })
           }
         }
       } catch (err: unknown) {
@@ -748,7 +748,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   useEffect(() => {
     let alive = true
     void refresh().catch((err: unknown) => {
-      if (alive) setListError(`取不到表：${String(err)}`)
+      if (alive) setListError(`读取插件列表失败：${String(err)}`)
     })
     // 窗格打开时查一次新版本。查不成不提示——没有 pnpm 时不该每打开一次窗格都报一次错，
     // 点「检查更新」按钮才显示原因
@@ -799,7 +799,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     return out
   }, [rows, settingsRows])
 
-  /** 「可装」那一栏用的已装索引：从已取的这份表推导，不再调一次 plugin-manager.list */
+  /** 「可安装」那一栏用的已安装索引：从已取的这份表推导，不再调一次 plugin-manager.list */
   const marketIndex = useMemo<InstalledIndex | null>(() => (rows === null ? null : installedIndex(rows)), [rows])
 
   const shown = useMemo(() => {
@@ -822,7 +822,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     })
   }, [cards, filter, search])
 
-  /** 已装但没有条目的包：插件管理不区分插件与库，一律列在「已装、没有条目的包」里 */
+  /** 已安装但没有条目的包：插件管理不区分插件与库，一律列在「已安装、没有条目的包」里 */
   const noEntryRows = useMemo(() => (rows ?? []).filter((row) => row.entries.length === 0), [rows])
 
   const orphans = useMemo(() => {
@@ -847,7 +847,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** 读不到就抛，由那一项如实显示原因：显示成空框会被读成「没设过」 */
   const revealSecret = async (row: SettingRow): Promise<string> => {
     const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
-    if (!result.ok) throw new Error(result.error ?? '取不到')
+    if (!result.ok) throw new Error(result.error ?? '读取失败')
     const value = result.data
     // 命令返回「ok 但没值」＝这一项磁盘上没有值。**如实说没设过**，不显示成空框
     if (value === undefined) throw new Error('这一项磁盘上没有值（没设过）')
@@ -892,7 +892,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
     discardEntry(entryId)
-    // 设置写进磁盘了，重新取一份 settings，让「无主」这类标记跟着更新
+    // 设置写进磁盘了，重新取一份 settings，让「未声明」这类标记跟着更新
     const settings = await args.host.call(SETTINGS_ALL)
     const result = asResult(settings)
     if (result.ok) setSettingsRows(acceptSettings(result.data))
@@ -922,7 +922,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       } else {
         const receipt = isRecord(result.data) ? result.data : {}
         const entryId = typeof receipt['entryId'] === 'string' ? `，条目 ${receipt['entryId']}` : ''
-        setNotice({ ok: true, text: `装好了 ${pkg}${entryId}。加载成功没有，看这条条目的状态` })
+        setNotice({ ok: true, text: `已安装 ${pkg}${entryId}。是否加载成功，看这条条目的状态` })
       }
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
@@ -983,7 +983,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
               wiped += 1
             } catch {
-              // 一项没删掉不算整个操作失败——它留在「无主的设置」里还找得到
+              // 一项没删掉不算整个操作失败——它留在「没有插件声明的设置」里还找得到
             }
           }
         }
@@ -1031,7 +1031,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
               wiped += 1
             } catch {
-              // 一项没删掉不算整个操作失败——它留在「无主的设置」里还找得到
+              // 一项没删掉不算整个操作失败——它留在「没有插件声明的设置」里还找得到
             }
           }
         }
@@ -1053,12 +1053,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
   return (
     <div className="baseui:flex baseui:h-full baseui:flex-col baseui:bg-background baseui:text-foreground">
-      {/* 直接装包名的输入框放在两栏切换之上：列表以外的、第三方的插件，两栏里都用它装 */}
+      {/* 按包名直接安装的输入框放在两栏切换之上：列表以外的、第三方的插件，两栏里都用它安装 */}
       <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
         <div className="baseui:flex baseui:items-center baseui:gap-2">
           <Input
             className="baseui:h-8 baseui:flex-1 baseui:font-mono baseui:text-xs"
-            placeholder="直接装包名，如 @godcreator/gwb-hello（装最新版）"
+            placeholder="按包名直接安装，如 @godcreator/gwb-hello（安装最新版）"
             value={installInput}
             onChange={(e) => setInstallInput(e.target.value)}
             onKeyDown={(e) => {
@@ -1066,7 +1066,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             }}
           />
           <Button size="sm" disabled={busy || installInput.trim() === ''} onClick={() => void install()}>
-            装
+            安装
           </Button>
         </div>
       </div>
@@ -1084,13 +1084,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         </div>
       )}
 
-      {/* 「已装」与「可装」两栏。刷新按钮两栏共用——「可装」那一栏的「装没装」用的是同一份表 */}
+      {/* 「已安装」与「可安装」两栏。刷新按钮两栏共用——「可安装」那一栏判断装没装用的是同一份表 */}
       <div className="baseui:flex baseui:items-center baseui:gap-1 baseui:border-b baseui:border-border baseui:px-3 baseui:py-1.5">
         <Button size="sm" variant={tab === 'installed' ? 'secondary' : 'ghost'} onClick={() => setTab('installed')}>
-          已装
+          已安装
         </Button>
         <Button size="sm" variant={tab === 'market' ? 'secondary' : 'ghost'} onClick={() => setTab('market')}>
-          可装
+          可安装
         </Button>
         <span className="baseui:flex-1" />
         <Button
@@ -1100,7 +1100,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           disabled={checking || busy}
           onClick={() => void checkOutdated(true)}
         >
-          {checking ? '查着…' : '检查更新'}
+          {checking ? '检查中…' : '检查更新'}
         </Button>
         {/* 有过期包才高亮可点：没查过（null）与查了全是最新（空表）都是灰的 */}
         <Button
@@ -1117,7 +1117,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           {updatingAll ? '升级中…' : '全部更新'}
           {!updatingAll && outdatedRows.length > 0 ? ` ${outdatedRows.length}` : ''}
         </Button>
-        <Button size="icon-sm" variant="ghost" title="重新取一遍" disabled={busy} onClick={() => void refresh()}>
+        <Button size="icon-sm" variant="ghost" title="重新读取" disabled={busy} onClick={() => void refresh()}>
           <RotateCw />
         </Button>
       </div>
@@ -1131,7 +1131,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <Search className="baseui:pointer-events-none baseui:absolute baseui:top-1/2 baseui:left-2 baseui:size-3.5 baseui:-translate-y-1/2 baseui:text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="搜插件名、包名、设置项"
+                placeholder="搜索插件名、包名、设置项"
                 className="baseui:h-8 baseui:pl-7"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1222,7 +1222,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             )}
 
             {/*
-              无主的设置单独一块，放在最后：它们不属于界面上任何一个插件，混进上面那张表只会
+              没有插件声明的设置单独一块，放在最后：它们不属于界面上任何一个插件，混进上面那张表只会
               让人以为插件还在。只在没筛选的时候出现——筛选中的列表只列符合条件的条目
             */}
             {search === '' && filter === 'all' && orphans.length > 0 && (
@@ -1231,7 +1231,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   <ChevronRight
                     className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', orphansOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">无主的设置</span>
+                  <span className="baseui:text-sm baseui:text-muted-foreground">没有插件声明的设置</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {orphans.length}
                   </Badge>
@@ -1278,7 +1278,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   <ChevronRight
                     className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', noEntryOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">已装、没有条目的包</span>
+                  <span className="baseui:text-sm baseui:text-muted-foreground">已安装、没有条目的包</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {noEntryRows.length}
                   </Badge>
@@ -1314,9 +1314,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           className="baseui:shrink-0"
                           disabled={busy}
                           title={`往 cordis.yml 里加一条指向 ${row.pkg} 的条目并立即加载`}
-                          onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 加了一条条目`)}
+                          onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 添加了一条条目`)}
                         >
-                          加条目
+                          添加条目
                         </Button>
                         {/* 没有条目的包也能卸载——卸载是包级动作，不经过条目那一层 */}
                         <Button
@@ -1355,17 +1355,17 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       <AlertDialog open={asking !== null} onOpenChange={(v) => !v && setAsking(null)}>
         <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
-            <AlertDialogTitle>删条目 {asking?.card.entry.label ?? asking?.card.entry.id}？</AlertDialogTitle>
+            <AlertDialogTitle>删除条目 {asking?.card.entry.label ?? asking?.card.entry.id}？</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="baseui:space-y-2">
                 <p>
                   会把 <code className="baseui:font-mono">{asking?.card.entry.id}</code> 这条条目从 cordis.yml 里删除，插件
-                  立即卸载。**包不删**，还留在 home 里；要连包一起删，用「卸载这个包…」。
+                  立即卸载。<strong>包不删除</strong>，还留在 home 里；要连包一起删除，用「卸载这个包…」。
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* 设置值删不删要问：不问就静默留下一批无主的值，它们会出现在列表末尾「无主的设置」里 */}
+          {/* 设置值删不删要问：不问就静默留下一批没有插件声明的值，它们会出现在列表末尾「没有插件声明的设置」里 */}
           <label className="baseui:flex baseui:items-center baseui:gap-2 baseui:rounded-md baseui:border baseui:border-border baseui:px-3 baseui:py-2 baseui:text-sm">
             <input
               type="checkbox"
@@ -1376,18 +1376,18 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             <span>
               一并删除它的设置值
               <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
-                不勾的话这些值留在磁盘上，之后会出现在「无主的设置」里
+                不勾的话这些值留在磁盘上，之后会出现在「没有插件声明的设置」里
               </span>
             </span>
           </label>
           <AlertDialogFooter>
-            <AlertDialogCancel>算了</AlertDialogCancel>
+            <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               className="baseui:bg-destructive baseui:text-white baseui:hover:bg-destructive/90"
               disabled={busy}
               onClick={() => void removeEntry()}
             >
-              删条目
+              删除条目
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1402,7 +1402,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <div className="baseui:space-y-2">
                 <p>
                   一次 <code className="baseui:font-mono">pnpm add</code> 把下面这些升到 registry 上的最新版，再把它们的每条条目
-                  停用→启用重新加载成新版本（本来就停用的保持停用），**不重启内核**；升完整页重载。
+                  停用→启用重新加载成新版本（本来就停用的保持停用），<strong>不重启内核</strong>；升完整页重载。
                 </p>
                 {outdatedRows.some(([pkg]) => pkg === OWN_PKG) && (
                   <p className="baseui:text-warning">
@@ -1423,7 +1423,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             ))}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={updatingAll}>算了</AlertDialogCancel>
+            <AlertDialogCancel disabled={updatingAll}>取消</AlertDialogCancel>
             <AlertDialogAction disabled={updatingAll} onClick={() => void updateAll()}>
               {updatingAll ? '升级中，完成后界面会自动重载…' : '全部更新'}
             </AlertDialogAction>
@@ -1443,11 +1443,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   cordis.yml 里删除（插件立即卸载），再 pnpm remove 把包从 home 移走。
                 </p>
                 <p>
-                  **设置与数据留在磁盘上**——重装回来还是那份。只想删一条条目、包留着的话，取消后用那条条目上的「删条目…」。
+                  <strong>设置与数据留在磁盘上</strong>——重装回来还是那份。只想删除一条条目、保留包的话，取消后用那条条目上的「删除条目…」。
                 </p>
                 {askingUninstall?.isSelf && (
                   <p className="baseui:text-destructive">
-                    这是插件管理自己：卸载之后**这个窗格就没有了**，重启内核后界面退回阶段页。要装回来只能用命令行。
+                    这是插件管理自己：卸载之后<strong>这个窗格就没有了</strong>，重启内核后也不会再出现。要装回来只能用命令行。
                   </p>
                 )}
               </div>
@@ -1464,13 +1464,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <span>
                 一并删除这 {askingUninstall.settings.length} 项设置值
                 <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
-                  不勾的话这些值留在磁盘上，之后会出现在「无主的设置」里
+                  不勾的话这些值留在磁盘上，之后会出现在「没有插件声明的设置」里
                 </span>
               </span>
             </label>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel>算了</AlertDialogCancel>
+            <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               className="baseui:bg-destructive baseui:text-white baseui:hover:bg-destructive/90"
               disabled={busy}

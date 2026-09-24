@@ -49,7 +49,7 @@ function firstOpenPaneArgsError(openArgs: OpenPaneActionLike): string | undefine
     return 'entryId 要是非空字符串（shell.panes 回的表里那条 entryId）'
   }
   if (typeof openArgs.paneId !== 'string' || openArgs.paneId === '') {
-    return 'paneId 要是非空字符串（件 registerPane 时报的窗格 id）'
+    return 'paneId 要是非空字符串（插件 registerPane 时报的窗格 id）'
   }
   if (openArgs.key !== undefined && typeof openArgs.key !== 'string') return 'key 是字符串（这一份装的内容），不给就别带'
   if (openArgs.params !== undefined && !isPlainParams(openArgs.params)) return 'params 得是平对象且可 JSON 序列化（它随布局保存）'

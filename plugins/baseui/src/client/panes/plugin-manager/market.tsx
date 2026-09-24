@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /**
- * 「可装」一栏：不带参数调一次 `plugin-manager.search` 拿回全部源的结果，搜索框只在本地筛选；registry 地址由插件管理按 scope 从 npmrc 找。
- * 已装的不给「再装一份」按钮：多数插件提供服务，第二条条目会报 `service ... has been registered`，要第二条去「已装」一栏用 add-entry
+ * 「可安装」一栏：不带参数调一次 `plugin-manager.search` 拿回全部源的结果，搜索框只在本地筛选；registry 地址由插件管理按 scope 从 npmrc 找。
+ * 已装的不给「再装一份」按钮：多数插件提供服务，第二条条目会报 `service ... has been registered`，要第二条去「已安装」一栏用 add-entry
  */
 
 const SEARCH = 'plugin-manager.search'
@@ -25,7 +25,7 @@ export interface MarketTabProps {
   installed: InstalledIndex | null
   /** 父窗格在做别的操作时，整栏禁用 */
   busy: boolean
-  /** 装成后通知父窗格重新取表：没有事件推送，不重新取的话「已装」一栏停在旧的样子 */
+  /** 装成后通知父窗格重新取表：没有事件推送，不重新取的话「已安装」一栏停在旧的样子 */
   onChanged: () => Promise<void> | void
   /** radix 弹出层的挂载点（本窗格所在桌面的 args.shell.portal） */
   portal: HTMLElement
@@ -67,7 +67,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         setLoadError(
           typeof (receipt as Record<string, unknown>)['error'] === 'string'
             ? String((receipt as Record<string, unknown>)['error'])
-            : '检索没成，也没说是为什么',
+            : '检索失败，没有给出原因',
         )
         return
       }
@@ -99,7 +99,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
     try {
       const result = asResult(await host.call(INSTALL, { pkg }))
       if (result.ok) {
-        setDone(`${pkg} 装上了，条目也加进 cordis.yml 了。加载成功没有，去「已装」那一栏看。`)
+        setDone(`${pkg} 已安装，条目也已加入 cordis.yml。是否加载成功，到「已安装」那一栏查看。`)
         await onChanged()
       }
       // error 里带着 pnpm 输出的最后几行，一个字都不能丢
@@ -128,7 +128,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
           <Input
             type="search"
             className="baseui:h-8 baseui:pl-7"
-            placeholder="筛全部源，如 log、theme"
+            placeholder="在全部源里筛选，如 log、theme"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -146,8 +146,8 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         </Select>
         <span className="baseui:shrink-0 baseui:text-xs baseui:text-muted-foreground">
           {rows === null
-            ? '查 registry…'
-            : `${String(summary.total)} 个 gwb 插件 · 已装 ${String(summary.installed)}${
+            ? '正在查询 registry…'
+            : `${String(summary.total)} 个 gwb 插件 · 已安装 ${String(summary.installed)}${
                 query.trim() === '' && active === ALL_SOURCES
                   ? ''
                   : ` · 筛出 ${String(summary.shown)}`
@@ -184,7 +184,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
           <p className="baseui:text-sm baseui:text-destructive">查不到 registry，下面空着不代表没有插件。</p>
           <p className="baseui:mt-1 baseui:whitespace-pre-wrap baseui:break-all baseui:text-xs baseui:text-destructive">{loadError}</p>
           <p className="baseui:mt-1 baseui:text-xs baseui:text-muted-foreground">
-            搜索由插件管理的 plugin-manager.search 提供；插件管理版本太旧、还没有这条命令时这里查不到，先在「已装」那一栏把 @godcreator/gwb-plugin-manager 更新到最新版。
+            搜索由插件管理的 plugin-manager.search 提供；插件管理版本太旧、还没有这条命令时这里查不到，先在「已安装」那一栏把 @godcreator/gwb-plugin-manager 更新到最新版。
           </p>
         </div>
       )}
@@ -194,7 +194,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
           <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">
             {query.trim() === '' && active === ALL_SOURCES
               ? '配好的源上一个 gwb 插件都没有。'
-              : `配好的源里没有同时满足「${[active === ALL_SOURCES ? null : active, query.trim() === '' ? null : query.trim()].filter((part): part is string => part !== null).join('」+「')}」这两个筛选条件的（共 ${String(summary.total)} 个）。放宽一个条件试试；列表里没有的包名，用顶部的「直接装包名」。`}
+              : `配好的源里没有同时满足「${[active === ALL_SOURCES ? null : active, query.trim() === '' ? null : query.trim()].filter((part): part is string => part !== null).join('」+「')}」这两个筛选条件的（共 ${String(summary.total)} 个）。放宽一个条件试试；列表里没有的包名，用顶部的「按包名直接安装」。`}
           </p>
         )}
 
@@ -226,9 +226,9 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
                   <Badge
                     variant="outline"
                     className="baseui:opacity-60"
-                    title="这个包已经在 home 里了。要给它多加一条条目，去「已装」那一栏用 plugin-manager.add-entry"
+                    title="这个包已经在 home 里了。要给它多加一条条目，去「已安装」那一栏用 plugin-manager.add-entry"
                   >
-                    已装
+                    已安装
                   </Badge>
                 </span>
               ) : (
@@ -239,7 +239,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
                   title="pnpm add 进 home，再自动加一条 cordis.yml 条目。装的是最新版"
                   onClick={() => void install(row.pkg)}
                 >
-                  {busyPkg === row.pkg ? '装着…' : '装'}
+                  {busyPkg === row.pkg ? '安装中…' : '安装'}
                 </Button>
               )}
             </div>

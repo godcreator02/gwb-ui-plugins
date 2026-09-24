@@ -40,7 +40,7 @@ const STICK_SLACK = 24
 /** 「全部来源」那一项的值：Radix 的 SelectItem 不接受空串 */
 const ALL_KEY = '*'
 
-const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
+const SOURCE_LABEL: Record<LogSource, string> = { plugin: '插件', kernel: '内核', renderer: '页面' }
 
 /** 来源圆点的颜色：插件域令牌 --baseui-src-*（值只在 tokens.css），来源开关与日志行共用 */
 const SOURCE_DOT: Record<LogSource, string> = {
@@ -105,10 +105,10 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       (res) => {
         const r = res as { ok?: boolean; data?: unknown; error?: string }
         if (r.ok === true) take(r.data)
-        else if (alive) setFailed(`历史段取不到：${r.error ?? '没说原因'}`)
+        else if (alive) setFailed(`读取历史日志失败：${r.error ?? '没有给出原因'}`)
       },
       (err: unknown) => {
-        if (alive) setFailed(`历史段取不到：${String(err)}`)
+        if (alive) setFailed(`读取历史日志失败：${String(err)}`)
       },
     )
     return () => {
@@ -213,7 +213,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
               <button
                 key={s}
                 type="button"
-                title={`${SOURCE_LABEL[s]}这一路`}
+                title={`显示或隐藏来自${SOURCE_LABEL[s]}的日志`}
                 onClick={() => toggleSource(s)}
                 className={`baseui:inline-flex baseui:items-center baseui:gap-1.5 baseui:rounded-full baseui:px-2.5 baseui:py-0.5 baseui:text-[11.5px] baseui:leading-5 ${
                   on
@@ -267,7 +267,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             size="sm"
             variant="ghost"
             className="baseui:shrink-0 baseui:text-muted-foreground"
-            title="只清这一份视图，不动内核的缓冲，也不动日志文件。清完不会自己回来，重开这一格才会"
+            title="只清空这个窗格里显示的日志，内核的日志缓冲和日志文件都不动。清掉的不会自动回来，重新打开这个窗格才会重新显示"
             onClick={() => setEntries([])}
           >
             清屏
@@ -332,14 +332,14 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
           onClick={() => setStick(true)}
           className="baseui:absolute baseui:bottom-9 baseui:right-3.5 baseui:z-10 baseui:rounded-full baseui:border baseui:border-border baseui:bg-popover baseui:px-3 baseui:py-1 baseui:text-[11.5px] baseui:text-popover-foreground baseui:shadow-lg baseui:hover:bg-accent"
         >
-          已暂停吸附 · 回到底部
+          已暂停自动滚动 · 回到底部
         </button>
       )}
 
       <div className="baseui:flex baseui:items-center baseui:justify-between baseui:gap-3 baseui:border-t baseui:border-border baseui:bg-card baseui:px-2.5 baseui:py-1 baseui:text-[11px] baseui:text-muted-foreground">
         <span>
           {filtering ? `${shown.length} / ${entries.length} 条` : `${entries.length} 条`}
-          {entries.length >= CAP ? `（挂满 ${CAP}，更早的去日志文件翻）` : ''}
+          {entries.length >= CAP ? `（已达上限 ${CAP} 条，更早的请查看日志文件）` : ''}
         </span>
         {where !== null && (
           <span

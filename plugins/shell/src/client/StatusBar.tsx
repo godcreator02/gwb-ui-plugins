@@ -17,7 +17,7 @@ import { versionCell } from '../versions.js'
 import { DesktopPanel } from './DesktopPanel.js'
 import { iconFor } from './icon.js'
 
-/** 启动器里一个插件的那几个窗格；`goesTo` 是点下去去哪（「本桌」或那张桌面的名字），没有就是开一份新的 */
+/** 启动器里一个插件的那几个窗格；`goesTo` 是点下去去哪（「当前桌面」或那张桌面的名字），没有就是开一份新的 */
 export interface LaunchGroup {
   entryId: string
   title: string
@@ -59,7 +59,7 @@ function LayoutBar({
         className="shell:bg-background shell:h-6 shell:w-36 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-foreground shell:outline-none"
         value={naming}
         autoFocus
-        placeholder="布局名（Enter 存，Esc 弃）"
+        placeholder="布局名（Enter 保存，Esc 取消）"
         onChange={(e) => setNaming(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') commit()
@@ -72,15 +72,15 @@ function LayoutBar({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={BUTTON} title="布局：存当前 / 打开已存的 / 重置">
+      <DropdownMenuTrigger className={BUTTON} title="布局：保存当前布局 / 打开已保存的布局 / 重置">
         <LayoutGrid className="shell:size-3.5" />
         布局
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top">
-        <DropdownMenuLabel>已存的布局</DropdownMenuLabel>
+        <DropdownMenuLabel>已保存的布局</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {saved.length === 0 ? (
-          <DropdownMenuItem disabled>还没有存过布局</DropdownMenuItem>
+          <DropdownMenuItem disabled>还没有保存过布局</DropdownMenuItem>
         ) : (
           saved.map((row) => (
             <DropdownMenuItem key={row.id} onSelect={() => onApply(row)}>
@@ -89,7 +89,7 @@ function LayoutBar({
                 role="button"
                 tabIndex={-1}
                 className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
-                title="删掉这套"
+                title="删除这个布局"
                 onClick={(e) => {
                   // 不冒泡成选中这一项，否则会应用这套布局
                   e.preventDefault()
@@ -103,8 +103,8 @@ function LayoutBar({
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => setNaming('')}>存当前为布局…</DropdownMenuItem>
-        <DropdownMenuItem onSelect={onReset}>重置布局（铺回全部格）</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setNaming('')}>把当前布局另存为…</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onReset}>重置布局（当前桌面回到默认布局）</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -121,7 +121,7 @@ function Launcher({
   const [groups, setGroups] = useState<LaunchGroup[] | null>(null)
   // 连着点开两次时只认最后一次取回的
   const round = useRef(0)
-  /** `quiet`：开完之后的那次重新读取，旧清单先留着，不闪「取注册表…」 */
+  /** `quiet`：开完之后的那次重新读取，旧清单先留着，不闪「正在读取注册表…」 */
   const load = (quiet = false): void => {
     const mine = ++round.current
     if (!quiet) setGroups(null)
@@ -131,16 +131,16 @@ function Launcher({
   }
   return (
     <DropdownMenu onOpenChange={(open) => open && load()}>
-      <DropdownMenuTrigger className={BUTTON} title="新建：开一个窗格（清单每次现取注册表）">
+      <DropdownMenuTrigger className={BUTTON} title="新建：打开一个窗格（每次打开菜单都重新读取注册表）">
         <Plus className="shell:size-3.5" />
         新建
       </DropdownMenuTrigger>
       {/* 点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 检查要跳过它 */}
       <DropdownMenuContent align="start" side="top" data-gwb-launcher="" data-gwb-status-layer="">
         {groups === null ? (
-          <DropdownMenuItem disabled>取注册表…</DropdownMenuItem>
+          <DropdownMenuItem disabled>正在读取注册表…</DropdownMenuItem>
         ) : groups.length === 0 ? (
-          <DropdownMenuItem disabled>没有件注册过窗格</DropdownMenuItem>
+          <DropdownMenuItem disabled>还没有插件注册窗格</DropdownMenuItem>
         ) : (
           groups.map((group, i) => (
             <Fragment key={group.entryId}>
@@ -167,11 +167,11 @@ function Launcher({
                     <Icon />
                     <span className="shell:flex-1">{spec.title}</span>
                     {goesTo === undefined ? (
-                      <span className="shell:text-muted-foreground shell:ml-2 shell:text-xs" title="开一份新的">
+                      <span className="shell:text-muted-foreground shell:ml-2 shell:text-xs" title="再打开一个">
                         ＋
                       </span>
                     ) : (
-                      <span className="shell:ml-2 shell:text-[10px]" title={`去已经开着的那一份（在${goesTo === '本桌' ? '本桌' : `『${goesTo}』`}）`}>
+                      <span className="shell:ml-2 shell:text-[10px]" title={`切到已经打开的那一个（在${goesTo === '当前桌面' ? '当前桌面' : `『${goesTo}』`}）`}>
                         → {goesTo}
                       </span>
                     )}
@@ -294,11 +294,11 @@ export function StatusBar({
         <button
           type="button"
           className={`${BUTTON} shell:text-destructive`}
-          title="布局没存上——点一下立刻重试一次"
+          title="布局保存失败——单击立即重试"
           onClick={onRetrySave}
         >
           <TriangleAlert className="shell:size-3.5" />
-          布局没存上
+          布局保存失败
         </button>
       )}
 
@@ -314,7 +314,7 @@ export function StatusBar({
       <button
         type="button"
         className={BUTTON}
-        title="刷新界面：整页重跑——重取注册表、按档恢复布局（宿主进程不动）"
+        title="刷新界面：重新加载整个页面——重新读取注册表、按布局文件恢复布局（主进程不重启）"
         onClick={() => location.reload()}
       >
         <RefreshCw className="shell:size-3.5" />

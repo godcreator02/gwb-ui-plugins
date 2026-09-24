@@ -110,7 +110,7 @@ const FACES: Record<EntryState, StateFace> = {
   disabled: { text: '已停用', hint: 'cordis.yml 里写着 disabled: true，本来就不该运行', attention: false },
   'disabled-running': {
     text: '已停用（还在运行）',
-    hint: 'yml 里写了停用，可 fiber 还在运行。通常是刚停用那一瞬，再取一次表就一致了',
+    hint: 'cordis.yml 里写了停用，可 fiber 还在运行。通常是刚停用那一瞬，再取一次表就一致了',
     attention: true,
   },
 }
@@ -242,5 +242,5 @@ export function asResult(value: unknown): CallResult {
   const error = value['error']
   if (value['ok'] === true) return value['data'] === undefined ? { ok: true } : { ok: true, data: value['data'] }
   // 失败却没给原因时也要有句话：空的错误提示跟没提示一样
-  return { ok: false, error: typeof error === 'string' && error !== '' ? error : '命令没成，也没说是为什么' }
+  return { ok: false, error: typeof error === 'string' && error !== '' ? error : '命令失败，没有给出原因' }
 }

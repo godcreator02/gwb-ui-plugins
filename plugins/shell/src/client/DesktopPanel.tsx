@@ -138,7 +138,7 @@ export function DesktopPanel({
       value={value}
       autoFocus
       data-gwb-desk-rename={id}
-      placeholder="桌面名（Enter 定，Esc 弃）"
+      placeholder="桌面名（Enter 确定，Esc 取消）"
       // 输入框在桌面那一行里，点它不冒泡成切过去
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setRenaming({ id, value: e.target.value })}
@@ -165,7 +165,7 @@ export function DesktopPanel({
         <PopoverTrigger
           className={triggerClassName}
           data-gwb-desktop-panel=""
-          title="桌面：所有桌面与上面的窗格。拖着标签停在这儿，面板自己弹开"
+          title="桌面：所有桌面与上面的窗格。把标签拖到这里停一下，面板会自动打开"
           onDragOver={springOver}
           onDragLeave={springLeave}
         >
@@ -198,7 +198,7 @@ export function DesktopPanel({
                   role="button"
                   tabIndex={0}
                   data-gwb-desk={section.desktop}
-                  title="点一下切过去；右键改名"
+                  title="单击切到这张桌面；右键改名"
                   className={`${ROW} shell:hover:bg-accent`}
                   onClick={() => onSwitch(section.desktop)}
                   onKeyDown={(e) => {
@@ -246,7 +246,7 @@ export function DesktopPanel({
                         tabIndex={0}
                         draggable
                         data-gwb-pane={pane.instance}
-                        title="点一下激活；拖到别的桌面上就送过去（按住 Shift 放下就跟过去）"
+                        title="单击激活；拖到别的桌面上就送过去（按住 Shift 放下，同时切到那张桌面）"
                         className={`${ROW} shell:pl-7 shell:hover:bg-accent`}
                         onDragStart={(e) => startRowDrag(e, pane.instance, pane.desktop)}
                         onDragEnd={() => {
@@ -262,7 +262,7 @@ export function DesktopPanel({
                         {pane.preview && (
                           <span
                             role="img"
-                            aria-label="预览格"
+                            aria-label="预览窗格"
                             className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
                           />
                         )}
@@ -280,7 +280,7 @@ export function DesktopPanel({
               className="shell:bg-background shell:h-7 shell:w-full shell:rounded shell:px-2 shell:text-xs shell:text-foreground shell:outline-none"
               value={naming}
               autoFocus
-              placeholder="桌面名（Enter 建，Esc 弃）"
+              placeholder="桌面名（Enter 新建，Esc 取消）"
               onChange={(e) => setNaming(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') commitNew()
@@ -293,7 +293,7 @@ export function DesktopPanel({
               role="button"
               tabIndex={0}
               data-gwb-desk-new=""
-              title="新建一张空桌面并切过去；把窗格拖到这儿就送到一张新桌面"
+              title="新建一张空桌面并切到它；把窗格拖到这里就送到一张新桌面"
               className={`${ROW} shell:hover:bg-accent ${over === '' ? 'shell:bg-accent' : ''}`}
               onClick={() => setNaming('')}
               onKeyDown={(e) => {

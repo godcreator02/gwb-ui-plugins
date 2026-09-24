@@ -238,7 +238,7 @@ describe('addInstance', () => {
 })
 
 describe('启动器：launchGoesTo / launchSpec', () => {
-  it('工具窗格本桌开着回「本桌」，别的桌面开着回那张桌面的名字，没开着回 undefined；文档窗格一律 undefined', () => {
+  it('工具窗格当前桌面开着回「当前桌面」，别的桌面开着回那张桌面的名字，没开着回 undefined；文档窗格一律 undefined', () => {
     const { dock } = setup({ desktops: ['d1', 'd2'], active: 'd1' })
     const group = dock('d1').newGroup('d1-g1')
     const toolSpec = specForPane(toolRow)
@@ -247,7 +247,7 @@ describe('启动器：launchGoesTo / launchSpec', () => {
     dock('d2').seed(otherGroup, 'plugin:home:hello:tool', pluginParams('tool'))
     expect(launchGoesTo(toolSpec)).toBe('桌面 2')
     dock('d1').seed(group, 'plugin:home:hello:tool:2', pluginParams('tool'))
-    expect(launchGoesTo(toolSpec)).toBe('本桌')
+    expect(launchGoesTo(toolSpec)).toBe('当前桌面')
     dock('d1').seed(group, 'plugin:home:hello:doc', pluginParams('doc'))
     expect(launchGoesTo(specForPane(docRow))).toBeUndefined()
   })

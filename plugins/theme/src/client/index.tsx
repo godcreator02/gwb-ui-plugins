@@ -51,7 +51,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
         const reply = (await host.call(VALUES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
         if (!alive) return
         if (reply.ok !== true || typeof reply.data !== 'object' || reply.data === null) {
-          setNotice(`取现值没取到：${reply.error ?? JSON.stringify(reply)}`)
+          setNotice(`读取当前设置失败：${reply.error ?? JSON.stringify(reply)}`)
           return
         }
         const v = reply.data as ValuesReply
@@ -68,7 +68,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
         applyToPage(css)
         setLoaded(true)
       } catch (err) {
-        if (alive) setNotice(`取现值调不通：${String(err)}`)
+        if (alive) setNotice(`读取当前设置失败：${String(err)}`)
       }
     })()
     return () => {
@@ -91,7 +91,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
   )
 
   const save = async (): Promise<void> => {
-    setNotice('存着…')
+    setNotice('保存中…')
     try {
       const reply = (await host.call(SAVE_COMMAND, {
         'font-sans': fontSans,
@@ -99,21 +99,21 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
         'custom-css': customCss,
       })) as { ok?: boolean; error?: string }
       if (reply.ok !== true) {
-        setNotice(`没存上：${reply.error ?? JSON.stringify(reply)}`)
+        setNotice(`保存失败：${reply.error ?? JSON.stringify(reply)}`)
         return
       }
       savedRef.current = buildStartupCss({ fontSans, fontMono, customCss })
-      setNotice('存好了——重启也照这个来')
+      setNotice('已保存，重启后仍然生效')
     } catch (err) {
-      setNotice(`没存上：${String(err)}`)
+      setNotice(`保存失败：${String(err)}`)
     }
   }
 
   return (
     <div className="theme:flex theme:h-full theme:flex-col theme:gap-3 theme:overflow-auto theme:p-4 theme:text-sm">
       <p className="theme:m-0 theme:text-muted-foreground">
-        改完当场生效，要重启后也照旧就点保存。字体填 font-family 的值（如{' '}
-        <code className="theme:font-mono">Consolas, monospace</code>），留空用默认系统栈。
+        修改立即生效；要在重启后仍然生效，点「保存」。字体填 font-family 的值（如{' '}
+        <code className="theme:font-mono">Consolas, monospace</code>），留空使用默认的系统字体。
       </p>
       <label className="theme:flex theme:flex-col theme:gap-1">
         <span className="theme:text-muted-foreground">正文字体</span>
@@ -134,7 +134,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
         />
       </label>
       <label className="theme:flex theme:min-h-40 theme:flex-1 theme:flex-col theme:gap-1">
-        <span className="theme:text-muted-foreground">自定义样式表（整段 CSS，写在令牌之上）</span>
+        <span className="theme:text-muted-foreground">自定义样式表（整段 CSS，排在令牌之后，可覆盖令牌）</span>
         <textarea
           className={`${FIELD} theme:min-h-40 theme:flex-1 theme:resize-none theme:font-mono`}
           value={customCss}

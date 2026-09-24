@@ -208,7 +208,7 @@ export default class GwbShell extends Service implements GwbShellApi {
       (args) => {
         // 保存时也校验形状：浏览器侧的 bug 拼出的坏文件不能覆盖磁盘上好的那份
         const doc = parseLayoutDoc(args)
-        if (doc === null) return { ok: false, error: '布局档形状不对，不落盘' }
+        if (doc === null) return { ok: false, error: '布局文件形状不对，没有写入磁盘' }
         // 返回 promise：命令总线 await 它，写入失败进回执
         return this.ctx.gwbData.writeDoc(LAYOUT_DOC, doc).then(() => undefined)
       },
@@ -366,7 +366,7 @@ export default class GwbShell extends Service implements GwbShellApi {
       },
       (args) => {
         const pushedPaneSync = parsePaneSync(args)
-        if (pushedPaneSync === undefined) return { ok: false, error: '清单形状不对，没收' }
+        if (pushedPaneSync === undefined) return { ok: false, error: '清单形状不对，没有接收' }
         this.paneCache = pushedPaneSync
         return { ok: true }
       },

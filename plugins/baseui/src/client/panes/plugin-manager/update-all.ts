@@ -48,7 +48,7 @@ function linesForUpdatedPackages(data: Record<string, unknown>, updated: unknown
 
 export function describeUpdateAll(result: CallResult): UpdateAllView {
   // 失败时插件管理已把 pnpm 输出的最后几行拼进 error，原样显示
-  if (!result.ok) return { ok: false, text: result.error ?? '一键更新没成', reloading: false }
+  if (!result.ok) return { ok: false, text: result.error ?? '一键更新失败', reloading: false }
   const data = isRecord(result.data) ? result.data : {}
   const updated = Array.isArray(data['updated']) ? (data['updated'] as unknown[]) : []
   const lines = updated.length === 0 ? [stringOrEmpty(data['note']) || '全都最新'] : linesForUpdatedPackages(data, updated)

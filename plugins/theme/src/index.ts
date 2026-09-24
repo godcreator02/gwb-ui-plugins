@@ -67,21 +67,21 @@ function defineThemeSettings(settings: GwbSettingsApi): void {
     title: '正文字体',
     type: 'string',
     default: '',
-    description: 'font-family 的值，如 Consolas, monospace。空 = 用令牌默认的系统栈',
+    description: 'font-family 的值，如 Consolas, monospace。留空 = 用令牌表默认的系统字体',
   })
   settings.define({
     key: FONT_MONO_KEY,
     title: '等宽字体',
     type: 'string',
     default: '',
-    description: 'font-family 的值。代码、日志那类地方用的那份',
+    description: 'font-family 的值。代码、日志等处用的等宽字体',
   })
   settings.define({
     key: CUSTOM_CSS_KEY,
     title: '自定义样式表',
     type: 'string',
     default: '',
-    description: '整段 CSS 原样生效，写在令牌之上——写 :root { --background: … } 就能换全套配色',
+    description: '整段 CSS 原样生效，排在令牌之后、可覆盖令牌——写 :root { --background: … } 就能换掉整套配色',
   })
 }
 
@@ -89,13 +89,13 @@ function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
   const settings = ctx.gwbSettings
   ctx.effect(() =>
     commandBus.register(
-      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳 boot 时取', usage: '无参数', plugin: PACKAGE_NAME },
+      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', plugin: PACKAGE_NAME },
       () => buildStartupCss(readThemeSettingValues(ctx)),
     ),
   )
   ctx.effect(() =>
     commandBus.register(
-      { name: VALUES_COMMAND, description: '本插件三项设置的现值', usage: '无参数', plugin: PACKAGE_NAME },
+      { name: VALUES_COMMAND, description: '本插件三项设置的当前值', usage: '无参数', plugin: PACKAGE_NAME },
       () => toKebabValues(readThemeSettingValues(ctx)),
     ),
   )

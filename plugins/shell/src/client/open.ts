@@ -43,12 +43,12 @@ function openContextOnDesktop(desktop: string, from: string | undefined): OpenCo
   }
 }
 
-/** 启动器行尾写什么：「本桌」、别的桌面的名字，或 undefined（开一份新的）。问的就是 `planLaunch`，不另写判断 */
+/** 启动器行尾写什么：「当前桌面」、别的桌面的名字，或 undefined（开一份新的）。问的就是 `planLaunch`，不另写判断 */
 export function launchGoesTo(spec: OpenableSpec): string | undefined {
   const context = openContextOnDesktop(wellHub.activeDesktop(), undefined)
   if (context === undefined) return undefined
   const plan = planLaunch(spec, context)
-  if (plan.kind === 'focus') return '本桌'
+  if (plan.kind === 'focus') return '当前桌面'
   if (plan.kind === 'reveal') return desktopNameOf(plan.desktop)
   return undefined
 }

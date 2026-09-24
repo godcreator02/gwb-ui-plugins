@@ -218,7 +218,7 @@ describe('布局文件两条命令', () => {
     const doc = layoutDoc([{ id: 'd1', name: '桌面 1' }])
     expect(await call('shell.layout.save', doc)).toBeUndefined()
     expect(data.docs.get('layout')).toEqual(doc)
-    expect(await call('shell.layout.save', { v: 1 })).toEqual({ ok: false, error: '布局档形状不对，不落盘' })
+    expect(await call('shell.layout.save', { v: 1 })).toEqual({ ok: false, error: '布局文件形状不对，没有写入磁盘' })
     expect(data.docs.get('layout')).toEqual(doc)
   })
 })
@@ -332,7 +332,7 @@ describe('窗格命令', () => {
   it('shell.pane.sync 形状不对回错，缓存不变', async () => {
     const { call } = await bootShell()
     await call('shell.pane.sync', paneSync())
-    expect(await call('shell.pane.sync', { entries: 'x' })).toEqual({ ok: false, error: '清单形状不对，没收' })
+    expect(await call('shell.pane.sync', { entries: 'x' })).toEqual({ ok: false, error: '清单形状不对，没有接收' })
     expect(await call('shell.pane.list')).toHaveLength(2)
   })
 

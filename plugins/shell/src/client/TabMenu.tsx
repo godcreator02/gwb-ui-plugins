@@ -72,7 +72,7 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
         </span>
       </ContextMenuTrigger>
       <ContextMenuContent container={host} data-gwb-tab-menu={self}>
-        {preview && <ContextMenuItem data-gwb-tab-action="keep" onSelect={keep}>留住</ContextMenuItem>}
+        {preview && <ContextMenuItem data-gwb-tab-action="keep" onSelect={keep}>保持打开</ContextMenuItem>}
         {kind === 'document' && <ContextMenuItem data-gwb-tab-action="beside" onSelect={openBeside}>在旁边再开一份</ContextMenuItem>}
         {(preview || kind === 'document') && <ContextMenuSeparator />}
         <ContextMenuSub>

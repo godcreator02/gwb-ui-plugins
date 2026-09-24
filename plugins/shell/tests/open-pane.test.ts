@@ -60,7 +60,7 @@ describe('parseOpenPaneArgs', () => {
     })
     expect(parseOpenPaneArgs({ entryId: 'home:x', paneId: '' })).toEqual({
       ok: false,
-      error: 'paneId 要是非空字符串（件 registerPane 时报的窗格 id）',
+      error: 'paneId 要是非空字符串（插件 registerPane 时报的窗格 id）',
     })
   })
 

@@ -45,7 +45,7 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
           ? 'shell:bg-muted shell:text-foreground'
           : 'shell:text-muted-foreground shell:hover:bg-accent/50 shell:hover:text-foreground',
       )}
-      title={preview ? `${title}（预览格：下一次打开会顶掉它。双击这枚标签留住它）` : title}
+      title={preview ? `${title}（预览窗格：下一次预览打开别的内容时会替换它。双击标签保持打开）` : title}
       // 双击转正：dockview 不用 dblclick，拖拽走 pointer 事件，互不冲突；已是正式窗格时是空操作
       onDoubleClick={() => props.api.updateParameters({ preview: undefined })}
     >
@@ -54,7 +54,7 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
         // 空心圆点而不是淡一档：未激活的标签本来就是淡色；边框用 currentColor 跟着标签变色
         <span
           role="img"
-          aria-label="预览格：这一格会被下一次打开顶掉"
+          aria-label="预览窗格：下一次预览打开时会被替换"
           className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
         />
       )}
