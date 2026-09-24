@@ -1,36 +1,31 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import type { HostBridge, PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
 import { buildStartupCss } from '../startup-css.js'
 
 /**
- * 浏览器半——「外观」那一格。两个字体输入框加一块 CSS 文本域：
- * **输入即预览**（直接改页面上那张启动样式表，外壳 boot 时建的那张）、保存才落盘
- * （`theme.save`），重启后由外壳 boot 恢复。**关格即弃**：预览过没存的，dispose 时
- * 退回已保存的样子——不然「页面上这个样子重启就没了」这件事没人提醒。
+ * 浏览器侧：「外观」窗格。两个字体输入框加一块 CSS 文本域。
+ * **输入后当场预览**（直接改页面上的启动样式表，外壳启动时建的那张），点保存才写到磁盘
+ * （`theme.save`），重启后由外壳启动时恢复。**关窗格时丢弃没保存的预览**：dispose 时退回已保存的
+ * 样子——否则页面上显示的样子重启后就没了，却没有任何提示。
  *
- * **这个文件里每一个类名都带 `theme:` 前缀**（0.2 起换成 Tailwind 前缀围栏，见
- * `src/client/styles.css`）。本件那张表里的规则也只认这种类名：规则全页有效，但只可能
- * 匹配到本件画出来的元素——围栏来自名字唯一，不是 DOM 祖先关系。漏加前缀的类
- * **静默不出规则**（一个字节都不编，构建照样绿），所以配了 `tests/prefix.test.ts` 钉住。
+ * **这个文件里每一个类名都带 `theme:` 前缀**（Tailwind 的 prefix，见 `src/client/styles.css`）。
+ * 本插件样式表里的规则只匹配这种类名：规则全页有效，但只可能匹配到本插件画出来的元素——隔离来自
+ * 类名唯一，不靠 DOM 祖先关系。漏加前缀的类**不生成任何规则、构建照样通过**，所以由
+ * `tests/prefix.test.ts` 检查。
  *
- * **表不归这儿管**：外壳的 PluginPane 在 import 这个束之前就把 style.css 注好了，令牌表
- * 更是页面级的一份，也由外壳注。容器上那个 `data-gwb-plugin` 仍然挂着，但对这个件
- * **只是身份标记**——它不再承担围栏，围栏已经在类名里。
+ * **样式表不由这里注入**：外壳的 PluginPane 在 import 这份 client.js 之前就注入了 style.css；令牌表
+ * 是页面级的一份，也由外壳注入。容器上的 `data-gwb-plugin` 对这个插件**只是身份标记**，样式隔离靠类名前缀。
  *
- * 注意跟本件那条业务线分开：用户填的自定义 CSS 走 `theme.startupCss` 注成页面级那张
- * `#gwb-theme-style`，改的是全页；这份编译产物只是本件这一格自己的工具类表。
+ * 跟本插件的业务功能分开：用户填的自定义 CSS 经 `theme.startupCss` 注入成页面级的
+ * `#gwb-theme-style`，作用于整页；这份编译产物只是这个窗格自己的工具类样式表。
  */
 
 const VALUES_COMMAND = 'theme.values'
 const SAVE_COMMAND = 'theme.save'
 
-/** 页面上那张启动样式表的 id。跟外壳 client 里那份对得上——两边各存一份字符串，没互相 import */
+/** 页面上启动样式表的 id，与外壳 client 里的同一个字符串一致——两边各写一份，不互相 import */
 const STYLE_ID = 'gwb-theme-style'
-
-/** 外壳调 mountPane 时给的那几样。按形状收，只牵用得着的 host */
-interface PaneArgs {
-  host: { call: (command: string, args?: unknown) => Promise<unknown> }
-}
 
 interface ValuesReply {
   'font-sans'?: unknown
@@ -38,7 +33,7 @@ interface ValuesReply {
   'custom-css'?: unknown
 }
 
-/** 把一段 css 放到页面上那张表里。表不存在就建——id 幂等，注多少遍也只有一张 */
+/** 把一段 css 写进页面上的启动样式表，没有就新建；按 id 查找，调多少次页面上也只有一张 */
 function applyToPage(css: string): void {
   let el = document.getElementById(STYLE_ID)
   if (el === null) {
@@ -52,17 +47,17 @@ function applyToPage(css: string): void {
 const FIELD =
   'theme:w-full theme:rounded-md theme:border theme:border-input theme:bg-transparent theme:px-2 theme:py-1 theme:text-sm theme:outline-none theme:focus-visible:border-ring'
 
-function Appearance({ host }: { host: PaneArgs['host'] }): ReactElement {
+function Appearance({ host }: { host: HostBridge }): ReactElement {
   const [fontSans, setFontSans] = useState('')
   const [fontMono, setFontMono] = useState('')
   const [customCss, setCustomCss] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [notice, setNotice] = useState('')
-  /** 已保存状态对应的整段 css。null = 还没取到（或没取到过）——那时预览和退回都不动手 */
+  /** 已保存的设置对应的整段 css。null 表示还没取到，这时既不预览也不退回 */
   const savedRef = useRef<string | null>(null)
 
-  // 开格取一次现值。取到之前不动页面上那张表——预览逻辑会把它清空，那就把 boot 注好的
-  // 样式闪没了；「还没装上自己」的时候手别伸那么长
+  // 打开窗格时取一次当前值。取到之前不改页面上的启动样式表：预览会用空值覆盖它，
+  // 外壳启动时注入的样式就会闪一下消失
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -95,13 +90,13 @@ function Appearance({ host }: { host: PaneArgs['host'] }): ReactElement {
     }
   }, [host])
 
-  // 任何一格变了就现场预览。loaded 之前不动手，理由见上
+  // 任何一个输入框变了就当场预览；取到当前值之前不预览，理由同上
   const preview = buildStartupCss({ fontSans, fontMono, customCss })
   useEffect(() => {
     if (loaded) applyToPage(preview)
   }, [preview, loaded])
 
-  // 关格退回已保存的样子。「预览≠已存」这条界线靠它守住
+  // 关窗格时退回已保存的样子，没保存的预览不留在页面上
   useEffect(
     () => () => {
       if (savedRef.current !== null) applyToPage(savedRef.current)
@@ -176,13 +171,13 @@ function Appearance({ host }: { host: PaneArgs['host'] }): ReactElement {
   )
 }
 
-/** 外壳调的入口。回一个 `{ dispose }`，契约跟别的窗格件一致 */
-export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
+/** 外壳调的入口，参数与返回值的类型从外壳的子路径 `@godcreator/gwb-shell/pane` 引 */
+export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   const reactRoot: Root = createRoot(container)
   reactRoot.render(<Appearance host={args.host} />)
   return {
     dispose() {
-      // 退回已保存的样子这件事挂在组件自己的 unmount 清理里，这儿只拆树
+      // 退回已保存的样子在组件卸载时的清理函数里做，这里只卸载 React 树
       reactRoot.unmount()
     },
   }

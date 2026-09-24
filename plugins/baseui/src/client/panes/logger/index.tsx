@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
+// 页面上 `window.gwb` 的类型：词汇表包的全局声明，import 它就生效。实时日志经 `window.gwb.on` 订阅
+import type {} from '@godcreator/gwb-plugin-api'
 import {
   acceptEntries,
   clockOf,
@@ -34,7 +36,7 @@ import {
  * 整行色调加左边色条、级别分段控件显示门限、来源胶囊开关、吸附提示浮在右下角。
  * 行为语义：级别门限、来源多选、复合键、seq 去重、吸附、超上限丢最早的行、空态两种文案。
  *
- * 类名一律带 `baseui:` 前缀——前缀围栏就是这个前缀本身（见 `./styles.css`）。漏加没有任何
+ * 类名一律带 `baseui:` 前缀——样式隔离靠的就是这个前缀（见 `../../styles.css`）。漏加没有任何
  * 报错：那个类不生成任何 CSS，页面上就是那一处没样式，构建照样通过，所以
  * `tests/prefix.test.ts` 那条测试把源码里每个字符串 token 逐个试编译。
  *
@@ -49,7 +51,7 @@ const CAP = 2000
 /** 离底部多少像素以内算作吸附（跟随最新行） */
 const STICK_SLACK = 24
 
-/** 「全部来源」那一项的值。Radix 的 SelectItem **不收空串**，得给它一个真值 */
+/** 「全部来源」那一项的值。Radix 的 SelectItem **不接受空串**，得给它一个非空值 */
 const ALL_KEY = '*'
 
 const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
@@ -74,7 +76,7 @@ const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I',
 
 const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', info: 'Info', debug: 'Debug' }
 
-/** 级别字母的颜色。只有 error/warn 有色，info/debug 退成灰——一行里颜色太多就没有重点了 */
+/** 级别字母的颜色。只有 error/warn 有色，info/debug 显示成灰色——一行里颜色太多就没有重点了 */
 const LEVEL_TONE: Record<LogLevel, string> = {
   error: 'baseui:text-destructive',
   warn: 'baseui:text-warning',
@@ -89,16 +91,6 @@ const ROW_TONE: Record<LogLevel, string> = {
   warn: 'baseui:bg-warning/[0.07] baseui:shadow-[inset_2px_0_0_var(--warning)] baseui:hover:bg-warning/[0.12]',
   info: 'baseui:hover:bg-accent',
   debug: 'baseui:hover:bg-accent',
-}
-
-/** 页面的公共接口，这里只按形状声明，正本在内核的词汇表包里。实时日志走 on，历史段走本插件的命令 */
-declare global {
-  interface Window {
-    gwb: {
-      command<T = unknown>(command: string, args?: unknown): Promise<T>
-      on(cb: (payload: unknown) => void): () => void
-    }
-  }
 }
 
 function LoggerPane({ args }: { args: PaneArgs }): ReactElement {

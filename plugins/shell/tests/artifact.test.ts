@@ -8,12 +8,12 @@ import { describe, expect, it } from 'vitest'
  * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
  *
  * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis 与词汇表包
- * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许**那四个共享名——它们由
+ * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许**那四个共享包名——它们由
  *   页面 importmap 解析到外壳。多一个（比如 dockview 被误配成 external）就是运行时
  *   一句 `Failed to resolve module specifier`，而那要打开窗格才看得见
- * - **子路径 `./pane`**（`dist/types/`，tsc 只出声明）：只有 d.ts，链上没有包名 import
+ * - **子路径 `./pane`**（`dist/types/`，tsc 只输出声明）：只有 d.ts，引用到的文件里没有包名 import
  *
- * 没有产物时整组跳过——门禁不依赖 build。
+ * 没有产物时整组跳过——`pnpm check` 不依赖 build。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
@@ -126,16 +126,16 @@ describe.skipIf(!built)('产物', () => {
     for (const name of ['layout-grid', 'receipt', 'gauge', 'zap']) expect(client).toContain(`name: "${name}"`)
   })
 
-  it('两张样式表都出得来，各自的围栏规矩不同', () => {
+  it('两张样式表都生成了，各自的隔离规则不同', () => {
     const own = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
     const dockview = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
-    // 外壳自己那张：围栏就是前缀本身，类选择器一律 .shell\: 开头
+    // 外壳自己那张靠类名前缀隔离：类选择器一律以 .shell\: 开头
     expect(classSelectors(own).filter((s) => !s.startsWith('.shell\\:') && !DARK_FLAG.has(s)).sort()).toEqual([])
-    // 有 data-gwb-plugin 就说明构建又走回了 tools/build-styles.ts 那条选择器 scope 的路。
-    // 症状是状态栏那两个菜单（portal 到 body 的）当场裸奔,而构建照样绿
+    // 出现 data-gwb-plugin 说明构建改成了按选择器限定范围（scope）的做法。症状是状态栏两个
+    // portal 到 body 的菜单没有样式，而构建照样通过
     expect(stripComments(own)).not.toContain('data-gwb-plugin')
-    // dockview 那张**一条 scope 规则都不许有**：门户元素挂在 body 下，包进去就没样式。
-    // 先剥注释——两张表的头注里都在讲这件事，不剥的话查的是文案不是规则
+    // dockview 那张**不许有任何 scope 规则**：portal 元素放在 body 下，限定在容器里的规则匹配不上它们。
+    // 先去掉注释——两张表开头的注释都提到 data-gwb-plugin，不去掉的话查到的是说明文字而不是规则
     expect(stripComments(dockview)).not.toContain('data-gwb-plugin')
     expect(dockview).toContain('.dockview-theme-gwb')
   })
@@ -170,7 +170,7 @@ describe.skipIf(!built)('产物', () => {
   it('style.css 零字面 fallback——值只许查表（令牌变量或 currentcolor 关键字）', () => {
     const css = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
     /** tw-animate-css 包内写死的动画默认值（animation 简写、enter/exit 变换那一组），
-     *  映射面管不到：它们是动画的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
+     *  令牌映射文件（theme.reference.css）管不到：它们是动画的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
     const mechanismDefault = (key: string, fb: string) =>
       key.startsWith('--tw-animation-') ||
       key.startsWith('--tw-enter-') ||

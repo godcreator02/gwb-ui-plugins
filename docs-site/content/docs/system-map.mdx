@@ -23,13 +23,13 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 ## 依赖方向
 
-单向，四条箭头：**插件 → 令牌**（构建期引映射面、运行期读页面那份值）、**插件 → 外壳**（注册窗格时报两个地址；浏览器侧 `import type` 外壳子路径 `@godcreator/gwb-shell/pane` 的类型，见[外壳](/docs/shell)「类型从 `@godcreator/gwb-shell/pane` 引」一节）、**外壳 → 主题插件**（一条软契约命令）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
+单向，四条依赖：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值）、**插件 → 外壳**（注册窗格时提供两个地址；浏览器侧 `import type` 外壳子路径 `@godcreator/gwb-shell/pane` 的类型，见[外壳](/docs/shell)「类型从 `@godcreator/gwb-shell/pane` 引」一节）、**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
 
 版本上三条规矩，都写在包清单里：
 
 **peer 范围怎么写**：正本在 devkit 的 release skill「gwb-release」，本页不复述：
 
-{/* ref file="../plugins/shell/package.json" lines="51-56" */}
+{/* ref file="../plugins/shell/package.json" lines="54-59" */}
 
 **跨仓基础插件的 dev 写 registry 精确版本，同仓包照旧 `workspace:*`**——本仓没有它们的 workspace，`workspace:*` 解析不到：
 
@@ -50,4 +50,4 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 本仓的现状页按功能线组织、不按包分：[外壳](/docs/shell) 一页，[样式与组件](/docs/styles) 一页覆盖
 theme / baseui / 令牌 / 共享 react 的契约与原理，[令牌与颜色](/docs/tokens) 是令牌规则的
-正本，[撞过的墙](/docs/walls) 记录这个仓踩过的坑。
+正本，[遇到过的问题](/docs/walls) 记录这个仓遇到过的问题。
