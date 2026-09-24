@@ -74,3 +74,23 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 - 页面 importmap 只剩内核包 `gwb.shared` 里的名字（react 的四个），内核不再收集别的包的 `gwb.shared`。本仓没有包写 `gwb.shared`，但三个插件的 `build.ts` 与 `tests/artifact.test.ts` 里 `SHARED` 是手写的四个名字，改成从内核包清单读（devkit 模板的做法）
 
 内核 0.5.0 发布之后再改；改的时候照说明书 `gwb-release` 升各插件自己的版本号。
+
+## 2026-09-24 要跟插件管理 0.9：用到的插件改写进 peer，list 换成 unmetPeers，update-all 回执加 dependents
+
+来源：总控台会话（devkit 仓规格「插件之间写 peer」，插件管理 0.9.0 与 devkit 0.18.15 同批发）。
+
+插件管理 0.9.0 是破坏性版本，baseui 的 dev 写的 `^0.8.0` 发完就出范围，下次发版 `devkit.release` 会拦。要做的：
+
+1. **依赖改写法**：插件用到的别的插件（经 `ctx.inject` 用它的服务、或 import 它的类型）写进 `peerDependencies`，
+   写 `^<源上 latest>`；只是可选使用的在 `peerDependenciesMeta` 标 `optional: true`。dev 里不再写这些插件。
+   baseui 对应：外壳 `@godcreator/gwb-shell` 必需，日志、插件管理可选。`devkit.release` 查 peer 里的插件与源上 latest
+   在不在同一条线（0.x 比次版本号，≥1 比主版本号），不在就拒
+2. **`plugin-manager.list`**：每个包的 `unmetRequires` 删了，换成 `unmetPeers: { pkg, range, installed? }[]`——插件 peer 里
+   （内核包与 cordis 除外）home 里没满足的包：没装（optional 的没装不算）、或装着的版本不在范围里。没装时没有 `installed`。
+   baseui 目前不读 `unmetRequires`，代码不用改；想在已装列表上标出来可以读这个字段
+3. **`plugin-manager.update-all`**：回执新增 `dependents: { pkg, because, entries }[]`——peer 写了被升级包的插件会在升级的包
+   重新加载之后一起重新加载，`because` 是它 peer 里哪个包导致的，`entries` 与 `updated[].entries` 同形。
+   `describeUpdateAll` 可以把它列出来；字段一直都有，失败或全都最新时是空数组
+4. pnpm 由插件管理与 devkit 运行时一律带 `pnpm_config_auto_install_peers=false`，home 里没装的 peer 不会被自动装进来
+
+规矩正本：devkit 文档站的依赖规则页与说明书 `gwb-release`。
