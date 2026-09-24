@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "author": {
     "name": "godcreator"
   },
-  "description": "基础界面：基础插件的官方窗格（日志、插件管理），一个窗格一个模块；硬依赖只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律局部注入；只收拆掉了界面的 core 插件的窗格，界面本身就是全部功能的插件不放这里。插件管理窗格经 plugin-manager.* 命令操作插件管理（gwbPluginManager 服务上没有方法，只用来决定注不注册窗格）：「可装」列表来自 plugin-manager.search，合并多条源（来源标签 + 按源筛选）；单个包升级与「全部更新」都用 plugin-manager.update-all（单个包给 only）；已装列表按 kernelUntested 标出没在当前内核上测过的包（显示 testedKernel，没声明写「未声明」）；设置部分适配 settings 0.3.0——列表不返回 secret 的值，按 isSet 显示「已设置 / 未设置」，「看一眼」用 settings.get 按位置读取明文。服务无；skill 0 份；命令 0 条。",
+  "description": "基础界面：基础插件的官方窗格（日志、插件管理），一个窗格一个模块；硬依赖只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律局部注入；只收拆掉了界面的 core 插件的窗格，界面本身就是全部功能的插件不放这里。插件管理窗格经 plugin-manager.* 命令操作插件管理（gwbPluginManager 服务上没有方法，只用来决定注不注册窗格）：「可装」列表来自 plugin-manager.search，合并多条源（来源标签 + 按源筛选）；单个包升级与「全部更新」都用 plugin-manager.update-all（单个包给 only）；已装列表按 kernelUntested 标出 peer 声明的内核范围不含当前内核的包（显示 kernelRange，没声明写「未声明」）；设置部分适配 settings 0.3.0——列表不返回 secret 的值，按 isSet 显示「已设置 / 未设置」，「看一眼」用 settings.get 按位置读取明文。服务无；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,23 +19,21 @@
     "dist",
     "src"
   ],
-  "//gwb": "只有 testedKernel（这个插件在哪个内核版本上测过）。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
-  "gwb": {
-    "testedKernel": "0.2.7"
-  },
+
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test 不构建，少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "内核包的 ^ 范围就是这个插件兼容哪个内核。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7"
+    "@godcreator/gwb-kernel-desktop": "^0.4.0"
   },
   "devDependencies": {
-    "@godcreator/gwb-logger": "0.4.3",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "@godcreator/gwb-plugin-manager": "0.7.0",
+    "@godcreator/gwb-logger": "^0.4.3",
+    "@godcreator/gwb-plugin-api": "^0.4.0",
+    "@godcreator/gwb-plugin-manager": "^0.8.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
@@ -45,7 +43,7 @@
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
-    "cordis": "4.0.0-rc.9",
+    "cordis": "4.0.0-rc.10",
     "esbuild": "^0.27.0",
     "lucide-react": "^1.41.0",
     "radix-ui": "^1.6.7",

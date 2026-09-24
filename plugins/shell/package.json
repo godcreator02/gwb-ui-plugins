@@ -60,7 +60,7 @@
   "devDependencies": {
     "@godcreator/gwb-commands": "0.4.5",
     "@godcreator/gwb-data": "0.1.5",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-plugin-api": "^0.4.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "0.4.3",
     "@tailwindcss/cli": "^4.3.0",
@@ -70,7 +70,7 @@
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
-    "cordis": "4.0.0-rc.9",
+    "cordis": "4.0.0-rc.10",
     "dockview-react": "8.2.0",
     "esbuild": "^0.27.7",
     "lucide-react": "^1.41.0",
