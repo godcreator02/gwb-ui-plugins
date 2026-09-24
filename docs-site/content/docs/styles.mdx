@@ -318,9 +318,11 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 插件把自己浏览器端脚本与样式表的位置告诉外壳，值从自己的 `import.meta.url` 算成 `file://`：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-15" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-18" */}
 
-`style` **是可选的**——插件可以没有样式表，那是正常情况而不是错。取不到也不抛，调用方照常注册它。
+`style` **是可选的**——插件可以没有样式表，那是正常情况而不是错。不给也不抛，调用方照常注册它。
+给了就要合格：`client` 的路径以 `.js` 结尾、`style` 的路径以 `.css` 结尾，都得是 `file://` 地址，不合格
+`registerPane` 当场抛错（外壳页「注册时检查什么」一节）。
 
 ### `shell.env`：启动时要的三张表、外观样式与版本
 

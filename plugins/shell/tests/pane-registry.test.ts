@@ -136,6 +136,67 @@ describe('说不清自己是谁的一律抛——不静默进表', () => {
   })
 })
 
+describe('client / style 给了就得是 file:// 地址、扩展名对得上，不对就抛', () => {
+  const clientUrl = 'file:///D:/homes/demo/node_modules/@godcreator/gwb-echo/dist/client.js'
+  const styleUrl = 'file:///D:/homes/demo/node_modules/@godcreator/gwb-echo/dist/style.css'
+
+  it('从 import.meta.url 算出来的那种地址照常进表', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声', client: clientUrl, style: styleUrl })
+    expect(reg.list()[0]).toMatchObject({ client: clientUrl, style: styleUrl })
+  })
+
+  it('路径后面带查询串也算：看的是路径部分', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声', client: `${clientUrl}?v=2`, style: `${styleUrl}?v=2` })
+    expect(reg.list()).toHaveLength(1)
+  })
+
+  it('两个都不给仍然合法——打开后才显示没有入口', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声' })
+    expect(reg.list()[0]).not.toHaveProperty('client')
+    expect(reg.list()[0]).not.toHaveProperty('style')
+  })
+
+  it('只给 client、不给 style 合法', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声', client: clientUrl })
+    expect(reg.list()).toHaveLength(1)
+  })
+
+  it('不是 file: 协议的抛：http 地址、Windows 盘符路径（会被解析成 d: 协议）', () => {
+    const { reg } = fresh()
+    expect(() => reg.register(echo, { id: 'main', title: '回声', client: 'https://example.com/client.js' })).toThrow(/file:\/\//)
+    expect(() => reg.register(echo, { id: 'main', title: '回声', client: 'D:\\plugins\\echo\\dist\\client.js' })).toThrow(/file:\/\//)
+    expect(() => reg.register(echo, { id: 'main', title: '回声', style: 'https://example.com/style.css' })).toThrow(/file:\/\//)
+    expect(reg.list()).toEqual([])
+  })
+
+  it('扩展名不对的抛：client 要 .js、style 要 .css', () => {
+    const { reg } = fresh()
+    expect(() => reg.register(echo, { id: 'main', title: '回声', client: styleUrl })).toThrow(/\.js/)
+    expect(() => reg.register(echo, { id: 'main', title: '回声', client: clientUrl.replace(/\.js$/, '.tsx') })).toThrow(/\.js/)
+    expect(() => reg.register(echo, { id: 'main', title: '回声', style: clientUrl })).toThrow(/\.css/)
+    expect(reg.list()).toEqual([])
+  })
+
+  it('解析不了的抛：相对路径、空串', () => {
+    const { reg } = fresh()
+    expect(() => reg.register(echo, { id: 'main', title: '回声', client: './client.js' })).toThrow(/file:\/\//)
+    expect(() => reg.register(echo, { id: 'main', title: '回声', style: '' })).toThrow(/file:\/\//)
+    expect(reg.list()).toEqual([])
+  })
+
+  it('报错里写明包、窗格、字段、收到的值和该给什么', () => {
+    const { reg } = fresh()
+    const registerWithRelativeClient = () => reg.register(echo, { id: 'view', title: '视图', client: 'dist/client.js' })
+    for (const part of ['@godcreator/gwb-echo', '窗格 view', 'client', '"dist/client.js"', '.js', 'file://', 'import.meta.url']) {
+      expect(registerWithRelativeClient).toThrow(part)
+    }
+  })
+})
+
 describe('注册要说清是工具窗格还是文档窗格（kind），说不出就是工具窗格', () => {
   it('不给 kind 进表就是 tool——老插件一个字不改都是工具窗格', () => {
     const { reg, warn } = fresh()

@@ -15,7 +15,8 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 1. node 侧 `inject` 写上 `'gwbShell'`，在 `apply` 里调 `ctx.gwbShell.registerPane({ id, title, icon, kind, client, style })`：
    - `id` 非空、不含 `:`，本插件内唯一
-   - `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`
+   - `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`。
+     给了就必须是 `file://` 地址、路径分别以 `.js` / `.css` 结尾，否则 `registerPane` 当场抛错
    - `icon` 写 lucide 图标页上的名字，kebab-case，如 `layout-grid`；认不出的名字照样注册，标签上显示 `#`
    - `kind` 写 `'tool'`（缺省）或 `'document'`：工具窗格整页至多一份，打开就是显示它；文档窗格每份装一个内容，可以开多份（见下一节）
 

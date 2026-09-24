@@ -9,9 +9,12 @@ export interface PaneSpec {
   title: string
   /** lucide 的正名，kebab-case（如 `layout-grid`）。认不出照样登记、标签上画 `#`，登记时 warn；不给就画 `#` */
   icon?: string
-  /** 浏览器侧入口的 `file://` 地址，插件从自己的 `import.meta.url` 算。不给的窗格打开后显示一句报错 */
+  /**
+   * 浏览器侧入口的 `file://` 地址，路径以 `.js` 结尾，插件从自己的 `import.meta.url` 算。
+   * 给了却不是这样的地址，注册时抛错；不给的窗格照常登记，打开后显示一句报错
+   */
   client?: string
-  /** 样式表的 `file://` 地址。不给就不注入 */
+  /** 样式表的 `file://` 地址，路径以 `.css` 结尾；给了却不是这样的地址，注册时抛错。不给就不注入 */
   style?: string
   /** 不给就是 `tool`；写错按 `tool` 登记、登记时 warn */
   kind?: PaneKind
@@ -52,6 +55,26 @@ function throwWhenIdOrTitleIsUnusable(owner: PaneOwner, spec: PaneSpec): void {
   if (spec.title === '') throw new Error(`${owner.pkg} 的窗格 ${spec.id} 没有标题`)
 }
 
+function isFileUrlWithPathEndingIn(address: string, extension: string): boolean {
+  if (!URL.canParse(address)) return false
+  const url = new URL(address)
+  return url.protocol === 'file:' && url.pathname.endsWith(extension)
+}
+
+function throwWhenClientOrStyleIsNotFileUrl(owner: PaneOwner, spec: PaneSpec): void {
+  const expectations = [
+    { field: 'client', address: spec.client, extension: '.js', example: "new URL('./client.js', import.meta.url).href" },
+    { field: 'style', address: spec.style, extension: '.css', example: "new URL('./style.css', import.meta.url).href" },
+  ] as const
+  for (const { field, address, extension, example } of expectations) {
+    if (address === undefined || isFileUrlWithPathEndingIn(address, extension)) continue
+    throw new Error(
+      `${owner.pkg} 的窗格 ${spec.id}：${field} 收到 ${JSON.stringify(address)}，` +
+        `要的是路径以 ${extension} 结尾的 file:// 地址，从插件自己的模块地址算，如 ${example}`,
+    )
+  }
+}
+
 function kindDefaultingToTool(owner: PaneOwner, spec: PaneSpec, warn: (message: string) => void): PaneKind {
   if (spec.kind === undefined) return 'tool'
   if (isPaneKind(spec.kind)) return spec.kind
@@ -69,6 +92,7 @@ export function createPaneRegistry(
   return {
     register(owner, spec) {
       throwWhenIdOrTitleIsUnusable(owner, spec)
+      throwWhenClientOrStyleIsNotFileUrl(owner, spec)
       const iconIssue = spec.icon === undefined ? undefined : checkIcon(spec.icon)
       if (iconIssue !== undefined) warn(`${owner.pkg} 的窗格 ${spec.id}：${iconIssue}；标签上先画成 #`)
       const kind = kindDefaultingToTool(owner, spec, warn)
