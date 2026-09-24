@@ -1,39 +1,28 @@
-/**
- * `shell.reload`：整页重载所有窗口。
- *
- * 件跑在 Electron **主进程**里，`import('electron')` 拿得到 `BrowserWindow`。开着的格持的是
- * 旧的 client 束、importmap 只在开机注一次，装了新件、热升之后只有整页 reload 能让页面重新
- * import 到新东西——状态栏那颗「刷新」是同一件事的人手版。
- *
- * 取窗口列表抽成可注入的 deps：测试里没有 electron，喂一份假的就能测纯逻辑那半。
- */
-
-/** 能 reload 的窗口——只收用得着的一格，electron 的 `BrowserWindow` 满足它 */
+/** electron 的 `BrowserWindow` 满足它 */
 export interface ReloadableWindow {
   webContents: { reload(): void }
 }
 
+/** 测试里没有 electron，传一份假的进来 */
 export interface ReloadDeps {
-  /** 此刻开着的窗口 */
   windows(): ReloadableWindow[]
 }
 
 export interface ReloadResult {
   ok: boolean
-  /** 成了才有：reload 了几扇 */
+  /** 成功时：重载了几个窗口 */
   reloaded?: number
-  /** 没成时的一句话 */
   error?: string
 }
 
-/** 逐扇 `webContents.reload()`。**没有窗口回 `ok: false`**——静默回成功的话，调用方以为界面刷了，其实什么都没发生 */
+/** 没有窗口回 `ok: false`：回成功的话调用方以为界面刷新了，其实什么都没发生 */
 export function reloadWindows(deps: ReloadDeps): ReloadResult {
-  const list = deps.windows()
-  if (list.length === 0) {
+  const openWindows = deps.windows()
+  if (openWindows.length === 0) {
     return { ok: false, error: '没有开着的窗口，没什么可重载的（窗口关了，或者不在 Electron 主进程里）' }
   }
-  for (const win of list) win.webContents.reload()
-  return { ok: true, reloaded: list.length }
+  for (const browserWindow of openWindows) browserWindow.webContents.reload()
+  return { ok: true, reloaded: openWindows.length }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -41,33 +30,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * `import('electron')` 回的命名空间 → deps。
- *
- * **`BrowserWindow` 是一个类，`typeof` 是 `'function'`**——按「是对象」判它就等于不存在
- * （判据见文档站），所以对象或函数都往下取。electron 是
- * CJS 包，`import()` 的命名空间与 `default` 上 API 都挂，先看 `default` 不吃亏。
- * 认不出就抛，调用方收成回执
+ * `BrowserWindow` 是类，`typeof` 是 `'function'`，所以对象或函数都继续往下取。
+ * electron 是 CJS 包，命名空间与 `default` 上都有 API，先看 `default`；认不出就抛，调用方转成回执
  */
 export function windowsOf(mod: unknown): ReloadDeps {
-  const api = isRecord(mod) && isRecord(mod['default']) ? mod['default'] : mod
-  const bw: unknown = isRecord(api) ? api['BrowserWindow'] : undefined
-  const getAll: unknown =
-    typeof bw === 'function' || isRecord(bw) ? (bw as Record<string, unknown>)['getAllWindows'] : undefined
-  if (typeof getAll !== 'function') {
+  const electronApi = isRecord(mod) && isRecord(mod['default']) ? mod['default'] : mod
+  const browserWindowClass: unknown = isRecord(electronApi) ? electronApi['BrowserWindow'] : undefined
+  const getAllWindows: unknown =
+    typeof browserWindowClass === 'function' || isRecord(browserWindowClass) ? (browserWindowClass as Record<string, unknown>)['getAllWindows'] : undefined
+  if (typeof getAllWindows !== 'function') {
     throw new Error(
-      `import("electron") 里 BrowserWindow ${bw === undefined ? '不在' : '在，但没有 getAllWindows'}——不在 Electron 主进程里，或者 electron 的面变了`,
+      `import("electron") 里 BrowserWindow ${browserWindowClass === undefined ? '不在' : '在，但没有 getAllWindows'}——不在 Electron 主进程里，或者 electron 的接口变了`,
     )
   }
-  return { windows: () => (getAll as () => ReloadableWindow[])() }
+  return { windows: () => (getAllWindows as () => ReloadableWindow[])() }
 }
 
-/**
- * 真机那份 deps：`BrowserWindow.getAllWindows()`。
- *
- * 说明符走变量，**不让 tsc 去解析 `electron` 这个模块**（本包不装它的类型，运行时它
- * 就在主进程里）。不在 Electron 里（比如测试里）就 reject，调用方收成回执
- */
+/** 说明符放在变量里，不让 tsc 解析 `electron`（本包不装它的类型）；不在 Electron 里就 reject，调用方转成回执 */
 export async function electronWindows(): Promise<ReloadDeps> {
-  const spec = 'electron'
-  return windowsOf(await import(spec))
+  const electronSpecifier = 'electron'
+  return windowsOf(await import(electronSpecifier))
 }
