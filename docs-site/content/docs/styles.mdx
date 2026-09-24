@@ -343,18 +343,18 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 **主题插件**：`gwbSettings` 与 `gwbCommands` 是必需依赖——没有设置存不了三项外观，没有命令总线
 三条命令无法对外提供；`gwbShell` 是局部注入——没外壳也照常加载，只是没有「外观」窗格。
 
-{/* ref file="../plugins/theme/src/index.ts" lines="60-61" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="30-31" */}
 
-{/* ref file="../plugins/theme/src/index.ts" lines="152-163" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="117-129" */}
 
 **基础界面插件**：必需依赖只有 `gwbShell`——没有窗格容器就没有「窗格集」；`gwbLogger` 与
 `gwbPluginManager` 都是局部注入，缺哪个服务就少注册哪个窗格，其余照常。`gwbPluginManager` 服务上
 没有方法，只表示「插件管理装了」——基础界面只用它决定注不注册插件管理窗格，窗格里的操作全部经
 `plugin-manager.*` 命令（列表、安装、卸载、`update-all` 升级、`search` 检索可装的插件）。
 
-{/* ref file="../plugins/baseui/src/index.ts" lines="26-27" */}
+{/* ref file="../plugins/baseui/src/index.ts" lines="13-14" */}
 
-{/* ref file="../plugins/baseui/src/index.ts" lines="35-48" */}
+{/* ref file="../plugins/baseui/src/index.ts" lines="16-32" */}
 
 <Diagram name="baseui-panes" title="基础界面的两个窗格各调哪些命令">
 
@@ -441,7 +441,7 @@ import，只 import `components/` 下的共享组件。
 工具条窄了折行、宽了收回一行（要按宽度换向的排布，用的就是 `@md:` 那类变体），
 拖动分隔条时立即变化：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1179-1189" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1130-1140" */}
 
 旁边那个身份属性**只用来辨认**。按位置隔离的方案要靠它限定选择器范围；本仓按类名前缀隔离，
 加不加它样式都一样。留着是为了在 devtools 里一眼看出这个窗格是哪个插件的。**正因为少加一个也
@@ -476,9 +476,9 @@ import，只 import `components/` 下的共享组件。
 
 ### 守卫检查不出的那一条：标记类
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="308-311" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="286-289" */}
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="323-325" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="301-303" */}
 
 **这两段说明什么**：上面加的是**锚**，下面是去找那个锚的变体。带前缀之后，变体编出来的选择器
 认的是**带前缀的锚**，所以两头必须一起带前缀——锚要是写成裸的，DOM 上就没有那个类，选择器
@@ -489,7 +489,7 @@ import，只 import `components/` 下的共享组件。
 
 ### 用户自定义 CSS：为什么它能覆盖一切
 
-{/* ref file="../plugins/theme/src/startup-css.ts" lines="25-35" */}
+{/* ref file="../plugins/theme/src/startup-css.ts" lines="20-30" */}
 
 **这段说明什么**：主题插件把三样设置拼成一段 CSS 交给外壳，纯函数、不碰 DOM——node 端用它处理
 那条命令，浏览器端用它做编辑时的实时预览，**两处用同一份逻辑**，不然「存进去的」和「页面上
@@ -499,7 +499,7 @@ import，只 import `components/` 下的共享组件。
 未分层的规则优先级高于所有分层规则（跟 preflight 那条是同一个语法事实的两面），所以它能覆盖
 令牌的默认值，也能覆盖任何一个插件的工具类。设置项的说明里就是这么写的：
 
-{/* ref file="../plugins/theme/src/index.ts" lines="118-124" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="79-85" */}
 
 整条路径，连同「外观」窗格的预览与保存、状态栏的亮暗开关：
 
