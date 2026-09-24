@@ -17,37 +17,19 @@ import { versionCell } from '../versions.js'
 import { DesktopPanel } from './DesktopPanel.js'
 import { iconFor } from './icon.js'
 
-/**
- * 井底下那条。**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」，
- * 也正因如此它是桌面切换器唯一合理的落点：它不属于任何一口桌面，站在所有井外面。
- *
- * 左起：「桌面」面板（所有桌面与上面的窗格，见 `DesktopPanel`）、布局菜单、「新建」（启动器）；
- * 右边：环境（home 与版本并一格）、刷新、亮暗，布局没存上时再亮一格告警。左边是能动手的，右边是
- * 只读的环境与全局开关。
- *
- * **启动与切换分开**：「新建」开一个新的（清单每次现取注册表），「桌面」面板切到已开的（列出所有
- * 桌面上开着的窗格）。一个列表同时干两件事，对文档窗格就说不清「点下去是开新的还是切过去」。
- */
-
-/**
- * 启动器里的一组：一个插件注册的那几格。`goesTo` 是点下去去哪（开着的工具窗格：「本桌」或那张桌面的
- * 名字）；没有就是点下去开一份新的
- */
+/** 启动器里一个插件的那几个窗格；`goesTo` 是点下去去哪（「本桌」或那张桌面的名字），没有就是开一份新的 */
 export interface LaunchGroup {
   entryId: string
   title: string
   rows: { spec: OpenableSpec; goesTo?: string }[]
 }
 
-/** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
+/** 状态栏各项共用的外观 */
 const CELL =
   'shell:flex shell:h-6 shell:items-center shell:gap-1.5 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-muted-foreground'
 const BUTTON = `${CELL} shell:cursor-default shell:select-none shell:hover:bg-accent shell:hover:text-accent-foreground`
 
-/**
- * 布局那一格：已存布局清单（点谁铺谁）＋ 存当前为布局（格子变输入框）＋ 重置。
- * 存名字是内联输入，不是弹窗——跟这行状态栏的分量相称。
- */
+/** 「布局」菜单：已存布局、存当前为布局（该项变内联输入框）、重置 */
 function LayoutBar({
   saved,
   onApply,
@@ -63,7 +45,7 @@ function LayoutBar({
 }): ReactElement {
   const [naming, setNaming] = useState<string | null>(null)
 
-  /** 提交存名。空名 / 纯空白不存——那不是一套布局的名字，是没起 */
+  /** 空名、纯空白不存 */
   const commit = (): void => {
     if (naming === null) return
     const name = naming.trim()
@@ -109,7 +91,7 @@ function LayoutBar({
                 className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
                 title="删掉这套"
                 onClick={(e) => {
-                  // 别让这一下冒泡成「选中这一项」——那会走成应用这套布局
+                  // 不冒泡成选中这一项，否则会应用这套布局
                   e.preventDefault()
                   e.stopPropagation()
                   onDelete(row.id)
@@ -128,18 +110,7 @@ function LayoutBar({
   )
 }
 
-/**
- * 「新建」：启动器。**每次点开都现取注册表**（热装的件不用刷新就在），按插件分组列出全部窗格
- * 定义。文档窗格选了就在当前桌面开一份新的；工具窗格全页一份——本桌开着就激活它，开在别的桌面就
- * 切过去激活它，哪儿都没有就在当前桌面开。
- *
- * **每一行行尾写点下去会怎样**（人定的）：「＋」是开一份新的，「→ 本桌」「→ 桌面 X」是去已经开着的
- * 那一份；去已开的那几行左边再加一道色条，扫一眼就挑得出哪些开着（像任务栏给运行中的程序加标记）。
- * 不用灰色——灰色是「点不了」，而这几行照样点得动；不用圆点——预览窗格已经用空心圆点了。
- *
- * **选了之后菜单不关**（人定的：常拿它一连开好几样），点菜单外面或 Esc 才关；开完原地重摘一次，
- * 记号跟着变。
- */
+/** 「新建」启动器：每次点开当场取注册表；选了之后菜单不关，开完静默重新读取一次 */
 function Launcher({
   onList,
   onLaunch,
@@ -148,9 +119,9 @@ function Launcher({
   onLaunch: (spec: OpenableSpec) => Promise<void>
 }): ReactElement {
   const [groups, setGroups] = useState<LaunchGroup[] | null>(null)
-  // 连着点开两次：只认最后一次取回来的那份
+  // 连着点开两次时只认最后一次取回的
   const round = useRef(0)
-  /** 取清单。`quiet` 是开完之后那次重摘：旧清单先留着，不闪一下「取注册表…」 */
+  /** `quiet`：开完之后的那次重新读取，旧清单先留着，不闪「取注册表…」 */
   const load = (quiet = false): void => {
     const mine = ++round.current
     if (!quiet) setGroups(null)
@@ -164,7 +135,7 @@ function Launcher({
         <Plus className="shell:size-3.5" />
         新建
       </DropdownMenuTrigger>
-      {/* 状态栏自己的浮层：点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 探雷得认得它 */}
+      {/* 点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 检查要跳过它 */}
       <DropdownMenuContent align="start" side="top" data-gwb-launcher="" data-gwb-status-layer="">
         {groups === null ? (
           <DropdownMenuItem disabled>取注册表…</DropdownMenuItem>
@@ -183,12 +154,12 @@ function Launcher({
                     data-gwb-launch={spec.id}
                     data-gwb-launch-goes={goesTo ?? ''}
                     onSelect={(e) => {
-                      // 拦下「选中就关」：菜单留着，开完重摘一次行尾
+                      // 拦下「选中就关」
                       e.preventDefault()
                       void onLaunch(spec).then(() => load(true))
                     }}
                   >
-                    {/* 开着的那几行左边一道色条；别的行留同宽的空位，图标对得齐 */}
+                    {/* 去已开的那几行左边一道色条；别的行留同宽空位，图标对齐 */}
                     <span
                       aria-hidden
                       className={`shell:-ml-1 shell:h-4 shell:w-0.5 shell:shrink-0 shell:rounded-full ${goesTo === undefined ? '' : 'shell:bg-primary'}`}
@@ -240,41 +211,32 @@ export function StatusBar({
   onResetLayout,
   onRetrySave,
 }: {
-  /**
-   * 启动器的清单：每次点开现取。「本桌已开」「在『X』」记号**跟点下去的效果同一个判据**（上游直接问
-   * `planLaunch`），不是「这一格有没有开着」——那两者会岔开，那时记号就开始说谎
-   */
+  /** 每次点开当场取；行尾记号由上游问 `planLaunch` 得出 */
   onLaunchList: () => Promise<LaunchGroup[]>
-  /** 启动器选了一条。开在别的桌面上的工具窗格要切过去、可能先挂井，所以是异步的 */
+  /** 异步：开在别的桌面上的工具窗格要切过去，可能先挂载容器 */
   onLaunch: (spec: OpenableSpec) => Promise<void>
-  /** 「桌面」面板的那棵树：所有桌面与各自开着的窗格，照桌面顺序 */
+  /** 所有桌面与各自开着的窗格，照桌面顺序 */
   onSections: () => DeskSection[]
-  /** 窗格清单变了几回（每次落盘加一）：面板开着时按它重摘 */
+  /** 每保存一次加一 */
   panesTick: number
   onFocusPane: (desktop: string, instance: string) => void
-  /** 送到别的桌面（面板里拖放；拖到当前桌面就是拉到本桌）；follow = 放下时按住了 Shift */
+  /** 拖到当前桌面就是拉到本桌；follow 是放下时按住了 Shift */
   onSendPane: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
-  /**
-   * 状态栏那句「<text> · 切过去」：送到别的桌面之后（「已送到『X』」）、件与命令开的工具窗格在别的
-   * 桌面上时（「『插件管理』在『X』」）亮一阵，点它切到那张桌面
-   */
+  /** 「<text> · 切过去」，点它切到那张桌面 */
   notice: { desktop: string; text: string } | null
   onFollowNotice: (desktop: string) => void
   onRenameDesktop: (id: string, name: string) => void
   onDeleteDesktop: (id: string) => void
   /** home 目录的绝对路径 */
   home: string
-  /** 版本那一格：格子上写产品版本（内核版），悬停列内核、外壳、运行时 */
   versions: Versions
-  /** 桌面清单与活动桌面 id。井常驻保活，切换只是换哪口显示 */
   desktops: readonly DesktopRow[]
   activeDesktopId: string
   onSwitchDesktop: (id: string) => void
-  /** 新建桌面并切过去。空名由外壳拿缺省名顶上 */
+  /** 新建桌面并切过去；空名由外壳用缺省名 */
   onNewDesktop: (name: string) => void
-  /** 人起名存下来的布局清单 */
   savedLayouts: readonly SavedLayout[]
-  /** 布局档最后一次落盘成没成。失败亮一格，点一下重试 */
+  /** 最近一次保存布局失败时显示告警项，点它重试 */
   saveFailed: boolean
   onApplyLayout: (row: SavedLayout) => void
   onSaveLayout: (name: string) => void
@@ -287,13 +249,12 @@ export function StatusBar({
   const toggleDark = (): void => {
     const next = !dark
     setDark(next)
-    // 令牌整套跟着换：井底、标签条、件里的东西一起变，一行都不用重新构建
+    // 令牌整套跟着 html.dark 换，不用重新构建
     document.documentElement.classList.toggle('dark', next)
   }
 
   return (
-    // z 压过本桌的模态遮罩（状态栏永远可点，含从模态里切桌面逃出）；pointer-events
-    // 显式给 auto 不靠 body 继承——radix 模态锁 body 的那把锁不跟桌面走。判据见文档站
+    // z 高过桌面上的模态遮罩，状态栏永远可点；pointer-events 显式给 auto，radix 模态对 body 加的锁不跟桌面走
     <footer className="shell:relative shell:z-[60] shell:pointer-events-auto shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
       <DesktopPanel
         triggerClassName={BUTTON}
@@ -319,7 +280,7 @@ export function StatusBar({
 
       <Launcher onList={onLaunchList} onLaunch={onLaunch} />
 
-      {/* 送到别的桌面、或件开的工具窗格在别的桌面上：亮一阵，当前桌面不变，点它才切过去 */}
+      {/* 当前桌面不变，点它才切过去 */}
       {notice !== null && (
         <button type="button" className={BUTTON} data-gwb-notice={notice.desktop} onClick={() => onFollowNotice(notice.desktop)}>
           <Send className="shell:size-3.5" />
@@ -341,8 +302,7 @@ export function StatusBar({
         </button>
       )}
 
-      {/* 环境：在哪个 home、什么版本——两样都只读，并一格。home 只摆最后一段（路径很长，而人要认的是
-          「我在哪个 home 里」）；全长与各项版本在悬停上 */}
+      {/* home 只显示最后一段，全路径与各项版本在悬停提示里 */}
       <div className={CELL} title={`${home}\n${version.title}`}>
         <FolderOpen className="shell:size-3.5" />
         <span className="shell:font-mono">{home.split(/[\\/]/).filter(Boolean).at(-1) ?? home}</span>
@@ -350,8 +310,7 @@ export function StatusBar({
         <span className="shell:font-mono">{version.label}</span>
       </div>
 
-      {/* 整页 reload，不是外壳内部重建：boot 链原样重跑，boot 后才变的注册表之类
-          全吃到；内核那半不受影响 */}
+      {/* 整页 reload，不是外壳内部重建 */}
       <button
         type="button"
         className={BUTTON}

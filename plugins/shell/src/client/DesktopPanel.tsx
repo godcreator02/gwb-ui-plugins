@@ -18,25 +18,7 @@ import { iconFor } from './icon.js'
 import type { SendTarget } from './open.js'
 import { draggedPane, endRowDrag, startRowDrag } from './pane-drag.js'
 
-/**
- * 状态栏的「桌面」面板：**只摆桌面与各桌面上的窗格**（人定的，见 spec 已拍板第二轮）。原先是两格——
- * 「桌面」（清单、改名、删除、新建）与「窗格 N」（按桌面分组的窗格，行尾关闭 / 送到 / 拉到本桌）——
- * 列的是同一棵树，并成一格；行尾的动作全拿掉，送到与拉到本桌改成拖拽：
- *
- * - 点桌面切过去，点窗格激活它（在别的桌面就切过去）；右键桌面名改名；删除钮一律先确认
- * - 把窗格拖到另一张桌面上 = 送过去，拖到当前桌面上 = 拉到本桌，拖到「新建桌面」上 = 送到新桌面；
- *   放下时按住 Shift 就跟过去
- * - 从桌面上拖一枚标签到状态栏这一格上停一下，面板自己弹开（弹簧载入），再放到哪张桌面上
- *
- * 是弹出面板不是菜单：菜单的规矩是点一项就选中关掉、按键拿去做首字母跳转，跟改名框、拖拽都对着干。
- * 关窗格不在这儿（标签上的 ✕、标签右键菜单）。
- *
- * **点了不关**（人定的：这张面板常拿来来回切）：切桌面、激活窗格、拖放、新建、删除之后面板都留着，
- * 只有**点面板外面**或 Esc 才关。radix 的弹出面板缺省还有一条「焦点移出去就关」——切桌面时外壳把
- * 焦点交给新桌面、激活窗格时 dockview 也会挪焦点，不拦的话面板照样被这一下带关，所以只拦这一条
- */
-
-/** 拖着标签在状态栏这一格上停多久，面板自己弹开 */
+/** 拖着标签在状态栏「桌面」项上停多久，面板自己弹开 */
 const SPRING_MS = 500
 
 const ROW = 'shell:flex shell:h-7 shell:items-center shell:gap-1.5 shell:rounded shell:px-2 shell:text-xs shell:select-none'
@@ -54,41 +36,39 @@ export function DesktopPanel({
   onRename,
   onDelete,
 }: {
-  /** 状态栏格子的外观（跟别的格同一套） */
+  /** 状态栏各项共用的外观 */
   triggerClassName: string
   desktops: readonly DesktopRow[]
   activeId: string
-  /** 此刻的那棵树：所有桌面与各自开着的窗格，照桌面顺序。每次点开、每次拖放完现取 */
+  /** 所有桌面与各自开着的窗格，照桌面顺序；每次点开、每次拖放完当场读取 */
   onSections: () => DeskSection[]
-  /** 窗格清单变了几回（外壳每次落盘加一）：开着的时候别处开关了窗格，按它重摘 */
+  /** 外壳每保存一次加一，面板开着时据此重新读取 */
   panesTick: number
   onSwitch: (id: string) => void
   onFocusPane: (desktop: string, instance: string) => void
   /** 送到别的桌面（拖放）；follow = 放下时按住了 Shift */
   onSend: (instance: string, to: SendTarget, follow: boolean) => Promise<void>
-  /** 新建桌面并切过去。空名由外壳拿缺省名顶上 */
+  /** 新建桌面并切过去；空名由外壳用缺省名 */
   onNew: (name: string) => void
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
 }): ReactElement {
   const [open, setOpen] = useState(false)
   const [sections, setSections] = useState<DeskSection[]>([])
-  /** 正在改名的那一张：桌面名那一行变输入框，Enter 定、Esc 或失焦弃，空名不改 */
+  /** 正在改名的桌面：Enter 确认，Esc 或失焦放弃，空名不改 */
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null)
-  /** 正在起名的新桌面：「新建桌面…」那一行变输入框 */
+  /** 「新建桌面…」那一行正在输入的名字 */
   const [naming, setNaming] = useState<string | null>(null)
-  /** 等人确认删除的那一张 */
+  /** 等待确认删除的桌面 */
   const [confirming, setConfirming] = useState<{ id: string; name: string; panes: number } | null>(null)
-  /** 拖着的窗格此刻悬在哪个落点上（桌面 id；'' 是「新建桌面」） */
+  /** 拖着的窗格此刻悬在哪个落点上（桌面 id；空串是「新建桌面」） */
   const [over, setOver] = useState<string | null>(null)
   const spring = useRef<number | undefined>(undefined)
   const active = desktops.find((d) => d.id === activeId)
 
-  /** 拖放送完重摘：送到是异步的（可能要先在后台挂井），桌面清单不一定变，得自己摘 */
+  /** 送到是异步的（可能要先在后台挂载容器），桌面清单不一定变，送完自己重新读取 */
   const refresh = (): void => setSections(onSections())
-  // 点开那一刻、开着时桌面清单变了（改名、删除、切过去）、窗格变了（别处开关了窗格，外壳落盘时
-  // panesTick 加一）都重摘。依赖里**故意没有 onSections**：它每轮都是新函数，按它重跑等于每轮都
-  // 重摘；清单的变化由这四样带进来
+  // 依赖里故意没有 onSections：它每轮都是新函数；清单的变化由这四项带进来
   useEffect(() => {
     if (open) setSections(onSections())
   }, [open, desktops, activeId, panesTick])
@@ -109,10 +89,7 @@ export function DesktopPanel({
     }
   }
 
-  /**
-   * 拖着标签停在格子上：停够 SPRING_MS 面板自己弹开。拖的不是窗格不理。到点再问一次还拖着没有——
-   * 在格子上就松手（或按 Esc 取消）的话，拖拽已经结束，不该凭空弹出面板
-   */
+  /** 到点再问一次还在拖没有：已经松手或按 Esc 取消了就不弹开 */
   const springOver = (): void => {
     if (open || spring.current !== undefined || draggedPane() === undefined) return
     spring.current = window.setTimeout(() => {
@@ -149,7 +126,7 @@ export function DesktopPanel({
     },
   })
 
-  /** 删除先确认：确认框是模态的，叠在面板上面，面板不关（点确认框不算点面板外面） */
+  /** 确认框是模态的、叠在面板上面，点确认框不算点面板外面，面板不关 */
   const askDelete = (section: DeskSection): void => {
     setConfirming({ id: section.desktop, name: section.name, panes: section.rows.length })
   }
@@ -162,7 +139,7 @@ export function DesktopPanel({
       autoFocus
       data-gwb-desk-rename={id}
       placeholder="桌面名（Enter 定，Esc 弃）"
-      // 输入框在桌面那一行里：点它不能冒泡成「切过去」
+      // 输入框在桌面那一行里，点它不冒泡成切过去
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setRenaming({ id, value: e.target.value })}
       onKeyDown={(e) => {
@@ -200,13 +177,13 @@ export function DesktopPanel({
           align="start"
           className="shell:w-64 shell:p-1"
           data-gwb-desktops=""
-          // 状态栏自己的浮层：挂 body 是本分，切桌面后的 body 探雷认得它（见 index.tsx 的 sweepBodyPortals）
+          // 状态栏自己的浮层挂在 body 上，切桌面后的 body 检查（sweepBodyPortals）据此跳过它
           data-gwb-status-layer=""
-          // 改名 / 起名时 Esc 只弃输入，不关面板（radix 的 Esc 监听在 document 的捕获阶段，比输入框先听到）
+          // 改名、起名时 Esc 只放弃输入不关面板：radix 的 Esc 监听在 document 的捕获阶段，比输入框先收到
           onEscapeKeyDown={(e) => {
             if (renaming !== null || naming !== null) e.preventDefault()
           }}
-          // 只有点外面才关：焦点移出去（切桌面、激活窗格时焦点被挪走）不算
+          // 只有点外面才关：切桌面、激活窗格时焦点被挪走不算
           onFocusOutside={(e) => e.preventDefault()}
         >
           <div className="shell:max-h-[60vh] shell:overflow-y-auto">
