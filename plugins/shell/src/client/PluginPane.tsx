@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
-import { fetchPanes } from './panes.js'
+import { fetchPanes, paneTargetIn } from './panes.js'
 import { desktopIdOf, portalHostOf } from './desktop-context.js'
 import {
   describeHandle,
@@ -11,25 +11,12 @@ import {
   type MountLike,
 } from './mount-handle.js'
 import { contentUpdateOf, paramsKeyOf, parsePaneContent, pluginParamsIn } from '../panels.js'
-import type { PaneKind } from '../openable.js'
 import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
 /** 分组按条目在窗格之间共享，所以总线注册表放在组件实例之外 */
 const busRegistry = createBusRegistry()
-
-/** 当场取注册表里这个窗格的地址；插件卸载了或没给 client 都抛错 */
-async function fetchPaneModule(
-  host: HostBridge,
-  entryId: string,
-  paneId: string,
-): Promise<{ client: string; style?: string; kind: PaneKind }> {
-  const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
-  if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——插件卸载了？`)
-  if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器侧的地址（client）`)
-  return { client: row.client, style: row.style, kind: row.kind }
-}
 
 /** 缺 `mountPane` 导出或它不是函数都抛错 */
 async function importMountPane(url: string, who: string): Promise<MountLike> {
@@ -136,7 +123,7 @@ export function PluginPane({
 
     void (async () => {
       try {
-        const target = await fetchPaneModule(host, entryId, paneId)
+        const target = paneTargetIn(await fetchPanes(host), entryId, paneId)
         // 插件可以没有样式表
         if (target.style !== undefined) await loadStyle(target.style)
         if (disposed) return
