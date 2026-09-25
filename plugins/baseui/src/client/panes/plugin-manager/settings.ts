@@ -4,6 +4,8 @@
  * 看明文走 `settings.get`
  */
 
+import { asResult } from './rows'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -123,6 +125,41 @@ export function parseSlotKey(slot: string): { section: string; key: string } {
 export function settingsForEntry(all: readonly SettingRow[], entryId: string): SettingRow[] {
   const entrySection = bareId(entryId)
   return all.filter((setting) => setting.section === entrySection)
+}
+
+export interface SettingsDeletion {
+  deleted: number
+  /** 每项一行「section.key：原因」；没删掉的值留在「没有插件声明的设置」里还找得到 */
+  failures: string[]
+}
+
+/** 逐项 `settings.delete`，一项失败不停下。命令总线失败回 `{ ok: false }` 不抛，成功与否只看回执 */
+export async function deleteSettingValues(
+  call: (command: string, args: { section: string; key: string }) => Promise<unknown>,
+  command: string,
+  settings: ReadonlyArray<Pick<SettingRow, 'section' | 'key'>>,
+): Promise<SettingsDeletion> {
+  const outcome: SettingsDeletion = { deleted: 0, failures: [] }
+  for (const { section, key } of settings) {
+    try {
+      const result = asResult(await call(command, { section, key }))
+      if (result.ok) outcome.deleted += 1
+      else outcome.failures.push(`${section}.${key}：${result.error ?? ''}`)
+    } catch (err: unknown) {
+      outcome.failures.push(`${section}.${key}：${String(err)}`)
+    }
+  }
+  return outcome
+}
+
+/** 删除结果拼在回执那句话后面：删了几项、哪几项没删掉 */
+export function describeSettingsDeletion(outcome: SettingsDeletion): string {
+  const parts: string[] = []
+  if (outcome.deleted > 0) parts.push(`，删除了 ${outcome.deleted} 项设置值`)
+  if (outcome.failures.length > 0) {
+    parts.push(`\n${outcome.failures.length} 项设置值没删掉（留在「没有插件声明的设置」里）：\n${outcome.failures.join('\n')}`)
+  }
+  return parts.join('')
 }
 
 /** section 对不上界面上任何条目的：多半是条目删了值没清，或者插件停着还没声明 */

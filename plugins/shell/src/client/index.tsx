@@ -8,7 +8,7 @@ import {
   type IDockviewPanelProps,
   type SerializedDockview,
 } from 'dockview-react'
-// 页面上 `window.gwb` 的类型：词汇表包的全局声明，import 它就生效
+// 页面上 `window.gwb` 的类型：内核包的全局声明，import 它就生效
 import type {} from '@godcreator/gwb-kernel-desktop'
 import { GwbTab } from './GwbTab.js'
 import { StatusBar, type LaunchGroup } from './StatusBar.js'
@@ -66,9 +66,15 @@ const SWEEP_DELAY_MS = 500
 /** 推给 node 侧缓存（`shell.pane.sync`）；推不上只记一条 warn */
 function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string): void {
   const sync = { entries: wellHub.entries(), desktops: rows.map(({ id, name }) => ({ id, name })), active }
-  void host.call(PANE_SYNC_COMMAND, sync).catch((err: unknown) => {
-    console.warn(`[shell] ${PANE_SYNC_COMMAND} 推不上：${String(err)}`)
-  })
+  void host.call(PANE_SYNC_COMMAND, sync).then(
+    (reply) => {
+      const typed = reply as { ok?: boolean; error?: string }
+      if (typed.ok !== true) console.warn(`[shell] ${PANE_SYNC_COMMAND} 推不上：${typed.error ?? '没说原因'}`)
+    },
+    (err: unknown) => {
+      console.warn(`[shell] ${PANE_SYNC_COMMAND} 推不上：${String(err)}`)
+    },
+  )
 }
 
 /** 面板组件表与标签组件表必须是模块级常量：dockview 按引用比对，换一个新对象会重建全部窗格 */
@@ -564,7 +570,7 @@ async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
   try {
     const reply = (await host.call(LAYOUT_GET_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
     if (reply.ok !== true) {
-      console.warn(`[shell] ${LAYOUT_GET_COMMAND} 没回布局文件：${reply.error ?? '命令不在（数据插件没装？）'}`)
+      console.warn(`[shell] ${LAYOUT_GET_COMMAND} 没回布局文件：${reply.error ?? '没说原因'}`)
       return null
     }
     if (reply.data === undefined || reply.data === null) return null

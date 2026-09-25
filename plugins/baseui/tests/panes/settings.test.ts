@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   acceptSettings,
+  deleteSettingValues,
+  describeSettingsDeletion,
   dirtySlots,
   fieldState,
   secretPlaceholder,
@@ -112,5 +114,61 @@ describe('dirtySlots：保存只提交真被编辑过的格', () => {
     expect(dirtySlots({})).toEqual([])
     expect(dirtySlots(undefined)).toEqual([])
     expect(dirtySlots({ 'gitea/token': undefined })).toEqual([['gitea/token', undefined]])
+  })
+})
+
+describe('deleteSettingValues：删条目、卸载时连设置值一起删', () => {
+  const two = [
+    { section: 'gitea', key: 'token' },
+    { section: 'gitea', key: 'base-url' },
+  ]
+
+  it('回执 ok:false 不算删掉——命令总线失败不抛，只回 ok:false', async () => {
+    const outcome = await deleteSettingValues(
+      async (_command, pos) => (pos.key === 'token' ? { ok: false, error: '写不进 settings.json' } : { ok: true }),
+      'settings.delete',
+      two,
+    )
+    expect(outcome).toEqual({ deleted: 1, failures: ['gitea.token：写不进 settings.json'] })
+  })
+
+  it('调用抛错也记进失败项，后面的照删', async () => {
+    const calls: string[] = []
+    const outcome = await deleteSettingValues(
+      async (command, pos) => {
+        calls.push(`${command} ${pos.key}`)
+        if (pos.key === 'token') throw new Error('ipc 断了')
+        return { ok: true }
+      },
+      'settings.delete',
+      two,
+    )
+    expect(calls).toEqual(['settings.delete token', 'settings.delete base-url'])
+    expect(outcome.deleted).toBe(1)
+    expect(outcome.failures).toEqual(['gitea.token：Error: ipc 断了'])
+  })
+
+  it('回执认不出也算失败', async () => {
+    const outcome = await deleteSettingValues(async () => undefined, 'settings.delete', [two[0]!])
+    expect(outcome.deleted).toBe(0)
+    expect(outcome.failures).toHaveLength(1)
+  })
+})
+
+describe('describeSettingsDeletion：拼在回执那句话后面', () => {
+  it('全删掉了只说删了几项', () => {
+    expect(describeSettingsDeletion({ deleted: 2, failures: [] })).toBe('，删除了 2 项设置值')
+  })
+
+  it('有失败逐项列出', () => {
+    expect(describeSettingsDeletion({ deleted: 1, failures: ['gitea.token：写不进'] }).split('\n')).toEqual([
+      '，删除了 1 项设置值',
+      '1 项设置值没删掉（留在「没有插件声明的设置」里）：',
+      'gitea.token：写不进',
+    ])
+  })
+
+  it('什么都没删是空串', () => {
+    expect(describeSettingsDeletion({ deleted: 0, failures: [] })).toBe('')
   })
 })

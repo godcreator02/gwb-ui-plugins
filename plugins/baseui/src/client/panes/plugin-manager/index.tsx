@@ -40,6 +40,8 @@ import {
 } from './rows'
 import {
   acceptSettings,
+  deleteSettingValues,
+  describeSettingsDeletion,
   dirtySlots,
   fieldState,
   formatDefault,
@@ -49,6 +51,7 @@ import {
   settingsForEntry,
   slotKey,
   type SettingRow,
+  type SettingsDeletion,
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
@@ -103,6 +106,9 @@ const UNINSTALL = 'plugin-manager.uninstall'
 
 /** 插件管理的包名。升级它时要等它自己的条目重新加载完再整页重新加载；卸载它时这个窗格会关闭，确认框与回执要说明 */
 const OWN_PKG = '@godcreator/gwb-plugin-manager'
+
+/** 没勾「连设置值一起删」时的删除结果 */
+const NOTHING_DELETED: SettingsDeletion = { deleted: 0, failures: [] }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -924,18 +930,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       if (!result.ok) {
         setNotice({ ok: false, text: result.error ?? '' })
       } else {
-        let wiped = 0
-        if (alsoDrop) {
-          for (const s of settings) {
-            try {
-              await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
-              wiped += 1
-            } catch {
-              // 一项没删掉不算整个操作失败——它留在「没有插件声明的设置」里还找得到
-            }
-          }
-        }
-        setNotice({ ok: true, text: `条目 ${entry.id} 删了，包没动${wiped > 0 ? `，删除了 ${wiped} 项设置值` : ''}` })
+        const deletion = alsoDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
+        setNotice({
+          ok: deletion.failures.length === 0,
+          text: `条目 ${entry.id} 删了，包没动${describeSettingsDeletion(deletion)}`,
+        })
       }
       await refresh()
     } finally {
@@ -972,20 +971,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         // 失败时插件管理已经把原因与 pnpm 输出的最后几行拼进 error
         setNotice({ ok: false, text: result.error ?? '' })
       } else {
-        let wiped = 0
-        if (uninstallDrop) {
-          for (const s of settings) {
-            try {
-              await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })
-              wiped += 1
-            } catch {
-              // 一项没删掉不算整个操作失败——它留在「没有插件声明的设置」里还找得到
-            }
-          }
-        }
+        const deletion = uninstallDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
+        const touchedSettings = deletion.deleted > 0 || deletion.failures.length > 0
         setNotice({
-          ok: true,
-          text: `${pkg} 卸载了，包与条目一起删除${wiped > 0 ? `，删除了 ${wiped} 项设置值` : '；设置与数据留在磁盘上'}${
+          ok: deletion.failures.length === 0,
+          text: `${pkg} 卸载了，包与条目一起删除${touchedSettings ? describeSettingsDeletion(deletion) : '；设置与数据留在磁盘上'}${
             pkg === OWN_PKG ? '。插件管理自己的窗格还开着，关掉它就没了' : ''
           }`,
         })

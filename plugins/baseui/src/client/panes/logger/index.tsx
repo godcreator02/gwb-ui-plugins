@@ -78,7 +78,7 @@ const ROW_TONE: Record<LogLevel, string> = {
 function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [failed, setFailed] = useState('')
-  const [where, setWhere] = useState<{ home: string; logDir: string } | null>(null)
+  const [where, setWhere] = useState<{ home: string; logFile: string } | null>(null)
   const [filter, setFilter] = useState<FilterState>({
     level: 'debug',
     sources: ALL_SOURCES,
@@ -141,7 +141,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     args.host.call(WHERE_COMMAND).then(
       (res) => {
         const data = (res as { data?: { home?: string; logFile?: string } }).data
-        if (alive && data !== undefined) setWhere({ home: data.home ?? '', logDir: data.logFile ?? '' })
+        if (alive && data !== undefined) setWhere({ home: data.home ?? '', logFile: data.logFile ?? '' })
       },
       () => {
         /* 取不到只是脚注少显示路径，不报错 */
@@ -346,7 +346,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             className="baseui:truncate baseui:font-mono baseui:text-[10.5px] baseui:opacity-85"
             title={`home：${where.home}`}
           >
-            {where.logDir === '' ? where.home : where.logDir}
+            {where.logFile === '' ? where.home : where.logFile}
           </span>
         )}
       </div>

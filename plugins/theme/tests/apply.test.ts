@@ -114,20 +114,29 @@ describe('主题插件 apply', () => {
     expect(await call('theme.startupCss')).toBe(':root {\n  --gwb-font-mono: Sarasa Mono;\n}\n\nbody { color: red }')
   })
 
-  it('theme.save 逐项写三项，不是字符串的写成空串，回 ok', async () => {
+  it('theme.save 逐项写三项，回 ok；空串照写（恢复默认）', async () => {
     const { settings, call } = await bootTheme({ withShell: false })
-    expect(await call('theme.save', { 'font-sans': 'Inter', 'font-mono': 7, 'custom-css': ':root{}' })).toEqual({ ok: true })
+    expect(await call('theme.save', { 'font-sans': 'Inter', 'font-mono': '', 'custom-css': ':root{}' })).toEqual({ ok: true })
     expect(settings.writes).toEqual([
       ['font-sans', 'Inter'],
       ['font-mono', ''],
       ['custom-css', ':root{}'],
     ])
-    expect(await call('theme.save')).toEqual({ ok: true })
-    expect(settings.writes.slice(3)).toEqual([
-      ['font-sans', ''],
-      ['font-mono', ''],
-      ['custom-css', ''],
-    ])
+  })
+
+  it('theme.save 参数不对就回 ok:false 说清错在哪，一项都不写', async () => {
+    const { settings, call } = await bootTheme({ withShell: false })
+    const rejected = async (args: unknown): Promise<string> => {
+      const reply = (await call('theme.save', args)) as { ok: boolean; error?: string }
+      expect(reply.ok).toBe(false)
+      return reply.error ?? ''
+    }
+    expect(await rejected(undefined)).toContain('要是对象')
+    expect(await rejected(['Inter'])).toContain('要是对象')
+    expect(await rejected({ 'font-sans': 'Inter', 'font-mono': '' })).toContain('缺键 "custom-css"')
+    expect(await rejected({ 'font-sans': 'Inter', 'font-mono': 7, 'custom-css': '' })).toContain('"font-mono" 要是字符串')
+    expect(await rejected({ 'font-sans': '', 'font-mono': '', 'custom-css': '', fontSans: 'Inter' })).toContain('认不出这些键：fontSans')
+    expect(settings.writes).toEqual([])
   })
 
   it('没有外壳：不注册窗格，照常加载', async () => {

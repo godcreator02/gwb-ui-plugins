@@ -85,6 +85,30 @@ function defineThemeSettings(settings: GwbSettingsApi): void {
   })
 }
 
+const SAVE_KEYS = [FONT_SANS_KEY, FONT_MONO_KEY, CUSTOM_CSS_KEY] as const
+
+/** 系统边界上的校验：三个键都要给、都是字符串，多给的键也拒 */
+function parseSaveArgs(args: unknown): { ok: true; values: ThemeSettingValues } | { ok: false; error: string } {
+  if (typeof args !== 'object' || args === null || Array.isArray(args)) {
+    return { ok: false, error: `${SAVE_COMMAND} 的参数要是对象 { "font-sans", "font-mono", "custom-css" }，收到的是 ${JSON.stringify(args) ?? String(args)}` }
+  }
+  const record = args as Record<string, unknown>
+  const unknownKeys = Object.keys(record).filter((key) => !(SAVE_KEYS as readonly string[]).includes(key))
+  if (unknownKeys.length > 0) return { ok: false, error: `${SAVE_COMMAND} 认不出这些键：${unknownKeys.join('、')}；只收 ${SAVE_KEYS.join('、')}` }
+  for (const key of SAVE_KEYS) {
+    if (!(key in record)) return { ok: false, error: `${SAVE_COMMAND} 缺键 "${key}"：三个键都要给，空串表示恢复默认` }
+    if (typeof record[key] !== 'string') return { ok: false, error: `${SAVE_COMMAND} 的 "${key}" 要是字符串，收到的是 ${typeof record[key]}` }
+  }
+  return {
+    ok: true,
+    values: {
+      fontSans: record[FONT_SANS_KEY] as string,
+      fontMono: record[FONT_MONO_KEY] as string,
+      customCss: record[CUSTOM_CSS_KEY] as string,
+    },
+  }
+}
+
 /** 命令总线把注销登记在本插件的上下文上，本插件卸载时三条命令自动注销 */
 function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
   const settings = ctx.gwbSettings
@@ -97,13 +121,20 @@ function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
     () => toKebabValues(readThemeSettingValues(ctx)),
   )
   commandBus.register(
-    { name: SAVE_COMMAND, description: '一次写齐三项外观设置', usage: '参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 恢复默认）', plugin: PACKAGE_NAME },
+    {
+      name: SAVE_COMMAND,
+      description: '一次写齐三项外观设置',
+      usage:
+        '参数 { "font-sans", "font-mono", "custom-css" }：三个键都必给、值都是字符串（空串 = 恢复默认）。参数不是对象、缺键、多了别的键、值不是字符串都回 ok:false，一项都不写',
+      plugin: PACKAGE_NAME,
+    },
     async (args) => {
-      const saveArgs = (args ?? {}) as Record<string, unknown>
+      const parsed = parseSaveArgs(args)
+      if (!parsed.ok) return { ok: false, error: parsed.error }
       // 逐项走 set：它自带「先 define 过才许写」的检查与原子写入
-      await settings.set(FONT_SANS_KEY, asText(saveArgs[FONT_SANS_KEY]))
-      await settings.set(FONT_MONO_KEY, asText(saveArgs[FONT_MONO_KEY]))
-      await settings.set(CUSTOM_CSS_KEY, asText(saveArgs[CUSTOM_CSS_KEY]))
+      await settings.set(FONT_SANS_KEY, parsed.values.fontSans)
+      await settings.set(FONT_MONO_KEY, parsed.values.fontMono)
+      await settings.set(CUSTOM_CSS_KEY, parsed.values.customCss)
       return { ok: true }
     },
   )
