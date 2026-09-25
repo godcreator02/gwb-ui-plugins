@@ -34,7 +34,8 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
    这些类型不在自己代码里手写，也不用 `as` 转成它们；peer 里外壳的版本要带 `./pane` 子路径（外壳 `package.json` 的 `exports` 里有它）。
 4. 窗格里有轮询、动画或媒体时，用 `args.shell.onVisibility((visible) => …)` 在 `false` 时暂停、`true` 时恢复。
    它注册时先回一次当前值；返回的注销函数在 `dispose` 里调。桌面切走后窗格不卸载，业务状态照常保留。
-5. `devkit.dev` 把这一版装进隔离 home。
+5. 把这一版装进隔离 home：`devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}`
+   （`packages` 必给，相对仓根的插件包目录）。
 
 **完成**：`devkit.cdp {"args":["<home 名>","cmd","shell.panes"]}` 的回执里有这个窗格，`entryId` 是本插件的条目、
 `kind` 是你写的那一类；`gwb.log` 有一行「窗格 `<id>`（…）登记上了（`<包名>`）」，没有点名这个窗格的 warn；
@@ -89,7 +90,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
    - 只用一次、不随主题变的装饰：任意值，如 `demo:bg-[#abc]`
 4. 按窗格宽度排版：窗格容器是容器查询的根，响应式用 `demo:@sm:`、`demo:@md:` 这类容器变体；官方组件里的
    视口断点（`sm:`、`md:`）要跟窗格宽度走的，改成容器变体。
-5. 需要一个跨插件共用、映射面里又没有的语义时，先找现有语义；确实要新增，就提给外壳的令牌表（UI 平台仓
+5. 需要一个跨插件共用、映射文件 `theme.reference.css` 里又没有的语义时，先找现有语义；确实要新增，就提给外壳的令牌表（UI 平台仓
    `gwb-ui-plugins` 的 `plugins/shell/src/tokens/`），外壳发版后把 peer 里外壳的下限升到带这个令牌的版本。
 
 **完成**：`pnpm build` 后 `pnpm check`，前缀测试通过，产物测试里「类选择器都带前缀」「`var()` 的 fallback
@@ -116,7 +117,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 1. `pnpm build`，再 `pnpm check`：产物测试与前缀测试检查的是这次构建出的 `dist/`。
 2. 颜色类白名单由 devkit 建仓模板的产物测试自带（`tests/artifact.test.ts` 里「颜色类只在白名单内」那一条）：
    白名单在测试时读取外壳 `theme.reference.css` 与本插件样式入口里的 `--color-*`。
-3. `devkit.dev` 把这一版装进隔离 home，回执 `ok: true`。
+3. `devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}` 把这一版装进隔离 home，回执 `ok: true`。
 4. 用 `devkit.cdp` 在那个 home 里逐项操作并截图（先点窗格标签再截图、量颜色前关掉过渡，做法见
    `skill.read {"name":"gwb-devkit","file":"references/evidence.md"}`）：
    - 亮、暗两套主题（状态栏的亮暗按钮）
@@ -168,10 +169,10 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 约定与容易出错的地方：
 
-- 五行少了任何一行，对应的那批类都编不出规则，构建照样通过：少了映射面，颜色类全空；少了 `tw-animate-css`，
+- 五行少了任何一行，对应的那批类都编不出规则，构建照样通过：少了映射文件，颜色类全空；少了 `tw-animate-css`，
   官方组件的 `animate-in` 一族全空
 - 插件的样式表只含本插件的工具类与本插件前缀的变量；页面的令牌值、preflight 与层顺序由外壳加载
-- 映射面没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
+- 映射文件里没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
 - CSS 前缀只含小写字母，`devkit.scaffold` 从插件短名去掉其他字符得到
 - 漏写前缀不报错、构建照样通过；前缀测试查得出漏写前缀的工具类，查不出 `group` / `peer` 标记类
 - 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的文件头注释重新核对键名
