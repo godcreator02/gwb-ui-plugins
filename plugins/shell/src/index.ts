@@ -178,9 +178,9 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 登记在本插件的 effect 上，本插件卸载时自动注销 */
+  /** 命令总线把注销登记在调用方（本插件）的上下文上，本插件卸载时自动注销 */
   private registerCommand(commandBus: GwbCommands, def: Omit<GwbCommandDef, 'plugin'>, handler: (args?: unknown) => unknown): void {
-    this.ctx.effect(() => commandBus.register({ ...def, plugin: PACKAGE_NAME }, handler))
+    commandBus.register({ ...def, plugin: PACKAGE_NAME }, handler)
   }
 
   private registerTableCommands(commandBus: GwbCommands): void {

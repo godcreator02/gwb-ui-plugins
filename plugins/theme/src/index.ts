@@ -85,32 +85,27 @@ function defineThemeSettings(settings: GwbSettingsApi): void {
   })
 }
 
+/** 命令总线把注销登记在本插件的上下文上，本插件卸载时三条命令自动注销 */
 function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
   const settings = ctx.gwbSettings
-  ctx.effect(() =>
-    commandBus.register(
-      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', plugin: PACKAGE_NAME },
-      () => buildStartupCss(readThemeSettingValues(ctx)),
-    ),
+  commandBus.register(
+    { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', plugin: PACKAGE_NAME },
+    () => buildStartupCss(readThemeSettingValues(ctx)),
   )
-  ctx.effect(() =>
-    commandBus.register(
-      { name: VALUES_COMMAND, description: '本插件三项设置的当前值', usage: '无参数', plugin: PACKAGE_NAME },
-      () => toKebabValues(readThemeSettingValues(ctx)),
-    ),
+  commandBus.register(
+    { name: VALUES_COMMAND, description: '本插件三项设置的当前值', usage: '无参数', plugin: PACKAGE_NAME },
+    () => toKebabValues(readThemeSettingValues(ctx)),
   )
-  ctx.effect(() =>
-    commandBus.register(
-      { name: SAVE_COMMAND, description: '一次写齐三项外观设置', usage: '参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 恢复默认）', plugin: PACKAGE_NAME },
-      async (args) => {
-        const saveArgs = (args ?? {}) as Record<string, unknown>
-        // 逐项走 set：它自带「先 define 过才许写」的检查与原子写入
-        await settings.set(FONT_SANS_KEY, asText(saveArgs[FONT_SANS_KEY]))
-        await settings.set(FONT_MONO_KEY, asText(saveArgs[FONT_MONO_KEY]))
-        await settings.set(CUSTOM_CSS_KEY, asText(saveArgs[CUSTOM_CSS_KEY]))
-        return { ok: true }
-      },
-    ),
+  commandBus.register(
+    { name: SAVE_COMMAND, description: '一次写齐三项外观设置', usage: '参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 恢复默认）', plugin: PACKAGE_NAME },
+    async (args) => {
+      const saveArgs = (args ?? {}) as Record<string, unknown>
+      // 逐项走 set：它自带「先 define 过才许写」的检查与原子写入
+      await settings.set(FONT_SANS_KEY, asText(saveArgs[FONT_SANS_KEY]))
+      await settings.set(FONT_MONO_KEY, asText(saveArgs[FONT_MONO_KEY]))
+      await settings.set(CUSTOM_CSS_KEY, asText(saveArgs[CUSTOM_CSS_KEY]))
+      return { ok: true }
+    },
   )
 }
 
