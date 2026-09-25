@@ -7,10 +7,9 @@ export interface RuntimeVersions {
   chrome: string
 }
 
-/** `gwbKernel` 上报版本的两项 */
+/** `gwbKernel` 上报版本的那一项 */
 export interface KernelVersions {
   version: string
-  launcherVersion?: string
 }
 
 /** node 侧：内核报的版本、本包清单原文、运行时版本 → `Versions` */
@@ -18,7 +17,6 @@ export function versionsOf(kernel: KernelVersions, manifest: string, runtime: Ru
   const shell = (JSON.parse(manifest) as { version: string }).version
   return {
     kernel: kernel.version,
-    ...(kernel.launcherVersion === undefined ? {} : { launcher: kernel.launcherVersion }),
     shell,
     electron: runtime.electron,
     node: runtime.node,
@@ -26,15 +24,12 @@ export function versionsOf(kernel: KernelVersions, manifest: string, runtime: Ru
   }
 }
 
-/** 浏览器侧：状态栏上只写内核（gwb-kernel）版本，安装包（gwb-electron）等其余版本在悬停提示里一行一项列全 */
+/** 浏览器侧：状态栏上只写内核（gwb-kernel）版本，其余版本在悬停提示里一行一项列全 */
 export function versionCell(versions: Versions): { label: string; title: string } {
-  const launcherLine =
-    versions.launcher === undefined ? 'gwb-electron 未知：内核是从源码启动的，或安装包早于 0.3.1' : `gwb-electron ${versions.launcher}（安装包）`
   return {
     label: `gwb-kernel ${versions.kernel}`,
     title: [
       `gwb-kernel ${versions.kernel}（内核）`,
-      launcherLine,
       `外壳 ${versions.shell}`,
       `Electron ${versions.electron} · Node ${versions.node}`,
       `Chromium ${versions.chrome}`,

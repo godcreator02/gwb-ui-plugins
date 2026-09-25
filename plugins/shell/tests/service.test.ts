@@ -64,7 +64,7 @@ function fakeData(initial?: unknown) {
   }
 }
 
-async function bootShell(options: { layout?: unknown; launcherVersion?: string } = {}) {
+async function bootShell(options: { layout?: unknown } = {}) {
   const root = new Context()
   const logs: Message[] = []
   root.logger.exporter({ export: (message) => void logs.push(message) })
@@ -73,7 +73,6 @@ async function bootShell(options: { layout?: unknown; launcherVersion?: string }
   root.provide('gwbKernel', {
     dataDir: 'D:/fake-home',
     version: '9.9.9',
-    ...(options.launcherVersion === undefined ? {} : { launcherVersion: options.launcherVersion }),
     emit: (payload: unknown) => void emitted.push(payload),
     setShell: (url: string) => {
       shellEntries.push(url)
@@ -232,14 +231,9 @@ describe('shell.env', () => {
     expect((env['styles'] as string[])[0]).toMatch(/^file:\/\/\/.*\/fake\/gwb-shell\/dist\/theme\.css$/)
     expect((env['styles'] as string[])[1]).toMatch(/\/dockview\.css$/)
     expect((env['styles'] as string[])[2]).toMatch(/\/style\.css$/)
+    expect(Object.keys(env['versions'] as object).sort()).toEqual(['chrome', 'electron', 'kernel', 'node', 'shell'])
     expect(env['versions']).toMatchObject({ kernel: '9.9.9' })
-    expect(env['versions']).not.toHaveProperty('launcher')
     expect(env).not.toHaveProperty('startupCss')
-  })
-
-  it('内核报了 launcherVersion：versions.launcher 就是它', async () => {
-    const env = (await (await bootShell({ launcherVersion: '0.3.1' })).call('shell.env')) as { versions: Record<string, unknown> }
-    expect(env.versions).toMatchObject({ kernel: '9.9.9', launcher: '0.3.1' })
   })
 
   it('theme.startupCss 回非空字符串时带上 startupCss', async () => {

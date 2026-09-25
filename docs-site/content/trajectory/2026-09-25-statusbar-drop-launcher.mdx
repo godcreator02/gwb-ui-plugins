@@ -1,0 +1,24 @@
+---
+born-at: 2026-09-25T17:50
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 状态栏去掉安装包版本
+domain: shell
+---
+
+supersedes:: [状态栏只写内核版](2026-09-25-statusbar-kernel-only.md)
+
+## 背景
+
+内核 0.7.0 删掉了内核服务上的 `gwbKernel.launcherVersion`（内核仓轨迹卡 `2026-09-25-drop-launcher-version`）：
+启动器 0.3.1 从没发布过，这个值在所有 home 里都是 undefined，外壳悬停提示那一行一直写「gwb-electron 未知」。
+外壳 peer 里内核包要改成 `^0.7.0`，再读这个字段已经没有来源。
+
+## 结论与边界
+
+外壳 0.14.0 删掉安装包版本这一项：`shell.env` 回执的 `versions` 只剩 `kernel`、`shell`、`electron`、`node`、`chrome`，
+状态栏悬停提示从五行变成四行（内核、外壳、Electron · Node、Chromium）。`versions.launcher` 从回执里删掉是回执形状变了，
+按 `gwb-release` 升次版本号。删之前在 `D:\unitfolders` 下搜过 `versions.launcher` 与 `launcherVersion`，
+除本仓外只有各仓收件页与内核仓轨迹卡提到，没有别的插件的代码读它。
+
+被取代的那张卡里「状态栏上只写 `gwb-kernel <内核版>`」仍然成立。以后要显示安装包版本，得先由内核或别的插件重新提供这个值。

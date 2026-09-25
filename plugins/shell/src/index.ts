@@ -226,7 +226,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: ENV_COMMAND,
         description: '外壳浏览器侧开机要的环境（home、样式表的地址、用户外观样式、版本）',
         usage:
-          '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, launcher?, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），launcher 取 gwbKernel.launcherVersion（安装包的版本，内核从源码启动或安装包早于 0.3.1 时没有这一项），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
+          '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
       },
       async (): Promise<ShellEnv> => {
         const userStartupCss = await startupCss(commandBus)
