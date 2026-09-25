@@ -17,49 +17,49 @@ description: 别的仓在用这个仓的东西时投来的意见——带日期�
 <碰到什么、期望怎样、觉得该改哪儿>
 ```
 
-处理完由本仓删掉那一节——这里是周转区不是档案，定下来的判据落轨迹卡。本仓自己反复做的操作候选
+处理完由本仓删掉那一节——这里是临时存放处不是档案，定下来的判据写进轨迹卡。本仓自己反复做的操作候选
 不投这儿，在同区的 [孵化](/feedback/hatch)。
 
-## 2026-09-13 总控台会话：首开后的自动落盘没发生（隔离 home 上连续三个开机）
+## 2026-09-13 总控台会话：第一次开机后布局没有自动保存到磁盘（隔离 home 上连续三次开机）
 
-来源：总控台会话（验「新建桌面出生为空」时撞见，shell 0.4.4 与 0.4.5-dev 都在）。
+来源：总控台会话（验证「新建桌面新建时为空」时遇到，shell 0.4.4 与 0.4.5-dev 都有这个问题）。
 
-现象：`devkit.home.new` 起的隔离 home（窗口从不进前台），开机铺完默认窗格之后，
-**防抖落盘从未发生**——`data/shell/layout.json` 不存在，`gwb.log` 里 `shell.layout.save`
-只有「登记上了」没有一次执行。直到切桌面 / 新建桌面触发**同步 flush** 才第一次落盘。
-同一时段零报错，状态栏也没有「布局没存上」（说明 promise 没走到失败分支，更像定时器
-根本没醒）。
+现象：`devkit.home.new` 启动的隔离 home（窗口从不进前台），开机按默认布局打开窗格之后，
+**防抖保存从未执行**——`data/shell/layout.json` 不存在，`gwb.log` 里 `shell.layout.save`
+只有「登记上了」没有一次执行。直到切桌面 / 新建桌面触发**同步 flush** 才第一次写进文件。
+同一时段没有任何报错，状态栏也没有「布局没存上」（说明 promise 没走到失败分支，更像定时器
+根本没触发）。
 
-两个怀疑，未判别：
+两个怀疑，还没区分出是哪个：
 
-1. occluded 窗口的计时器节流——devkit 起 home 带了 `--disable-backgrounding-occluded-windows`，
-   但那面挡的是渲染判隐藏，`setTimeout` 节流是否也被挡没查过
+1. occluded 窗口的计时器节流——devkit 启动 home 时带了 `--disable-backgrounding-occluded-windows`，
+   但这个开关阻止的是渲染层把窗口判为隐藏，`setTimeout` 节流是否也被阻止没查过
 2. `onWellReady` 里订阅 `onDidLayoutChange` 排在 `openDefaults` **之后**——若 dockview 在
-   `addPanel` 里同步发事件，铺默认那三下全发生在订阅存在之前，一个都收不到
+   `addPanel` 里同步发事件，打开默认窗格的那三次调用全发生在订阅之前，一个事件都收不到
 
-复现：起一个隔离 home → 什么都不动 → 读 `<home>/data/shell/layout.json`（没有）。
-default home 平时看不见这条，因为人一交互（开/关/拖格）就有活订阅里的事件，照常落盘。
+复现：启动一个隔离 home → 什么都不动 → 读 `<home>/data/shell/layout.json`（没有）。
+default home 平时看不见这条，因为人一操作（开、关、拖动窗格）就会产生订阅建立之后的事件，照常保存到磁盘。
 
-判别实验也现成：往 `onWellReady` 里订阅之后手动 `api.addPanel` 一次看 `scheduleSave`
-醒不醒——醒则是怀疑 2，不醒则是怀疑 1。
+区分两个怀疑的实验现在就能做：往 `onWellReady` 里订阅之后手动 `api.addPanel` 一次，看 `scheduleSave`
+有没有触发——触发了就是怀疑 2，没触发就是怀疑 1。
 
-## 2026-09-17 总控台会话：窗格容器的 data-gwb-plugin 取自布局存档，包改名后一直是旧名
+## 2026-09-17 总控台会话：窗格容器的 data-gwb-plugin 取自布局文件，包改名后一直是旧名
 
-来源：总控台会话（修 default 里「单元」格整片失样时查出来的；unit-folder 那头已在 0.6.0 改用类名前缀，
+来源：总控台会话（修 default 里「单元」窗格整片没有样式时查出来的；unit-folder 插件已在 0.6.0 改用类名前缀，
 不再依赖这个属性，所以这边不急）。
 
-现象：`PluginPane` 挂的 `data-gwb-plugin={pluginKey}`，`pluginKey` 来自 dockview 面板 params，也就是
-布局存档里存下的那份，不是现场查注册表。default 的 `shell.layout.get` 里，换 scope 之前开的格全都还是
-`@godcreator02/gwb-*`（单元、日志、站内预览、站监控、外观、插件源），而 `entryId` 没变、格照样挂得上。
+现象：`PluginPane` 加在容器上的 `data-gwb-plugin={pluginKey}`，`pluginKey` 来自 dockview 面板 params，也就是
+布局文件里保存的那份，不是当场查注册表。default 的 `shell.layout.get` 里，换 scope 之前开的窗格全都还是
+`@godcreator02/gwb-*`（单元、日志、站内预览、站监控、外观、插件源），而 `entryId` 没变、窗格照样能挂载。
 于是属性上的「身份」对不上现在的包名，谁也不报错。
 
-影响：前缀方案下属性「只是身份标记」，样式不受影响；但注释里说它是给探针、样式调试「认件的把手」，
-这个把手在老存档上指错了件。另外 `saved` 里那套叫「88」的布局引的 plugins / hello / status 是早没了的件。
+影响：前缀方案下属性「只是身份标记」，样式不受影响；但注释里说它是给探针、样式调试「认插件的标记」，
+这个标记在旧的布局文件上指向了错的插件。另外 `saved` 里那套叫「88」的布局引用的 plugins / hello / status 是早就不存在的插件。
 
-建议（未判，供参考）：挂载时用 `fetchPaneModule` 回来的现场包名覆盖 params 里那份；或读存档时按
-`entryId` 把 `pluginKey` 刷成当前值，顺手在下次落盘时写回。
+建议（还没判断，供参考）：挂载时用 `fetchPaneModule` 返回的当前包名覆盖 params 里那份；或读布局文件时按
+`entryId` 把 `pluginKey` 更新成当前值，在下次保存时一并写回文件。
 
-复现：`shell.layout.get` 看任何一个换 scope 之前开过的格的 `params.pluginKey`。
+复现：`shell.layout.get` 看任何一个换 scope 之前开过的窗格的 `params.pluginKey`。
 
 ## 2026-09-24 要适配内核 0.5：词汇表包并进内核包，页面 importmap 里只剩内核包提供的包名
 
@@ -77,9 +77,9 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 
 ## 2026-09-24 要跟插件管理 0.9：用到的插件改写进 peer，list 换成 unmetPeers，update-all 回执加 dependents
 
-来源：总控台会话（devkit 仓规格「插件之间写 peer」，插件管理 0.9.0 与 devkit 0.18.15 同批发）。
+来源：总控台会话（devkit 仓规格「插件之间写 peer」，插件管理 0.9.0 与 devkit 0.18.15 同一批发布）。
 
-插件管理 0.9.0 是破坏性版本，baseui 的 dev 写的 `^0.8.0` 发完就出范围，下次发版 `devkit.release` 会拦。要做的：
+插件管理 0.9.0 是破坏性版本，baseui 的 dev 写的 `^0.8.0` 在它发布后就不在范围内，下次发版 `devkit.release` 会拒绝。要做的：
 
 1. **依赖改写法**：插件用到的别的插件（经 `ctx.inject` 用它的服务、或 import 它的类型）写进 `peerDependencies`，
    写 `^<源上 latest>`；只是可选使用的在 `peerDependenciesMeta` 标 `optional: true`。dev 里不再写这些插件。
@@ -97,7 +97,7 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 
 ## 2026-09-25 要跟 devkit 0.19：gwb.provides 不用写了
 
-来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同批发）。
+来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同一批发布）。
 
 devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成从 home 里各包的 `.d.ts` 现读：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
 
@@ -110,7 +110,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 上一条「要适配内核 0.5」照做，但版本改成跟 0.6：内核 0.6.0 把页面的 importmap 写死在页面入口里，只有 `react`、`react/jsx-runtime`、
 `react-dom`、`react-dom/client` 四个包名；内核包清单的 `gwb.shared` 字段和 `./react*` 出口都删了。shell 已在 0.13.10 照做（peer `^0.6.1`，名单写死在 `build.ts` 的 `PAGE_IMPORTMAP_NAMES`），baseui、theme 还没做。所以：
 
-- peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在跑内核 0.6.0 的隔离 home 里验过再发
+- peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在运行内核 0.6.0 的隔离 home 里验证过再发布
 - 浏览器端构建（`build.ts` 或 `tools/build-plugin.ts`）里从内核包清单读 `gwb.shared` 的那段删掉，`external` 直接写上面四个名字；
   产物测试里读 `gwb.shared` 的名单一样写死。没有浏览器端产物的包只改 peer
 - 等 devkit 发了认 0.6 的新版再发：devkit 现在的发版检查还读内核包的 `gwb.shared`，装上 0.6 会被拒（已投 devkit 收件页）
@@ -124,7 +124,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - peer 里只许三类：按值 import 的 `cordis`、内核包 `@godcreator/gwb-kernel-desktop`、别的插件（清单 `keywords` 含 `gwb-plugin`）。库、接口定义包、构建工具照旧写 dev 或 `dependencies`
 - 清单字段 `gwb.requires` 已删：插件管理不再报它，发版检查也不再查
 - 发版检查（devkit 0.18.15 起）：peer 里每个 `@godcreator` 插件的范围要是 `^x.y.z`，并且和源上 `latest` 在同一条线（0.x 比次版本号，≥1 比主版本号），不在同一条线就拒；peer 里有这三类以外的包也拒
-- home 里关掉了 pnpm 自动补装 peer：插件管理、`devkit.home.new`、`devkit.dev` 在 home 里运行 pnpm 时都带环境变量 `pnpm_config_auto_install_peers=false`。peer 里的插件 home 里没装，不会被顺带装上，由 `plugin-manager.list` 每个包的 `unmetPeers`（`{ pkg, range, installed? }`）报出来，只报告、不拦加载；在隔离 home 里验证时，peer 里的插件要自己装上
+- home 里关掉了 pnpm 自动补装 peer：插件管理、`devkit.home.new`、`devkit.dev` 在 home 里运行 pnpm 时都带环境变量 `pnpm_config_auto_install_peers=false`。peer 里的插件 home 里没装，不会被顺带装上，由 `plugin-manager.list` 每个包的 `unmetPeers`（`{ pkg, range, installed? }`）报出来，只报告、不阻止加载；在隔离 home 里验证时，peer 里的插件要自己装上
 - 升级一个插件时，peer 写了它的插件会被 pnpm 装进新目录，插件管理在同一次升级里把它们一起重新加载（回执里的 `dependents`）
 
 本仓要改的：
@@ -140,7 +140,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 
 ## 2026-09-25 要跟内核 0.7：peer 里内核包改成 ^0.7.0，外壳删掉状态栏的安装包版本
 
-来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代投。
+来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代为投递。
 
 内核包 `@godcreator/gwb-kernel-desktop` 马上从 0.6.2 发 0.7.0，这是破坏性版本：内核服务删掉了 `gwbKernel.launcherVersion`，home 里的 `runtime.json` 删掉了 `appDir`（内核仓轨迹卡 `2026-09-25-drop-launcher-version`）。此前 0.6.1、0.6.2 还给页面加了导航锁（内核仓 `docs-site/content/docs/seams/ipc.mdx` 的「页面保证」）：
 
@@ -170,8 +170,8 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 要做的：
 
 1. 删掉外壳里 `launcherVersion` 那一项（见上）
-2. 内核 0.7.0 发布后，在装了 0.7.0 的隔离 home 里把三个插件验一遍，再把 peer 里内核包的范围改成 `^0.7.0`，版本号照 `gwb-release` 升，然后发版。上面「内核直接跟 0.6」那条里 baseui、theme 还没做的，peer 直接写 `^0.7.0`，不用先改到 0.6；那条里别的改动照做
-3. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒发
+2. 内核 0.7.0 发布后，在装了 0.7.0 的隔离 home 里把三个插件验证一遍，再把 peer 里内核包的范围改成 `^0.7.0`，版本号照 `gwb-release` 升，然后发版。上面「内核直接跟 0.6」那条里 baseui、theme 还没做的，peer 直接写 `^0.7.0`，不用先改到 0.6；那条里别的改动照做
+3. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒绝发布
 4. 以后页面里要打开外部网页，写 `target="_blank"` 或调用 `window.open(url)`，内核交给系统浏览器；不带 `target` 的链接点了没有反应
 
 ## 2026-09-25 要跟 devkit 0.21：packages 必给，要发的包写 publishConfig.registry
@@ -181,9 +181,9 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 `@godcreator/gwb-devkit` 0.21.0 已发到团队源。这是破坏性版本，删掉了两个只为旧仓留着的缺省值（devkit 仓轨迹卡 `2026-09-25-drop-legacy-defaults`）：
 
 1. **`devkit.dev` 与 `devkit.release` 的 `packages` 必给**：非空数组，每一项是相对仓根的包目录，如 `["plugins/<短名>"]`；`devkit.release` 的按依赖顺序排，被依赖的排前面。不给或写错直接拒。这两条命令不再把仓根当成插件包：仓根本身就是插件包的仓（仓根 `package.json` 就是插件，`pnpm-workspace.yaml` 里没有 `plugins/*`）要先改成 workspace 布局才能用——插件放在 `plugins/<短名>/`，仓根是 `"private": true` 的 `package.json`，照 devkit 仓或 `devkit.scaffold` 新建的仓的样子。devkit 不替仓改布局
-2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒发。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（devkit 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
+2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒绝发布。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（devkit 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
 
-同一天还发了插件管理 0.12.1，修了发出去的包里带着过时文件的问题，用它的插件不用改。另外有一项早就可以做的清理：命令总线 `@godcreator/gwb-commands` 0.4.6 起（源上现在是 0.5.0），`gwbCommands.register` 自己把注销挂在调用方的上下文上，调用方卸载时命令自动注销，登记命令不用再在外面包一层 `ctx.effect(() => ….register(…))`。包着也只注销一次、照样能用，删不删随意；登记说明书的 `gwbSkills.register` 不是命令总线的方法，外面那层 `effect` 要留着。
+同一天还发了插件管理 0.12.1，修了发出去的包里带着过时文件的问题，用它的插件不用改。另外有一项早就可以做的清理：命令总线 `@godcreator/gwb-commands` 0.4.6 起（源上现在是 0.5.0），`gwbCommands.register` 自己把注销登记在调用方的上下文上，调用方卸载时命令自动注销，登记命令不用再在外面包一层 `ctx.effect(() => ….register(…))`。包着也只注销一次、照样能用，删不删随意；登记说明书的 `gwbSkills.register` 不是命令总线的方法，外面那层 `effect` 要留着。
 
 本仓的情况：
 
@@ -194,6 +194,6 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 
 要做的：
 
-1. 三个包的 `package.json` 写上团队源的 `publishConfig.registry`，下次发版前做完，不写 `devkit.release` 拒发
+1. 三个包的 `package.json` 写上团队源的 `publishConfig.registry`，下次发版前做完，不写 `devkit.release` 拒绝发布
 2. 以后调 `devkit.dev`、`devkit.release` 都带 `packages`；说明书 `gwb-shell` 那两处补上 `packages` 的写法，改完 `pnpm doc:render`
 3. 可选清理随下次改到那几个文件时做

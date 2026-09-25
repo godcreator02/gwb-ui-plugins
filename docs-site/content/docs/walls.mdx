@@ -71,7 +71,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 **根因**：「先清空容器、后卸载 React 树」，两层各有一处。
 1. 外壳层：旧 `dispose` 把 `reactRoot.unmount()` 放在 Promise 链上（微任务），同步执行的那部分已经
    清空了根节点，内核页面根随后也清空一遍；卸载 React 树发生在清空之后
-2. 窗格层：`PluginPane` 的清理 effect 跑在外壳的 React 提交里，插件的 `dispose` 在那里同步调
+2. 窗格层：`PluginPane` 的清理 effect 在外壳的 React 提交里执行，插件的 `dispose` 在那里同步调
    `root.unmount()` 会被 React 推迟，插件紧接着执行的 `container.textContent = ''` 先执行了。普通关窗格
    也走这条路径
 
@@ -165,7 +165,7 @@ shadcn 的 button 基础类里有 `transition-all`。切换 `.dark` 之后立刻
 读到的是过渡中间色：暗色 `--primary` 应该是 `oklch(0.92 …)`，第一次验收读出来是
 `oklab(0.223 …)`，看着像「切换没生效」。
 
-**当时的办法是「等 600ms 再读」，这是错的，后来就出了问题**：同一套代码换了个组件重跑，
+**当时的办法是「等 600ms 再读」，这是错的，后来就出了问题**：同一套代码换了个组件重新运行，
 600ms 之后读到的是 `oklab(0.21 …)`——**过渡的起点**，一点没变。原因是探针脚本把窗口
 **最小化**启动，而 Chromium 会**节流后台窗口的动画**，等多久都可能停在起点。上一次
 读对纯属碰巧。
