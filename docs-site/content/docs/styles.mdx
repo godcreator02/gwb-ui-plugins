@@ -244,7 +244,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 **第六步：开一个窗格时**——从注册表里取这个插件注册时提供的两个地址 → **先注入它的样式表、等它加载完成**
 → 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="137-165" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="124-154" */}
 
 最后一步里「等它加载完成再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 发生在样式表加载完成之前，那一瞬间是一堆没有样式的元素。这两件事因此放在同一个清理单元里——拆成两处
@@ -449,7 +449,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="209-211" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="198-200" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：

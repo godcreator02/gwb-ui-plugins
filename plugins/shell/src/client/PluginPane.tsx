@@ -124,10 +124,12 @@ export function PluginPane({
     void (async () => {
       try {
         const target = paneTargetIn(await fetchPanes(host), entryId, paneId)
+        // 身份标记取注册表里此刻的包名：面板 params 里的 pluginKey 是开窗格那一刻存进布局文件的，包改名后还是旧名
+        container.setAttribute('data-gwb-plugin', target.pkg)
         // 插件可以没有样式表
         if (target.style !== undefined) await loadStyle(target.style)
         if (disposed) return
-        const mountPane = await importMountPane(target.client, pluginKey)
+        const mountPane = await importMountPane(target.client, target.pkg)
         if (disposed) return
         // 没传参数就不给这一项，插件据 `pane.params === undefined` 判断
         const openParams = paneParamsRef.current
@@ -194,8 +196,8 @@ export function PluginPane({
 
   return (
     <div className="shell:relative shell:h-full">
-      {/* `@container` 让窗格成为容器查询的根，插件的 `@md:` 按窗格宽度判；`data-gwb-plugin` 只是身份标记，不参与选择器 */}
-      <div ref={hostRef} data-gwb-plugin={pluginKey} className="shell:@container shell:h-full shell:overflow-auto" />
+      {/* `@container` 让窗格成为容器查询的根，插件的 `@md:` 按窗格宽度判；身份标记 `data-gwb-plugin` 由挂载 effect 按注册表写上，不参与选择器 */}
+      <div ref={hostRef} className="shell:@container shell:h-full shell:overflow-auto" />
       {!ready && (
         <p className="shell:text-muted-foreground shell:pointer-events-none shell:absolute shell:inset-x-0 shell:top-2 shell:m-0 shell:text-center shell:text-sm">
           加载中…

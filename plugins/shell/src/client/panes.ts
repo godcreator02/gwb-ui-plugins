@@ -3,8 +3,9 @@ import type { PaneKind } from '../openable.js'
 import { PANES_COMMAND, PLUGINS_COMMAND } from '../protocol.js'
 import { wellHub } from './well-hub.js'
 
-/** 挂载一个窗格要的东西，全部取自当场的注册表 */
+/** 挂载一个窗格要的东西，全部取自当场的注册表；`pkg` 是此刻的包名，不是布局文件里保存的那份 */
 export interface PaneTarget {
+  pkg: string
   client: string
   style: string | undefined
   kind: PaneKind
@@ -15,7 +16,7 @@ export function paneTargetIn(rows: PaneRow[], entryId: string, paneId: string): 
   const row = rows.find((r) => r.entryId === entryId && r.id === paneId)
   if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——插件卸载了？`)
   if (row.client === undefined) throw new Error(`${row.pkg} 注册窗格 ${paneId} 时没报浏览器侧的地址（client）`)
-  return { client: row.client, style: row.style, kind: row.kind }
+  return { pkg: row.pkg, client: row.client, style: row.style, kind: row.kind }
 }
 
 /**
