@@ -144,3 +144,38 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - 经命令总线登记命令也算用到，命令总线写进 peer、必需
 
 随适配内核 0.6 那一轮一起改、一起发，版本号照说明书 `gwb-release` 升。规矩正本是 devkit 文档站的规则页「用到的插件写 peer」与说明书 `gwb-release`（`run skill.read {"name":"gwb-release"}`）。
+
+## 2026-09-25 要跟插件管理 0.11：内核包与 cordis 不再出现在 list、outdated 里，update-all 回执去掉 kernelManaged
+
+来源：总控台会话（devkit 仓 eeada3d，插件管理 0.11.0）。
+
+插件管理 0.11.0 改了这几处：
+
+- `plugin-manager.list` 不再列出内核包 `@godcreator/gwb-kernel-desktop` 与 `cordis`。以前它们被报成「装了包、但 home 里没有对应条目」，插件管理窗格给这种包显示的提示是「不是插件的包不该装进 home，卸载它」，旁边还有卸载按钮
+- `plugin-manager.outdated` 不再返回这两个包，所以「全部更新 N」的数字和确认框里也不再算上它们
+- `plugin-manager.uninstall` 遇到这两个包直接报错
+- `plugin-manager.update-all` 的回执删掉了 `kernelManaged` 字段；`only` 里写了这两个包直接报错
+
+窗格代码不用改：它读的 `list`、`outdated` 里已经没有这两行，目前也没有读 `kernelManaged`。要做的只有一件：baseui 的 devDependencies 里插件管理的范围（现在是 `^0.8.0`）下次发版时改掉——改成 `^0.11.0`，插件管理 0.12 发布之后则照下一节改成 `^0.12.0`。
+
+现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
+
+## 2026-09-25 要跟插件管理 0.12：plugin-manager.update-all 改名为 plugin-manager.update，升级全部要明确传 {"all":true}
+
+来源：总控台会话（devkit 仓 e6cf2b2，插件管理 0.12.0，破坏性改动）。
+
+插件管理 0.12.0 改了这几处：
+
+- `plugin-manager.update-all` 改名为 `plugin-manager.update`，旧名字不保留，也没有别名
+- 参数三种写法，必须恰好给一种：`{"all":true}` 把所有过期的包升到 latest；`{"only":["<包名>",…]}` 只升这几个包；`{"specs":{"<包名>":"<版本写法>"}}` 按给定的版本写法安装（给 `devkit.dev` 用，不整页重载）。不给参数直接报错
+- `all` 与 `only` 的行为、回执形状都和原来的 `update-all` 相同（0.11 起回执里没有 `kernelManaged`），升级完照旧整页重载
+
+插件管理升到 0.12 之后，窗格里「全部更新」和单个包的「更新」按钮会报「没有这条命令」。要改的地方：
+
+- `plugins/baseui/src/client/panes/plugin-manager/index.tsx`：常量 `UPDATE_ALL = 'plugin-manager.update-all'`（现在在第 102 行）改成 `'plugin-manager.update'`；调用处（现在在第 951 行，不给 `only` 时传的是 `undefined`）改成「全部更新」传 `{"all":true}`、单个包传 `{"only":[<包名>]}`
+- 同一个文件第 82 行的注释、第 517 行按钮 `title` 文字里的命令名
+- `./update-all` 模块（`describeUpdateAll`）视需要改名；它的注释里提到插件管理的回执类型名 `UpdateAllResult`，插件管理那边已改名为 `UpdateResult`
+- baseui 的 devDependencies 里插件管理的范围改成 `^0.12.0`
+- 文档：`docs-site/content/docs/shell.mdx`、`walls.mdx`、`styles.mdx` 里提到 `update-all` 的地方
+
+现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
