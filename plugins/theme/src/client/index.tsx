@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { HostBridge, PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
 import { buildStartupCss } from '../startup-css.js'
+import { fieldValuesOf, saveArgsOf } from './values.js'
 
 /**
  * 「外观」窗格：输入后直接改页面上的启动样式表预览，点保存才写入（`theme.save`）；关窗格时退回已保存的样子，
@@ -13,12 +14,6 @@ const SAVE_COMMAND = 'theme.save'
 
 /** 与外壳浏览器侧的同一个字符串，两边各写一份、不互相 import */
 const STYLE_ID = 'gwb-theme-style'
-
-interface ValuesReply {
-  'font-sans'?: unknown
-  'font-mono'?: unknown
-  'custom-css'?: unknown
-}
 
 /** 按 id 查找，没有就新建，页面上始终只有一张 */
 function applyToPage(css: string): void {
@@ -54,12 +49,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
           setNotice(`读取当前设置失败：${reply.error ?? JSON.stringify(reply)}`)
           return
         }
-        const v = reply.data as ValuesReply
-        const next = {
-          fontSans: typeof v['font-sans'] === 'string' ? v['font-sans'] : '',
-          fontMono: typeof v['font-mono'] === 'string' ? v['font-mono'] : '',
-          customCss: typeof v['custom-css'] === 'string' ? v['custom-css'] : '',
-        }
+        const next = fieldValuesOf(reply.data as Record<string, unknown>)
         setFontSans(next.fontSans)
         setFontMono(next.fontMono)
         setCustomCss(next.customCss)
@@ -93,11 +83,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
   const save = async (): Promise<void> => {
     setNotice('保存中…')
     try {
-      const reply = (await host.call(SAVE_COMMAND, {
-        'font-sans': fontSans,
-        'font-mono': fontMono,
-        'custom-css': customCss,
-      })) as { ok?: boolean; error?: string }
+      const reply = (await host.call(SAVE_COMMAND, saveArgsOf({ fontSans, fontMono, customCss }))) as { ok?: boolean; error?: string }
       if (reply.ok !== true) {
         setNotice(`保存失败：${reply.error ?? JSON.stringify(reply)}`)
         return
