@@ -28,12 +28,15 @@
   },
   "//peerDependencies": "内核包的 ^ 范围就是这个插件兼容哪个内核。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.0"
+    "@godcreator/gwb-kernel-desktop": "^0.7.0"
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   },
   "devDependencies": {
     "@godcreator/gwb-logger": "^0.4.3",
     "@godcreator/gwb-plugin-api": "^0.4.0",
-    "@godcreator/gwb-plugin-manager": "^0.8.0",
+    "@godcreator/gwb-plugin-manager": "^0.13.0",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@tailwindcss/cli": "^4.3.0",
