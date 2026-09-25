@@ -713,18 +713,18 @@
   "content/docs/system-map.mdx": {
     "../plugins/baseui/package.json:28-41": {
       "kind": "git",
-      "blob": "2bd9ddd1cbffb33c223665be663d55cc476d2c9b",
-      "commit": "3d88dcd18d239a0e4a5e652947c367efb6948a5d",
+      "blob": "324fc185207f4e33513b23958bc01d9bb30ac91d",
+      "commit": "6237fccf5fe35831ddafcd6d50ad379853a65fad",
       "lines": [
         28,
         41
       ],
-      "hash": "529ec97a753ec9d40d98cbe45b5ac1f9df33040825e6e091b23667b54ae8f695"
+      "hash": "1437c340fe54d3b5de7195c277b899fa174d1cdaff8a633fd8fdce32a9721034"
     },
     "../plugins/shell/package.json:33-44": {
       "kind": "git",
-      "blob": "ba5fcd90141c6a74911213d564df974bfbbb6953",
-      "commit": "3d88dcd18d239a0e4a5e652947c367efb6948a5d",
+      "blob": "bbcad140d7239a7771ccd7f82bbbc0c334e07df0",
+      "commit": "6237fccf5fe35831ddafcd6d50ad379853a65fad",
       "lines": [
         33,
         44
