@@ -4,21 +4,22 @@
 
 ## 是什么
 
-gwb 工作台的 **UI 平台**：外壳（`shell`，视觉契约的令牌表随它的包发；页面用的 react 由内核包提供）、
-外观插件（`theme`）、基础插件的官方窗格集（`baseui`——日志与插件管理
-两个窗格）。2026-09-12 三仓拆分从 `gwb-base-plugins` 分出；要换 shell 就是整套换这个平台，
+gwb 工作台的 **UI 平台**：外壳（`shell`，视觉契约的令牌表随它的包发布；页面用的 react 由内核包提供）、
+外观插件（`theme`）、基础插件的官方窗格集（`baseui`——日志与插件管理两个窗格）。要换 shell 就是整套换这个平台，
 不承诺单换。
 
 ## 怎么装（装进一个 home）
 
-```powershell
-cd <home 目录>
-pnpm add @godcreator/gwb-shell @godcreator/gwb-theme @godcreator/gwb-baseui
-# cordis.yml 里给 shell / theme / baseui 各加一条条目，重启内核
+在工作台里给三个包各调一次 `plugin-manager.install`：
+
+```text
+plugin-manager.install {"pkg":"@godcreator/gwb-shell"}
+plugin-manager.install {"pkg":"@godcreator/gwb-theme"}
+plugin-manager.install {"pkg":"@godcreator/gwb-baseui"}
 ```
 
-`baseui` 的窗格按 core 插件在不在自动增减：装了 `gwb-logger` 就有日志窗格，装了
-`gwb-plugin-manager` 就有插件管理窗格，缺谁少画谁。
+`baseui` 的窗格随 core 插件装没装增减：装了 `gwb-logger` 就有日志窗格，装了 `gwb-plugin-manager` 就有
+插件管理窗格，缺了哪个就不显示对应的窗格。
 
 ## 怎么用
 
@@ -28,5 +29,5 @@ pnpm add @godcreator/gwb-shell @godcreator/gwb-theme @godcreator/gwb-baseui
 
 ## 文档
 
-`docs-site/` 是六区文档站：`cd docs-site && pnpm install && pnpm dev`，看 `http://localhost:4323`。
-现状钉在源码上，`pnpm doc` 核对。这份 README 是生成物，正本是 `docs-site/content/outputs/readme.mdx`。
+`docs-site/` 是文档站：`cd docs-site && pnpm install && pnpm dev`，看 `http://localhost:4323`。
+这份 README 是生成物，正本是 `docs-site/content/outputs/readme.mdx`。

@@ -22,31 +22,25 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 ## 依赖方向
 
-单向，四条依赖：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值）、**插件 → 外壳**（注册窗格时提供两个地址；浏览器侧 `import type` 外壳子路径 `@godcreator/gwb-shell/pane` 的类型，见[外壳](/docs/shell)「类型从 `@godcreator/gwb-shell/pane` 引」一节）、**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行）、**本仓 → 基础仓**（peer 基础插件，永不反向）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
+单向，四条依赖：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值）、**插件 → 外壳**（注册窗格时提供两个地址；浏览器侧 `import type` 外壳子路径 `@godcreator/gwb-shell/pane` 的类型，见[外壳](/docs/shell)「类型从 `@godcreator/gwb-shell/pane` 引」一节）、**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行）、**本仓 → 基础仓**（用基础插件的服务与类型，基础仓不依赖本仓）。逐模块的「它不知道什么」那张表在[样式与组件](/docs/styles)第二节。
 
-版本上三条规矩，都写在包清单里：
+## 包清单里的依赖
 
-**peer 范围怎么写**：正本在 devkit 的 release skill「gwb-release」，本页不复述：
-
-{/* ref file="../plugins/shell/package.json" lines="43-47" */}
-
-**跨仓基础插件的 dev 写 registry 上的版本（`^` 范围或精确号），同仓包照旧 `workspace:*`**——本仓没有它们的 workspace，`workspace:*` 解析不到：
+跨仓的 `@godcreator` 包写在 dev、用 registry 上的版本（`^` 范围或精确号），同仓的包写 `workspace:*`——本仓没有
+跨仓包的 workspace，`workspace:*` 解析不到：
 
 {/* ref file="../plugins/baseui/package.json" lines="33-38" */}
 
-**每个插件在 peer 里写兼容哪个内核**：peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围。插件管理的
-`plugin-manager.list` 拿这个范围和运行中的内核版本比，范围不含当前内核的标出来；`devkit.release` 发版前检查它，
-没写或不是 `^` 就拒发。内核换了版本线，先在新内核上测过插件，再提高这个范围并发版。外壳写的是 `^0.6.1`：内核 0.6 起页面 importmap 写死在内核的页面入口里，状态栏要显示的安装包版本也由内核报出来。外观写的是 `^0.4.1`：页面的 react
-从内核 0.4.1 起由内核包提供，带界面的插件配更早的内核就没有 react：
+peer 里内核包 `@godcreator/gwb-kernel-desktop` 的范围各插件不同。外壳写 `^0.6.1`：内核 0.6 起页面 importmap
+写死在内核的页面入口里，状态栏要显示的安装包版本也由内核报出来：
+
+{/* ref file="../plugins/shell/package.json" lines="43-47" */}
+
+外观写 `^0.4.1`：页面的 react 从内核 0.4.1 起由内核包提供，带界面的插件配更早的内核就没有 react：
 
 {/* has file="../plugins/theme/package.json" text="gwb-kernel-desktop" */}
 
-## 每块一页
-
-每个模块在这一区有自己的一页，固定块按这个顺序：
-
-管什么 / 不知道什么 / 数据结构（只钉形状，不列字段）/ 提供的接口 / 依赖的接口 / 怎么单独测 /
-代码地图（在哪、先读、读序、可跳过）。
+## 各页怎么分
 
 本仓的现状页按功能线组织、不按包分：[外壳](/docs/shell) 一页，[样式与组件](/docs/styles) 一页覆盖
 theme / baseui / 令牌的契约与原理，以及页面上的 react 从哪来，[令牌与颜色](/docs/tokens) 是令牌规则的

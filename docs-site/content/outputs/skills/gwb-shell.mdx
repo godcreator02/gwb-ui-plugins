@@ -31,7 +31,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
    ```
 
    在 `container` 里 `createRoot` 渲染；返回的 `dispose` 依次停掉订阅与定时器、同步 `root.unmount()`、清空 `container`。
-   这些类型不在自己代码里手写，也不用 `as` 转成它们；dev 里外壳的版本要带 `./pane` 子路径（外壳 `package.json` 的 `exports` 里有它）。
+   这些类型不在自己代码里手写，也不用 `as` 转成它们；peer 里外壳的版本要带 `./pane` 子路径（外壳 `package.json` 的 `exports` 里有它）。
 4. 窗格里有轮询、动画或媒体时，用 `args.shell.onVisibility((visible) => …)` 在 `false` 时暂停、`true` 时恢复。
    它注册时先回一次当前值；返回的注销函数在 `dispose` 里调。桌面切走后窗格不卸载，业务状态照常保留。
 5. `devkit.dev` 把这一版装进隔离 home。
@@ -90,7 +90,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 4. 按窗格宽度排版：窗格容器是容器查询的根，响应式用 `demo:@sm:`、`demo:@md:` 这类容器变体；官方组件里的
    视口断点（`sm:`、`md:`）要跟窗格宽度走的，改成容器变体。
 5. 需要一个跨插件共用、映射面里又没有的语义时，先找现有语义；确实要新增，就提给外壳的令牌表（UI 平台仓
-   `gwb-ui-plugins` 的 `plugins/shell/src/tokens/`），外壳发版后把 dev 里外壳的下限升到带这个令牌的版本。
+   `gwb-ui-plugins` 的 `plugins/shell/src/tokens/`），外壳发版后把 peer 里外壳的下限升到带这个令牌的版本。
 
 **完成**：`pnpm build` 后 `pnpm check`，前缀测试通过，产物测试里「类选择器都带前缀」「`var()` 的 fallback
 里没有写死的值」两条通过（不是跳过）。
@@ -176,8 +176,6 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 - 漏写前缀不报错、构建照样通过；前缀测试抓得到漏写前缀的工具类，抓不到 `group` / `peer` 标记类
 - 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的头注重核键名
 - 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
-- `devkit.audit-structure` 把包根与 `src/client` 两份 tsconfig 的 `@/*` `paths` 报成 `tsconfig-paths`（error），
-  外壳与 baseui 同样被报
 - `params` 必须能 JSON 序列化；`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview` 是外壳的保留键，
   插件传了会被去掉并在页面控制台 warn
 - `openPane`、`shell.openPane` 都不切桌面；命令回执 `ok` 表示已转交页面执行，结果用 `shell.pane.list` 查
@@ -189,11 +187,6 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 ## 规矩
 
-- peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围（带界面的插件从 `^0.4.1` 起：页面的 react 由它提供；内核的接口类型也从它的包根 `import type`），node 侧按值 import 了 `cordis` 再写 `cordis`；外壳、react 与组件依赖写 dev——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
-- 浏览器侧构建产物里的包名 import 只留 react 的四个包名（`react`、`react/jsx-runtime`、`react-dom`、`react-dom/client`，内核 0.6 起写死在内核页面入口的 importmap 里），构建时把这四个设成 external，其余依赖打包进 `client.js`——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
-- 只引类型写 `import type`——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
-- 外壳接口的类型从外壳引，不手写、不用 `as` 转——devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
-- 源码里不指回别的仓——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
-- 往继承 `Service` 的服务（`gwbShell`）注册时直接调，注册随插件卸载撤销——devkit 仓 `docs-site/content/docs/rules/services.mdx`
-- 插件之间只经服务和命令交互，组件复制进自己的目录，运行时不依赖别的插件——devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
-- 插件卸载时清理自己启动的一切并返回 promise——devkit 仓 `docs-site/content/docs/rules/dispose.mdx`
+规矩总表读 `skill.read {"name":"gwb-devkit","file":"references/rules.md"}`。和界面相关的几页在 devkit 仓
+`docs-site/content/docs/rules/` 下：`deps.mdx`、`plugin-peers.mdx`、`importmap.mdx`、`interaction.mdx`、
+`services.mdx`、`dispose.mdx`。
