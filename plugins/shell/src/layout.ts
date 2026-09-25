@@ -111,6 +111,19 @@ export function defaultDoc(): LayoutDoc {
   return { v: LAYOUT_VERSION, active: 'd1', desktops: [{ id: 'd1', name: '桌面 1', layout: null }], saved: [] }
 }
 
+/** 容器挂载之后什么时候保存：不保存、排一次防抖保存、立刻保存 */
+export type WellBootSave = 'none' | 'debounced' | 'now'
+
+/**
+ * 容器挂载时开不开默认布局、要不要保存。开默认布局发生在订阅 onDidLayoutChange 之前，dockview 丢弃订阅之前触发的
+ * 布局变化，所以开了默认布局必须自己排一次保存；运行时新建的桌面保持为空、立刻保存，用空快照替换文件里的 null
+ */
+export function wellBootPlan(state: { restored: boolean; bornEmpty: boolean }): { openDefaults: boolean; save: WellBootSave } {
+  if (state.bornEmpty) return { openDefaults: false, save: 'now' }
+  if (state.restored) return { openDefaults: false, save: 'none' }
+  return { openDefaults: true, save: 'debounced' }
+}
+
 /** 最小的没被占用的 `dN`；删过再建会复用号，无害 */
 export function nextDesktopId(desktops: readonly DesktopRow[]): string {
   const takenIds = new Set(desktops.map((desktop) => desktop.id))

@@ -1,0 +1,29 @@
+---
+born-at: 2026-09-25T17:57
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 默认布局打开后自己排保存
+domain: shell
+---
+
+## 背景
+
+收件页 2026-09-13 那条：`devkit.home.new` 开的隔离 home 第一次开机按默认布局打开窗格之后，`data/shell/layout.json`
+一直不存在，`gwb.log` 里 `shell.layout.save` 一次都没执行，直到切桌面触发同步保存。当时有两个怀疑没区分开：
+窗口被挡住时计时器被节流；或者 `onWellReady` 里订阅 `onDidLayoutChange` 排在 `openDefaults` 之后，打开默认窗格的事件一个都收不到。
+
+## 结论与边界
+
+原因是第二个。在隔离 home `ui-layout-2609251752`（内核 0.7.1、shell 0.13.10）上做的实验：
+
+- 复现：开机后 `layout.json` 不存在，日志只有 `shell.layout.get`
+- 页面里量 `setTimeout(400)` 实际 409ms、415ms，`document.visibilityState` 是 `visible`：计时器没被节流
+- 订阅建立之后产生一次布局变化（`shell.pane.close` 关掉默认打开的插件管理窗格）：`09:53:13.998` 关闭，
+  `09:53:14.419` `shell.layout.save` 执行，正好隔一个 400ms 防抖
+- dockview-core 8.3.1 的源码里 `onDidLayoutChange` 是 `AsapEvent`：在微任务里发，订阅时记下当时的触发计数，
+  订阅之前触发的那几次直接丢掉
+
+修法选的是「容器挂载时开了默认布局就自己排一次防抖保存」，由纯函数 `wellBootPlan` 定开不开默认布局、保存方式（不保存 /
+防抖 / 立刻）。没选「把订阅挪到 `openDefaults` 之前」：那样 `fromJSON` 恢复布局也会触发一次保存，每次开机都白写一遍磁盘。
+修完在同一个 home 里删掉 `layout.json` 再整页刷新：`09:55:33.473` 读布局文件（没有，按默认布局打开），
+`09:55:33.891` 自动保存，写出的文件里是默认打开的两个窗格。没有 `probes/` 目录，时间取自那个 home 的 `gwb.log`，验完 home 已删。

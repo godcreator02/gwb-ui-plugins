@@ -37,6 +37,7 @@ import {
   nextDesktopId,
   parseLayoutDoc,
   upsertSaved,
+  wellBootPlan,
   type DesktopRow,
   type LayoutDoc,
   type SavedLayout,
@@ -237,7 +238,8 @@ function App({
     }
     // 运行时新建的桌面不打开默认布局；第一次开机、v2 迁移出的 null、恢复失败这三种才打开
     const bornEmpty = bornEmptyRef.current.delete(id)
-    if (!restored && !bornEmpty) openDefaults(event.api, id)
+    const plan = wellBootPlan({ restored, bornEmpty })
+    if (plan.openDefaults) openDefaults(event.api, id)
     wellHub.addWell(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
@@ -255,7 +257,8 @@ function App({
         moveSub.dispose()
       },
     })
-    if (bornEmpty) flushSave()
+    if (plan.save === 'now') flushSave()
+    if (plan.save === 'debounced') scheduleSave()
     // 此时容器已在 wellHub 里、布局已恢复
     const waiters = readyWaitersRef.current.get(id) ?? []
     readyWaitersRef.current.delete(id)
