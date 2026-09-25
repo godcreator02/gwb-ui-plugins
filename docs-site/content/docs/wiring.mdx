@@ -37,55 +37,55 @@ tailwind、esbuild、类型包等）。
 | 页面侧接口 | 窗格插件导出的 `mountPane({ host, shell, pane }, container)` | 外壳定的窗格契约，类型从子路径 `@godcreator/gwb-shell/pane` 引，见[外壳](/docs/shell)「窗格插件拿到的 args」一节 |
 | 包子路径 | `@godcreator/gwb-shell/theme.css`、`@godcreator/gwb-shell/theme.reference.css` | 令牌表与构建期引用的映射文件，见[令牌与颜色](/docs/tokens) |
 
-@@docfirst has ../plugins/shell/src/index.ts "super(ctx, 'gwbShell')" @@
+{/* has file="../plugins/shell/src/index.ts" text="super(ctx, 'gwbShell')" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "registerPane(spec: PaneSpec): () => void" @@
+{/* has file="../plugins/shell/src/index.ts" text="registerPane(spec: PaneSpec): () => void" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "describeSelf(info: PluginInfo): () => void" @@
+{/* has file="../plugins/shell/src/index.ts" text="describeSelf(info: PluginInfo): () => void" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "panes(): RegisteredPane[]" @@
+{/* has file="../plugins/shell/src/index.ts" text="panes(): RegisteredPane[]" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "plugins(): RegisteredPlugin[]" @@
+{/* has file="../plugins/shell/src/index.ts" text="plugins(): RegisteredPlugin[]" */}
 
-@@docfirst has ../plugins/shell/src/protocol.ts "'shell.panes'" @@
+{/* has file="../plugins/shell/src/protocol.ts" text="'shell.panes'" */}
 
-@@docfirst has ../plugins/shell/src/protocol.ts "'shell.plugins'" @@
+{/* has file="../plugins/shell/src/protocol.ts" text="'shell.plugins'" */}
 
-@@docfirst has ../plugins/shell/src/protocol.ts "'shell.env'" @@
+{/* has file="../plugins/shell/src/protocol.ts" text="'shell.env'" */}
 
-@@docfirst has ../plugins/shell/src/layout.ts "'shell.layout.get'" @@
+{/* has file="../plugins/shell/src/layout.ts" text="'shell.layout.get'" */}
 
-@@docfirst has ../plugins/shell/src/layout.ts "'shell.layout.save'" @@
+{/* has file="../plugins/shell/src/layout.ts" text="'shell.layout.save'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.reload'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.reload'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.list'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.desktop.list'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.switch'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.desktop.switch'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.new'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.desktop.new'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.rename'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.desktop.rename'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.delete'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.desktop.delete'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.openPane'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.openPane'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.list'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.pane.list'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.focus'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.pane.focus'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.send'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.pane.send'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.close'" @@
+{/* has file="../plugins/shell/src/index.ts" text="'shell.pane.close'" */}
 
-@@docfirst has ../plugins/shell/src/protocol.ts "'shell.pane.sync'" @@
+{/* has file="../plugins/shell/src/protocol.ts" text="'shell.pane.sync'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "gwbSkills.register(OWN_SKILLS_DIR)" @@
+{/* has file="../plugins/shell/src/index.ts" text="gwbSkills.register(OWN_SKILLS_DIR)" */}
 
-@@docfirst has ../plugins/shell/src/client/index.tsx "export default function mountShell(root: HTMLElement)" @@
+{/* has file="../plugins/shell/src/client/index.tsx" text="export default function mountShell(root: HTMLElement)" */}
 
-@@docfirst has ../plugins/shell/package.json ""./pane":" @@
+{/* has file="../plugins/shell/package.json" text="&quot;./pane&quot;:" */}
 
 ### 注入
 
@@ -99,25 +99,25 @@ tailwind、esbuild、类型包等）。
 peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service` 基类，写成 peer 用宿主那一份。外壳为什么非要
 命令总线不可，见[外壳](/docs/shell)「为什么命令总线是必需依赖」一节。
 
-@@docfirst has ../plugins/shell/src/index.ts "static inject = ['gwbCommands', 'gwbData']" @@
+{/* has file="../plugins/shell/src/index.ts" text="static inject = ['gwbCommands', 'gwbData']" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "this.ctx.inject(['gwbSkills']" @@
+{/* has file="../plugins/shell/src/index.ts" text="this.ctx.inject(['gwbSkills']" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "this.kernel = requireKernel(ctx)" @@
+{/* has file="../plugins/shell/src/index.ts" text="this.kernel = requireKernel(ctx)" */}
 
-@@docfirst has ../plugins/shell/src/layout.ts "export const LAYOUT_DOC = 'layout'" @@
+{/* has file="../plugins/shell/src/layout.ts" text="export const LAYOUT_DOC = 'layout'" */}
 
-@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
 
-@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-commands": "^0.5.0"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.0&quot;" */}
 
-@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-data": "^0.1.7"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-data&quot;: &quot;^0.1.7&quot;" */}
 
-@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-skills": "^0.4.5"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-skills&quot;: &quot;^0.4.5&quot;" */}
 
-@@docfirst has ../plugins/shell/package.json ""peerDependenciesMeta"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 
-@@docfirst has ../plugins/shell/package.json ""cordis": "^4.0.0-rc.9"" @@
+{/* has file="../plugins/shell/package.json" text="&quot;cordis&quot;: &quot;^4.0.0-rc.9&quot;" */}
 
 ### 按名字调用与约定通道
 
@@ -133,29 +133,29 @@ peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service
 | 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 `window.gwb.command`）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面开机取环境、取表、读写布局文件、推窗格清单 |
 | 动态 import | Electron 主进程 | `import('electron')`，说明符放在变量里 | `shell.reload` 取 `BrowserWindow.getAllWindows()` 逐个重载 |
 
-@@docfirst has ../plugins/shell/src/startup-style.ts "export const THEME_STARTUP_COMMAND = 'theme.startupCss'" @@
+{/* has file="../plugins/shell/src/startup-style.ts" text="export const THEME_STARTUP_COMMAND = 'theme.startupCss'" */}
 
-@@docfirst has ../plugins/shell/src/startup-style.ts "bus.list().some((command) => command.name === THEME_STARTUP_COMMAND)" @@
+{/* has file="../plugins/shell/src/startup-style.ts" text="bus.list().some((command) => command.name === THEME_STARTUP_COMMAND)" */}
 
-@@docfirst has ../plugins/shell/src/desktops.ts "export const DESKTOP_EVENT = 'gwb-shell-desktop'" @@
+{/* has file="../plugins/shell/src/desktops.ts" text="export const DESKTOP_EVENT = 'gwb-shell-desktop'" */}
 
-@@docfirst has ../plugins/shell/src/pane-actions.ts "export const PANE_EVENT = 'gwb-shell-pane'" @@
+{/* has file="../plugins/shell/src/pane-actions.ts" text="export const PANE_EVENT = 'gwb-shell-pane'" */}
 
-@@docfirst has ../plugins/shell/src/open-pane.ts "export const OPEN_PANE_EVENT = 'gwb-shell-open-pane'" @@
+{/* has file="../plugins/shell/src/open-pane.ts" text="export const OPEN_PANE_EVENT = 'gwb-shell-open-pane'" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "this.kernel.emit(parsed.action)" @@
+{/* has file="../plugins/shell/src/index.ts" text="this.kernel.emit(parsed.action)" */}
 
-@@docfirst has ../plugins/shell/src/client/index.tsx "window.gwb.on((payload) =>" @@
+{/* has file="../plugins/shell/src/client/index.tsx" text="window.gwb.on((payload) =>" */}
 
-@@docfirst has ../plugins/shell/src/client/theme-boot.ts "const THEME_STYLE_ID = 'gwb-theme-style'" @@
+{/* has file="../plugins/shell/src/client/theme-boot.ts" text="const THEME_STYLE_ID = 'gwb-theme-style'" */}
 
-@@docfirst has ../plugins/shell/src/client/PluginPane.tsx "pickMountPane(mod)" @@
+{/* has file="../plugins/shell/src/client/PluginPane.tsx" text="pickMountPane(mod)" */}
 
-@@docfirst has ../plugins/shell/src/index.ts "this.kernel.setShell(clientEntry)" @@
+{/* has file="../plugins/shell/src/index.ts" text="this.kernel.setShell(clientEntry)" */}
 
-@@docfirst has ../plugins/shell/src/client/index.tsx "window.gwb.command(ENV_COMMAND)" @@
+{/* has file="../plugins/shell/src/client/index.tsx" text="window.gwb.command(ENV_COMMAND)" */}
 
-@@docfirst has ../plugins/shell/src/reload.ts "const electronSpecifier = 'electron'" @@
+{/* has file="../plugins/shell/src/reload.ts" text="const electronSpecifier = 'electron'" */}
 
 ## @godcreator/gwb-theme
 
@@ -170,19 +170,19 @@ peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service
 | 窗格 | `appearance`（外观） | 有外壳时登记，另报名字「外观」 |
 | 服务、事件 | 无 | |
 
-@@docfirst has ../plugins/theme/src/index.ts "export const STARTUP_COMMAND = 'theme.startupCss'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const STARTUP_COMMAND = 'theme.startupCss'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "export const VALUES_COMMAND = 'theme.values'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const VALUES_COMMAND = 'theme.values'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "export const SAVE_COMMAND = 'theme.save'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const SAVE_COMMAND = 'theme.save'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "export const FONT_SANS_KEY = 'font-sans'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const FONT_SANS_KEY = 'font-sans'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "export const FONT_MONO_KEY = 'font-mono'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const FONT_MONO_KEY = 'font-mono'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "export const CUSTOM_CSS_KEY = 'custom-css'" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const CUSTOM_CSS_KEY = 'custom-css'" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "id: 'appearance'" @@
+{/* has file="../plugins/theme/src/index.ts" text="id: 'appearance'" */}
 
 ### 注入
 
@@ -194,19 +194,19 @@ peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service
 
 peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
-@@docfirst has ../plugins/theme/src/index.ts "export const inject = ['gwbSettings', 'gwbCommands']" @@
+{/* has file="../plugins/theme/src/index.ts" text="export const inject = ['gwbSettings', 'gwbCommands']" */}
 
-@@docfirst has ../plugins/theme/src/index.ts "ctx.inject(['gwbShell']" @@
+{/* has file="../plugins/theme/src/index.ts" text="ctx.inject(['gwbShell']" */}
 
-@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
 
-@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-commands": "^0.5.0"" @@
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.0&quot;" */}
 
-@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-settings": "^0.3.3"" @@
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;^0.3.3&quot;" */}
 
-@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-shell": "workspace:^"" @@
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:^&quot;" */}
 
-@@docfirst has ../plugins/theme/package.json ""peerDependenciesMeta"" @@
+{/* has file="../plugins/theme/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 
 ### 按名字调用与约定通道
 
@@ -217,11 +217,11 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
 别家的命令一条都不调。
 
-@@docfirst has ../plugins/theme/src/client/index.tsx "const STYLE_ID = 'gwb-theme-style'" @@
+{/* has file="../plugins/theme/src/client/index.tsx" text="const STYLE_ID = 'gwb-theme-style'" */}
 
-@@docfirst has ../plugins/theme/src/client/index.tsx "const VALUES_COMMAND = 'theme.values'" @@
+{/* has file="../plugins/theme/src/client/index.tsx" text="const VALUES_COMMAND = 'theme.values'" */}
 
-@@docfirst has ../plugins/theme/src/client/index.tsx "const SAVE_COMMAND = 'theme.save'" @@
+{/* has file="../plugins/theme/src/client/index.tsx" text="const SAVE_COMMAND = 'theme.save'" */}
 
 ## @godcreator/gwb-baseui
 
@@ -233,11 +233,11 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 | 窗格 | `plugin-manager`（插件管理） | 装了插件管理才登记 |
 | 服务、命令、事件 | 无 | 只报名字「基础界面」 |
 
-@@docfirst has ../plugins/baseui/src/index.ts "id: 'logger'" @@
+{/* has file="../plugins/baseui/src/index.ts" text="id: 'logger'" */}
 
-@@docfirst has ../plugins/baseui/src/index.ts "id: 'plugin-manager'" @@
+{/* has file="../plugins/baseui/src/index.ts" text="id: 'plugin-manager'" */}
 
-@@docfirst has ../plugins/baseui/src/index.ts "title: '基础界面', icon: 'layout-grid'" @@
+{/* has file="../plugins/baseui/src/index.ts" text="title: '基础界面', icon: 'layout-grid'" */}
 
 ### 注入
 
@@ -249,21 +249,21 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
 peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
 
-@@docfirst has ../plugins/baseui/src/index.ts "export const inject = ['gwbShell']" @@
+{/* has file="../plugins/baseui/src/index.ts" text="export const inject = ['gwbShell']" */}
 
-@@docfirst has ../plugins/baseui/src/index.ts "ctx.inject(['gwbLogger']" @@
+{/* has file="../plugins/baseui/src/index.ts" text="ctx.inject(['gwbLogger']" */}
 
-@@docfirst has ../plugins/baseui/src/index.ts "ctx.inject(['gwbPluginManager']" @@
+{/* has file="../plugins/baseui/src/index.ts" text="ctx.inject(['gwbPluginManager']" */}
 
-@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
 
-@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-shell": "workspace:^"" @@
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:^&quot;" */}
 
-@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-logger": "^0.4.5"" @@
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-logger&quot;: &quot;^0.4.5&quot;" */}
 
-@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-plugin-manager": "^0.14.0"" @@
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-plugin-manager&quot;: &quot;^0.14.0&quot;" */}
 
-@@docfirst has ../plugins/baseui/package.json ""peerDependenciesMeta"" @@
+{/* has file="../plugins/baseui/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 
 ### 按名字调用与约定通道
 
@@ -284,42 +284,42 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 </Diagram>
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const LIST = 'plugin-manager.list'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const LIST = 'plugin-manager.list'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const OUTDATED = 'plugin-manager.outdated'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const OUTDATED = 'plugin-manager.outdated'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/market.tsx "const SEARCH = 'plugin-manager.search'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/market.tsx" text="const SEARCH = 'plugin-manager.search'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const INSTALL = 'plugin-manager.install'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const INSTALL = 'plugin-manager.install'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const UNINSTALL = 'plugin-manager.uninstall'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const UNINSTALL = 'plugin-manager.uninstall'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const UPDATE = 'plugin-manager.update'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const UPDATE = 'plugin-manager.update'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const ENABLE = 'plugin-manager.enable'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const ENABLE = 'plugin-manager.enable'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const DISABLE = 'plugin-manager.disable'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const DISABLE = 'plugin-manager.disable'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const ADD_ENTRY = 'plugin-manager.add-entry'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const ADD_ENTRY = 'plugin-manager.add-entry'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const REMOVE_ENTRY = 'plugin-manager.remove-entry'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const REMOVE_ENTRY = 'plugin-manager.remove-entry'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_ALL = 'settings.all'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SETTINGS_ALL = 'settings.all'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_GET = 'settings.get'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SETTINGS_GET = 'settings.get'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_SET = 'settings.set'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SETTINGS_SET = 'settings.set'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_DELETE = 'settings.delete'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SETTINGS_DELETE = 'settings.delete'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SHELL_PLUGINS = 'shell.plugins'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SHELL_PLUGINS = 'shell.plugins'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SHELL_RELOAD = 'shell.reload'" @@
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" text="const SHELL_RELOAD = 'shell.reload'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const BACKLOG_COMMAND = 'logger.backlog'" @@
+{/* has file="../plugins/baseui/src/client/panes/logger/index.tsx" text="const BACKLOG_COMMAND = 'logger.backlog'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const WHERE_COMMAND = 'logger.where'" @@
+{/* has file="../plugins/baseui/src/client/panes/logger/index.tsx" text="const WHERE_COMMAND = 'logger.where'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const EVENT = 'gwb-logger'" @@
+{/* has file="../plugins/baseui/src/client/panes/logger/index.tsx" text="const EVENT = 'gwb-logger'" */}
 
-@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "window.gwb.on((payload) =>" @@
+{/* has file="../plugins/baseui/src/client/panes/logger/index.tsx" text="window.gwb.on((payload) =>" */}

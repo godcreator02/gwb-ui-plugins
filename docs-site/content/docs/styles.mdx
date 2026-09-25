@@ -215,7 +215,7 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 **第一步：importmap 已经在页面上，然后才 import 外壳的浏览器端代码。** 它写死在内核的页面入口里，
 页面一加载就在；没有它，外壳顶层那句 `import { … } from 'react'` 就解析不到。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="636-640" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="645-649" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home、三张样式表的地址，外加这一刻的用户外观样式
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
@@ -239,7 +239,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 **第五步：加上 `.dark`、加上身份标记，然后 `createRoot`。** 深色是默认状态，令牌的暗色那一套在这里
 生效。身份标记只用来辨认，不参与任何选择器（第四节「窗格容器上那两样东西」还会再说一遍）。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="594-602" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="603-611" */}
 
 **第六步：开一个窗格时**——从注册表里取这个插件注册时提供的两个地址 → **先注入它的样式表、等它加载完成**
 → 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。
@@ -427,7 +427,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 工具条窄了折行、宽了收回一行（要按宽度换向的排布，用的就是 `@md:` 那类变体），
 拖动分隔条时立即变化：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1078-1088" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1068-1078" */}
 
 旁边那个身份属性**只用来辨认**。按位置隔离的方案要靠它限定选择器范围；本仓按类名前缀隔离，
 加不加它样式都一样。留着是为了在 devtools 里一眼看出这个窗格是哪个插件的。**正因为少加一个也

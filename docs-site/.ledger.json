@@ -3,7 +3,7 @@
     "../plugins/shell/src/openable.ts:all": {
       "kind": "git",
       "blob": "b379931bbf6348a4130a5eec2a290c2e2871d4ce",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         451
@@ -13,7 +13,7 @@
     "../plugins/shell/src/reload.ts:all": {
       "kind": "git",
       "blob": "a62b7924ba693b9a822d217a1f36c80a0f19bb0c",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         53
@@ -23,7 +23,7 @@
     "../plugins/shell/src/open-pane.ts:all": {
       "kind": "git",
       "blob": "4b59d533f10f9c9f38fe6b1441a8af1ad4246025",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         104
@@ -33,7 +33,7 @@
     "../plugins/shell/src/client/shell-mount.ts:all": {
       "kind": "git",
       "blob": "e8ed3731b5e6bbfde5918f74389ad21e7e3367c7",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         37
@@ -43,7 +43,7 @@
     "../plugins/shell/src/client/mount-handle.ts:all": {
       "kind": "git",
       "blob": "5729085de9d8a2b8b2c128980ae88fedff46e039",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         66
@@ -53,7 +53,7 @@
     "../plugins/shell/src/versions.ts:all": {
       "kind": "git",
       "blob": "4a71e4a047770dc572fcaead23b93b73ecbbf79c",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         38
@@ -63,7 +63,7 @@
     "../plugins/shell/src/index.ts:99-112": {
       "kind": "git",
       "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         99,
         112
@@ -73,7 +73,7 @@
     "../plugins/shell/src/pane-icon.ts:4-14": {
       "kind": "git",
       "blob": "eb064c296db7fb597260ac847a0bfb53c0c7f567",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         4,
         14
@@ -83,27 +83,17 @@
     "../plugins/shell/src/index.ts:439-458": {
       "kind": "git",
       "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         439,
         458
       ],
       "hash": "11f715597e47df868c8df4097c6fea76eb6ff4b0ae721d19122cab41481669a3"
     },
-    "../plugins/shell/src/index.ts:115-116": {
-      "kind": "git",
-      "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
-      "lines": [
-        115,
-        116
-      ],
-      "hash": "adb13f301a28de78b28934d6e3bad86e0423d48343ff347bed7073ac8ca8f058"
-    },
     "../plugins/shell/src/desktops.ts:51-59": {
       "kind": "git",
       "blob": "cdc9e41c4a4f6d4030334e5ba2a3856760a90553",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         51,
         59
@@ -113,7 +103,7 @@
     "../plugins/shell/src/openable.ts:348-374": {
       "kind": "git",
       "blob": "b379931bbf6348a4130a5eec2a290c2e2871d4ce",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         348,
         374
@@ -123,7 +113,7 @@
     "../plugins/shell/src/pane-actions.ts:7-13": {
       "kind": "git",
       "blob": "fb1659d884dbbd54268ce338d56c17add127fab3",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         7,
         13
@@ -133,7 +123,7 @@
     "../plugins/shell/src/panels.ts:123-139": {
       "kind": "git",
       "blob": "b53b97e488c45749d98e75fe12fdecab1a6394d0",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         123,
         139
@@ -143,7 +133,7 @@
     "../plugins/shell/src/index.ts:238-258": {
       "kind": "git",
       "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         238,
         258
@@ -153,7 +143,7 @@
     "../plugins/shell/src/pane-list.ts:3-20": {
       "kind": "git",
       "blob": "0908ebdcc5e58d14eb2a716e9a9218c083204058",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         3,
         20
@@ -163,7 +153,7 @@
     "../plugins/shell/src/client/open.ts:256-271": {
       "kind": "git",
       "blob": "b98ed3e6c067998b09234d31e09fba8f93161744",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         256,
         271
@@ -173,7 +163,7 @@
     "../plugins/shell/src/pane-registry.ts:1-32": {
       "kind": "git",
       "blob": "dc10ab49556378d41b11f42d2c270c219513fe0c",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         32
@@ -183,7 +173,7 @@
     "../plugins/shell/src/pane-registry.ts:58-76": {
       "kind": "git",
       "blob": "dc10ab49556378d41b11f42d2c270c219513fe0c",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         58,
         76
@@ -193,7 +183,7 @@
     "../plugins/shell/tests/artifact.test.ts:127-139": {
       "kind": "git",
       "blob": "a828f5a7b8125f93d640de7dfe79e897ca46d478",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         127,
         139
@@ -203,7 +193,7 @@
     "../plugins/shell/src/client/PluginPane.tsx:198-202": {
       "kind": "git",
       "blob": "51c26754067166d692310f77b4089b909f31a046",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         198,
         202
@@ -213,7 +203,7 @@
     "../plugins/shell/src/client/PluginPane.tsx:126-128": {
       "kind": "git",
       "blob": "51c26754067166d692310f77b4089b909f31a046",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         126,
         128
@@ -223,7 +213,7 @@
     "../plugins/shell/src/layout.ts:114-125": {
       "kind": "git",
       "blob": "df0ad99d778757fce01d62406c7896a13365b38e",
-      "commit": "2596ac13b7fee993ab37dab47f5f3263a8aa0f67",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         114,
         125
@@ -235,7 +225,7 @@
     "../plugins/baseui/components.json:6-12": {
       "kind": "git",
       "blob": "7a64d0da68a943eef998c2077667dbc51a00fa2b",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         6,
         12
@@ -245,7 +235,7 @@
     "../plugins/baseui/build.ts:5-14": {
       "kind": "git",
       "blob": "62b4b31cc0b43748ef4e3a182a1b95a00a152a7c",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         5,
         14
@@ -255,7 +245,7 @@
     "../plugins/shell/src/client/asset.ts:all": {
       "kind": "git",
       "blob": "048e85195362c6749898c22a72741045c10be177",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         18
@@ -265,7 +255,7 @@
     "../plugins/baseui/tests/prefix.test.ts:7-25": {
       "kind": "git",
       "blob": "321041a68bdf7f127a310815eb7d8bebf731e1c7",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         7,
         25
@@ -275,7 +265,7 @@
     "../plugins/baseui/tests/prefix.test.ts:118-130": {
       "kind": "git",
       "blob": "321041a68bdf7f127a310815eb7d8bebf731e1c7",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         118,
         130
@@ -285,7 +275,7 @@
     "../plugins/baseui/tests/artifact.test.ts:112-121": {
       "kind": "git",
       "blob": "9e9d1d839ff64679885fe55f6d0a16a7256db51f",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         112,
         121
@@ -304,7 +294,7 @@
     "../plugins/shell/src/tokens/theme.reference.css:all": {
       "kind": "git",
       "blob": "f5bcf4c3f472f95a5e4b462319c62f804de0c360",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         77
@@ -314,7 +304,7 @@
     "../plugins/shell/src/index.ts:41-54": {
       "kind": "git",
       "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         41,
         54
@@ -324,7 +314,7 @@
     "../plugins/shell/src/index.ts:218-236": {
       "kind": "git",
       "blob": "24452becf05295b552af9b4012e3fa649a001d21",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         218,
         236
@@ -334,77 +324,27 @@
     "../plugins/shell/src/startup-style.ts:6-14": {
       "kind": "git",
       "blob": "226dffb57b5dec140e13fcae2eae8211f2ddb9ed",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         6,
         14
       ],
       "hash": "44397272e5b56c2b5e8815946b16b65d430d49bc61a2d3e89603dbf93b2c60da"
     },
-    "../plugins/shell/src/client/index.tsx:636-640": {
-      "kind": "git",
-      "blob": "3b9014904696540fefb53eec6bf1c8d7fd34f813",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        636,
-        640
-      ],
-      "hash": "4aad6ebc512accf4418e549b999ec65f519c68ff64ac9ad4b2334ddeff51bd62"
-    },
     "../plugins/shell/src/client/theme-boot.ts:6-18": {
       "kind": "git",
       "blob": "20e3479e96b1338d68f1c5d77be1642ec31e4b0c",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         6,
         18
       ],
       "hash": "1826a6969b08da525eb7598d3988e1a8b51a4f685a159c967b1e39514647f944"
     },
-    "../plugins/shell/src/client/index.tsx:594-602": {
-      "kind": "git",
-      "blob": "3b9014904696540fefb53eec6bf1c8d7fd34f813",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        594,
-        602
-      ],
-      "hash": "1d989123cdb018a9453c9bd9221976ab1a4b87c68637b98b490c52339699eae7"
-    },
-    "../plugins/theme/src/index.ts:30-31": {
-      "kind": "git",
-      "blob": "99c80330ae28b0747df8679aae825b291942de5f",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        30,
-        31
-      ],
-      "hash": "82c708c0994f4908ddb85d4746ecb73a70ef9b63065d72cb5ac276e783e632fa"
-    },
-    "../plugins/baseui/src/index.ts:13-14": {
-      "kind": "git",
-      "blob": "abe67016668a5c93782b505551cdbcf17fccaea4",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        13,
-        14
-      ],
-      "hash": "057e4a1b3225d56b2977738ed839f3eefea7d84d249d447a475a4726f151ddf3"
-    },
-    "../plugins/baseui/src/index.ts:16-32": {
-      "kind": "git",
-      "blob": "abe67016668a5c93782b505551cdbcf17fccaea4",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        16,
-        32
-      ],
-      "hash": "b3605cea10d270a87d3fe0bc5b2c7be5f24fa975750cdd0926f71c35a3308ba7"
-    },
     "../plugins/baseui/src/client/panes/logger/index.tsx:286-289": {
       "kind": "git",
-      "blob": "f227b6df501dfadc998631f9e71181fd85bd25f8",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "blob": "8d0ca7064e7c779d65498ce32c59e584730dfddc",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         286,
         289
@@ -413,8 +353,8 @@
     },
     "../plugins/baseui/src/client/panes/logger/index.tsx:301-303": {
       "kind": "git",
-      "blob": "f227b6df501dfadc998631f9e71181fd85bd25f8",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "blob": "8d0ca7064e7c779d65498ce32c59e584730dfddc",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         301,
         303
@@ -424,7 +364,7 @@
     "../plugins/theme/src/startup-css.ts:20-30": {
       "kind": "git",
       "blob": "80b155d7a5263cbb7faa8ed74daad643c0cc4279",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         20,
         30
@@ -433,8 +373,8 @@
     },
     "../plugins/theme/src/index.ts:79-85": {
       "kind": "git",
-      "blob": "99c80330ae28b0747df8679aae825b291942de5f",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "blob": "3421d30a778be3aeb29005650495da0f0c38d58b",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         79,
         85
@@ -444,7 +384,7 @@
     "../plugins/shell/src/tokens/tokens.css:1-1": {
       "kind": "git",
       "blob": "ce74d1a59f41fe23ed30542a53ddf1f89f6e51dd",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         1
@@ -454,7 +394,7 @@
     "../plugins/shell/src/tokens/tokens.css:98-111": {
       "kind": "git",
       "blob": "ce74d1a59f41fe23ed30542a53ddf1f89f6e51dd",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         98,
         111
@@ -464,7 +404,7 @@
     "../plugins/baseui/src/client/styles.css:6-10": {
       "kind": "git",
       "blob": "58e7b2609682de7ef241557737672d6ace004bb8",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         6,
         10
@@ -474,7 +414,7 @@
     "../plugins/shell/src/tokens/theme.reference.css:1-2": {
       "kind": "git",
       "blob": "f5bcf4c3f472f95a5e4b462319c62f804de0c360",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         1,
         2
@@ -484,7 +424,7 @@
     "../plugins/shell/src/pane-registry.ts:12-18": {
       "kind": "git",
       "blob": "dc10ab49556378d41b11f42d2c270c219513fe0c",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         12,
         18
@@ -494,30 +434,20 @@
     "../plugins/shell/build.ts:114-131": {
       "kind": "git",
       "blob": "d8311e8440715671f4c5092b767d32d738a64304",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         114,
         131
       ],
       "hash": "5d0202b6fd3106b4a08f1cfc2c8fe22f4338a16e4c81f2767a6a54894bf24ac4"
     },
-    "../plugins/baseui/src/client/panes/plugin-manager/index.tsx:1078-1088": {
-      "kind": "git",
-      "blob": "1e9352324e561903e6c4f58ebd0896139ab40f21",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        1078,
-        1088
-      ],
-      "hash": "773224e5eb5aeffb19b8159cea811e3c0ca84c496ca6b3a34d0c5fc2de4ca794"
-    },
     "has ../plugins/baseui/src/client/styles.css \"prefix(baseui)\"": {
       "kind": "has"
     },
     "../plugins/baseui/package.json:23-27": {
       "kind": "git",
-      "blob": "2bd9ddd1cbffb33c223665be663d55cc476d2c9b",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "blob": "f304c776e0c76d4e89026b965d41d74654127a53",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         23,
         27
@@ -526,28 +456,18 @@
     },
     "../plugins/shell/package.json:33-39": {
       "kind": "git",
-      "blob": "ba5fcd90141c6a74911213d564df974bfbbb6953",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "blob": "470826a6246522c1d8067daff321591c38bacc12",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         33,
         39
       ],
       "hash": "f7bb240fdbb9e872426f3e6e3363fcc2b1971ab141a914381d66090eb252884e"
     },
-    "../plugins/theme/src/index.ts:112-124": {
-      "kind": "git",
-      "blob": "99c80330ae28b0747df8679aae825b291942de5f",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
-      "lines": [
-        112,
-        124
-      ],
-      "hash": "823e99256e18aca1a6f0375250848ace0b9ff85e398e6c88334ed3678f0edba6"
-    },
     "../plugins/shell/src/client/PluginPane.tsx:124-154": {
       "kind": "git",
       "blob": "51c26754067166d692310f77b4089b909f31a046",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         124,
         154
@@ -557,12 +477,42 @@
     "../plugins/shell/src/client/PluginPane.tsx:198-200": {
       "kind": "git",
       "blob": "51c26754067166d692310f77b4089b909f31a046",
-      "commit": "bf6f58b3d1874f25792e8c7f39409740684de4ce",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
       "lines": [
         198,
         200
       ],
       "hash": "630170c3e8160d120416c34488f529c712d4e494c4a469f378dd9a82fef32041"
+    },
+    "../plugins/shell/src/client/index.tsx:645-649": {
+      "kind": "git",
+      "blob": "17e3f75c8a1c76dffd7b448224e51e8c04e650d7",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
+      "lines": [
+        645,
+        649
+      ],
+      "hash": "4aad6ebc512accf4418e549b999ec65f519c68ff64ac9ad4b2334ddeff51bd62"
+    },
+    "../plugins/shell/src/client/index.tsx:603-611": {
+      "kind": "git",
+      "blob": "17e3f75c8a1c76dffd7b448224e51e8c04e650d7",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
+      "lines": [
+        603,
+        611
+      ],
+      "hash": "1d989123cdb018a9453c9bd9221976ab1a4b87c68637b98b490c52339699eae7"
+    },
+    "../plugins/baseui/src/client/panes/plugin-manager/index.tsx:1068-1078": {
+      "kind": "git",
+      "blob": "47de568be520895c540e06ac6e18d53566d4cbe0",
+      "commit": "0250d4f2aa1473fe36ea6212a15c6eca2c90960d",
+      "lines": [
+        1068,
+        1078
+      ],
+      "hash": "773224e5eb5aeffb19b8159cea811e3c0ca84c496ca6b3a34d0c5fc2de4ca794"
     }
   },
   "content/docs/walls.mdx": {
@@ -710,31 +660,6 @@
       "hash": "df0c7a15b6b757b3ad854ee4ec5477448e22affd8cd041ab5182e39396aa0aa6"
     }
   },
-  "content/docs/system-map.mdx": {
-    "../plugins/baseui/package.json:28-41": {
-      "kind": "git",
-      "blob": "324fc185207f4e33513b23958bc01d9bb30ac91d",
-      "commit": "6237fccf5fe35831ddafcd6d50ad379853a65fad",
-      "lines": [
-        28,
-        41
-      ],
-      "hash": "1437c340fe54d3b5de7195c277b899fa174d1cdaff8a633fd8fdce32a9721034"
-    },
-    "../plugins/shell/package.json:33-44": {
-      "kind": "git",
-      "blob": "bbcad140d7239a7771ccd7f82bbbc0c334e07df0",
-      "commit": "6237fccf5fe35831ddafcd6d50ad379853a65fad",
-      "lines": [
-        33,
-        44
-      ],
-      "hash": "c6ae9f62710b5a2ca76715597fa4c52ec3a541182fd444d5b7ed5db05c7b4f37"
-    },
-    "has ../plugins/theme/package.json \"peerDependenciesMeta\"": {
-      "kind": "has"
-    }
-  },
   "content/docs/index.mdx": {
     "../plugins/shell/src/index.ts:160-165": {
       "kind": "git",
@@ -755,6 +680,293 @@
         40
       ],
       "hash": "71715ecf489bc231d6ba107118ad8e929d514cb28dcfff4b671c236fa4ceda0d"
+    }
+  },
+  "content/docs/wiring.mdx": {
+    "has ../plugins/shell/src/index.ts \"super(ctx, 'gwbShell')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"registerPane(spec: PaneSpec): () => void\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"describeSelf(info: PluginInfo): () => void\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"panes(): RegisteredPane[]\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"plugins(): RegisteredPlugin[]\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/protocol.ts \"'shell.panes'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/protocol.ts \"'shell.plugins'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/protocol.ts \"'shell.env'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/layout.ts \"'shell.layout.get'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/layout.ts \"'shell.layout.save'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.reload'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.desktop.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.desktop.switch'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.desktop.new'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.desktop.rename'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.desktop.delete'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.openPane'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.pane.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.pane.focus'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.pane.send'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"'shell.pane.close'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/protocol.ts \"'shell.pane.sync'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"gwbSkills.register(OWN_SKILLS_DIR)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/client/index.tsx \"export default function mountShell(root: HTMLElement)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"./pane\\\":\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"static inject = ['gwbCommands', 'gwbData']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"this.ctx.inject(['gwbSkills']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"this.kernel = requireKernel(ctx)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/layout.ts \"export const LAYOUT_DOC = 'layout'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"@godcreator/gwb-kernel-desktop\\\": \\\"^0.7.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"@godcreator/gwb-commands\\\": \\\"^0.5.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"@godcreator/gwb-data\\\": \\\"^0.1.7\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"@godcreator/gwb-skills\\\": \\\"^0.4.5\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"peerDependenciesMeta\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/package.json \"\\\"cordis\\\": \\\"^4.0.0-rc.9\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/startup-style.ts \"export const THEME_STARTUP_COMMAND = 'theme.startupCss'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/startup-style.ts \"bus.list().some((command) => command.name === THEME_STARTUP_COMMAND)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/desktops.ts \"export const DESKTOP_EVENT = 'gwb-shell-desktop'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/pane-actions.ts \"export const PANE_EVENT = 'gwb-shell-pane'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/open-pane.ts \"export const OPEN_PANE_EVENT = 'gwb-shell-open-pane'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"this.kernel.emit(parsed.action)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/client/index.tsx \"window.gwb.on((payload) =>\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/client/theme-boot.ts \"const THEME_STYLE_ID = 'gwb-theme-style'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/client/PluginPane.tsx \"pickMountPane(mod)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/index.ts \"this.kernel.setShell(clientEntry)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/client/index.tsx \"window.gwb.command(ENV_COMMAND)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/shell/src/reload.ts \"const electronSpecifier = 'electron'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const STARTUP_COMMAND = 'theme.startupCss'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const VALUES_COMMAND = 'theme.values'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const SAVE_COMMAND = 'theme.save'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const FONT_SANS_KEY = 'font-sans'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const FONT_MONO_KEY = 'font-mono'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const CUSTOM_CSS_KEY = 'custom-css'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"id: 'appearance'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"export const inject = ['gwbSettings', 'gwbCommands']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/index.ts \"ctx.inject(['gwbShell']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/package.json \"\\\"@godcreator/gwb-kernel-desktop\\\": \\\"^0.7.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/package.json \"\\\"@godcreator/gwb-commands\\\": \\\"^0.5.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/package.json \"\\\"@godcreator/gwb-settings\\\": \\\"^0.3.3\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/package.json \"\\\"@godcreator/gwb-shell\\\": \\\"workspace:^\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/package.json \"\\\"peerDependenciesMeta\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/client/index.tsx \"const STYLE_ID = 'gwb-theme-style'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/client/index.tsx \"const VALUES_COMMAND = 'theme.values'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/theme/src/client/index.tsx \"const SAVE_COMMAND = 'theme.save'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"id: 'logger'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"id: 'plugin-manager'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"title: '基础界面', icon: 'layout-grid'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"export const inject = ['gwbShell']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"ctx.inject(['gwbLogger']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/index.ts \"ctx.inject(['gwbPluginManager']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/package.json \"\\\"@godcreator/gwb-kernel-desktop\\\": \\\"^0.7.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/package.json \"\\\"@godcreator/gwb-shell\\\": \\\"workspace:^\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/package.json \"\\\"@godcreator/gwb-logger\\\": \\\"^0.4.5\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/package.json \"\\\"@godcreator/gwb-plugin-manager\\\": \\\"^0.14.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/package.json \"\\\"peerDependenciesMeta\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const LIST = 'plugin-manager.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const OUTDATED = 'plugin-manager.outdated'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/market.tsx \"const SEARCH = 'plugin-manager.search'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const INSTALL = 'plugin-manager.install'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const UNINSTALL = 'plugin-manager.uninstall'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const UPDATE = 'plugin-manager.update'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const ENABLE = 'plugin-manager.enable'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const DISABLE = 'plugin-manager.disable'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const ADD_ENTRY = 'plugin-manager.add-entry'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const REMOVE_ENTRY = 'plugin-manager.remove-entry'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SETTINGS_ALL = 'settings.all'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SETTINGS_GET = 'settings.get'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SETTINGS_SET = 'settings.set'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SETTINGS_DELETE = 'settings.delete'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SHELL_PLUGINS = 'shell.plugins'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx \"const SHELL_RELOAD = 'shell.reload'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/logger/index.tsx \"const BACKLOG_COMMAND = 'logger.backlog'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/logger/index.tsx \"const WHERE_COMMAND = 'logger.where'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/logger/index.tsx \"const EVENT = 'gwb-logger'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/baseui/src/client/panes/logger/index.tsx \"window.gwb.on((payload) =>\"": {
+      "kind": "has"
     }
   }
 }
