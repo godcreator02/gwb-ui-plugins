@@ -22,16 +22,22 @@ export interface EntryView {
   group: boolean
 }
 
-/** 与插件管理的 `PluginPackageView` 加上内核测试状态同形 */
+/** peer 里写了、却没满足的一项。内核包 `@godcreator/gwb-kernel-desktop` 那一项的 `installed` 是运行中的内核版本 */
+export interface UnmetPeer {
+  pkg: string
+  /** peer 里写的范围 */
+  range: string
+  /** home 里装着的版本；没装时没有这个字段 */
+  installed?: string
+}
+
+/** 与插件管理的 `PluginPackageView` 同形 */
 export interface PackageView {
   pkg: string
   spec?: string
   installed: boolean
   entries: EntryView[]
-  /** 包的 peerDependencies 里内核包 `@godcreator/gwb-kernel-desktop` 的范围；没声明时没有这个字段 */
-  kernelRange?: string
-  /** 范围不包含运行中的内核（含没声明、写的不是 ^x.y.z） */
-  kernelUntested: boolean
+  unmetPeers: UnmetPeer[]
 }
 
 /** 认不出的丢掉、不报错：插件管理改了形状而窗格没跟上时，宁可少显示几行也不要整个窗格空白 */
@@ -61,15 +67,39 @@ function acceptEntryList(rawEntries: unknown): EntryView[] {
   return entries
 }
 
+function acceptUnmetPeer(value: unknown): UnmetPeer | undefined {
+  if (!isRecord(value)) return undefined
+  const pkg = value['pkg']
+  const range = value['range']
+  if (typeof pkg !== 'string' || pkg === '' || typeof range !== 'string') return undefined
+  const peer: UnmetPeer = { pkg, range }
+  const installed = value['installed']
+  if (typeof installed === 'string' && installed !== '') peer.installed = installed
+  return peer
+}
+
+function acceptUnmetPeerList(rawPeers: unknown): UnmetPeer[] {
+  if (!Array.isArray(rawPeers)) return []
+  const peers: UnmetPeer[] = []
+  for (const rawPeer of rawPeers as unknown[]) {
+    const peer = acceptUnmetPeer(rawPeer)
+    if (peer !== undefined) peers.push(peer)
+  }
+  return peers
+}
+
 function acceptPackage(item: unknown): PackageView | undefined {
   if (!isRecord(item)) return undefined
   const pkg = item['pkg']
   if (typeof pkg !== 'string') return undefined
-  const view: PackageView = { pkg, installed: item['installed'] === true, entries: acceptEntryList(item['entries']), kernelUntested: item['kernelUntested'] === true }
+  const view: PackageView = {
+    pkg,
+    installed: item['installed'] === true,
+    entries: acceptEntryList(item['entries']),
+    unmetPeers: acceptUnmetPeerList(item['unmetPeers']),
+  }
   const spec = item['spec']
   if (typeof spec === 'string') view.spec = spec
-  const kernelRange = item['kernelRange']
-  if (typeof kernelRange === 'string' && kernelRange !== '') view.kernelRange = kernelRange
   return view
 }
 
@@ -155,8 +185,7 @@ export interface PackageRow {
   /** 包这一层的一句话，没有就不显示 */
   note?: string
   noteHint?: string
-  kernelRange?: string
-  kernelUntested: boolean
+  unmetPeers: UnmetPeer[]
 }
 
 /** 分组条目不是插件，先去掉；去掉后既没条目也没包名的不成一行 */
@@ -168,10 +197,9 @@ function packageRowOf(view: PackageView): PackageRow | undefined {
     title: view.pkg === '' ? '（条目没写 name）' : view.pkg,
     installed: view.installed,
     entries,
-    kernelUntested: view.kernelUntested,
+    unmetPeers: view.unmetPeers,
   }
   if (view.spec !== undefined) row.spec = view.spec
-  if (view.kernelRange !== undefined) row.kernelRange = view.kernelRange
   if (entries.length === 0) {
     // 如实说「没有条目」，不说「未启用」：跟「有条目但停用了」是两回事
     row.note = '没有条目'
@@ -190,21 +218,30 @@ export function toRows(views: readonly PackageView[]): PackageRow[] {
   return rows
 }
 
-/** 「没在当前内核上测过」标记上的字 */
-export interface KernelTestMark {
+/** 「peer 没满足」标记上的字 */
+export interface UnmetPeerMark {
   text: string
+  /** 悬停提示，一项一行 */
   hint: string
 }
 
-/** 声明的范围包含当前内核的包不标，回 undefined */
-export function kernelTestMark(row: Pick<PackageRow, 'kernelUntested' | 'kernelRange'>): KernelTestMark | undefined {
-  if (!row.kernelUntested) return undefined
+const KERNEL_PACKAGE = '@godcreator/gwb-kernel-desktop'
+
+function describeUnmetPeer(peer: UnmetPeer): string {
+  if (peer.installed === undefined) return `${peer.pkg} 要 ${peer.range}，没装`
+  if (peer.pkg === KERNEL_PACKAGE) return `${peer.pkg} 要 ${peer.range}，运行中的内核是 ${peer.installed}`
+  return `${peer.pkg} 要 ${peer.range}，装着 ${peer.installed}`
+}
+
+/** peer 全满足的包不标，回 undefined */
+export function unmetPeerMark(row: Pick<PackageRow, 'unmetPeers'>): UnmetPeerMark | undefined {
+  if (row.unmetPeers.length === 0) return undefined
   return {
-    text: `内核未测过 · ${row.kernelRange ?? '未声明'}`,
-    hint:
-      row.kernelRange === undefined
-        ? '这个包的 package.json 没有在 peerDependencies 里写内核包 @godcreator/gwb-kernel-desktop 的版本范围，不知道它在当前内核上能不能用。不等于加载不了，出了问题先怀疑它'
-        : `这个包声明兼容的内核是 ${row.kernelRange}，不包含运行中的内核（主版本号为 0 时次版本号要相同，≥1 时主版本号要相同，都不能低于下限）。不等于加载不了，出了问题先怀疑它`,
+    text: 'peer 没满足',
+    hint: [
+      '这个包 peerDependencies 里写的下面几项，home 里没装或版本不在范围里（主版本号为 0 时次版本号要相同，≥1 时主版本号要相同，都不能低于下限）。不等于加载不了，出了问题先怀疑它：',
+      ...row.unmetPeers.map(describeUnmetPeer),
+    ].join('\n'),
   }
 }
 

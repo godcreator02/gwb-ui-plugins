@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   acceptPackages,
   asResult,
-  kernelTestMark,
   stateOf,
   summarize,
   toRows,
+  unmetPeerMark,
   type EntryView,
   type PackageView,
 } from '../../src/client/panes/plugin-manager/rows'
@@ -25,7 +25,7 @@ const pkg = (patch: Partial<PackageView> = {}): PackageView => ({
   spec: '0.0.2',
   installed: true,
   entries: [entry()],
-  kernelUntested: false,
+  unmetPeers: [],
   ...patch,
 })
 
@@ -59,7 +59,7 @@ describe('判形', () => {
 
   it('spec 没有就是没有（那种包 installed 也是 false）', () => {
     const got = acceptPackages([{ pkg: 'a', installed: false, entries: [] }])
-    expect(got[0]).toEqual({ pkg: 'a', installed: false, entries: [], kernelUntested: false })
+    expect(got[0]).toEqual({ pkg: 'a', installed: false, entries: [], unmetPeers: [] })
   })
 })
 
@@ -135,7 +135,7 @@ describe('两层行', () => {
   })
 
   it('包不在 home 里时如实报出来，条目还在', () => {
-    const row = toRows([{ pkg: '@godcreator/gwb-x', installed: false, kernelUntested: false, entries: [entry({ id: 'x' })] }])[0]!
+    const row = toRows([{ pkg: '@godcreator/gwb-x', installed: false, unmetPeers: [], entries: [entry({ id: 'x' })] }])[0]!
     expect(row.installed).toBe(false)
     expect(row.entries).toHaveLength(1)
   })
@@ -151,49 +151,64 @@ describe('两层行', () => {
   })
 
   it('只剩分组条目、连包名都没有的那个「包」整条丢掉', () => {
-    expect(toRows([{ pkg: '', installed: false, kernelUntested: false, entries: [entry({ id: 'g', pkg: '', group: true })] }])).toEqual([])
+    expect(toRows([{ pkg: '', installed: false, unmetPeers: [], entries: [entry({ id: 'g', pkg: '', group: true })] }])).toEqual([])
   })
 
   it('包名是空串但条目不是分组的，留着并说清楚', () => {
-    const rows = toRows([{ pkg: '', installed: false, kernelUntested: false, entries: [entry({ id: 'x', pkg: '' })] }])
+    const rows = toRows([{ pkg: '', installed: false, unmetPeers: [], entries: [entry({ id: 'x', pkg: '' })] }])
     expect(rows[0]!.title).toBe('（条目没写 name）')
   })
 })
 
-describe('没在当前内核上测过', () => {
-  it('kernelRange 与 kernelUntested 原样收下；kernelUntested 只认 true', () => {
+describe('peer 没满足', () => {
+  const kernelPeer = { pkg: '@godcreator/gwb-kernel-desktop', range: '^0.6.0', installed: '0.7.2' }
+  const shellPeer = { pkg: '@godcreator/gwb-shell', range: '^0.13.0' }
+
+  it('unmetPeers 原样收下；没装的那项没有 installed', () => {
+    const got = acceptPackages([{ ...pkg(), unmetPeers: [kernelPeer, shellPeer] }])
+    expect(got[0]!.unmetPeers).toEqual([kernelPeer, shellPeer])
+    expect(got[0]!.unmetPeers[1]).not.toHaveProperty('installed')
+  })
+
+  it('没有 unmetPeers 字段、或不是数组时当空表', () => {
+    expect(acceptPackages([{ pkg: 'a', installed: true, entries: [] }])[0]!.unmetPeers).toEqual([])
+    expect(acceptPackages([{ ...pkg(), unmetPeers: 'x' }])[0]!.unmetPeers).toEqual([])
+  })
+
+  it('认不出的那项丢掉，同一个包里好的那项留着；installed 不是非空字符串的当没装', () => {
     const got = acceptPackages([
-      { ...pkg(), kernelRange: '^0.2.1', kernelUntested: true },
-      { ...pkg({ pkg: 'b' }), kernelUntested: 'yes' },
+      { ...pkg(), unmetPeers: [null, { range: '^1.0.0' }, { pkg: 'x', range: 7 }, { pkg: 'y', range: '^1.0.0', installed: '' }, shellPeer] },
     ])
-    expect(got[0]).toMatchObject({ kernelRange: '^0.2.1', kernelUntested: true })
-    expect(got[1]!.kernelUntested).toBe(false)
-    expect(got[1]!.kernelRange).toBeUndefined()
+    expect(got[0]!.unmetPeers).toEqual([{ pkg: 'y', range: '^1.0.0' }, shellPeer])
   })
 
-  it('空串的 kernelRange 当没声明', () => {
-    expect(acceptPackages([{ ...pkg(), kernelRange: '', kernelUntested: true }])[0]!.kernelRange).toBeUndefined()
+  it('toRows 把 unmetPeers 带到包那一行上', () => {
+    const row = toRows([pkg({ unmetPeers: [kernelPeer] })])[0]!
+    expect(row.unmetPeers).toEqual([kernelPeer])
   })
 
-  it('toRows 把两个字段带到包那一行上', () => {
-    const row = toRows([pkg({ kernelRange: '^0.1.0', kernelUntested: true })])[0]!
-    expect(row).toMatchObject({ kernelRange: '^0.1.0', kernelUntested: true })
+  it('全满足的包不标', () => {
+    expect(unmetPeerMark({ unmetPeers: [] })).toBeUndefined()
   })
 
-  it('测过的包不标', () => {
-    expect(kernelTestMark({ kernelUntested: false, kernelRange: '^0.3.0' })).toBeUndefined()
+  it('标签写「peer 没满足」，悬停提示逐项列出包名、要的范围、装着的版本', () => {
+    const mark = unmetPeerMark({ unmetPeers: [{ pkg: '@godcreator/gwb-logger', range: '^0.5.0', installed: '0.4.3' }] })!
+    expect(mark.text).toBe('peer 没满足')
+    expect(mark.hint).toContain('@godcreator/gwb-logger 要 ^0.5.0，装着 0.4.3')
   })
 
-  it('没测过：标记上显示声明的内核版本范围', () => {
-    const mark = kernelTestMark({ kernelUntested: true, kernelRange: '^0.1.0' })!
-    expect(mark.text).toContain('^0.1.0')
-    expect(mark.hint).toContain('^0.1.0')
+  it('没装的写「没装」', () => {
+    expect(unmetPeerMark({ unmetPeers: [shellPeer] })!.hint).toContain('@godcreator/gwb-shell 要 ^0.13.0，没装')
   })
 
-  it('没声明：标记上写「未声明」，提示写在 peer 里', () => {
-    const mark = kernelTestMark({ kernelUntested: true })!
-    expect(mark.text).toContain('未声明')
-    expect(mark.hint).toContain('@godcreator/gwb-kernel-desktop')
+  it('内核包那一项比的是运行中的内核，照这个说', () => {
+    expect(unmetPeerMark({ unmetPeers: [kernelPeer] })!.hint).toContain('@godcreator/gwb-kernel-desktop 要 ^0.6.0，运行中的内核是 0.7.2')
+  })
+
+  it('几项就列几行', () => {
+    const hint = unmetPeerMark({ unmetPeers: [kernelPeer, shellPeer] })!.hint
+    expect(hint).toContain('@godcreator/gwb-kernel-desktop')
+    expect(hint).toContain('@godcreator/gwb-shell')
   })
 })
 

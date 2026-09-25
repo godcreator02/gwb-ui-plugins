@@ -30,13 +30,13 @@ import { cn } from 'cn'
 import {
   acceptPackages,
   asResult,
-  kernelTestMark,
   summarize,
   toRows,
+  unmetPeerMark,
   type CallResult,
   type EntryRow,
-  type KernelTestMark,
   type PackageRow,
+  type UnmetPeerMark,
 } from './rows'
 import {
   acceptSettings,
@@ -414,7 +414,7 @@ function EntryCard({
     pkg: string
     spec?: string
     settings: SettingRow[]
-    kernelMark?: KernelTestMark
+    peerMark?: UnmetPeerMark
   }
   /** 弹出层的容器元素：行尾「更多」下拉菜单放在它下面，切走桌面时跟着隐藏 */
   portal: HTMLElement
@@ -476,7 +476,7 @@ function EntryCard({
                   有新版 {update.current} → {update.latest}
                 </Badge>
               )}
-              <KernelTestBadge mark={card.kernelMark} />
+              <UnmetPeerBadge mark={card.peerMark} />
             </div>
             <div className="baseui:flex baseui:items-baseline baseui:gap-2">
               <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={entry.entryId}>
@@ -583,8 +583,8 @@ function EntryCard({
   )
 }
 
-/** 「没在当前内核上测过」的标记，样式和「有新版」相同。mark 是 undefined（测过）时不显示 */
-function KernelTestBadge({ mark }: { mark: KernelTestMark | undefined }): ReactElement | null {
+/** 「peer 没满足」的标记，样式和「有新版」相同，悬停列出没满足的那几项。mark 是 undefined（全满足）时不显示 */
+function UnmetPeerBadge({ mark }: { mark: UnmetPeerMark | undefined }): ReactElement | null {
   if (mark === undefined) return null
   return (
     <Badge
@@ -728,7 +728,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     pkg: string
     spec?: string
     settings: SettingRow[]
-    kernelMark?: KernelTestMark
+    peerMark?: UnmetPeerMark
   }
 
   const cards = useMemo<Card[]>(() => {
@@ -740,7 +740,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           pkg: row.pkg,
           spec: row.spec,
           settings: settingsRows === null ? [] : settingsForEntry(settingsRows, entry.entryId),
-          kernelMark: kernelTestMark(row),
+          peerMark: unmetPeerMark(row),
         })
       }
     }
@@ -1236,7 +1236,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                             {row.note}
                           </p>
                         </div>
-                        <KernelTestBadge mark={kernelTestMark(row)} />
+                        <UnmetPeerBadge mark={unmetPeerMark(row)} />
                         {updates?.[row.pkg] !== undefined && (
                           <span
                             className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-warning"

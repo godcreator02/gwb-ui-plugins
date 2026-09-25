@@ -4,7 +4,7 @@ import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, sco
 /**
  * 「可装」那一栏的纯逻辑。筛选的是 **registry 检索结果**——`plugin-manager.search`
  * 一次取回全部结果，搜索框只在本地筛选。acceptPackages 的形状检查也在这一组里。
- * 检索**合并多条源**（@godcreator 加上 plugin-manager.source.add 配的第三方源），每行的来源标签与
+ * 检索**合并多条源**（@godcreator 加上 ~/.npmrc 里配的第三方源），每行的来源标签与
  * 检索回执 note 的处理（scopeOf / acceptNote）也在这一组测。
  */
 

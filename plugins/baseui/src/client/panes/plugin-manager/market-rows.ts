@@ -31,7 +31,7 @@ export interface ScopeOption {
 
 /**
  * 从当前已加载的行算出选项，列表里有什么源就列什么源；顺序按第一次出现的先后（检索回执已排好）。
- * 不问 `plugin-manager.source.list`：跟着眼前的列表走比跟着配置走准确
+ * 不去读 npmrc 里配了哪些源：跟着眼前的列表走比跟着配置走准确
  */
 export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
   const scopesInFirstSeenOrder: string[] = []

@@ -196,7 +196,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
                 <Badge
                   variant="outline"
                   className="baseui:shrink-0"
-                  title="第三方源上的插件（这个 scope 是用 plugin-manager.source.add 配的）"
+                  title="第三方源上的插件（这个 scope 的源写在 ~/.npmrc 里，怎么配见说明书 gwb-plugin-manager）"
                 >
                   {scopeOf(row.pkg)}
                 </Badge>
