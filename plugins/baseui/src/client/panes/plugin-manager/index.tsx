@@ -52,7 +52,7 @@ import {
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
-import { describeUpdateAll, waitForOwnRemount, type UpdateAllView } from './update-all'
+import { describeUpdateReceipt, waitForOwnRemount, type UpdateView } from './update-receipt'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -876,7 +876,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   )
 
   /** 插件管理自己也升了就先等它的条目重新加载完，再调 `shell.reload` */
-  const reloadPageAfterUpdate = async (view: UpdateAllView): Promise<CallResult> => {
+  const reloadPageAfterUpdate = async (view: UpdateView): Promise<CallResult> => {
     if (view.selfDeferred) {
       const remounted = await waitForOwnRemount({
         call: (command) => args.host.call(command),
@@ -890,11 +890,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   }
 
   /** 不给 `only` 升全部过期包，给了只升这几个；有包升级了就整页重新加载 */
-  const updateAll = async (only?: readonly string[]): Promise<void> => {
+  const updatePackages = async (only?: readonly string[]): Promise<void> => {
     setBusy(true)
     setUpdatingAll(true)
     try {
-      const view = describeUpdateAll(asResult(await args.host.call(UPDATE, only === undefined ? { all: true } : { only })))
+      const view = describeUpdateReceipt(asResult(await args.host.call(UPDATE, only === undefined ? { all: true } : { only })))
       setNotice({ ok: view.ok, text: view.text })
       if (view.pageReloadNeeded) {
         const reloaded = await reloadPageAfterUpdate(view)
@@ -1135,7 +1135,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 onAskUninstall={() => askUninstall(card.pkg)}
                 update={updates?.[card.pkg]}
                 onUpdate={
-                  updates?.[card.pkg] !== undefined ? () => void updateAll([card.pkg]) : undefined
+                  updates?.[card.pkg] !== undefined ? () => void updatePackages([card.pkg]) : undefined
                 }
               />
             ))}
@@ -1361,7 +1361,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updatingAll}>取消</AlertDialogCancel>
-            <AlertDialogAction disabled={updatingAll} onClick={() => void updateAll()}>
+            <AlertDialogAction disabled={updatingAll} onClick={() => void updatePackages()}>
               {updatingAll ? '升级中，完成后整页重新加载界面…' : '全部更新'}
             </AlertDialogAction>
           </AlertDialogFooter>

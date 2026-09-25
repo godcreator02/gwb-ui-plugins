@@ -10,7 +10,7 @@ function stringOrEmpty(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-export interface UpdateAllView {
+export interface UpdateView {
   ok: boolean
   /** 多行 */
   text: string
@@ -45,7 +45,7 @@ function linesForUpdatedPackages(data: Record<string, unknown>, updated: unknown
   return lines
 }
 
-export function describeUpdateAll(result: CallResult): UpdateAllView {
+export function describeUpdateReceipt(result: CallResult): UpdateView {
   // 失败原因只在外层 error，pnpm 输出的最后几行已经拼在里面
   if (!result.ok) return { ok: false, text: result.error ?? '更新失败', pageReloadNeeded: false, selfDeferred: false }
   const data = isRecord(result.data) ? result.data : {}

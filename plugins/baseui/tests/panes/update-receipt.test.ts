@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { describeUpdateAll, waitForOwnRemount } from '../../src/client/panes/plugin-manager/update-all'
+import { describeUpdateReceipt, waitForOwnRemount } from '../../src/client/panes/plugin-manager/update-receipt'
 
 /** 回执 → 窗格上的几行话与接下来要不要整页重新加载。形状按插件管理 `update` 的回执收，认不出的丢掉、不崩 */
 
-describe('describeUpdateAll', () => {
+describe('describeUpdateReceipt', () => {
   it('升了几个包逐包一行，条目带处理结果与状态；有包升级就要整页重新加载', () => {
-    const view = describeUpdateAll({
+    const view = describeUpdateReceipt({
       ok: true,
       data: {
         updated: [
@@ -36,7 +36,7 @@ describe('describeUpdateAll', () => {
   })
 
   it('插件管理自己也升了：说一声要等它重新加载完，再整页重新加载', () => {
-    const view = describeUpdateAll({
+    const view = describeUpdateReceipt({
       ok: true,
       data: { updated: [{ pkg: '@godcreator/gwb-plugin-manager', from: '0.12.1', to: '0.13.0', entries: [] }], dependents: [], selfDeferred: true },
     })
@@ -47,17 +47,17 @@ describe('describeUpdateAll', () => {
   })
 
   it('全都最新：显示 note，不整页重新加载', () => {
-    const view = describeUpdateAll({ ok: true, data: { updated: [], dependents: [], selfDeferred: false, note: '全都最新' } })
+    const view = describeUpdateReceipt({ ok: true, data: { updated: [], dependents: [], selfDeferred: false, note: '全都最新' } })
     expect(view).toEqual({ ok: true, text: '全都最新', pageReloadNeeded: false, selfDeferred: false })
   })
 
   it('单个包的「更新」（only）不在过期清单里：显示 note', () => {
     const note = '全都最新；only 里这几个不在过期清单里，没动：@x/gwb-hello'
-    expect(describeUpdateAll({ ok: true, data: { updated: [], dependents: [], selfDeferred: false, note } }).text).toBe(note)
+    expect(describeUpdateReceipt({ ok: true, data: { updated: [], dependents: [], selfDeferred: false, note } }).text).toBe(note)
   })
 
   it('没成：原因只在外层 error（pnpm 输出的最后几行已经拼在里面），原样显示', () => {
-    const view = describeUpdateAll({
+    const view = describeUpdateReceipt({
       ok: false,
       error: 'pnpm add 没成（退出码 1）。一条条目都没动\nERR_PNPM_NO_MATCHING_VERSION',
     })
@@ -67,8 +67,8 @@ describe('describeUpdateAll', () => {
   })
 
   it('data 形状坏了也不崩', () => {
-    expect(describeUpdateAll({ ok: true, data: 'nope' }).text).toBe('全都最新')
-    expect(describeUpdateAll({ ok: true, data: { updated: [42, null] } }).text.split('\n')[0]).toBe('升了 2 个包：')
+    expect(describeUpdateReceipt({ ok: true, data: 'nope' }).text).toBe('全都最新')
+    expect(describeUpdateReceipt({ ok: true, data: { updated: [42, null] } }).text.split('\n')[0]).toBe('升了 2 个包：')
   })
 })
 
