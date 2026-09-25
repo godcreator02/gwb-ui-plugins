@@ -179,3 +179,39 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - 文档：`docs-site/content/docs/shell.mdx`、`walls.mdx`、`styles.mdx` 里提到 `update-all` 的地方
 
 现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
+
+## 2026-09-25 要跟内核 0.7：peer 里内核包改成 ^0.7.0，外壳删掉状态栏的安装包版本
+
+来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代投。
+
+内核包 `@godcreator/gwb-kernel-desktop` 马上从 0.6.2 发 0.7.0，这是破坏性版本：内核服务删掉了 `gwbKernel.launcherVersion`，home 里的 `runtime.json` 删掉了 `appDir`（内核仓轨迹卡 `2026-09-25-drop-launcher-version`）。此前 0.6.1、0.6.2 还给页面加了导航锁（内核仓 `docs-site/content/docs/seams/ipc.mdx` 的「页面保证」）：
+
+- 页面的主框架只能是内核的 `index.html`：不带 `target` 的链接点击、拖进窗口的链接一律拒绝，页面上没有任何反应
+- `window.open(url)` 与 `target="_blank"` 的链接不再开新窗口：`http:`、`https:` 地址交给系统默认浏览器打开，别的协议（`file:`、`javascript:`、`data:`、自定义协议）拒绝
+- 页面经 `window.gwb.command` 调命令，只接收顶层框架发来的；iframe 里调用拿到的是 `ok: false` 的回执
+
+本仓三个插件 peer 里内核包写的范围，都不包含 0.7.0：
+
+- `@godcreator/gwb-shell`（`plugins/shell/package.json` 第 45 行）：`^0.6.1`
+- `@godcreator/gwb-theme`（`plugins/theme/package.json` 第 30 行）：`^0.4.1`
+- `@godcreator/gwb-baseui`（`plugins/baseui/package.json` 第 31 行）：`^0.4.0`
+
+外壳用到了删掉的 `launcherVersion`，用来在状态栏悬停提示里显示安装包（gwb-electron）版本：
+
+- `plugins/shell/src/versions.ts` 第 13 行（`KernelVersions.launcherVersion`）、第 21 行（放进 `versions.launcher`）、第 31–32 行（悬停提示里 `gwb-electron` 那一行）
+- `plugins/shell/src/protocol.ts` 第 17–18 行（`Versions.launcher`）
+- `plugins/shell/src/index.ts` 第 229 行（`shell.env` 的用法说明里讲 `launcher`）
+- `plugins/shell/package.json` 第 43 行（`//peerDependencies` 说明里提到它）
+- 测试：`plugins/shell/tests/versions.test.ts` 第 9–11、19–21、28、33 行，`plugins/shell/tests/service.test.ts` 第 67、76、236、240–242 行
+- 文档：`docs-site/content/docs/shell.mdx` 第 717 行
+
+`versions.ts` 自己声明的 `KernelVersions` 把 `launcherVersion` 写成可选，所以换成 0.7.0 的类型后类型检查不一定报错；但这个值已经没有来源，运行时读到的一直是 undefined（启动器 0.3.1 从没发布过，悬停提示一直是「gwb-electron 未知」）。把这一项连同上面几处一起删掉。`shell.env` 回执去掉 `versions.launcher` 是回执形状变了，升哪一位照说明书 `gwb-release` 判断。
+
+`runtime.json` 的 `appDir`、`window.open`、`target="_blank"`：本仓都没有用到。
+
+要做的：
+
+1. 删掉外壳里 `launcherVersion` 那一项（见上）
+2. 内核 0.7.0 发布后，在装了 0.7.0 的隔离 home 里把三个插件验一遍，再把 peer 里内核包的范围改成 `^0.7.0`，版本号照 `gwb-release` 升，然后发版。上面「内核直接跟 0.6」那条里 baseui、theme 还没做的，peer 直接写 `^0.7.0`，不用先改到 0.6；那条里别的改动照做
+3. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒发
+4. 以后页面里要打开外部网页，写 `target="_blank"` 或调用 `window.open(url)`，内核交给系统浏览器；不带 `target` 的链接点了没有反应
