@@ -1,0 +1,26 @@
+---
+born-at: 2026-09-25T18:01
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 用到的插件写进 peer
+domain: deps
+---
+
+## 背景
+
+本仓三个插件原先把用到的别的插件（命令总线、数据、设置、说明书、日志、插件管理，以及同仓的外壳）写在 dev，
+接口类型从词汇表包 `@godcreator/gwb-plugin-api` 取，外壳清单里还写着 `gwb.provides`，三个包各有一个调用
+`@godcreator/gwb-repo-kit` 的自述测试。生态这边同时变了几件事：插件管理 0.9 / devkit 0.18.15 起用到的插件要写进 peer
+并由发版检查核对和源上 latest 同一条线；内核 0.5 起词汇表包不再发布、类型改由内核包的包根导出；devkit 0.19 删掉了 `gwb.provides`
+这一整套；repo-kit 由用户定为退役。
+
+## 结论与边界
+
+- 用到的插件从 dev 挪进 peer：跨仓的写 `^<源上 latest>`，同仓的写 `workspace:^`；只是局部注入、缺了只少一部分功能的
+  标 `optional: true`（外壳的说明书插件、外观的外壳、基础界面的日志与插件管理）。写进 peer 的不再另写 dev
+- 接口类型一律 `import type` 自内核包 `@godcreator/gwb-kernel-desktop`，dev 删掉词汇表包；产物测试里 node 侧允许按值 import 的包名清空，
+  不换成内核包（内核包的包根一加载就启动 Electron 应用）
+- 外壳清单删掉 `gwb.provides`。repo-kit 0.3.0（源上最新）的自述检查要求 `gwb.provides` 与源码提供的服务一一对应，
+  和现行规矩矛盾，所以三个 self-report 测试与 dev 里的 repo-kit 一起删掉；它守过的「description 写全、inject 的服务在文档里出现」
+  这几条从此没有自动检查。做法同基础插件仓 4b77d3c
+- 基础界面的插件管理写 `^0.13.2`：另一个会话在 e716841 里说等 0.14 发版后再改，这次按查到的源上 latest 写
