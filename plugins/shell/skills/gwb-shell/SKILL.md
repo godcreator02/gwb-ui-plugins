@@ -44,16 +44,24 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 ## 做能多开的文档窗格
 
 1. 注册时写 `kind: 'document'`。
-2. 打开一份：`args.shell.openPane(paneId, { key, params, preview })`。`key` 是这份内容的身份，本桌面上已开着同一
-   `key` 的就激活那一份；`params` 原样交给那一份的 `mountPane`（`args.pane.params`），并随布局保存；
-   `preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容。打开别的插件的窗格用命令
-   `shell.openPane`（参数见 `search {"plugin":"@godcreator/gwb-shell"}`）。
+2. 打开一份：`args.shell.openPane(paneId, { key, params, preview, placement })`。新窗格落在调用它的这个窗格旁边、
+   开在它那张桌面上，不切桌面。`key` 是这份内容的身份，落点那一组里已开着同一 `key` 的就激活那一份，别的组、
+   别的桌面开着的不算；`params` 原样交给那一份的 `mountPane`（`args.pane.params`），并随布局保存；
+   `preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容；`placement: 'side'` 开到旁边的一组。
+   打开别的插件的窗格用命令 `shell.openPane`，带上 `from`（自己的 `args.pane.instance`）新窗格才落在自己旁边
+   （参数见 `search {"plugin":"@godcreator/gwb-shell"}`）。
 3. 需要在换内容时保住滚动位置、输入到一半的字，就在句柄上加 `retarget(params)`：外壳换了这一份的 `params`
    后调它；句柄上没有 `retarget` 时，外壳卸载后重新挂载这一份。
 4. 用户在窗格里原地换了内容（点链接跳转、后退）后，调 `args.shell.setPaneContent({ key, params, title })` 上报。
 5. 用户开始编辑预览窗格时调 `args.shell.keepPane()`，把它变成正式窗格。
+6. 窗格里的链接按统一的手势打开，同一个手势在所有插件里意思一样：
+   * 在同类文档窗格里单击：本窗格原地换内容，换完调 `setPaneContent`
+   * 在别的窗格里单击：`openPane(…, { preview: true })`
+   * Ctrl / ⌘ + 单击或中键：`openPane(…)`，不要预览，开一个新标签并激活它
+   * Ctrl / ⌘ + Alt / ⌥ + 单击：`openPane(…, { placement: 'side' })`
+   * 悬停或点记号弹出的浮动卡片预览由插件自己画，不开窗格
 
-**完成**：两个不同 `key` 开出两份，各自拿到自己的 `params`；同一 `key` 再打开是激活已开的那份；
+**完成**：两个不同 `key` 开出两份，各自拿到自己的 `params`；从同一个窗格再打开同一 `key` 是激活已开的那份；
 `shell.pane.list` 回执里每份的 `key` 是最后上报的那个；`shell.reload` 整页重载后每份的内容还在。
 
 ## 接入 shadcn 组件

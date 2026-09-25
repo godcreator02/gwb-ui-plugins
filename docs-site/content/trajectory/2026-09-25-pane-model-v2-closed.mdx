@@ -1,0 +1,51 @@
+---
+born-at: 2026-09-25T20:00
+type: choice
+parent: [2026-09-19-pane-kinds]
+label: 窗格模型第二版收尾
+domain: shell
+---
+
+## 背景
+
+窗格模型第二版的 spec 页（本仓 `spec/pane-model-v2`，2026-09-19 立页）四期都已做完、各消费方已适配，验收只剩最后一条：
+现状页按新模型改写、推翻的判据各写一张轨迹卡、把结论拆出去、删掉这一页。推翻的五条判据当时已各有一张卡：
+[窗格分两类](2026-09-19-pane-kinds.md)、[本桌优先](2026-09-19-desk-first.md)、[启动器与切换器分开](2026-09-19-launcher-switcher.md)、
+[预览每组一个](2026-09-19-preview-per-group.md)、[目标组取代按份数分档](2026-09-19-target-group.md)；后来的两轮另有
+[桌面面板](2026-09-19-desk-panel.md)、[工具窗格全页一份](2026-09-19-tool-single.md)。
+
+## 结论与边界
+
+逐节把 spec「每个操作会发生什么」「给文档窗格插件的手势约定」「接口变化」「不做」对照代码，拆到这几处后删掉 spec 页：
+
+- **现状页 `/docs/shell`**：补了本桌优先里「别的组开着同一内容也不算命中」、插件与命令开的工具窗格不切桌面的理由、
+  旧版本留下的多份照留；目标组五条规则各配一个例子；`preview` 与 `placement` 对工具窗格同样生效；转正的入口补全
+  （别的桌面上的工具窗格被正式打开、送到别的桌面）；`setPaneContent` 上报的 key 与同组另一份相同时不合并、
+  形状不对时这次上报不生效、历史归插件管；新增「给文档窗格插件的手势约定」「关闭窗格」两节；送到别的桌面时
+  定义已不在注册表里就不送、默认不跟过去的理由；`args.shell.openPane` 认不出的 `placement` 当 `auto`；
+  「新建桌面…」那一行 Enter 或点到别处就新建。顺带删掉了按阶段写的进度段和两处指向不存在的 decisions 页的话
+- **术语表 `/docs/glossary`**：加「组 / 侧边组」「最近用过的同类组」；「份 / key」「工具窗格」两条改成跟代码一致
+- **下游说明书 `gwb-shell`**（`content/outputs/skills/gwb-shell.mdx`）：文档窗格的查重范围改成「落点那一组」，
+  补 `placement`、`from` 与手势约定
+- **未来区 `/future/not-doing`**：spec「不做」一节六条（独立窗口、拖进别的桌面的某一组、快捷键、「已开就跳过去」设置、
+  桌面排序、新标签后台打开）
+
+「消费方怎么跟」「分期」「进度」是做的过程，不搬；29 条参考来源不整份搬，现状页只在需要说明依据的地方写出参考的产品，
+原文留在 git 历史里。
+
+spec 与代码不一致的地方，现状页照代码写：
+
+- 预览窗格：spec 写「每组至多一个预览标签」，代码按窗格定义算——一组里每个窗格至多一个预览窗格，不同窗格的预览窗格
+  可以同组并存（第一期实现时人定的，spec 正文没跟着改）
+- 标签右键菜单转正那一项：spec 叫「留住」，代码是「保持打开」
+- 「新建」行尾：spec 写「→ 本桌」，代码是「→ 当前桌面」
+- 标签右键菜单「关闭其他」「关闭右侧」：spec 写「总有」，代码在没有可关的标签时把它灰着
+- 「新建桌面…」那一行：spec 写同改名（Enter 确定、Esc 或失焦放弃），代码是 Enter 或失焦都新建、Esc 取消
+- 改名除了右键桌面名，代码还认 F2
+
+## 依据
+
+对照的代码：`plugins/shell/src/openable.ts`（`targetGroup`、`planOpen`、`planLaunch`、`planSend`）、`client/open.ts`、
+`client/TabMenu.tsx`、`client/DesktopPanel.tsx`、`client/StatusBar.tsx`、`client/index.tsx`、`pane-registry.ts`、
+`panels.ts`、`open-pane.ts`、`pane-actions.ts`、`desktops.ts`；关闭后激活哪个标签、空组消失对的是 dockview-core 8.3.1
+的 `doClose` 与 `mostRecentlyUsed`。
