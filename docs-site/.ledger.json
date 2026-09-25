@@ -694,7 +694,7 @@
     "../plugins/baseui/package.json:33-38": {
       "kind": "git",
       "blob": "0639c68f8a4fdd4337c14d3d7e2810b60044ebf2",
-      "commit": "e6072f664fd760b3363aa5e97f0bb6f2d7d1208c",
+      "commit": "c2972a2bc212cacef363815a1b869aae28d4fe7c",
       "lines": [
         33,
         38
@@ -704,7 +704,7 @@
     "../plugins/shell/package.json:43-47": {
       "kind": "git",
       "blob": "e7705f36be4aff3edf70ea3f99ec92e2cce0e0ed",
-      "commit": "e6072f664fd760b3363aa5e97f0bb6f2d7d1208c",
+      "commit": "c2972a2bc212cacef363815a1b869aae28d4fe7c",
       "lines": [
         43,
         47
@@ -713,6 +713,28 @@
     },
     "has ../plugins/theme/package.json \"gwb-kernel-desktop\"": {
       "kind": "has"
+    }
+  },
+  "content/docs/index.mdx": {
+    "../plugins/shell/src/index.ts:160-165": {
+      "kind": "git",
+      "blob": "b1309c8e8cf980560e8dd18579a6eda63de8c082",
+      "commit": "c2972a2bc212cacef363815a1b869aae28d4fe7c",
+      "lines": [
+        160,
+        165
+      ],
+      "hash": "310d87e70645cab9d78e70699a87a51dfdb1262d703d8ecfa679a68fca10d268"
+    },
+    "../plugins/baseui/src/index.ts:34-40": {
+      "kind": "git",
+      "blob": "595241769235ed1a9f82954550177385d0559ee8",
+      "commit": "c2972a2bc212cacef363815a1b869aae28d4fe7c",
+      "lines": [
+        34,
+        40
+      ],
+      "hash": "71715ecf489bc231d6ba107118ad8e929d514cb28dcfff4b671c236fa4ceda0d"
     }
   }
 }
