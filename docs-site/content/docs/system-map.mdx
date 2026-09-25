@@ -29,7 +29,7 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 跨仓的 `@godcreator` 包写在 dev、用 registry 上的版本（`^` 范围或精确号），同仓的包写 `workspace:*`——本仓没有
 跨仓包的 workspace，`workspace:*` 解析不到：
 
-{/* ref file="../plugins/baseui/package.json" lines="33-38" */}
+{/* ref file="../plugins/baseui/package.json" lines="36-41" */}
 
 peer 里内核包 `@godcreator/gwb-kernel-desktop` 的范围各插件不同。外壳写 `^0.6.1`：内核 0.6 起页面 importmap
 写死在内核的页面入口里，状态栏要显示的安装包版本也由内核报出来：
