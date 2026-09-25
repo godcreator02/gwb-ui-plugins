@@ -181,7 +181,7 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 机制是页面级的 **importmap**：一张「包名 → 文件地址」的表。react 的四个包名由**内核包**提供——内核包构建时把
 react 打成浏览器能直接 import 的文件，放在页面入口旁边；外壳不带 react，只在包清单里写明它要的内核版本：
 
-{/* ref file="../plugins/shell/package.json" lines="43-47" */}
+{/* ref file="../plugins/shell/package.json" lines="41-44" */}
 
 这张表写死在内核的页面入口 `index.html` 里，只有这四个包名，外壳的第一句 import 之前就已经在页面上；内核启动时不计算、
 不读任何包清单。正本在内核仓文档站接缝 5「页面上的 react」。
@@ -420,9 +420,9 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 重叠成两份来源。拆开之后，映射让类名解析得出来，而值仍在运行时取页面那张表的变量——
 主题一致性不丢。
 
-同一个包清单里还写着一条**这个做法的限制**：
+这个做法有一条**限制**，出在插件样式入口导入 Tailwind 内置主题时带的那个前缀上：
 
-{/* has file="../plugins/shell/package.json" text="//tokens-prefix" */}
+{/* has file="../plugins/baseui/src/client/styles.css" text="prefix(baseui)" */}
 
 前缀会把 Tailwind **内置的**主题变量名也改掉（每个插件的前缀不同，名字对不上），所以指望在
 页面上全局声明一份 Tailwind 默认主题变量去影响所有插件是行不通的。**语义令牌只能经映射文件
@@ -594,7 +594,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 **三、构建脚本补一步**：编译本插件那张表，输入就是那份入口，扫描范围由入口里最后那条决定。
 
-{/* ref file="../plugins/baseui/package.json" lines="23-28" */}
+{/* ref file="../plugins/baseui/package.json" lines="23-27" */}
 
 **四、拉组件**：`shadcn add` 什么就有什么，拉下来是本插件目录里的文件，跟着本插件一起打包。
 组件的运行时依赖**打包进本插件的产物**，别外置（不在 importmap 里的裸名，外置就会在运行时报错）。

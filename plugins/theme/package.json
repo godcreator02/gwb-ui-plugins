@@ -25,7 +25,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；0.4.1 起内核给页面 importmap 提供 react。命令总线、设置、词汇表包只取类型，写在 dev 里",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.4.1"
   },

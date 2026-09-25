@@ -23,10 +23,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test 不构建，少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "内核包的 ^ 范围就是这个插件兼容哪个内核。浏览器端脚本与样式表的地址由 node 端从 import.meta.url 算成 file://，随 registerPane 报给外壳；这个插件不是共享包，不需要 gwb.shared",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.7.0"
   },
