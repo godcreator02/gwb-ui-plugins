@@ -85,8 +85,8 @@ importers:
         specifier: ^0.4.5
         version: 0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
       '@godcreator/gwb-plugin-manager':
-        specifier: ^0.13.2
-        version: 0.13.2(@godcreator/gwb-commands@0.5.0(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-data@0.1.7(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(@godcreator/gwb-settings@0.3.3(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-skills@0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))
+        specifier: ^0.14.0
+        version: 0.14.0(@godcreator/gwb-commands@0.5.0(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(@godcreator/gwb-skills@0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))
       '@godcreator/gwb-shell':
         specifier: workspace:^
         version: link:../shell
@@ -731,19 +731,13 @@ packages:
       '@godcreator/gwb-kernel-desktop': ^0.4.1
       cordis: ^4.0.0-rc.10
 
-  '@godcreator/gwb-plugin-manager@0.13.2':
-    resolution: {integrity: sha512-iSbCpNN0EIsJf5R45L5wfunpsHmdX+guN7zE7Rv+rT5A3z9Q08X4Vqb+ASg7yZqzZ8z2DutTfPDsrsShDaZZlg==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-manager/-/0.13.2/gwb-plugin-manager-0.13.2.tgz}
+  '@godcreator/gwb-plugin-manager@0.14.0':
+    resolution: {integrity: sha512-fTANnph0MTHNi144ocJJNM4pwUXdiApvyG0Z4BQtaveXMZNM+R66YFY+Z2WxHOKVA7r1I750xhBp/cgjFbibog==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-manager/-/0.14.0/gwb-plugin-manager-0.14.0.tgz}
     peerDependencies:
       '@godcreator/gwb-commands': ^0.5.0
-      '@godcreator/gwb-data': ^0.1.7
       '@godcreator/gwb-kernel-desktop': ^0.7.0
-      '@godcreator/gwb-settings': ^0.3.3
       '@godcreator/gwb-skills': ^0.4.5
     peerDependenciesMeta:
-      '@godcreator/gwb-data':
-        optional: true
-      '@godcreator/gwb-settings':
-        optional: true
       '@godcreator/gwb-skills':
         optional: true
 
@@ -4019,13 +4013,11 @@ snapshots:
       '@godcreator/gwb-kernel-desktop': 0.7.1(cordis@4.0.0-rc.10)
       cordis: 4.0.0-rc.10(@cordisjs/plugin-include@1.1.0)(@cordisjs/plugin-loader@1.0.0-rc.7)
 
-  '@godcreator/gwb-plugin-manager@0.13.2(@godcreator/gwb-commands@0.5.0(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-data@0.1.7(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(@godcreator/gwb-settings@0.3.3(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-skills@0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))':
+  '@godcreator/gwb-plugin-manager@0.14.0(@godcreator/gwb-commands@0.5.0(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(@godcreator/gwb-skills@0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))':
     dependencies:
       '@godcreator/gwb-commands': 0.5.0(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
       '@godcreator/gwb-kernel-desktop': 0.7.1(cordis@4.0.0-rc.10)
     optionalDependencies:
-      '@godcreator/gwb-data': 0.1.7(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
-      '@godcreator/gwb-settings': 0.3.3(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
       '@godcreator/gwb-skills': 0.4.5(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
 
   '@godcreator/gwb-settings@0.3.3(@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)':
