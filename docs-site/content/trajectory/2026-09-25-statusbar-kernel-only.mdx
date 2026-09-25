@@ -1,0 +1,22 @@
+---
+born-at: 2026-09-25T01:40
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 状态栏只写内核版
+domain: shell
+---
+
+supersedes:: [状态栏两个版本](2026-09-25-statusbar-two-versions.md)
+
+## 背景
+
+外壳 0.13.8 在状态栏上同时写 `gwb-electron <安装包版> · gwb-kernel <内核版>`。用户看过之后纠正：
+
+`你这不对，默认只显示kernel，electron收进鼠标挪上去的展开列表里`
+
+## 结论与边界
+
+状态栏上只写 `gwb-kernel <内核版>`。悬停提示第一行写内核，第二行写安装包 `gwb-electron <安装包版>`，其后是外壳、Electron · Node、Chromium。
+内核报不出安装包版本时，状态栏照样只写内核版，悬停提示第二行写「未知」并说明两种可能。外壳 0.13.9 起是这个写法。
+
+被取代的那张卡里其余的决定仍然成立：安装包版本经 `gwbKernel.launcherVersion` 取、`shell.env` 的 `versions.launcher` 可选、peer 里内核包写 `^0.5.1`。

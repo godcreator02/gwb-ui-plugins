@@ -24,25 +24,25 @@ describe('versionsOf', () => {
 })
 
 describe('versionCell', () => {
-  it('状态栏上写安装包与内核两个版本：gwb-electron 与 gwb-kernel', () => {
+  it('状态栏上只写内核版本：gwb-kernel', () => {
     const cell = versionCell({ kernel: '0.5.1', launcher: '0.3.1', shell: '0.14.0', ...runtime })
-    expect(cell.label).toBe('gwb-electron 0.3.1 · gwb-kernel 0.5.1')
+    expect(cell.label).toBe('gwb-kernel 0.5.1')
   })
 
-  it('悬停五行：安装包、内核、外壳、Electron 与 Node 同一行、Chromium', () => {
+  it('悬停五行：内核、安装包、外壳、Electron 与 Node 同一行、Chromium', () => {
     const cell = versionCell({ kernel: '0.5.1', launcher: '0.3.1', shell: '0.14.0', ...runtime })
     expect(cell.title.split('\n')).toEqual([
-      'gwb-electron 0.3.1（安装包）',
       'gwb-kernel 0.5.1（内核）',
+      'gwb-electron 0.3.1（安装包）',
       '外壳 0.14.0',
       'Electron 44.1.1 · Node 24.19.0',
       'Chromium 140.0.7339.80',
     ])
   })
 
-  it('没有安装包版本：状态栏写「未知」，悬停提示说明是哪两种情况', () => {
+  it('没有安装包版本：状态栏照样只写内核版本，悬停提示里写「未知」并说明是哪两种情况', () => {
     const cell = versionCell({ kernel: '0.5.1', shell: '0.14.0', ...runtime })
-    expect(cell.label).toBe('gwb-electron 未知 · gwb-kernel 0.5.1')
-    expect(cell.title.split('\n')[0]).toBe('gwb-electron 未知：内核是从源码启动的，或安装包早于 0.3.1')
+    expect(cell.label).toBe('gwb-kernel 0.5.1')
+    expect(cell.title.split('\n')[1]).toBe('gwb-electron 未知：内核是从源码启动的，或安装包早于 0.3.1')
   })
 })
