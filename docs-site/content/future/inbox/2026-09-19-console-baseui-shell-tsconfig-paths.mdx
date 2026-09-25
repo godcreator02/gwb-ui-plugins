@@ -1,0 +1,11 @@
+---
+title: 'baseui 与 shell 的 tsconfig 开了 paths（红线一）'
+description: '来源：总控台中转站'
+docfirst: none
+---
+
+* **目标仓**：`D:\unitfolders\26091217uiz\gwb-ui-plugins`
+* **现场**：隔离 home `wsprobe-2609191048`，`devkit.audit-structure {"root":"D:\\unitfolders"}`（2026-09-19 11:06），2 条 error `tsconfig-paths`：`plugins/baseui/tsconfig.json`、`plugins/shell/tsconfig.json` 都开了非空 `paths`
+* **为什么是红线**：写插件手册红线一——源码里不许有指回别的仓的路径；映射出来的问题运行期才炸，发出去的包没人装得上同样的映射
+* **期望**：去掉 paths，改走正常依赖（workspace: 引仓内包、裸名走 peer/dev）；改完 `devkit.audit-structure {"dir":"D:\\unitfolders\\26091217uiz\\gwb-ui-plugins"}` 的 error 清零
+* 顺带三条 warn 迁不迁自定：根 yaml 收了 docs-site；baseui / shell / theme 件包缺 vitest.config.ts / .oxlintrc.json（根共享，老仓形状）
