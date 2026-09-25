@@ -63,7 +63,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 ### 外壳换版本时渲染层报 `removeChild` NotFoundError——两层是同一个原因
 
-**现象**：运行中换 shell 版本（`plugin-manager.update-all` 或 `devkit.dev`，client.js 地址变了）
+**现象**：运行中换 shell 版本（`plugin-manager.update` 或 `devkit.dev`，client.js 地址变了）
 的那一刻，渲染层报 `Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node'`，条数＝1 +
 开着的 React 窗格数；整页重载后不再出现。同版本 remount 不复现——地址没变时，内核页面根那段检查
 根本不会换外壳。

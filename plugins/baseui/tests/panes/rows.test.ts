@@ -61,11 +61,6 @@ describe('判形', () => {
     const got = acceptPackages([{ pkg: 'a', installed: false, entries: [] }])
     expect(got[0]).toEqual({ pkg: 'a', installed: false, entries: [], kernelUntested: false })
   })
-
-  it('空 label 当没有——显示名回落到 id', () => {
-    const got = acceptPackages([{ ...pkg(), entries: [{ id: 'x', label: '' }] }])
-    expect(got[0]!.entries[0]!.label).toBeUndefined()
-  })
 })
 
 describe('条目的状态：active 与 disabled 是两回事', () => {
@@ -126,11 +121,11 @@ describe('三种文案', () => {
 describe('两层行', () => {
   it('一个包有两条条目就是两行，各自一份状态', () => {
     const row = toRows([
-      pkg({ entries: [entry(), entry({ id: 'data-2', entryId: 'home:data-2', disabled: true, active: false, label: '第二份数据' })] }),
+      pkg({ entries: [entry(), entry({ id: 'data-2', entryId: 'home:data-2', disabled: true, active: false })] }),
     ])[0]!
-    expect(row.entries.map((e) => [e.id, e.text, e.label])).toEqual([
-      ['data', '已加载', undefined],
-      ['data-2', '已停用', '第二份数据'],
+    expect(row.entries.map((e) => [e.id, e.text])).toEqual([
+      ['data', '已加载'],
+      ['data-2', '已停用'],
     ])
   })
 
@@ -221,10 +216,10 @@ describe('命令回执', () => {
     expect(asResult({ ok: true, data: [1] })).toEqual({ ok: true, data: [1] })
   })
 
-  it('**error 一个字都不丢**——set-label 在没装数据插件时全靠这一句', () => {
-    const got = asResult({ ok: false, error: '没装数据插件（@godcreator/gwb-data），显示名存不下来。' })
+  it('**error 一个字都不丢**——失败原因与 pnpm 输出的最后几行都只在这一句里', () => {
+    const got = asResult({ ok: false, error: 'pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION' })
     expect(got.ok).toBe(false)
-    expect(got.error).toContain('没装数据插件')
+    expect(got.error).toBe('pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION')
   })
 
   it('没成却没给话时也得有句话——空提示跟没提示一样', () => {

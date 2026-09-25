@@ -727,9 +727,10 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 
 ### `shell.reload`：同一件事的命令版
 
-那个「刷新」按钮还有命令版本——`shell.reload`，无参数，给
-插件管理的 `plugin-manager.update-all` 一键热升级的最后一步用：node 侧换成新版本之后，开着的窗格用的
+那个「刷新」按钮还有命令版本——`shell.reload`，无参数，给热升级之后的调用方用：插件管理窗格拿到
+`plugin-manager.update` 的成功回执后调它，agent 经 MCP 升级完也调它。插件管理自己不调。node 侧换成新版本之后，开着的窗格用的
 仍是旧的 client.js，浏览器已经 import 过的模块不会重新加载，只有整页重载能让页面重新 import 到新东西。
+经页面调它时，页面在回执送回之前就开始重新加载，调用方收不到回执。
 
 {/* ref file="../plugins/shell/src/reload.ts" */}
 

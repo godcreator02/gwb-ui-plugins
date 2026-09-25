@@ -113,8 +113,4 @@ describe('dirtySlots：保存只提交真被编辑过的格', () => {
     expect(dirtySlots(undefined)).toEqual([])
     expect(dirtySlots({ 'gitea/token': undefined })).toEqual([['gitea/token', undefined]])
   })
-
-  it('改名行借道的槽不算设置项', () => {
-    expect(dirtySlots({ __label__: '我的 gitea', 'gitea/token': 'x' })).toEqual([['gitea/token', 'x']])
-  })
 })

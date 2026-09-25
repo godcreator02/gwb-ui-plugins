@@ -31,9 +31,6 @@ export interface SettingRow {
   mask?: string
 }
 
-/** 草稿里临时放改名行新名字的键，不是一项设置 */
-export const LABEL_SLOT = '__label__'
-
 function settingTypeOf(rawType: unknown): SettingType {
   return (TYPES as readonly string[]).includes(rawType as string) ? (rawType as SettingType) : 'string'
 }
@@ -104,7 +101,7 @@ export function secretPlaceholder(row: Pick<SettingRow, 'isSet' | 'mask'>): stri
  * 保存只提交这些，没动过的 secret 不会被当成清空写回
  */
 export function dirtySlots(draft: Record<string, unknown> | undefined): Array<[string, unknown]> {
-  return Object.entries(draft ?? {}).filter(([slot]) => slot !== LABEL_SLOT)
+  return Object.entries(draft ?? {})
 }
 
 /** `home:hello` → `hello`，即设置的 section */

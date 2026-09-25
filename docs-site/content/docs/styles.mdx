@@ -366,7 +366,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 **基础界面插件**：必需依赖只有 `gwbShell`——没有窗格容器就没有「窗格集」；`gwbLogger` 与
 `gwbPluginManager` 都是局部注入，缺哪个服务就少注册哪个窗格，其余照常。`gwbPluginManager` 服务上
 没有方法，只表示「插件管理装了」——基础界面只用它决定注不注册插件管理窗格，窗格里的操作全部经
-`plugin-manager.*` 命令（列表、安装、卸载、`update-all` 升级、`search` 检索可装的插件）。
+`plugin-manager.*` 命令（列表、安装、卸载、`update` 升级、`search` 检索可装的插件）。
 
 {/* ref file="../plugins/baseui/src/index.ts" lines="13-14" */}
 
@@ -376,7 +376,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 - 基础界面插件的必需依赖只有 `gwbShell`；装了 gwbLogger 才注册日志窗格（`id: 'logger'`），装了插件管理才注册插件管理窗格（`id: 'plugin-manager'`）
 - 日志窗格调 `logger.backlog` 取历史、`logger.where` 取日志文件位置；实时日志不经 `args.host`，订阅 `window.gwb.on`、只收 `t` 为 `gwb-logger` 的事件
-- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update-all`、`enable`、`disable`、`add-entry`、`remove-entry`、`set-label`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`
+- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update`、`enable`、`disable`、`add-entry`、`remove-entry`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`；升级之后调 `shell.reload` 整页重新加载
 - 两个窗格互不 import，只共用 `components/ui` 下的组件
 
 </Diagram>
@@ -456,7 +456,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 工具条窄了折行、宽了收回一行（要按宽度换向的排布，用的就是 `@md:` 那类变体），
 拖动分隔条时立即变化：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1130-1140" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1078-1088" */}
 
 旁边那个身份属性**只用来辨认**。按位置隔离的方案要靠它限定选择器范围；本仓按类名前缀隔离，
 加不加它样式都一样。留着是为了在 devtools 里一眼看出这个窗格是哪个插件的。**正因为少加一个也

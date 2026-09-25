@@ -1,6 +1,6 @@
-import type { CallResult } from './rows'
+import { acceptPackages, asResult, type CallResult } from './rows'
 
-/** 按插件管理 `UpdateAllResult` 的形状收窄，不 import 那边的类型；「全部更新」与单个包的「更新」都用它 */
+/** 按插件管理 `plugin-manager.update` 回执的形状收窄，不 import 那边的类型；「全部更新」与单个包的「更新」都用它 */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -14,8 +14,10 @@ export interface UpdateAllView {
   ok: boolean
   /** 多行 */
   text: string
-  /** 整页重载已经开始（done / deferred），窗格随时会被重新加载，忙碌状态不要撤 */
-  reloading: boolean
+  /** 有包升级了：开着的窗格还在用旧的浏览器端代码，要调 `shell.reload` 整页重新加载 */
+  pageReloadNeeded: boolean
+  /** 插件管理自己的条目在回执之后才重新加载，整页重新加载要等它加载完 */
+  selfDeferred: boolean
 }
 
 /** `hello（remounted，ACTIVE）` */
@@ -37,21 +39,64 @@ function linesForUpdatedPackages(data: Record<string, unknown>, updated: unknown
     const line = describeUpdatedPackage(item)
     if (line !== undefined) lines.push(line)
   }
-  if (data['selfDeferred'] === true) lines.push('插件管理自己也升级了：这个窗格随后先关再开')
-  const reload = data['reload']
-  if (reload === 'done') lines.push('界面已整页重载')
-  else if (reload === 'deferred') lines.push('界面随后整页重载')
   const note = stringOrEmpty(data['note'])
   if (note !== '') lines.push(note)
+  lines.push(data['selfDeferred'] === true ? '插件管理自己也升级了：等它重新加载完，再整页重新加载界面' : '接着整页重新加载界面')
   return lines
 }
 
 export function describeUpdateAll(result: CallResult): UpdateAllView {
-  // 失败时插件管理已把 pnpm 输出的最后几行拼进 error，原样显示
-  if (!result.ok) return { ok: false, text: result.error ?? '一键更新失败', reloading: false }
+  // 失败原因只在外层 error，pnpm 输出的最后几行已经拼在里面
+  if (!result.ok) return { ok: false, text: result.error ?? '更新失败', pageReloadNeeded: false, selfDeferred: false }
   const data = isRecord(result.data) ? result.data : {}
   const updated = Array.isArray(data['updated']) ? (data['updated'] as unknown[]) : []
-  const lines = updated.length === 0 ? [stringOrEmpty(data['note']) || '全都最新'] : linesForUpdatedPackages(data, updated)
-  const reload = data['reload']
-  return { ok: true, text: lines.join('\n'), reloading: reload === 'done' || reload === 'deferred' }
+  if (updated.length === 0) return { ok: true, text: stringOrEmpty(data['note']) || '全都最新', pageReloadNeeded: false, selfDeferred: false }
+  return { ok: true, text: linesForUpdatedPackages(data, updated).join('\n'), pageReloadNeeded: true, selfDeferred: data['selfDeferred'] === true }
+}
+
+export const SELF_REMOUNT_POLL_MS = 500
+export const SELF_REMOUNT_TIMEOUT_MS = 30_000
+
+export interface WaitForOwnRemountDeps {
+  call: (command: string) => Promise<unknown>
+  sleep: (ms: number) => Promise<void>
+  listCommand: string
+  ownPkg: string
+}
+
+/** 这个包在 home 里、至少一条条目、没停用的条目全都加载起来了 */
+function ownEntriesActive(listData: unknown, ownPkg: string): boolean {
+  const own = acceptPackages(listData).find((view) => view.pkg === ownPkg)
+  if (own === undefined || own.entries.length === 0) return false
+  return own.entries.every((entry) => entry.disabled || entry.active)
+}
+
+/**
+ * 页面启动时只取一次窗格注册表：插件管理自己重新加载的那段时间里它的服务不在，插件管理窗格也就不在注册表里，
+ * 这时整页重新加载，重新加载后的页面上就没有这个窗格。所以等它加载完再重新加载。
+ * 每轮先等再问：回执发出后插件管理才开始重新加载，马上问会问到还没卸载的旧的那份
+ */
+export async function waitForOwnRemount(deps: WaitForOwnRemountDeps): Promise<CallResult> {
+  let lastReason = '条目还没加载起来'
+  for (let waited = 0; waited < SELF_REMOUNT_TIMEOUT_MS; waited += SELF_REMOUNT_POLL_MS) {
+    await deps.sleep(SELF_REMOUNT_POLL_MS)
+    let listed: CallResult
+    try {
+      listed = asResult(await deps.call(deps.listCommand))
+    } catch (err: unknown) {
+      // 重新加载的那段时间里调用失败是预期内的，下一轮再问
+      lastReason = String(err)
+      continue
+    }
+    if (!listed.ok) {
+      lastReason = listed.error ?? ''
+      continue
+    }
+    if (ownEntriesActive(listed.data, deps.ownPkg)) return { ok: true }
+    lastReason = '条目还没加载起来'
+  }
+  return {
+    ok: false,
+    error: `插件管理自己的条目 ${String(SELF_REMOUNT_TIMEOUT_MS / 1000)} 秒内没有重新加载起来（最后一次：${lastReason}）。原因看日志，加载起来之后点状态栏的「刷新」`,
+  }
 }

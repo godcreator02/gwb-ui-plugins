@@ -48,7 +48,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
   const [failed, setFailed] = useState<Record<string, string>>({})
   const [done, setDone] = useState('')
 
-  /** 命令回执里还包着一层 search 自己的 ok/error，两层的错误都要显示；筛选不在这里做 */
+  /** 筛选不在这里做 */
   const searchNow = useCallback(async (): Promise<void> => {
     setLoading(true)
     try {
@@ -59,20 +59,9 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         setLoadError(result.error ?? '')
         return
       }
-      const receipt = typeof result.data === 'object' && result.data !== null ? result.data : {}
-      const innerOk = (receipt as Record<string, unknown>)['ok'] === true
-      if (!innerOk) {
-        setRows(null)
-        setSourceNote('')
-        setLoadError(
-          typeof (receipt as Record<string, unknown>)['error'] === 'string'
-            ? String((receipt as Record<string, unknown>)['error'])
-            : '检索失败，没有给出原因',
-        )
-        return
-      }
-      setRows(acceptPackages((receipt as Record<string, unknown>)['packages']))
-      setSourceNote(acceptNote((receipt as Record<string, unknown>)['note']))
+      const receipt: Record<string, unknown> = typeof result.data === 'object' && result.data !== null ? (result.data as Record<string, unknown>) : {}
+      setRows(acceptPackages(receipt['packages']))
+      setSourceNote(acceptNote(receipt['note']))
       setLoadError('')
     } catch (err: unknown) {
       setRows(null)

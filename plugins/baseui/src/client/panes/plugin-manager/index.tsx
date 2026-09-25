@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   PackageX,
   PanelLeft,
-  Pencil,
   Plug,
   Puzzle,
   RotateCw,
@@ -34,6 +33,7 @@ import {
   kernelTestMark,
   summarize,
   toRows,
+  type CallResult,
   type EntryRow,
   type KernelTestMark,
   type PackageRow,
@@ -43,7 +43,6 @@ import {
   dirtySlots,
   fieldState,
   formatDefault,
-  LABEL_SLOT,
   orphanSettings,
   parseSlotKey,
   secretPlaceholder,
@@ -53,7 +52,7 @@ import {
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
-import { describeUpdateAll } from './update-all'
+import { describeUpdateAll, waitForOwnRemount, type UpdateAllView } from './update-all'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,8 +78,8 @@ import {
 /**
  * 插件管理窗格：「已安装」每条条目一行、展开是那个插件的设置（人先想到的是哪个插件，不是哪个分区）；「可安装」见 `market.tsx`。
  * 三份数据各取各的、各自失败：`plugin-manager.list`（包与条目）、`settings.all`（按 section 对应到条目，secret 行不回值，
- * 看明文用 `settings.get`）、`shell.plugins`（显示名与图标）。升级只有 `plugin-manager.update-all`，之后页面会被整页重载，
- * 所以在那之前一直保持忙碌。没有事件推送，每次操作完重新取数据
+ * 看明文用 `settings.get`）、`shell.plugins`（显示名与图标）。升级走 `plugin-manager.update`（`{ all: true }` 或 `{ only: [包名] }`），
+ * 有包升级了由窗格自己调 `shell.reload` 整页重新加载。没有事件推送，每次操作完重新取数据
  */
 
 const PANE_ID = 'plugin-manager'
@@ -90,7 +89,6 @@ const INSTALL = 'plugin-manager.install'
 const ADD_ENTRY = 'plugin-manager.add-entry'
 const ENABLE = 'plugin-manager.enable'
 const DISABLE = 'plugin-manager.disable'
-const SET_LABEL = 'plugin-manager.set-label'
 const REMOVE_ENTRY = 'plugin-manager.remove-entry'
 const SETTINGS_ALL = 'settings.all'
 /** 按位置读一项设置，secret 项照样回明文（只有列表命令 `settings.all` 不回），「看一眼」按钮用它 */
@@ -98,11 +96,12 @@ const SETTINGS_GET = 'settings.get'
 const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
 const SHELL_PLUGINS = 'shell.plugins'
+const SHELL_RELOAD = 'shell.reload'
 const OUTDATED = 'plugin-manager.outdated'
-const UPDATE_ALL = 'plugin-manager.update-all'
+const UPDATE = 'plugin-manager.update'
 const UNINSTALL = 'plugin-manager.uninstall'
 
-/** 插件管理的包名。升级或卸载它时，这个窗格会关闭，确认框与回执要说明 */
+/** 插件管理的包名。升级它时要等它自己的条目重新加载完再整页重新加载；卸载它时这个窗格会关闭，确认框与回执要说明 */
 const OWN_PKG = '@godcreator/gwb-plugin-manager'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -409,11 +408,6 @@ function EntryCard({
   onAskUninstall,
   update,
   onUpdate,
-  editing,
-  onRenameStart,
-  onRenameChange,
-  onRenameSave,
-  onRenameCancel,
 }: {
   card: {
     entry: EntryRow
@@ -444,21 +438,12 @@ function EntryCard({
   update?: UpdateInfo
   /** 给了才显示「更新」按钮 */
   onUpdate?: () => void
-  editing: boolean
-  onRenameStart: () => void
-  onRenameChange: (value: string) => void
-  onRenameSave: () => void
-  onRenameCancel: () => void
 }): ReactElement {
   const entry = card.entry
   const Icon = ICONS[face?.icon ?? ''] ?? Puzzle
   const badge = STATE_BADGE[entry.state]
-  // 改名行借用的草稿槽不算「改了设置」——它有自己的按钮与回执。**判据是「槽在不在」，不是值**
   const dirtyCount = dirtySlots(draft).length
-  // 改名行输入框里的字：借用的槽里只有名字，多半是字符串；不是就用现在的显示名
-  const labelDraft = draft?.[LABEL_SLOT]
-  const labelValue = typeof labelDraft === 'string' ? labelDraft : (entry.label ?? '')
-  const title = entry.label ?? face?.title ?? entry.id
+  const title = face?.title ?? entry.id
 
   return (
     <Collapsible open={open} onOpenChange={onToggleOpen} className="baseui:border-b baseui:border-border baseui:last:border-b-0">
@@ -469,7 +454,7 @@ function EntryCard({
           <Icon className="baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground" />
           {/*
             两行的分工：第一行**只放认出插件用得到的几样**（名字、未保存、状态、版本提醒），第二行放
-            身份（不带前缀的 id）与包名。id 是身份，日志和 yml 里出现的是它，label 只是给人看的名字
+            身份（不带前缀的 id）与包名。id 是身份，日志和 yml 里出现的是它，显示名是插件自己报的 title
           */}
           <div className="baseui:min-w-0 baseui:flex-1">
             <div className="baseui:flex baseui:items-center baseui:gap-2">
@@ -514,7 +499,7 @@ function EntryCard({
               size="xs"
               variant="outline"
               disabled={busy}
-              title={`一键热升级这一个包（plugin-manager.update-all 只升 ${card.pkg}）：升到 ${update.latest}，逐条重新加载它的条目，不重启，最后整页重载`}
+              title={`热升级这一个包（plugin-manager.update 只升 ${card.pkg}）：升到 ${update.latest}，逐条重新加载它的条目，不重启，最后整页重新加载界面`}
               onClick={onUpdate}
             >
               更新
@@ -534,9 +519,6 @@ function EntryCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" container={portal}>
-              <DropdownMenuItem onSelect={onRenameStart}>
-                <Pencil /> 改显示名
-              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={onAskRemove}>
                 <Trash2 /> 删除条目…
               </DropdownMenuItem>
@@ -547,29 +529,6 @@ function EntryCard({
           </DropdownMenu>
         </div>
       </div>
-
-      {/* 改名行在头部下面、折叠区外面——收着的时候也要能改名 */}
-      {editing && (
-        <div className="baseui:flex baseui:items-center baseui:gap-2 baseui:border-t baseui:border-border baseui:px-3 baseui:py-2">
-          <Input
-            autoFocus
-            className="baseui:h-7 baseui:w-56 baseui:text-xs"
-            placeholder="空着保存就是清除显示名"
-            value={labelValue}
-            onChange={(e) => onRenameChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onRenameSave()
-              if (e.key === 'Escape') onRenameCancel()
-            }}
-          />
-          <Button size="xs" disabled={busy} onClick={onRenameSave}>
-            保存
-          </Button>
-          <Button size="xs" variant="ghost" onClick={onRenameCancel}>
-            取消
-          </Button>
-        </div>
-      )}
 
       <CollapsibleContent>
         <div className="baseui:border-t baseui:border-border baseui:bg-muted/30">
@@ -645,7 +604,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [faces, setFaces] = useState<Record<string, Face>>({})
   /** 取表本身没成时的那句话。跟操作的回执分开——它说的是整个列表都没有内容 */
   const [listError, setListError] = useState('')
-  /** 上一次操作的回执。**error 一个字都不丢**，尤其 set-label 在没装数据插件时会返回一句话 */
+  /** 上一次操作的回执。**error 一个字都不丢**，pnpm 输出的最后几行在里面 */
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
@@ -656,8 +615,6 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
-  /** 就地改名：正在改名的那条条目（输入框里的字暂存在 drafts 的 __label__ 槽里） */
-  const [editing, setEditing] = useState<string | null>(null)
   /** 删条目确认框：要删的条目 + 「一并删除设置值」 */
   const [asking, setAsking] = useState<{ card: Card; homeSettings: SettingRow[] } | null>(null)
   const [alsoDrop, setAlsoDrop] = useState(true)
@@ -677,7 +634,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** outdated 的表。null 是「还没查到」——跟「查到了、全都最新」（空对象）分得开 */
   const [updates, setUpdates] = useState<Record<string, UpdateInfo> | null>(null)
   const [checking, setChecking] = useState(false)
-  /** 「全部更新」的确认框开着；`updatingAll` 是点了确认、命令还没返回（或返回了、页面正等着被重载） */
+  /** 「全部更新」的确认框开着；`updatingAll` 是点了确认、升级与整页重新加载还没做完 */
   const [askingUpdateAll, setAskingUpdateAll] = useState(false)
   const [updatingAll, setUpdatingAll] = useState(false)
 
@@ -725,16 +682,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           if (manual) setNotice({ ok: false, text: result.error ?? '' })
           return
         }
-        // 命令结果里还包着一层回执（outdated 自己的 ok/error），它的 error 同样要显示
-        const receipt = isRecord(result.data) ? result.data : {}
-        if (receipt['ok'] === true) {
-          setUpdates(acceptUpdates(receipt['updates']))
-        } else {
-          setUpdates(null)
-          if (manual) {
-            setNotice({ ok: false, text: typeof receipt['error'] === 'string' ? receipt['error'] : '检查新版本失败' })
-          }
-        }
+        setUpdates(acceptUpdates(isRecord(result.data) ? result.data['updates'] : undefined))
       } catch (err: unknown) {
         setUpdates(null)
         if (manual) setNotice({ ok: false, text: String(err) })
@@ -812,7 +760,6 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       if (q === '') return true
       return (
         card.entry.id.toLowerCase().includes(q) ||
-        (card.entry.label ?? '').toLowerCase().includes(q) ||
         card.pkg.toLowerCase().includes(q) ||
         card.entry.entryId.toLowerCase().includes(q) ||
         card.settings.some(
@@ -899,17 +846,6 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setNotice({ ok: true, text: '设置存好了' })
   }
 
-  const saveLabel = async (): Promise<void> => {
-    if (editing === null) return
-    const entry = cards.find((card) => card.entry.entryId === editing)?.entry
-    const value = drafts[editing]?.[LABEL_SLOT]
-    const text = typeof value === 'string' ? value : (entry?.label ?? '')
-    setEditing(null)
-    discardEntry(editing)
-    // **空串是合法的，意思是清除**——不 trim 成 undefined、也不当成「没改」
-    await run(SET_LABEL, { entryId: editing, label: text }, text === '' ? '显示名清除了' : `显示名改成了「${text}」`)
-  }
-
   const install = async (): Promise<void> => {
     const pkg = installInput.trim()
     if (pkg === '') return
@@ -939,23 +875,35 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     [updates],
   )
 
-  /**
-   * 不给 `only` 升全部过期包，给了只升这几个。整页重载已经开始时不解除忙碌状态，免得人在最后一刻误点；
-   * 没有开始重载才照常重新取表
-   */
+  /** 插件管理自己也升了就先等它的条目重新加载完，再调 `shell.reload` */
+  const reloadPageAfterUpdate = async (view: UpdateAllView): Promise<CallResult> => {
+    if (view.selfDeferred) {
+      const remounted = await waitForOwnRemount({
+        call: (command) => args.host.call(command),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        listCommand: LIST,
+        ownPkg: OWN_PKG,
+      })
+      if (!remounted.ok) return remounted
+    }
+    return asResult(await args.host.call(SHELL_RELOAD))
+  }
+
+  /** 不给 `only` 升全部过期包，给了只升这几个；有包升级了就整页重新加载 */
   const updateAll = async (only?: readonly string[]): Promise<void> => {
     setBusy(true)
     setUpdatingAll(true)
-    let reloading = false
     try {
-      const view = describeUpdateAll(asResult(await args.host.call(UPDATE_ALL, only === undefined ? undefined : { only })))
-      reloading = view.reloading
+      const view = describeUpdateAll(asResult(await args.host.call(UPDATE, only === undefined ? { all: true } : { only })))
       setNotice({ ok: view.ok, text: view.text })
+      if (view.pageReloadNeeded) {
+        const reloaded = await reloadPageAfterUpdate(view)
+        if (!reloaded.ok) setNotice({ ok: false, text: `${view.text}\n界面没有整页重新加载：${reloaded.error ?? ''}` })
+      }
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
     }
     setAskingUpdateAll(false)
-    if (reloading) return
     setUpdatingAll(false)
     try {
       await refresh()
@@ -1108,7 +1056,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           variant={outdatedRows.length > 0 ? 'secondary' : 'ghost'}
           title={
             outdatedRows.length > 0
-              ? `一键热升级 ${outdatedRows.length} 个包：一次 pnpm add，逐条停用→启用重新加载成新版本，不重启，最后整页重载`
+              ? `热升级 ${outdatedRows.length} 个包（plugin-manager.update 全部升级）：一次 pnpm add，逐条停用→启用重新加载成新版本，不重启，最后整页重新加载界面`
               : '没有过期的包'
           }
           disabled={checking || busy || outdatedRows.length === 0}
@@ -1189,17 +1137,6 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 onUpdate={
                   updates?.[card.pkg] !== undefined ? () => void updateAll([card.pkg]) : undefined
                 }
-                editing={editing === card.entry.entryId}
-                onRenameStart={() => {
-                  setEditing(card.entry.entryId)
-                  setDrafts((prev) => ({ ...prev, [card.entry.entryId]: { ...prev[card.entry.entryId] } }))
-                }}
-                onRenameChange={(value) => onValue(card.entry.entryId, LABEL_SLOT, value)}
-                onRenameSave={() => void saveLabel()}
-                onRenameCancel={() => {
-                  setEditing(null)
-                  discardEntry(card.entry.entryId)
-                }}
               />
             ))}
 
@@ -1355,7 +1292,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       <AlertDialog open={asking !== null} onOpenChange={(v) => !v && setAsking(null)}>
         <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除条目 {asking?.card.entry.label ?? asking?.card.entry.id}？</AlertDialogTitle>
+            <AlertDialogTitle>删除条目 {asking?.card.entry.id}？</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="baseui:space-y-2">
                 <p>
@@ -1402,11 +1339,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <div className="baseui:space-y-2">
                 <p>
                   一次 <code className="baseui:font-mono">pnpm add</code> 把下面这些升到 registry 上的最新版，再把它们的每条条目
-                  停用→启用重新加载成新版本（本来就停用的保持停用），<strong>不重启内核</strong>；升完整页重载。
+                  停用→启用重新加载成新版本（本来就停用的保持停用），<strong>不重启内核</strong>；升完整页重新加载界面。
                 </p>
                 {outdatedRows.some(([pkg]) => pkg === OWN_PKG) && (
                   <p className="baseui:text-warning">
-                    插件管理自己也在清单里：回执发出之后这个窗格会先关再开，随后整页重载。
+                    插件管理自己也在清单里：它的条目在升级完成之后才重新加载，等它加载起来再整页重新加载界面。
                   </p>
                 )}
               </div>
@@ -1425,7 +1362,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updatingAll}>取消</AlertDialogCancel>
             <AlertDialogAction disabled={updatingAll} onClick={() => void updateAll()}>
-              {updatingAll ? '升级中，完成后界面会自动重载…' : '全部更新'}
+              {updatingAll ? '升级中，完成后整页重新加载界面…' : '全部更新'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

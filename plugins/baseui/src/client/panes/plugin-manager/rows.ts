@@ -20,7 +20,6 @@ export interface EntryView {
   active: boolean
   /** `group: true` 的条目是分组，不是插件 */
   group: boolean
-  label?: string
 }
 
 /** 与插件管理的 `PluginPackageView` 加上内核测试状态同形 */
@@ -42,8 +41,7 @@ function acceptEntry(value: unknown): EntryView | undefined {
   if (typeof id !== 'string' || id === '') return undefined
   const entryId = value['entryId']
   const pkg = value['pkg']
-  const label = value['label']
-  const view: EntryView = {
+  return {
     id,
     entryId: typeof entryId === 'string' && entryId !== '' ? entryId : id,
     pkg: typeof pkg === 'string' ? pkg : '',
@@ -51,7 +49,6 @@ function acceptEntry(value: unknown): EntryView | undefined {
     active: value['active'] === true,
     group: value['group'] === true,
   }
-  return typeof label === 'string' && label !== '' ? { ...view, label } : view
 }
 
 function acceptEntryList(rawEntries: unknown): EntryView[] {
@@ -122,9 +119,8 @@ export function stateOf(entry: Pick<EntryView, 'disabled' | 'active'>): EntrySta
 
 export interface EntryRow {
   entryId: string
-  /** 始终显示：它是身份，日志和 yml 里出现的是它，label 只是给人看的名字 */
+  /** 始终显示：它是身份，日志和 yml 里出现的是它，显示名只是给人看的 */
   id: string
-  label?: string
   state: EntryState
   text: string
   hint: string
@@ -136,7 +132,7 @@ export interface EntryRow {
 function toEntryRow(entry: EntryView): EntryRow {
   const state = stateOf(entry)
   const face = FACES[state]
-  const row: EntryRow = {
+  return {
     entryId: entry.entryId,
     id: entry.id,
     state,
@@ -145,7 +141,6 @@ function toEntryRow(entry: EntryView): EntryRow {
     attention: face.attention,
     disabled: entry.disabled,
   }
-  return entry.label === undefined ? row : { ...row, label: entry.label }
 }
 
 /** 卸载是包级动作（`plugin-manager.uninstall`），入口在窗格里，不在行上 */
