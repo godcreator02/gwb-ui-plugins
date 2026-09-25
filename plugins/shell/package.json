@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.13.9",
+  "version": "0.13.10",
   "author": {
     "name": "godcreator"
   },
@@ -40,9 +40,9 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；0.5.1 起内核报安装包的版本（gwbKernel.launcherVersion），状态栏要用。接口类型从内核包的包根 import type；命令总线、数据、说明书插件只取类型，写在 dev 里",
+  "//peerDependencies": "内核包的 ^ 范围就是兼容哪个内核；内核 0.6 起页面 importmap 写死在内核的页面入口里，状态栏要用的安装包版本（gwbKernel.launcherVersion）也在。接口类型从内核包的包根 import type；命令总线、数据、说明书插件只取类型，写在 dev 里",
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.5.1",
+    "@godcreator/gwb-kernel-desktop": "^0.6.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {

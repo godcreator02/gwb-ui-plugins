@@ -191,8 +191,7 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 ## 规矩
 
 * peer 写内核包 `@godcreator/gwb-kernel-desktop` 的 `^` 范围（带界面的插件从 `^0.4.1` 起：页面的 react 由它提供；内核的接口类型也从它的包根 `import type`），node 侧按值 import 了 `cordis` 再写 `cordis`；外壳、react 与组件依赖写 dev——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
-* 浏览器侧构建产物里的包名 import 只留 react 的四个包名（内核包 `gwb.shared` 的键），其余依赖打包进 `client.js`——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
-* 外置名单在构建时从装好的内核包清单 `gwb.shared` 读——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
+* 浏览器侧构建产物里的包名 import 只留 react 的四个包名（`react`、`react/jsx-runtime`、`react-dom`、`react-dom/client`，内核 0.6 起写死在内核页面入口的 importmap 里），构建时把这四个设成 external，其余依赖打包进 `client.js`——devkit 仓 `docs-site/content/docs/rules/importmap.mdx`
 * 只引类型写 `import type`——devkit 仓 `docs-site/content/docs/rules/deps.mdx`
 * 外壳接口的类型从外壳引，不手写、不用 `as` 转——devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
 * 源码里不指回别的仓——devkit 仓 `docs-site/content/docs/rules/deps.mdx`

@@ -66,12 +66,11 @@ default home 平时看不见这条，因为人一交互（开/关/拖格）就�
 来源：gwb-kernel（内核仓），2026-09-24。
 
 内核 0.5.0 起词汇表包 `@godcreator/gwb-plugin-api` 不再发布，它的类型（`GwbContext`、`GwbKernelApi`、`GwbResult`、`GwbWindowApi`、`ShellBoot`、`window.gwb` 的全局声明）
-改由内核包 `@godcreator/gwb-kernel-desktop` 的包根导出。shell 已在 0.13.8 改完（2026-09-25，见轨迹卡「状态栏两个版本」），baseui、theme 还要改：
+改由内核包 `@godcreator/gwb-kernel-desktop` 的包根导出。shell 已在 0.13.10 改完并跟到内核 0.6（2026-09-25），baseui、theme 还要改，版本照下面「内核直接跟 0.6」那条：
 
 - `import type { … } from '@godcreator/gwb-plugin-api'` 改成 `from '@godcreator/gwb-kernel-desktop'`（`import type {} from '@godcreator/gwb-plugin-api'` 也一样改）：baseui 的 `src/index.ts` 与 `src/client/panes/logger/index.tsx`、theme 的 `src/index.ts`；两个 `tests/artifact.test.ts` 里 node 侧允许的包名 import 去掉词汇表包、不换成内核包（内核包的包根一加载就启动 Electron 应用，只能 `import type`，产物里不该出现它）
 - devDependencies 删掉词汇表包：内核包已经写在 peer 里，pnpm 会把它装进包的 node_modules，类型检查从那里取
-- peer 里内核包的范围（baseui 是 `^0.4.0`，theme 是 `^0.4.1`）改成 `^0.5.0` 起，在跑内核 0.5 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
-- 两个插件的 `build.ts` 与 `tests/artifact.test.ts` 里 `SHARED` 是手写的四个名字，改成从内核包清单的 `gwb.shared` 读（shell 的 `build.ts` 已是这个写法）
+- peer 里内核包的范围（baseui 是 `^0.4.0`，theme 是 `^0.4.1`）改成 `^0.6.x`，见下面那条
 - theme 的 dev 里命令总线已改到 `^0.5.0`（仓里类型检查要求和 shell 用同一条线）；baseui 发版前还要先做下面插件管理 0.9、0.10 两条
 
 改的时候照说明书 `gwb-release` 升各插件自己的版本号。
@@ -110,7 +109,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 来源：gwb-kernel（内核仓），2026-09-25，9061518。
 
 上一条「要适配内核 0.5」照做，但版本改成跟 0.6：内核 0.6.0 把页面的 importmap 写死在页面入口里，只有 `react`、`react/jsx-runtime`、
-`react-dom`、`react-dom/client` 四个包名；内核包清单的 `gwb.shared` 字段和 `./react*` 出口都删了。所以：
+`react-dom`、`react-dom/client` 四个包名；内核包清单的 `gwb.shared` 字段和 `./react*` 出口都删了。shell 已在 0.13.10 照做（peer `^0.6.1`，名单写死在 `build.ts` 的 `PAGE_IMPORTMAP_NAMES`），baseui、theme 还没做。所以：
 
 - peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在跑内核 0.6.0 的隔离 home 里验过再发
 - 浏览器端构建（`build.ts` 或 `tools/build-plugin.ts`）里从内核包清单读 `gwb.shared` 的那段删掉，`external` 直接写上面四个名字；

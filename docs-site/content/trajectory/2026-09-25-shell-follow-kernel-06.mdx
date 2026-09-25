@@ -1,0 +1,21 @@
+---
+born-at: 2026-09-25T09:30
+parent: [2026-09-12-shell-refactor-round]
+label: 外壳跟内核 0.6
+domain: shell
+---
+
+## 背景
+
+外壳 0.13.8、0.13.9 跟的是内核 0.5.1，peer 写 `^0.5.1`，react 的外置名单构建时从内核包清单的 `gwb.shared` 读（见[状态栏两个版本](2026-09-25-statusbar-two-versions.md)）。
+同一天内核仓发了 0.6.0、0.6.1：importmap 写死在页面入口 `index.html` 里，内核包清单的 `gwb.shared` 删了；default 当时已经升到内核 0.6.1。
+`^0.5.1` 不包含 0.6.x，外壳在 default 上被标成没在这个内核上测过；再构建时也读不到 `gwb.shared`。
+
+用户原话：`内核不都6版本了吗？？`
+
+## 结论与边界
+
+外壳 0.13.10 的 peer 写 `^0.6.1`；`build.ts` 的外置名单与产物测试里的允许名单都写死 react 的四个包名（`PAGE_IMPORTMAP_NAMES`），
+与内核页面入口里那张 importmap 一一对应。外壳文档里「内核扫各包 `gwb.shared` 拼 importmap、推给页面再注入」的描述都改成现状：importmap 写死在页面入口里，页面一加载就在。
+
+没做的：baseui、主题插件还没跟 0.6，留在收件箱。

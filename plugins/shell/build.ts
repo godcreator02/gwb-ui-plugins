@@ -16,19 +16,13 @@ import postcss from 'postcss'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-/** 外置名单只从提供方读：react 的包名由内核包提供，名单是它清单里 gwb.shared 的键（peer 写了内核包，pnpm 装在本包的 node_modules 里） */
-function sharedNamesOfKernel(): string[] {
-  const manifestPath = require.resolve('@godcreator/gwb-kernel-desktop/package.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { gwb?: { shared?: Record<string, string> } }
-  const shared = manifest.gwb?.shared
-  if (shared === undefined) throw new Error(`${manifestPath} 里没有 gwb.shared：装的内核包版本不提供 react`)
-  return Object.keys(shared)
-}
+/** 内核 0.6 起页面入口里写死的 importmap 只有这四个包名，与内核仓 index.html 的那张表一一对应 */
+const PAGE_IMPORTMAP_NAMES = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
 
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: sharedNamesOfKernel(),
+  external: PAGE_IMPORTMAP_NAMES,
   // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的
   // paths 是同一条约定（都指 src/client）
   alias: { '@': path.join(here, 'src', 'client') },

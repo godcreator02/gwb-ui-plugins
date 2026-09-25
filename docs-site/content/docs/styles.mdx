@@ -178,14 +178,13 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 
 上面三问都是 CSS 的事。JS 这边只有一样是共享的——react 相关的那几个包。
 
-机制是页面级的 **importmap**：一张「裸名 → 文件地址」的表。react 的四个裸名由**内核包**提供——内核包构建时把
-react 打成浏览器能直接 import 的文件，在自己的包清单里声明这四个裸名；外壳不再带 react，只在包清单里写明
-它要的内核版本：
+机制是页面级的 **importmap**：一张「包名 → 文件地址」的表。react 的四个包名由**内核包**提供——内核包构建时把
+react 打成浏览器能直接 import 的文件，放在页面入口旁边；外壳不带 react，只在包清单里写明它要的内核版本：
 
 {/* ref file="../plugins/shell/package.json" lines="43-47" */}
 
-内核把自己的四个裸名、再加上各插件包清单里声明的其他裸名拼成一张表，在外壳第一句裸名 import **之前**注入页面，
-**只注入一次**。拼装规则与注入时序的正本在内核仓文档站「页面上的包名」。
+这张表写死在内核的页面入口 `index.html` 里，只有这四个包名，外壳的第一句 import 之前就已经在页面上；内核启动时不计算、
+不读任何包清单。正本在内核仓文档站接缝 5「页面上的 react」。
 
 插件那边对应的做法是：react 系四个裸名**外置**，其余依赖一律**打包进本插件的产物**——
 
@@ -196,9 +195,9 @@ react 打成浏览器能直接 import 的文件，在自己的包清单里声明
 
 <Diagram name="importmap-flow" title="react 的四个包名怎么全页只解析到一份">
 
-- 内核包构建时把 react 打进 `dist/react/`，在 `package.json` 的 `gwb.shared` 里声明 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 各对应哪个导出子路径
-- 内核先放进自己的四个包名，再扫 home 里各包的 `gwb.shared`，解析成 file:// 地址拼成 importmap；插件声明这四个包名一律忽略，其余包名有两个提供方时都不收录
-- 页面在 import 外壳的 client.js 之前注入这张 importmap，只注入一次
+- 内核包构建时把 react 打进 `dist/react/`，和页面入口 `index.html` 在同一个目录下
+- `index.html` 里写死一张 importmap，只有 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 四个包名，地址相对 `index.html` 指向 `./react/…`
+- 页面一加载这张表就在，外壳的 client.js 在它之后才 import
 - 外壳和各插件的 client.js 构建时都把这四个包名设成 external，浏览器按 importmap 把它们解析到内核包里的同一份文件
 
 </Diagram>
@@ -213,8 +212,8 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 
 把上面几件事按时间排一遍，就是外壳启动时做的事。每一步都有它必须在那个位置的理由：
 
-**第一步：内核注入 importmap，然后才 import 外壳的浏览器端代码。** 顺序反了，外壳顶层那句
-`import { … } from 'react'` 就解析不到。
+**第一步：importmap 已经在页面上，然后才 import 外壳的浏览器端代码。** 它写死在内核的页面入口里，
+页面一加载就在；没有它，外壳顶层那句 `import { … } from 'react'` 就解析不到。
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="636-640" */}
 
@@ -263,14 +262,14 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 | 每个插件自己的表 | 规则：本插件用到的那些工具类，类名带本插件的前缀 | 不知道别的插件存在，不知道值最终是多少（它只写 `var(…)`） |
 | 外壳 | 转交与容器：注入三张表、给每个窗格一个容器、把这个窗格变成容器查询的根 | **不知道任何插件的类名**，也不知道插件的表里有什么 |
 | 主题插件 | 用户覆盖：字体两项 + 一整段自定义 CSS，交给外壳在最后注入 | 不知道任何插件存在，也不知道外壳把它注入在第几位（它只交出一段字符串） |
-| 内核 | 提供 react 的四个包名，拼 importmap（其余包名只转交各包的共享声明） | 不认识任何类名，不认识任何插件 |
+| 内核 | 提供 react 的四个包名，页面入口里写死 importmap | 不认识任何类名，不认识任何插件 |
 
 <Diagram name="module-deps" title="本仓各模块的依赖方向">
 
 - 带界面的插件依赖令牌表（构建期引用映射文件、运行期读页面上的变量值）与外壳（注册窗格时交出两个地址，浏览器侧 `import type` 外壳的类型）
 - 外壳经一条可选命令 `theme.startupCss` 用到主题插件，没装主题插件外壳照常运行
 - 本仓的插件以 peer 依赖基础仓插件（commands、data、settings、logger 等），基础仓不依赖本仓
-- 内核自己提供 react，再读各包清单里的 `gwb.shared` 拼 importmap，不依赖任何插件
+- 内核自己提供 react，importmap 写死在页面入口里，不依赖任何插件
 
 </Diagram>
 
@@ -392,11 +391,9 @@ plugin-manager 是只有 node 端的 core 插件，各自的浏览器端代码�
 也只有一份。做法参照 VS Code 的内置视图：**合并的是发布，不是开发**——`panes/` 下的窗格之间互不
 import，只 import `components/` 下的共享组件。
 
-### `gwb.shared`：共享声明
+### 页面上只有 react 可以共享
 
-包清单里的一个字段，键是裸名、值是本包的导出子路径。本仓的插件都不写它：react 的四个裸名由内核包声明。
-它的**边界**：react 那四个由内核给，插件声明了也被忽略；其余一个裸名只许一个提供方，重复时内核全部不收录并记一条
-warn。共享出去的代码只在页面上运行，没有 node 端，包清单是它唯一能声明的地方。
+importmap 里只有 react 的四个包名，插件没有办法再往页面上加共享的包名：别的依赖一律打包进自己的 `client.js`。
 
 ---
 

@@ -208,8 +208,8 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 <Diagram name="shell-takeover" title="外壳怎么接管内核的页面">
 
 - shell 插件的 node 侧调 `gwbKernel.setShell(client.js 的地址)`，包在 `ctx.effect` 里，插件卸载时自动撤销
-- 内核记下地址，经 `gwb:shell` 推给页面，同时带上按各包 `gwb.shared` 算好的 importmap
-- 页面先注入 importmap、再 import client.js，把 `#root` 交给它的默认导出 `mountShell`，留下返回的 `dispose`
+- 内核记下地址，经 `gwb:shell` 推给页面；react 的 importmap 写死在内核的页面入口里，页面一加载就在
+- 页面 import client.js，把 `#root` 交给它的默认导出 `mountShell`，留下返回的 `dispose`
 - `mountShell` 调 `shell.env` 取 home、三张样式表的地址、启动样式与版本号，交给 `bootShell`：注入样式表 → 注入启动样式 → 取注册表与布局文件 → 给 `<html>` 加 `dark` 类 → `createRoot(#root)` 渲染
 - shell 插件卸载时内核推 url 为 null，页面调 `dispose`，外壳同步卸载 React 树
 
@@ -720,7 +720,7 @@ Electron / Node / Chromium 是主进程的 `process.versions`。这几样在 nod
 
 {/* ref file="../plugins/shell/src/versions.ts" */}
 
-**刷新是整页 reload，不是外壳内部重建**：渲染层那条 boot 流程（onShell 收地址与 importmap →
+**刷新是整页 reload，不是外壳内部重建**：渲染层那条 boot 流程（onShell 收外壳地址 →
 bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍；内核那部分与页面加载无关（IPC
 句柄在主进程启动时注册，宿主进程也在那边运行），reload 对它只是一次重新连接。装了新插件、
 启停了插件之后点它，比重启整个应用开销小。
@@ -729,7 +729,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重跑一遍�
 
 那个「刷新」按钮还有命令版本——`shell.reload`，无参数，给
 插件管理的 `plugin-manager.update-all` 一键热升级的最后一步用：node 侧换成新版本之后，开着的窗格用的
-仍是旧的 client.js、importmap 只在开机注入一次，只有整页重载能让页面重新 import 到新东西。
+仍是旧的 client.js，浏览器已经 import 过的模块不会重新加载，只有整页重载能让页面重新 import 到新东西。
 
 {/* ref file="../plugins/shell/src/reload.ts" */}
 

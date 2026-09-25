@@ -241,7 +241,7 @@ export default class GwbShell extends Service implements GwbShellApi {
       {
         name: RELOAD_COMMAND,
         description: '整页重载全部窗口',
-        usage: 'BrowserWindow.webContents.reload：装了新插件、热升级之后让页面重取注册表、重新注入 importmap。没有窗口回 ok:false。无参数',
+        usage: 'BrowserWindow.webContents.reload：装了新插件、热升级之后让页面重取注册表、重新 import 新版本的浏览器端代码。没有窗口回 ok:false。无参数',
       },
       async () => {
         let deps: ReloadDeps

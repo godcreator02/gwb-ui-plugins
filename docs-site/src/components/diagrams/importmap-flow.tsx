@@ -1,29 +1,28 @@
 'use client'
 
 /**
- * react 怎么全页只有一份：内核包的清单声明 → 内核拼 importmap → 页面注入 → 外壳与插件的 client.js 按包名解析到同一个文件。
+ * react 怎么全页只有一份：内核包打包 react → 页面入口里写死的 importmap → 外壳与插件的 client.js 按包名解析到同一个文件。
  */
 
 import { Arrow, Box } from './parts'
 import { StepControls, StepText, useSteps } from './steps'
 
-type Part = 'manifest' | 'kernel' | 'map' | 'shell' | 'plugin' | 'react'
+type Part = 'bundle' | 'entry' | 'map' | 'shell' | 'plugin' | 'react'
 
 const STEPS: { title: string; detail: string; lit: Part[] }[] = [
-  { title: '全貌', detail: 'react 相关的四个包名全页只解析到一份文件：内核包提供，页面上的 importmap 负责解析。', lit: [] },
+  { title: '全貌', detail: 'react 相关的四个包名全页只解析到一份文件：内核包提供，页面入口里的 importmap 负责解析。', lit: [] },
   {
-    title: '第 1 步：内核包声明',
-    detail: '内核包构建时把 react 打成 ESM 放进 dist/react/，在自己 package.json 的 gwb.shared 里写明 react、react/jsx-runtime、react-dom、react-dom/client 四个包名各对应哪个导出子路径。',
-    lit: ['manifest'],
+    title: '第 1 步：内核包打包 react',
+    detail: '内核包构建时把 react 打成 ESM 放进 dist/react/，和页面入口 index.html 在同一个目录下。',
+    lit: ['bundle'],
   },
   {
-    title: '第 2 步：内核拼 importmap',
-    detail: '内核先放进自己的四个名字，再扫 home 里各包的 gwb.shared，把子路径解析成 file:// 地址，拼成一张 importmap。插件声明这四个名字一律忽略；别的名字有两个提供方时都不收录。',
-    lit: ['manifest', 'kernel', 'map'],
+    title: '第 2 步：页面入口里写死 importmap',
+    detail: 'index.html 里有一张写死的 importmap，只有 react、react/jsx-runtime、react-dom、react-dom/client 四个包名，地址相对 index.html 指向 ./react/…。内核启动时不计算、不读任何包清单，页面一加载这张表就在。',
+    lit: ['bundle', 'entry', 'map'],
   },
-  { title: '第 3 步：页面注入', detail: '页面在 import 外壳的 client.js 之前注入这张 importmap，整页只注入一次。', lit: ['map'] },
   {
-    title: '第 4 步：按包名解析',
+    title: '第 3 步：按包名解析',
     detail: "外壳和各插件的 client.js 构建时都把这四个包名设成 external，产物里留着 import … from 'react'。浏览器按 importmap 把它解析到内核包的 dist/react/react.js——全页同一份 React。",
     lit: ['shell', 'plugin', 'react', 'map'],
   },
@@ -37,12 +36,12 @@ export function ImportmapFlow() {
 
   return (
     <>
-      <svg viewBox="0 0 400 452" role="img" aria-label="react 的四个包名怎么经 importmap 解析到内核包提供的同一份文件">
-        <Box x={20} y={12} w={360} h={70} lines={['内核包 package.json', '"gwb": { "shared": {', '"react": "./react", … } }']} tone={lit('manifest')} mono />
-        <Arrow from={[200, 82]} to={[200, 108]} tone={lit('kernel')} flow={flowing('manifest', 'kernel')} />
-        <Box x={20} y={108} w={360} h={56} lines={['内核', '自己的四个名字 + 各包的 gwb.shared → file://']} tone={lit('kernel')} />
-        <Arrow from={[200, 164]} to={[200, 190]} tone={lit('map')} flow={flowing('kernel', 'map')} />
-        <Box x={20} y={190} w={360} h={70} lines={['页面上的 importmap', '"react" → file:///…/gwb-kernel-desktop/', 'dist/react/react.js']} tone={lit('map')} mono />
+      <svg viewBox="0 0 400 452" role="img" aria-label="react 的四个包名怎么经页面入口里写死的 importmap 解析到内核包提供的同一份文件">
+        <Box x={20} y={12} w={360} h={70} lines={['内核包 dist/react/', 'react.js、react-jsx-runtime.js、', 'react-dom.js、react-dom-client.js']} tone={lit('bundle')} mono />
+        <Arrow from={[200, 82]} to={[200, 108]} tone={lit('entry')} flow={flowing('bundle', 'entry')} />
+        <Box x={20} y={108} w={360} h={56} lines={['内核包 dist/index.html（页面入口）', '同目录，地址写相对路径 ./react/…']} tone={lit('entry')} />
+        <Arrow from={[200, 164]} to={[200, 190]} tone={lit('map')} flow={flowing('entry', 'map')} />
+        <Box x={20} y={190} w={360} h={70} lines={['写死的 importmap', '"react" → ./react/react.js', '只有这四个包名']} tone={lit('map')} mono />
 
         <Box x={20} y={300} w={170} h={56} lines={['外壳 client.js', "from 'react'"]} tone={lit('shell')} mono />
         <Box x={210} y={300} w={170} h={56} lines={['插件 client.js', "from 'react'"]} tone={lit('plugin')} mono />
