@@ -1,4 +1,4 @@
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 // 只为引入这几个包的 `declare module 'cordis'`，让 ctx 上有各自的服务名
 import type {} from '@godcreator/gwb-logger'
 import type {} from '@godcreator/gwb-plugin-manager'

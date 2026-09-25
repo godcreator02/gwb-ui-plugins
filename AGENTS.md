@@ -16,9 +16,9 @@
 
 ## 依赖现状
 
-* **跨仓的 `@godcreator` 包**（命令总线、数据、设置、说明书、日志、插件管理、词汇表包 `gwb-plugin-api`）
-  现在写在 dev、用 registry 上的版本——本仓没有它们，`workspace:*` 解析不到
-* **同仓包**（shell / theme / baseui 之间）dev 写 `workspace:*`
+* **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、日志、插件管理）写 `^<源上 latest>`，
+  同仓的（shell / theme / baseui 之间）写 `workspace:^`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
+  不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
 * 依赖单向：本仓用基础仓，基础仓不依赖本仓
 
 ## baseui 三条规矩（破了任何一条，它就会变成什么都往里放的上帝插件）

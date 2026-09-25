@@ -9,13 +9,13 @@ import { build } from 'esbuild'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
-/** 这四个名字由内核包的 gwb.shared 提供 */
-const SHARED = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
+/** 内核 0.6 起页面入口里写死的 importmap 只有这四个包名，与内核仓 index.html 的那张表一一对应 */
+const PAGE_IMPORTMAP_NAMES = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
 
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: SHARED,
+  external: PAGE_IMPORTMAP_NAMES,
   absWorkingDir: here,
   format: 'esm',
   platform: 'browser',

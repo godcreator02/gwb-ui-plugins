@@ -26,14 +26,20 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1"
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-commands": "^0.5.0",
+    "@godcreator/gwb-settings": "^0.3.3",
+    "@godcreator/gwb-shell": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-shell": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.4.0",
-    "@godcreator/gwb-repo-kit": "0.3.0",
-    "@godcreator/gwb-commands": "^0.5.0",
-    "@godcreator/gwb-settings": "^0.3.1",
-    "@godcreator/gwb-shell": "workspace:*",
     "cordis": "4.0.0-rc.10",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",

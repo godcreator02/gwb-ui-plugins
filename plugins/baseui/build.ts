@@ -10,14 +10,14 @@ import { build } from 'esbuild'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
-/** 这四个名字由内核包的 gwb.shared 提供 */
-const SHARED = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
+/** 内核 0.6 起页面入口里写死的 importmap 只有这四个包名，与内核仓 index.html 的那张表一一对应 */
+const PAGE_IMPORTMAP_NAMES = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
 
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: SHARED,
-  // shadcn 拉下来的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的
+  external: PAGE_IMPORTMAP_NAMES,
+  // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的
   // paths 是同一条约定（都指 src/client）
   alias: { '@': path.join(here, 'src', 'client') },
   absWorkingDir: here,

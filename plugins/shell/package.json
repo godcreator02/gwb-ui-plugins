@@ -25,28 +25,27 @@
     "skills",
     "src"
   ],
-  "gwb": {
-    "provides": {
-      "gwbShell": {
-        "summary": "窗格注册服务：插件在 apply 里说「我有一个窗格」、报自己的名字",
-        "usage": "inject: ['gwbShell']，在 apply 里 ctx.gwbShell.registerPane({ id, title, icon?, client?, style?, kind? })——kind 'tool'（缺省，整页一份）或 'document'（能多开）；ctx.gwbShell.describeSelf({ title, icon? }) 报件名。两个都回注销函数、件卸载时自动摘。panes() / plugins() 读此刻的两张表。身份（pkg、entryId）由服务从调用方的 fiber 上取，插件不用报"
-      }
-    }
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p src/client/tsconfig.pane-types.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.6.1",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-commands": "^0.5.0",
+    "@godcreator/gwb-data": "^0.1.7",
+    "@godcreator/gwb-skills": "^0.4.5",
     "cordis": "^4.0.0-rc.9"
   },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-skills": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-commands": "^0.5.0",
-    "@godcreator/gwb-data": "^0.1.5",
-    "@godcreator/gwb-repo-kit": "0.3.0",
-    "@godcreator/gwb-skills": "^0.4.3",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/node": "^4.3.0",
     "@types/node": "^24.0.0",

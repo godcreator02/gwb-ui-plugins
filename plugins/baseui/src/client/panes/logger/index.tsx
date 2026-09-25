@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
-// 页面上 `window.gwb` 的类型：词汇表包的全局声明，import 它就生效。实时日志经 `window.gwb.on` 订阅
-import type {} from '@godcreator/gwb-plugin-api'
+// 页面上 `window.gwb` 的类型：内核包包根的全局声明，import 它就生效。实时日志经 `window.gwb.on` 订阅
+import type {} from '@godcreator/gwb-kernel-desktop'
 import {
   acceptEntries,
   clockOf,

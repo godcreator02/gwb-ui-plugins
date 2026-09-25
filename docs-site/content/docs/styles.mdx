@@ -181,7 +181,7 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 机制是页面级的 **importmap**：一张「包名 → 文件地址」的表。react 的四个包名由**内核包**提供——内核包构建时把
 react 打成浏览器能直接 import 的文件，放在页面入口旁边；外壳不带 react，只在包清单里写明它要的内核版本：
 
-{/* ref file="../plugins/shell/package.json" lines="41-44" */}
+{/* ref file="../plugins/shell/package.json" lines="33-39" */}
 
 这张表写死在内核的页面入口 `index.html` 里，只有这四个包名，外壳的第一句 import 之前就已经在页面上；内核启动时不计算、
 不读任何包清单。正本在内核仓文档站接缝 5「页面上的 react」。
@@ -195,7 +195,7 @@ react 打成浏览器能直接 import 的文件，放在页面入口旁边；外
 
 <Diagram name="importmap-flow" title="react 的四个包名怎么全页只解析到一份">
 
-- 内核包构建时把 react 打进 `dist/react/`，和页面入口 `index.html` 在同一个目录下
+- 内核包构建时把 react 打包进 `dist/react/`，和页面入口 `index.html` 在同一个目录下
 - `index.html` 里写死一张 importmap，只有 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 四个包名，地址相对 `index.html` 指向 `./react/…`
 - 页面一加载这张表就在，外壳的 client.js 在它之后才 import
 - 外壳和各插件的 client.js 构建时都把这四个包名设成 external，浏览器按 importmap 把它们解析到内核包里的同一份文件

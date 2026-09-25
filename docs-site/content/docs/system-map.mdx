@@ -26,19 +26,22 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 ## 包清单里的依赖
 
-跨仓的 `@godcreator` 包写在 dev、用 registry 上的版本（`^` 范围或精确号），同仓的包写 `workspace:*`——本仓没有
-跨仓包的 workspace，`workspace:*` 解析不到：
+peer 里写三类：内核包 `@godcreator/gwb-kernel-desktop`（范围包含验证时用的内核）、按值 import 的 `cordis`
+（只有外壳按值 import 它）、用到的别的插件。跨仓的插件写 `^<源上 latest>`，同仓的插件写 `workspace:^`、
+发版时换成 `^<版本号>`；只是局部注入、缺了只少一部分功能的，在 `peerDependenciesMeta` 标 `optional: true`。
+写进 peer 的不再另写 dev，pnpm 把 peer 装进各包的 `node_modules`，类型检查从那里取。基础界面的写法：
 
-{/* ref file="../plugins/baseui/package.json" lines="34-39" */}
+{/* ref file="../plugins/baseui/package.json" lines="28-41" */}
 
-peer 里内核包 `@godcreator/gwb-kernel-desktop` 的范围各插件不同。外壳写 `^0.6.1`：内核 0.6 起页面 importmap
-写死在内核的页面入口里，状态栏要显示的安装包版本也由内核报出来：
+外壳的必需依赖是命令总线与数据插件，说明书插件可选：
 
-{/* ref file="../plugins/shell/package.json" lines="41-44" */}
+{/* ref file="../plugins/shell/package.json" lines="33-44" */}
 
-外观写 `^0.4.1`：页面的 react 从内核 0.4.1 起由内核包提供，带界面的插件配更早的内核就没有 react：
+外观的外壳是可选的（没有外壳也照常加载），命令总线与设置插件必需：
 
-{/* has file="../plugins/theme/package.json" text="gwb-kernel-desktop" */}
+{/* has file="../plugins/theme/package.json" text="peerDependenciesMeta" */}
+
+dev 里只剩库与构建工具（react、tailwind、esbuild、类型包等）。
 
 ## 各页怎么分
 

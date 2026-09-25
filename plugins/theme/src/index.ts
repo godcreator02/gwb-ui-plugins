@@ -1,5 +1,5 @@
 import type { Context } from 'cordis'
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 import type { GwbCommands } from '@godcreator/gwb-commands'
 import type { GwbSettingsApi } from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-shell'

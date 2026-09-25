@@ -4,31 +4,31 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物守卫。这个件有两半，两半的规矩不一样：
+ * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
  *
- * - **node 半**（`dist/index.js` 那几个，tsc 出的）：相对 import 带扩展名、裸名只许词汇表
- * - **浏览器半**（`dist/client.js`，esbuild 打的）：**只许**那四个共享名漏出去——它们由
- *   页面 importmap 解析到共享包。多漏一个就是运行期一句
- *   `Failed to resolve module specifier`，而那要开到窗格才看得见
+ * - **node 侧**（`dist/index.js` 那几个，tsc 输出）：相对 import 带扩展名、没有按值 import 的包名
+ * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许** react 的四个——它们由
+ *   内核页面入口里写死的 importmap 解析到内核包。多一个就是运行时一句
+ *   `Failed to resolve module specifier`，而那要打开窗格才看得见
  *
- * node 半的名单钉死还有第二层意思：logger 与 plugin-manager 在这儿是**可选**的
- * （嵌套注入，源码里只有 `import type {}`）。哪天有人把它写成运行时 import，这条
- * 会当场变红——不然的话，现场是「home 里没装那两个 core 时窗格悄悄少一格」之外
- * 还得多一句 ERR_MODULE_NOT_FOUND，看不出是依赖写错了档。
+ * node 侧名单为空还有一层意思：logger 与 plugin-manager 在这里是**可选**的
+ * （局部注入，源码里只有 `import type {}`）。哪天有人把它写成运行时 import，这条
+ * 会当场失败——否则现象是「home 里没装那两个基础插件时少注册一个窗格」之外
+ * 还多一句 ERR_MODULE_NOT_FOUND，看不出是依赖写错了地方。
  *
- * 缺产物时整组跳过——门禁不依赖 build。
+ * 没有产物时整组跳过——门禁不依赖 build。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-if (!built) console.warn('[gwb-baseui] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
+if (!built) console.warn('[gwb-baseui] dist/ 还没有生成，产物测试跳过（pnpm build 之后再跑）')
 
-/** node 半运行时真 import 的，眼下一个都没有（全是 import type）——名单留着钉死这个零 */
-const ALLOWED_BARE = new Set(['@godcreator/gwb-plugin-api'])
+/** node 侧运行时按值 import 的包名：一个都没有（全是 import type；内核包的包根一加载就启动 Electron 应用） */
+const ALLOWED_BARE = new Set<string>()
 
-/** 页面 importmap 提供的那四个，跟 build.ts 的 SHARED 一一对应 */
-const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
+/** 内核页面入口写死的 importmap 里的四个包名，与 build.ts 的 PAGE_IMPORTMAP_NAMES 一一对应 */
+const PAGE_IMPORTMAP_NAMES = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
 
 const CLIENT = 'client.js'
 
@@ -40,7 +40,7 @@ function specsIn(text: string, pattern: RegExp): string[] {
   return [...text.matchAll(pattern)].map((m) => m[1]!)
 }
 
-/** 锚在行首：产物里顶层 import 都顶格写，字符串字面量里那种总带着缩进 */
+/** 只匹配行首：产物里顶层 import 都顶格写，字符串字面量里的总带着缩进 */
 const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 
@@ -49,15 +49,15 @@ const CSS_COMMENT = /\/\*[\s\S]*?\*\//g
 /**
  * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
  * 只在这一段里找类——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
- * 也捞成类选择器
+ * 也当成类选择器
  */
 const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
-/** 一个类选择器。转义序列（`.baseui\:flex` 里那个 `\:`）整体吃掉 */
+/** 一个类选择器。转义序列（`.baseui\:flex` 里那个 `\:`）整体匹配 */
 const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
 /**
- * 唯一放行的非前缀类：`.dark` 是页面级的亮暗标志，挂在 `<html>` 上、由令牌那张表
- * 与外壳负责。它只以祖先的身份出现在 `baseui:dark:*` 编出来的
- * `.baseui\:dark\:…:is(.dark *)` 里，不是本件元素身上的类
+ * 唯一放行的非前缀类：`.dark` 是页面级的亮暗标志，加在 `<html>` 上、由令牌表
+ * 与外壳负责。它只作为祖先出现在 `baseui:dark:*` 编译出的
+ * `.baseui\:dark\:…:is(.dark *)` 里，不是本插件元素上的类
  */
 const DARK_FLAG = new Set(['.dark'])
 
@@ -75,12 +75,12 @@ describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
   const nodeHalf = all.filter((f) => f !== CLIENT)
 
-  it('两半都有产物可查', () => {
+  it('两侧都有产物可查', () => {
     expect(nodeHalf.length).toBeGreaterThan(0)
     expect(all).toContain(CLIENT)
   })
 
-  it('node 半：相对 import 一律带扩展名——产物给 node 直接加载，ESM 不做补全', () => {
+  it('node 侧：相对 import 一律带扩展名——产物由 node 直接加载，ESM 不补扩展名', () => {
     const bad: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), RELATIVE)) {
@@ -90,7 +90,7 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('node 半：裸名只有钉死的名单——logger / plugin-manager 是嵌套注入的可选项，写成运行时 import 这儿当场红', () => {
+  it('node 侧：没有按值 import 的包名——logger / plugin-manager 是局部注入的可选依赖，写成运行时 import 这里当场失败', () => {
     const bare = new Set<string>()
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), BARE)) {
@@ -100,45 +100,45 @@ describe.skipIf(!built)('产物', () => {
     expect([...bare].filter((s) => !ALLOWED_BARE.has(s))).toEqual([])
   })
 
-  it('node 半：浏览器那几个文件没被 tsc 一起编进来——它们是 esbuild 的输入，不是产物', () => {
+  it('node 侧：浏览器侧的源文件没被 tsc 一起编译进来——它们是 esbuild 的输入，不是产物', () => {
     expect(fs.existsSync(path.join(distDir, 'client'))).toBe(false)
   })
 
-  it('浏览器半：裸名只许那四个共享的', () => {
-    const leaked = specsIn(read(CLIENT), BARE).filter((s) => !SHARED.has(s))
+  it('浏览器侧：包名 import 只许页面 importmap 里的四个', () => {
+    const leaked = specsIn(read(CLIENT), BARE).filter((s) => !PAGE_IMPORTMAP_NAMES.has(s))
     expect(leaked).toEqual([])
   })
 
-  it('style.css 里的类选择器一律 .baseui\\: 开头——围栏就是前缀本身', () => {
+  it('style.css 里的类选择器一律 .baseui\\: 开头——靠类名前缀隔离', () => {
     const bad = classSelectors(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8'))
       .filter((s) => !s.startsWith('.baseui\\:') && !DARK_FLAG.has(s))
       .sort()
     expect(bad).toEqual([])
   })
 
-  it('style.css 里没有 data-gwb-plugin——围栏换成前缀之后，这张表不再依赖任何祖先关系', () => {
+  it('style.css 里没有 data-gwb-plugin——靠前缀隔离之后，这张表不依赖任何祖先关系', () => {
     expect(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')).not.toContain('data-gwb-plugin')
   })
 
-  it('radix / cva 打进了本束——外置成裸名就是运行期一句 Failed to resolve', () => {
+  it('radix / cva 打包进了 client.js——外置成包名就是运行时一句 Failed to resolve', () => {
     // 认编译后的产物，别写 JSX 里那种原样字面量：esbuild 会把属性编成对象的键
     expect(read(CLIENT)).toContain('data-slot')
   })
 
-  it('卸载在界面上有入口：plugin-manager.uninstall 得打进 client 束', () => {
+  it('卸载在界面上有入口：plugin-manager.uninstall 得打包进 client.js', () => {
     const client = read(CLIENT)
     // 只认 ASCII 标记：esbuild 默认把非 ASCII 转义成 \\uXXXX，中文在产物里搜不到
     expect(client).toContain('plugin-manager.uninstall')
     expect(client).toContain('pnpm remove')
   })
 
-  /* —— 零字面 fallback 与颜色白名单（令牌国有化，tokens ≥0.1.1）——
-   * 规矩正本：docs-site「令牌与颜色：共享规则」第六节。两条都现扫正本、不手写名单。 */
+  /* —— 零字面 fallback 与颜色白名单 ——
+   * 规则正本：docs-site「令牌与颜色：共享规则」第六节。两条都在测试时读取正本，不手写名单。 */
 
   it('style.css 零字面 fallback——值只许查表（令牌变量或 currentcolor 关键字）', () => {
     const css = read('style.css')
-    /** tw-animate-css 包内写死的机制缺省（animation 简写连排、enter/exit 变换那一族），
-     *  映射面够不着：它们是动画机制的运行时默认（时长 0s、次数 1、位移 0、缩放 1），
+    /** tw-animate-css 包内写死的动画默认值（animation 简写、enter/exit 变换那一组），
+     *  令牌映射文件管不到：它们是动画的运行时默认（时长 0s、次数 1、位移 0、缩放 1），
      *  不是设计值。除此之外，fallback 必须是 var() 引用。 */
     const mechanismDefault = (key: string, fb: string) =>
       key.startsWith('--tw-animation-') ||
@@ -152,7 +152,7 @@ describe.skipIf(!built)('产物', () => {
     expect([...new Set(bad)].sort()).toEqual([])
   })
 
-  it('style.css 颜色类只在白名单内——令牌包映射面 ∪ 本件入口 @theme 自注册', () => {
+  it('style.css 颜色类只在白名单内——令牌映射文件 ∪ 本插件样式入口 @theme 注册的', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     const tokenMap = fs.readFileSync(
       path.join(root, 'node_modules/@godcreator/gwb-shell/dist/theme.reference.css'),
