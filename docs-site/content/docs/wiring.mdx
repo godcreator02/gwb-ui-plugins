@@ -1,0 +1,325 @@
+---
+title: 插件之间怎么连
+description: 外壳、外观、基础界面三个插件各提供什么、注入了谁、peer 怎么写、按名字调用了别家哪些命令与约定通道
+---
+
+# 插件之间怎么连
+
+**本页回答**：本仓插件提供哪些服务、命令与事件；注入了哪些服务、是必需还是局部注入、peer 怎么写；按名字调用了别家哪些命令、用了哪些约定通道。
+
+每张表下面是钉码：钉在服务名、`inject` 声明、peer 条目、命令名、事件名、共享 id 这些字面量上，源码里的字面量改了，这一页就报出来。
+
+peer 里写三类：内核包 `@godcreator/gwb-kernel-desktop`（范围包含验证时用的内核）、按值 import 的 `cordis`
+（只有外壳按值 import 它）、用到的别的插件。跨仓的插件写 `^<源上 latest>`，同仓的插件写 `workspace:^`、
+发版时换成 `^<版本号>`；只是局部注入、缺了只少一部分功能的，在 `peerDependenciesMeta` 标 `optional: true`。
+**只按命令名调用的插件不写 peer**：命令总线按名字查找，命令不在就在回执里说明，不需要装好的包——基础界面调
+`settings.*`、外壳调 `theme.startupCss` 都属于这种。写进 peer 的不另写 dev，dev 里只剩库与构建工具（react、
+tailwind、esbuild、类型包等）。
+
+## @godcreator/gwb-shell
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbShell` | 方法 `registerPane(spec)`、`describeSelf(info)`、`panes()`、`plugins()`；登记与报名字都记在调用方的上下文上，调用方卸载时自动注销 |
+| 命令 | `shell.panes`、`shell.plugins` | 此刻的窗格注册表、报过名字的插件 |
+| 命令 | `shell.env` | 页面开机要的环境：home、样式表地址、用户外观样式、版本 |
+| 命令 | `shell.layout.get`、`shell.layout.save` | 读、整份替换布局文件 |
+| 命令 | `shell.reload` | 整页重载全部窗口 |
+| 命令 | `shell.desktop.list`、`shell.desktop.switch`、`shell.desktop.new`、`shell.desktop.rename`、`shell.desktop.delete` | 桌面 |
+| 命令 | `shell.openPane` | 打开任何插件的窗格 |
+| 命令 | `shell.pane.list`、`shell.pane.focus`、`shell.pane.send`、`shell.pane.close` | 所有桌面上开着的窗格 |
+| 命令 | `shell.pane.sync` | 页面专用：把窗格清单推给 node 侧缓存，别的调用方不调 |
+| 事件 | 无对外事件 | 三种内核事件只推给自己的页面，见本节「按名字调用与约定通道」 |
+| 说明书 | `gwb-shell` | 窗格接入、shadcn、令牌的接入规范，经 `gwbSkills` 登记 |
+| 页面侧接口 | `client.js` 的默认导出 `mountShell(root)` | 内核页面根的契约：拿走 `#root`、回 `{ dispose }` |
+| 页面侧接口 | 窗格插件导出的 `mountPane({ host, shell, pane }, container)` | 外壳定的窗格契约，类型从子路径 `@godcreator/gwb-shell/pane` 引，见[外壳](/docs/shell)「窗格插件拿到的 args」一节 |
+| 包子路径 | `@godcreator/gwb-shell/theme.css`、`@godcreator/gwb-shell/theme.reference.css` | 令牌表与构建期引用的映射文件，见[令牌与颜色](/docs/tokens) |
+
+@@docfirst has ../plugins/shell/src/index.ts "super(ctx, 'gwbShell')" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "registerPane(spec: PaneSpec): () => void" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "describeSelf(info: PluginInfo): () => void" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "panes(): RegisteredPane[]" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "plugins(): RegisteredPlugin[]" @@
+
+@@docfirst has ../plugins/shell/src/protocol.ts "'shell.panes'" @@
+
+@@docfirst has ../plugins/shell/src/protocol.ts "'shell.plugins'" @@
+
+@@docfirst has ../plugins/shell/src/protocol.ts "'shell.env'" @@
+
+@@docfirst has ../plugins/shell/src/layout.ts "'shell.layout.get'" @@
+
+@@docfirst has ../plugins/shell/src/layout.ts "'shell.layout.save'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.reload'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.list'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.switch'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.new'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.rename'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.desktop.delete'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.openPane'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.list'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.focus'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.send'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "'shell.pane.close'" @@
+
+@@docfirst has ../plugins/shell/src/protocol.ts "'shell.pane.sync'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "gwbSkills.register(OWN_SKILLS_DIR)" @@
+
+@@docfirst has ../plugins/shell/src/client/index.tsx "export default function mountShell(root: HTMLElement)" @@
+
+@@docfirst has ../plugins/shell/package.json ""./pane":" @@
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`static inject`） | `^0.5.0` | 登记本插件的全部命令；处理 `shell.env` 时查 `theme.startupCss` 在不在 | 本插件不加载，cordis 在日志里写明在等它。注册表经命令传到页面，没有命令总线外壳打不开任何窗格 |
+| `gwbData` | `@godcreator/gwb-data` | 必需（`static inject`） | `^0.1.7` | 布局文件存成 gwbData 的文档 `layout` | 本插件不加载。布局没地方存，重启一次就没了 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.5`，`optional: true` | 登记随包的 `gwb-shell` 说明书 | 外壳照常运行，只是说明书没登记；说明书插件后加载时补登记 |
+| `gwbKernel` | `@godcreator/gwb-kernel-desktop`（内核） | 不写进 `inject`，构造时经 `requireKernel` 取 | `^0.7.0` | `setShell` 接管页面根、`emit` 推内核事件、`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
+
+peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service` 基类，写成 peer 用宿主那一份。外壳为什么非要
+命令总线不可，见[外壳](/docs/shell)「为什么命令总线是必需依赖」一节。
+
+@@docfirst has ../plugins/shell/src/index.ts "static inject = ['gwbCommands', 'gwbData']" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "this.ctx.inject(['gwbSkills']" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "this.kernel = requireKernel(ctx)" @@
+
+@@docfirst has ../plugins/shell/src/layout.ts "export const LAYOUT_DOC = 'layout'" @@
+
+@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+
+@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-commands": "^0.5.0"" @@
+
+@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-data": "^0.1.7"" @@
+
+@@docfirst has ../plugins/shell/package.json ""@godcreator/gwb-skills": "^0.4.5"" @@
+
+@@docfirst has ../plugins/shell/package.json ""peerDependenciesMeta"" @@
+
+@@docfirst has ../plugins/shell/package.json ""cordis": "^4.0.0-rc.9"" @@
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 命令总线（按名字调） | `@godcreator/gwb-theme` | `theme.startupCss` | 处理 `shell.env` 时取用户外观样式。**先查命令表里有没有这条，没有就不调**：没装主题插件不是问题，调不存在的命令会留一条 warn |
+| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-desktop` | `shell.desktop.switch` / `new` / `rename` / `delete` 转给页面执行 |
+| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-pane` | `shell.pane.focus` / `send` / `close` 转给页面执行 |
+| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-open-pane` | `shell.openPane` 转给页面执行 |
+| 共享 id | `@godcreator/gwb-theme` 的外观窗格 | 样式元素 `#gwb-theme-style` | 开机把用户外观样式写进这张样式元素；外观窗格预览时直接改它的内容。两边各写一份字符串、不互相 import |
+| 动态 import | 各窗格插件 | 注册窗格时给的 `client` 地址，取导出 `mountPane` | 打开窗格时加载插件的页面侧代码 |
+| 内核接口 | 内核 | `gwbKernel.setShell(client.js 的地址)` | 声明自己是外壳、接管页面根；包在 `ctx.effect` 里，插件卸载时交还 |
+| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 `window.gwb.command`）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面开机取环境、取表、读写布局文件、推窗格清单 |
+| 动态 import | Electron 主进程 | `import('electron')`，说明符放在变量里 | `shell.reload` 取 `BrowserWindow.getAllWindows()` 逐个重载 |
+
+@@docfirst has ../plugins/shell/src/startup-style.ts "export const THEME_STARTUP_COMMAND = 'theme.startupCss'" @@
+
+@@docfirst has ../plugins/shell/src/startup-style.ts "bus.list().some((command) => command.name === THEME_STARTUP_COMMAND)" @@
+
+@@docfirst has ../plugins/shell/src/desktops.ts "export const DESKTOP_EVENT = 'gwb-shell-desktop'" @@
+
+@@docfirst has ../plugins/shell/src/pane-actions.ts "export const PANE_EVENT = 'gwb-shell-pane'" @@
+
+@@docfirst has ../plugins/shell/src/open-pane.ts "export const OPEN_PANE_EVENT = 'gwb-shell-open-pane'" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "this.kernel.emit(parsed.action)" @@
+
+@@docfirst has ../plugins/shell/src/client/index.tsx "window.gwb.on((payload) =>" @@
+
+@@docfirst has ../plugins/shell/src/client/theme-boot.ts "const THEME_STYLE_ID = 'gwb-theme-style'" @@
+
+@@docfirst has ../plugins/shell/src/client/PluginPane.tsx "pickMountPane(mod)" @@
+
+@@docfirst has ../plugins/shell/src/index.ts "this.kernel.setShell(clientEntry)" @@
+
+@@docfirst has ../plugins/shell/src/client/index.tsx "window.gwb.command(ENV_COMMAND)" @@
+
+@@docfirst has ../plugins/shell/src/reload.ts "const electronSpecifier = 'electron'" @@
+
+## @godcreator/gwb-theme
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 命令 | `theme.startupCss` | 启动样式表（字体覆盖 + 自定义 CSS），外壳开机时读 |
+| 命令 | `theme.values` | 三项外观设置的当前值 |
+| 命令 | `theme.save` | 一次写齐三项外观设置：三个键必给、值都是字符串，参数不对回 `ok: false`、一项都不写 |
+| 设置项 | `font-sans`、`font-mono`、`custom-css` | 经 `gwbSettings` 声明，缺省空串 |
+| 窗格 | `appearance`（外观） | 有外壳时登记，另报名字「外观」 |
+| 服务、事件 | 无 | |
+
+@@docfirst has ../plugins/theme/src/index.ts "export const STARTUP_COMMAND = 'theme.startupCss'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "export const VALUES_COMMAND = 'theme.values'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "export const SAVE_COMMAND = 'theme.save'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "export const FONT_SANS_KEY = 'font-sans'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "export const FONT_MONO_KEY = 'font-mono'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "export const CUSTOM_CSS_KEY = 'custom-css'" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "id: 'appearance'" @@
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbSettings` | `@godcreator/gwb-settings` | 必需（`inject`） | `^0.3.3` | 声明、读写三项外观设置 | 本插件不加载：没有设置存不了三项外观 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`inject`） | `^0.5.0` | 登记三条命令 | 本插件不加载：三条命令无法对外提供 |
+| `gwbShell` | `@godcreator/gwb-shell` | 局部注入 | `workspace:^`，`optional: true` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常生效，只是没有「外观」窗格 |
+
+peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
+
+@@docfirst has ../plugins/theme/src/index.ts "export const inject = ['gwbSettings', 'gwbCommands']" @@
+
+@@docfirst has ../plugins/theme/src/index.ts "ctx.inject(['gwbShell']" @@
+
+@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+
+@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-commands": "^0.5.0"" @@
+
+@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-settings": "^0.3.3"" @@
+
+@@docfirst has ../plugins/theme/package.json ""@godcreator/gwb-shell": "workspace:^"" @@
+
+@@docfirst has ../plugins/theme/package.json ""peerDependenciesMeta"" @@
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 共享 id | `@godcreator/gwb-shell` 的页面侧 | 样式元素 `#gwb-theme-style` | 外观窗格按 id 找这张样式元素（没有就新建），输入时改写它的内容做预览，关窗格时退回已保存的样子 |
+| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `theme.values`、`theme.save` | 外观窗格取当前值、保存 |
+
+别家的命令一条都不调。
+
+@@docfirst has ../plugins/theme/src/client/index.tsx "const STYLE_ID = 'gwb-theme-style'" @@
+
+@@docfirst has ../plugins/theme/src/client/index.tsx "const VALUES_COMMAND = 'theme.values'" @@
+
+@@docfirst has ../plugins/theme/src/client/index.tsx "const SAVE_COMMAND = 'theme.save'" @@
+
+## @godcreator/gwb-baseui
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 窗格 | `logger`（日志） | 装了日志插件才登记 |
+| 窗格 | `plugin-manager`（插件管理） | 装了插件管理才登记 |
+| 服务、命令、事件 | 无 | 只报名字「基础界面」 |
+
+@@docfirst has ../plugins/baseui/src/index.ts "id: 'logger'" @@
+
+@@docfirst has ../plugins/baseui/src/index.ts "id: 'plugin-manager'" @@
+
+@@docfirst has ../plugins/baseui/src/index.ts "title: '基础界面', icon: 'layout-grid'" @@
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbShell` | `@godcreator/gwb-shell` | 必需（`inject`） | `workspace:^` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格集 |
+| `gwbLogger` | `@godcreator/gwb-logger` | 局部注入 | `^0.4.5`，`optional: true` | 只用来决定登不登记日志窗格；窗格里的操作经 `logger.*` 命令 | 照常加载，只是不登记日志窗格 |
+| `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.0`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令 | 照常加载，只是不登记插件管理窗格 |
+
+peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
+
+@@docfirst has ../plugins/baseui/src/index.ts "export const inject = ['gwbShell']" @@
+
+@@docfirst has ../plugins/baseui/src/index.ts "ctx.inject(['gwbLogger']" @@
+
+@@docfirst has ../plugins/baseui/src/index.ts "ctx.inject(['gwbPluginManager']" @@
+
+@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-kernel-desktop": "^0.7.0"" @@
+
+@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-shell": "workspace:^"" @@
+
+@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-logger": "^0.4.5"" @@
+
+@@docfirst has ../plugins/baseui/package.json ""@godcreator/gwb-plugin-manager": "^0.14.0"" @@
+
+@@docfirst has ../plugins/baseui/package.json ""peerDependenciesMeta"" @@
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 命令总线（按名字调） | `@godcreator/gwb-plugin-manager` | `plugin-manager.list`、`plugin-manager.outdated`、`plugin-manager.search`、`plugin-manager.install`、`plugin-manager.uninstall`、`plugin-manager.update`、`plugin-manager.enable`、`plugin-manager.disable`、`plugin-manager.add-entry`、`plugin-manager.remove-entry` | 插件管理窗格的全部操作 |
+| 命令总线（按名字调） | `@godcreator/gwb-settings`（不写 peer） | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 设置区：列出、看 secret 的明文、保存、删条目或卸载时连设置值一起删（逐项看回执） |
+| 命令总线（按名字调） | `@godcreator/gwb-shell` | `shell.plugins`、`shell.reload` | 插件的显示名与图标；升级之后整页重载 |
+| 命令总线（按名字调） | `@godcreator/gwb-logger` | `logger.backlog`、`logger.where` | 历史日志、日志文件位置 |
+| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | `@godcreator/gwb-logger` 的 node 侧 | `t === 'gwb-logger'` | 实时日志；外壳不转发、不认识日志 |
+
+<Diagram name="baseui-panes" title="基础界面的两个窗格各调哪些命令">
+
+- 基础界面插件的必需依赖只有 `gwbShell`；装了 gwbLogger 才注册日志窗格（`id: 'logger'`），装了插件管理才注册插件管理窗格（`id: 'plugin-manager'`）
+- 日志窗格调 `logger.backlog` 取历史、`logger.where` 取日志文件位置；实时日志不经 `args.host`，订阅 `window.gwb.on`、只收 `t` 为 `gwb-logger` 的事件
+- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update`、`enable`、`disable`、`add-entry`、`remove-entry`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`；升级之后调 `shell.reload` 整页重新加载
+- 两个窗格互不 import，只共用 `components/ui` 下的组件
+
+</Diagram>
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const LIST = 'plugin-manager.list'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const OUTDATED = 'plugin-manager.outdated'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/market.tsx "const SEARCH = 'plugin-manager.search'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const INSTALL = 'plugin-manager.install'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const UNINSTALL = 'plugin-manager.uninstall'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const UPDATE = 'plugin-manager.update'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const ENABLE = 'plugin-manager.enable'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const DISABLE = 'plugin-manager.disable'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const ADD_ENTRY = 'plugin-manager.add-entry'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const REMOVE_ENTRY = 'plugin-manager.remove-entry'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_ALL = 'settings.all'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_GET = 'settings.get'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_SET = 'settings.set'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SETTINGS_DELETE = 'settings.delete'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SHELL_PLUGINS = 'shell.plugins'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/plugin-manager/index.tsx "const SHELL_RELOAD = 'shell.reload'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const BACKLOG_COMMAND = 'logger.backlog'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const WHERE_COMMAND = 'logger.where'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "const EVENT = 'gwb-logger'" @@
+
+@@docfirst has ../plugins/baseui/src/client/panes/logger/index.tsx "window.gwb.on((payload) =>" @@

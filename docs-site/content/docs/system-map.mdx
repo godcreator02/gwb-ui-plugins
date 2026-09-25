@@ -26,22 +26,7 @@ description: 拆成哪几个模块、各在哪、依赖方向是什么、先读�
 
 ## 包清单里的依赖
 
-peer 里写三类：内核包 `@godcreator/gwb-kernel-desktop`（范围包含验证时用的内核）、按值 import 的 `cordis`
-（只有外壳按值 import 它）、用到的别的插件。跨仓的插件写 `^<源上 latest>`，同仓的插件写 `workspace:^`、
-发版时换成 `^<版本号>`；只是局部注入、缺了只少一部分功能的，在 `peerDependenciesMeta` 标 `optional: true`。
-写进 peer 的不再另写 dev，pnpm 把 peer 装进各包的 `node_modules`，类型检查从那里取。基础界面的写法：
-
-{/* ref file="../plugins/baseui/package.json" lines="28-41" */}
-
-外壳的必需依赖是命令总线与数据插件，说明书插件可选：
-
-{/* ref file="../plugins/shell/package.json" lines="33-44" */}
-
-外观的外壳是可选的（没有外壳也照常加载），命令总线与设置插件必需：
-
-{/* has file="../plugins/theme/package.json" text="peerDependenciesMeta" */}
-
-dev 里只剩库与构建工具（react、tailwind、esbuild、类型包等）。
+peer 怎么写、每个插件注入了哪些服务、按名字调用了别家哪些命令，见[插件之间怎么连](/docs/wiring)。
 
 ## 各页怎么分
 

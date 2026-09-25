@@ -57,8 +57,8 @@ export function apply(ctx: GwbContext) {
 
 **给人看的名字归运行时**（`describeSelf`），不写进包清单——包清单里没人读的字段失效时
 没有任何机制会发现。「我是外壳」也不写在包清单里，由 node 端调 `kernel.setShell` 声明。
-包清单里没有 `gwb` 字段：本插件提供的服务 `gwbShell` 由源码里给 cordis `Context` 补的那一项声明，`devkit.services`
-从装好的包的 `.d.ts` 读它，用法写在 `GwbShellApi` 的文档注释里。兼容哪个内核写在 peer 里内核包
+包清单里没有 `gwb` 字段：本插件提供的服务 `gwbShell` 由源码里给 cordis `Context` 补的那一项声明，
+用法写在 `GwbShellApi` 的文档注释里。兼容哪个内核写在 peer 里内核包
 `@godcreator/gwb-kernel-desktop` 的 `^` 范围，插件管理的 `plugin-manager.list` 拿它和运行中的内核比。
 
 **和命令总线的 `register` 一样，这两个都不用自己包 `ctx.effect`**：插件卸载时表上
@@ -68,7 +68,7 @@ export function apply(ctx: GwbContext) {
 
 ```js
 await args.host.call('shell.panes')
-// { ok: true, data: [{ id, title, icon?, client?, style?, entryId, pkg }, …] }
+// { ok: true, data: [{ id, title, icon?, client?, style?, kind, entryId, pkg }, …] }
 await args.host.call('shell.plugins')
 // { ok: true, data: [{ title, icon?, entryId, pkg }, …] }
 ```
@@ -78,7 +78,7 @@ await args.host.call('shell.plugins')
 
 ## 图标名怎么认
 
-`icon` 写 [lucide](https://lucide.dev) 的**正名**，kebab-case——lucide.dev 上图标页顶上那个名字
+`icon` 写 [lucide](https://lucide.dev) 的**正名**，kebab-case——lucide.dev 上图标页顶部那个名字
 （`layout-grid`、`file-text`、`receipt`）。**全集都认**，不用猜外壳认得哪几个：
 
 - **认得**：标签上画那个图标
@@ -144,17 +144,9 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 话，两组不同的「条目 × 窗格」能拼出同一个基名，而查重会把它当成「已经开着」静默追加一个
 `:2`。人看到的是自己的窗格标题莫名多了个「(2)」，源头却在另一个插件的注册参数里。
 
-## 依赖：两个必需依赖
+## 依赖
 
-外壳注入的服务只有两样，两样都是**必需依赖（`inject`）**——cordis 的 `inject` 会等到服务就绪才加载本插件，不是建议：
-缺 `gwbCommands`，注册表传不出这个进程（下一节是完整理由）；缺 `gwbData`，布局文件没地方存，
-布局重启一次就没了。缺哪个本插件就不加载，cordis 在日志里明说它在等谁——而不是加载出一个打不开
-窗格、也存不下布局的空外壳。
-
-{/* ref file="../plugins/shell/src/index.ts" lines="115-116" */}
-
-两样都是**基础插件仓的插件**（commands / data），遵守的是全生态那条「本仓 → 基础插件仓」的依赖方向：本仓的
-插件把它们列为 peer 依赖，永不反向。
+外壳注入了哪些服务、哪些是必需依赖哪些是局部注入、peer 怎么写，见[插件之间怎么连](/docs/wiring)。
 
 ## 为什么命令总线是必需依赖
 
@@ -309,7 +301,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 
 **切桌面发生什么**，顺序是机制的一部分：
 
-1. 更新 active → 整份 flush 一次（两个容器此刻都活着，`toJSON` 抓到的都是各自
+1. 更新 active → 整份 flush 一次（两个容器此刻都活着，`toJSON` 读到的都是各自
    当下）
 2. 显隐交给 React：旧那张藏起来、新那张显示；没挂载过的容器这时挂载
 3. 可见性通知（`shell.onVisibility` 的监听函数）→ 焦点接管（给新那张 section 焦点，
@@ -645,7 +637,7 @@ args.shell.openPane('doc', { key: 'a.md', params: { file: 'a.md' } })
 gwbData 的 `layout`，`fromJSON` 再原样传回来——重启之后那一份拿到的还是当初那一份，
 插件不用自己存一遍。
 
-代价就写在这条好处背面：**必须可 JSON 序列化**。函数、DOM 节点、类实例塞进去，症状是
+代价就写在这条好处背面：**必须可 JSON 序列化**。函数、DOM 节点、类实例放进去，症状是
 重启之后才出现的「参数变形了」。
 
 **保留键 `pluginKey` / `entryId` / `paneId` / `icon` / `key` / `preview` 归外壳**：插件传了会被

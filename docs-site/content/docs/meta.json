@@ -2,6 +2,7 @@
   "pages": [
     "index",
     "system-map",
+    "wiring",
     "...",
     "glossary",
     "shell",
