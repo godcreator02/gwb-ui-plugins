@@ -166,15 +166,15 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 @source "./";
 ```
 
-约定与坑：
+约定与容易出错的地方：
 
 - 五行少了任何一行，对应的那批类都编不出规则，构建照样通过：少了映射面，颜色类全空；少了 `tw-animate-css`，
   官方组件的 `animate-in` 一族全空
 - 插件的样式表只含本插件的工具类与本插件前缀的变量；页面的令牌值、preflight 与层顺序由外壳加载
 - 映射面没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
 - CSS 前缀只含小写字母，`devkit.scaffold` 从插件短名去掉其他字符得到
-- 漏写前缀不报错、构建照样通过；前缀测试抓得到漏写前缀的工具类，抓不到 `group` / `peer` 标记类
-- 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的头注重核键名
+- 漏写前缀不报错、构建照样通过；前缀测试查得出漏写前缀的工具类，查不出 `group` / `peer` 标记类
+- 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的文件头注释重新核对键名
 - 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
 - `params` 必须能 JSON 序列化；`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview` 是外壳的保留键，
   插件传了会被去掉并在页面控制台 warn
@@ -187,6 +187,6 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 ## 规矩
 
-规矩总表读 `skill.read {"name":"gwb-devkit","file":"references/rules.md"}`。和界面相关的几页在 devkit 仓
-`docs-site/content/docs/rules/` 下：`deps.mdx`、`plugin-peers.mdx`、`importmap.mdx`、`interaction.mdx`、
+规矩总表读 `skill.read {"name":"gwb-devkit","file":"references/rules.md"}`。和界面相关的几页在生命周期插件仓
+`gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/` 下：`deps.mdx`、`plugin-peers.mdx`、`importmap.mdx`、`interaction.mdx`、
 `services.mdx`、`dispose.mdx`。

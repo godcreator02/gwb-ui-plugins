@@ -154,7 +154,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 
 {/* ref file="../plugins/shell/src/index.ts" lines="115-116" */}
 
-两样都是**基础仓的插件**（commands / data），遵守的是全生态那条「本仓 → 基础仓」的依赖方向：本仓的
+两样都是**基础插件仓的插件**（commands / data），遵守的是全生态那条「本仓 → 基础插件仓」的依赖方向：本仓的
 插件把它们列为 peer 依赖，永不反向。
 
 ## 为什么命令总线是必需依赖
@@ -443,7 +443,7 @@ mountPane({ host, shell, pane }, container) => { dispose(); retarget?(params) }
 ### 类型从 `@godcreator/gwb-shell/pane` 引
 
 窗格插件写 `mountPane` 用到的类型都由外壳导出，插件用 `import type` 引，不在自己代码里手写、不用 `as`
-转成它们（规矩见 devkit 仓 `docs-site/content/docs/rules/interaction.mdx`「类型放在提供方那边」）：
+转成它们（规矩见生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/interaction.mdx`「类型放在提供方那边」）：
 
 ```ts
 import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
