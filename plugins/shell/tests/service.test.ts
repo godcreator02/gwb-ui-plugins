@@ -1,6 +1,6 @@
 import { Context } from 'cordis'
 import type { Message, Plugin } from 'cordis'
-import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
+import type { GwbCommandContext, GwbCommandDef, GwbCommandHandler, GwbCommands } from '@godcreator/gwb-commands'
 import { describe, expect, it, vi } from 'vitest'
 import GwbShell, { type GwbShellApi } from '../src/index.js'
 // 仓根的 tsc 顺着上一行把 src/index.ts 拉进来，它读 ctx.gwbData 要靠这份只在外壳自己编译时生效的声明
@@ -25,10 +25,11 @@ vi.mock('node:module', async (importOriginal) => {
   }
 })
 
-type Handler = (args?: unknown) => unknown
+/** 测试里直接调处理函数时给的请求来源；外壳的处理函数不读它 */
+const FROM_TEST: GwbCommandContext = { via: 'plugin' }
 
-function fakeCommandBus(): GwbCommands & { handlers: Map<string, Handler> } {
-  const handlers = new Map<string, Handler>()
+function fakeCommandBus(): GwbCommands & { handlers: Map<string, GwbCommandHandler> } {
+  const handlers = new Map<string, GwbCommandHandler>()
   const defs = new Map<string, Required<GwbCommandDef>>()
   return {
     handlers,
@@ -43,10 +44,10 @@ function fakeCommandBus(): GwbCommands & { handlers: Map<string, Handler> } {
     list() {
       return [...defs.values()]
     },
-    async run(name, args) {
+    async run(name, args, context = FROM_TEST) {
       const handler = handlers.get(name)
       if (handler === undefined) return { ok: false, error: `没有这条命令：${name}` }
-      const result = await handler(args)
+      const result = await handler(args, context)
       if (result !== null && typeof result === 'object' && 'ok' in result) return result as { ok: boolean }
       return { ok: true, data: result }
     },
@@ -90,7 +91,7 @@ async function bootShell(options: { layout?: unknown } = {}) {
   const call = async (name: string, args?: unknown): Promise<unknown> => {
     const handler = bus.handlers.get(name)
     if (handler === undefined) throw new Error(`没注册 ${name}`)
-    return await handler(args)
+    return await handler(args, FROM_TEST)
   }
   return { root, logs, emitted, shellEntries, bus, data, call, shellFiber }
 }

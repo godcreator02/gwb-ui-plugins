@@ -245,19 +245,19 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 | --- | --- | --- | --- | --- | --- |
 | `gwbShell` | `@godcreator/gwb-shell` | 必需（`inject`） | `workspace:*` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格集 |
 | `gwbLogger` | `@godcreator/gwb-logger` | 局部注入 | `^0.4.5`，`optional: true` | 只用来决定登不登记日志窗格；窗格里的操作经 `logger.*` 命令 | 照常加载，只是不登记日志窗格 |
-| `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.2`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令，各条命令的回执类型从它的 `./receipts` 子路径 `import type` | 照常加载，只是不登记插件管理窗格 |
+| `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.3`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令，各条命令的回执类型从它的 `./receipts` 子路径 `import type` | 照常加载，只是不登记插件管理窗格 |
 
 peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
 
-插件管理的下限是 `^0.14.2`：`./receipts` 子路径从这一版开始有。那个文件只有类型、没有任何 import，浏览器侧的 tsconfig
+插件管理的下限是 `^0.14.3`：`./receipts` 子路径 0.14.2 开始有，0.14.3 起它也导出 `remove-entry`、`enable`、`disable`
+不带 `data` 的整个回执 `Acknowledged`。那个文件只有类型、没有任何 import，浏览器侧的 tsconfig
 （只有 DOM 类型）能直接引。窗格和插件管理用的是同一套回执类型，所以窗格里不再按形状校验这些回执：先按外层 `ok`
 分开成功与失败，失败显示 `error`，成功就按类型用 `data`；回执形状两边对不上，在构建时的类型检查里报出来。
-`remove-entry`、`enable`、`disable` 成功时只回 `{ ok: true }`，`./receipts` 没给它起名字，窗格按这个形状写成 `Acknowledged`。
 设置插件与外壳的回执不导出类型，仍按形状收窄。
 
 {/* has file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" text="from '@godcreator/gwb-plugin-manager/receipts'" */}
 
-{/* has file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" text="export type Acknowledged =" */}
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" text="'plugin-manager.enable': Acknowledged" */}
 
 {/* has file="../plugins/baseui/src/index.ts" text="export const inject = ['gwbShell']" */}
 
@@ -271,7 +271,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 {/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-logger&quot;: &quot;^0.4.5&quot;" */}
 
-{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-plugin-manager&quot;: &quot;^0.14.2&quot;" */}
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-plugin-manager&quot;: &quot;^0.14.3&quot;" */}
 
 {/* has file="../plugins/baseui/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 

@@ -28,7 +28,8 @@ import {
 } from 'lucide-react'
 import { cn } from 'cn'
 import type { OutdatedMap, UpdateInfo } from '@godcreator/gwb-plugin-manager/receipts'
-import { callPluginManager, type Acknowledged } from './receipts'
+import type { Acknowledged } from '@godcreator/gwb-plugin-manager/receipts'
+import { callPluginManager } from './receipts'
 import {
   asResult,
   summarize,

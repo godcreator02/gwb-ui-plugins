@@ -1,4 +1,5 @@
 import type {
+  Acknowledged,
   EntryAdded,
   Installed,
   KernelInstalledButCordisNot,
@@ -15,9 +16,6 @@ import type {
  * 回执形状对不上由类型检查在构建时报出来，窗格里不再按形状校验。
  * 成功与失败按外层 `ok` 分开；失败只带 `error`，来源可能是插件管理自己、它的「正忙」检查，或命令总线（命令不在、处理函数抛错）
  */
-
-/** remove-entry / enable / disable 的处理函数成功时只回 `{ ok: true }`，`./receipts` 没给它单独起名字 */
-export type Acknowledged = { ok: true } | { ok: false; error: string }
 
 export interface PluginManagerReceipts {
   'plugin-manager.list': Outcome<PluginPackageView[]>
