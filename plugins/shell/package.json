@@ -1,13 +1,8 @@
 {
   "name": "@godcreator/gwb-shell",
   "version": "0.14.1",
-  "author": {
-    "name": "godcreator"
-  },
-  "description": "外壳：内核页面根的唯一入口——窗格容器与窗格注册、开窗格、布局落盘与多桌面、整页重载、状态栏报版本；随包提供窗格、shadcn 与 tokens 的 UI 接入说明书。服务 gwbShell；skill 1 份；命令 17 条。",
+  "description": "外壳：内核页面根的唯一入口，提供窗格容器与窗格注册服务 gwbShell，并随包提供令牌表和 UI 接入说明书",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,25 +12,22 @@
     "./theme.reference.css": "./dist/theme.reference.css",
     "./pane": {
       "types": "./dist/types/client/pane-api.d.ts"
-    },
-    "./package.json": "./package.json"
+    }
   },
   "files": [
     "dist",
-    "skills",
-    "src"
+    "skills"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p src/client/tsconfig.pane-types.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
-    "prepublishOnly": "pnpm build"
+    "build": "node build.ts && tsc -p tsconfig.build.json && tsc -p src/client/tsconfig.pane-types.json && tailwindcss -i src/client/styles.css -o dist/style.css",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "@godcreator/gwb-commands": "^0.5.0",
     "@godcreator/gwb-data": "^0.1.7",
     "@godcreator/gwb-skills": "^0.4.5",
-    "cordis": "^4.0.0-rc.9"
+    "cordis": "^4.0.0-rc.10"
   },
   "peerDependenciesMeta": {
     "@godcreator/gwb-skills": {
@@ -47,7 +39,6 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
-    "@tailwindcss/node": "^4.3.0",
     "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
@@ -55,7 +46,7 @@
     "cn": "^0.2.5",
     "cordis": "4.0.0-rc.10",
     "dockview-react": "8.2.0",
-    "esbuild": "^0.27.7",
+    "esbuild": "^0.28.2",
     "lucide-react": "^1.41.0",
     "postcss": "^8.5.28",
     "radix-ui": "^1.6.7",
@@ -70,7 +61,6 @@
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
   },
   "keywords": [
-    "gwb",
     "gwb-plugin"
   ]
 }

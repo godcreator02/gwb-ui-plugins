@@ -1,10 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   },
-  // 浏览器半另有一份 tsconfig（jsx + DOM + 无 node 全局），产物走 esbuild 不走 tsc。
-  // 两个入口逐个列出，别写 src/**/*.ts——那样 src/client 会被这一半误收
+  // 浏览器侧另有一份 tsconfig（jsx + DOM + 无 node 全局）。两个入口逐个列出，别写 src/**/*.ts——
+  // 那样 src/client 会被这一份误收。tests 与 build.ts 由仓根 tsconfig.json 收
   "include": ["src/index.ts", "src/startup-css.ts"]
 }

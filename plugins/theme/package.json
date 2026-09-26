@@ -1,35 +1,23 @@
 {
   "name": "@godcreator/gwb-theme",
   "version": "0.3.10",
-  "author": {
-    "name": "godcreator"
-  },
-  "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格；没有外壳也照常加载，样式由插件自己编译自己那张表（类名带 theme: 前缀隔离）。服务无；skill 0 份；命令 3 条。",
+  "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格，没有外壳也照常加载",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+    ".": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
-
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
-    "prepublishOnly": "pnpm build"
+    "build": "node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "@godcreator/gwb-commands": "^0.5.0",
     "@godcreator/gwb-settings": "^0.3.3",
-    "@godcreator/gwb-shell": "workspace:^"
+    "@godcreator/gwb-shell": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@godcreator/gwb-shell": {
@@ -40,12 +28,12 @@
     "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   },
   "devDependencies": {
-    "cordis": "4.0.0-rc.10",
     "@tailwindcss/cli": "^4.3.0",
-    "@tailwindcss/node": "^4.3.0",
+    "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
-    "esbuild": "^0.27.0",
+    "cordis": "4.0.0-rc.10",
+    "esbuild": "^0.28.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwindcss": "^4.3.0",
@@ -57,7 +45,6 @@
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
   },
   "keywords": [
-    "gwb",
     "gwb-plugin"
   ]
 }

@@ -3,13 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r --filter \"./plugins/*\" build",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --no-bail typecheck",
     "lint": "oxlint . --type-aware --deny-warnings",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "doc": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst check",
-    "doc:render": "pnpm --filter gwb-ui-plugins-docs-site exec docfirst render"
+    "doc": "pnpm --dir docs-site run doc",
+    "doc:render": "pnpm --dir docs-site run doc:render"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

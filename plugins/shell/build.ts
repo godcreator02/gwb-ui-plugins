@@ -6,27 +6,71 @@ import { build } from 'esbuild'
 import postcss from 'postcss'
 
 /**
- * 浏览器侧打包，再拼出几张样式表（dockview 那张不按选择器限定范围）。
- *
- * react 的几个包名**外置**——它们由页面 importmap 解析到内核包打包好的那一份，插件之间用同一个实例；
- * dockview 一律**打包进 client.js**：它不在 importmap 里，外置成包名就是运行时
- * 「Failed to resolve module specifier」。
+ * node 侧与浏览器侧都用 esbuild 打成一个文件，外置名单之外的依赖全部打包进去；再生成图标名单与几张样式表。
+ * dockview 一律打包进 client.js：它不在页面 importmap 里，外置成包名就是运行时「Failed to resolve module specifier」。
+ * `.d.ts`（包根与子路径 `./pane`）由 package.json 的 build 脚本在本脚本之后用 tsc 输出。
  */
-
 const here = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-/** 内核 0.6 起页面入口里写死的 importmap 只有这四个包名，与内核仓 index.html 的那张表一一对应 */
-const PAGE_IMPORTMAP_NAMES = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
+/**
+ * node 侧外置名单：peer 里的包（home 里装着）、electron，以及 cordis——按值 import 了 cordis 却没写进 peer 时，
+ * 产物里留下包名、被发版前检查拦住，而不是悄悄打包进一份拷贝
+ */
+function nodeSideExternals(): string[] {
+  const manifest: unknown = JSON.parse(fs.readFileSync(path.join(here, 'package.json'), 'utf8'))
+  const peers = isRecord(manifest) && isRecord(manifest['peerDependencies']) ? Object.keys(manifest['peerDependencies']) : []
+  return ['electron', 'cordis', ...peers]
+}
+
+/**
+ * 浏览器侧外置名单只从提供方读：react 的四个包名由内核包提供，写死在它页面入口 dist/index.html 的 importmap 里，
+ * 构建时从装好的内核包里读（peer 写了它，pnpm 装在本包的 node_modules 里）。外置了 importmap 里没有的名字，
+ * 运行时就是「Failed to resolve module specifier」
+ */
+function importmapNamesOfKernel(): string[] {
+  const manifestPath = fileURLToPath(import.meta.resolve('@godcreator/gwb-kernel-desktop/package.json'))
+  const pageEntry = path.join(path.dirname(manifestPath), 'dist', 'index.html')
+  const importmapScript = /<script type="importmap">([\s\S]*?)<\/script>/.exec(fs.readFileSync(pageEntry, 'utf8'))
+  if (importmapScript === null) {
+    throw new Error(`${pageEntry} 里没有 <script type="importmap">：外置名单只从内核包页面入口的这段 importmap 读，读不到就不构建`)
+  }
+  const importmap: unknown = JSON.parse(importmapScript[1]!)
+  const imports = isRecord(importmap) ? importmap['imports'] : undefined
+  if (!isRecord(imports)) throw new Error(`${pageEntry} 的 importmap 里没有 imports`)
+  return Object.keys(imports)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+// 上一次构建留下的文件会随 files 白名单一起发出去，先清空
+fs.rmSync(path.join(here, 'dist'), { recursive: true, force: true })
+
+await build({
+  entryPoints: ['src/index.ts'],
+  outfile: 'dist/index.js',
+  external: nodeSideExternals(),
+  // 打包进来的 CommonJS 依赖会 require node 内置模块；ESM 产物里没有 require，
+  // esbuild 的 __require 执行到就抛「Dynamic require ... is not supported」。在产物开头用 createRequire 造一个
+  banner: { js: 'import { createRequire as __createRequire } from "node:module";\nconst require = __createRequire(import.meta.url);' },
+  format: 'esm',
+  platform: 'node',
+  target: 'node22',
+  bundle: true,
+  minify: false,
+  legalComments: 'none',
+  logLevel: 'warning',
+  absWorkingDir: here,
+})
 
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: PAGE_IMPORTMAP_NAMES,
-  // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的
-  // paths 是同一条约定（都指 src/client）
+  external: importmapNamesOfKernel(),
+  // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的 paths 是同一条约定（都指 src/client）
   alias: { '@': path.join(here, 'src', 'client') },
-  absWorkingDir: here,
   format: 'esm',
   platform: 'browser',
   target: 'es2022',
@@ -36,9 +80,10 @@ await build({
   jsx: 'automatic',
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'warning',
+  absWorkingDir: here,
 })
 
-console.log('[shell] dist/client.js ← src/client/index.tsx')
+console.log('[shell] dist/index.js ← src/index.ts，dist/client.js ← src/client/index.tsx')
 
 /**
  * `dist/pane-icons.json` = 打包进 client.js 的那份 lucide-react 的全部导出名 + 版本。node 侧登记
@@ -53,7 +98,7 @@ fs.writeFileSync(
   `${JSON.stringify({ lucide: lucideVersion, keys: iconKeys })}\n`,
   'utf8',
 )
-console.log(`[shell] dist/pane-icons.json ← lucide-react ${lucideVersion}（${iconKeys.length} 枚）`)
+console.log(`[shell] dist/pane-icons.json ← lucide-react ${lucideVersion}（${iconKeys.length} 个）`)
 
 /**
  * `dist/dockview.css` = **裁剪过的** dockview 基础规则 + 我们自己那套主题。
@@ -83,7 +128,7 @@ base.walkRules((rule) => {
     rule.remove()
     return
   }
-  // 一条规则挂着好几个选择器时，只摘掉属于他们的那几个
+  // 一条规则有好几个选择器时，只摘掉属于他们的那几个
   const keep = rule.selectors.filter((s) => !isTheirs(s))
   if (keep.length !== rule.selectors.length) rule.selectors = keep
 })
@@ -95,9 +140,7 @@ const head =
   ` * 这张不按选择器限定范围（.dv-* 由 dockview 自己创建，portal 元素在 body 下）。\n` +
   ` * 改主题改 src/client/dockview-theme.css 重新构建，别手改这份 */\n`
 const out = head + baseCss + '\n' + themeCss
-const outFile = path.join(here, 'dist', 'dockview.css')
-fs.mkdirSync(path.dirname(outFile), { recursive: true })
-fs.writeFileSync(outFile, out, 'utf8')
+fs.writeFileSync(path.join(here, 'dist', 'dockview.css'), out, 'utf8')
 
 const saved = Buffer.byteLength(rawCss, 'utf8') - Buffer.byteLength(baseCss, 'utf8')
 console.log(

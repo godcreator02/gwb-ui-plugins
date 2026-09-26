@@ -1,9 +1,6 @@
 packages:
   - plugins/*
-  # 共享包：不是 cordis 件，是件的依赖（运行时环境、设计令牌）
-  - packages/*
-  # 文档站：自己的依赖树，不进根 check
-  - docs-site
+  # 文档站不收进来：它自带 pnpm-workspace.yaml 与 lock，在 docs-site/ 里自己 install
 
 allowBuilds:
   '@parcel/watcher': false

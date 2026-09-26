@@ -8,8 +8,8 @@
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "declaration": true,
     "skipLibCheck": true
   }
 }

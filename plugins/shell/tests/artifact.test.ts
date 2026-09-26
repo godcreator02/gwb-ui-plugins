@@ -5,22 +5,15 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物测试。这个插件分 node 侧与浏览器侧，两侧的规矩不一样：
- *
- * - **node 侧**（`dist/*.js`，tsc 输出）：相对 import 带扩展名、包名 import 只许 cordis
- * - **浏览器侧**（`dist/client.js`，esbuild 打包）：包名 import **只许** react 的四个包名——
- *   它们由内核页面入口里写死的 importmap 解析到内核包。多一个（比如 dockview 被误配成 external）就是运行时
- *   一句 `Failed to resolve module specifier`，而那要打开窗格才看得见
- * - **子路径 `./pane`**（`dist/types/`，tsc 只输出声明）：只有 d.ts，引用到的文件里没有包名 import
+ * 产物测试，只查本插件独有的：dockview 与图标全集打包进了 client.js、dockview 样式表的裁剪与主题、子路径 `./pane`
+ * 的类型、node 侧按值 import 的包名。类名前缀、`var()` fallback、颜色只用令牌、浏览器侧只许 importmap 里的名字
+ * 由 devkit 的样式检查与发版前检查负责，这里不另查。
  *
  * 没有产物时整组跳过——`pnpm check` 不依赖 build。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
-
-/** 浏览器侧产物里允许留下的包名 import：内核页面入口写死的 importmap 里的四个，与 build.ts 外置的是同一份名单 */
-const PAGE_IMPORTMAP_NAMES = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'])
 
 const CLIENT = 'client.js'
 
@@ -33,76 +26,19 @@ function stripComments(css: string): string {
   return css.replaceAll(/\/\*[\s\S]*?\*\//g, '')
 }
 
-function specsIn(text: string, pattern: RegExp): string[] {
-  return [...text.matchAll(pattern)].map((m) => m[1] ?? m[2]!)
-}
-
 /**
- * **只匹配行首**（`^` + `m`）：dockview 的一句错误消息里嵌着示例代码
- * `  import 'dockview-enterprise';`，不限行首就会误报企业包打进了 client.js。
- * 依据是 tsc 与 esbuild 都把顶层 import 写在行首，字符串字面量里的带缩进。
+ * 顶层包名 import。只匹配行首（`^` + `m`）：esbuild 把顶层 import 写在行首，
+ * 字符串字面量里嵌着的示例代码带缩进
  */
-const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 
-/**
- * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
- * **只在这一段里找类**——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
- * 也当成类选择器
- */
-const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
-/** 一个类选择器。转义序列（`.shell\:flex` 里那个 `\:`）整体匹配 */
-const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
-/**
- * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，加在 `<html>` 上、由令牌表
- * 与外壳启动代码负责。它只作为**祖先**出现在 `shell:dark:*` 编译出的
- * `.shell\:dark\:…:is(.dark *)` 里，不是外壳自己元素上的类
- */
-const DARK_FLAG = new Set(['.dark'])
-
-function classSelectors(css: string): string[] {
-  const found = new Set<string>()
-  for (const rule of stripComments(css).matchAll(PRELUDE)) {
-    const prelude = rule[1]!.trim()
-    if (prelude.startsWith('@')) continue
-    for (const cls of prelude.matchAll(CLASS_SELECTOR)) found.add(cls[0])
-  }
-  return [...found]
-}
-
 describe.skipIf(!built)('产物', () => {
-  const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
-  const nodeHalf = all.filter((f) => f !== CLIENT)
-
-  it('两侧都有产物可查', () => {
-    expect(nodeHalf.length).toBeGreaterThan(0)
-    expect(all).toContain(CLIENT)
-  })
-
-  it('node 侧：相对 import 一律带扩展名', () => {
-    const bad: string[] = []
-    for (const file of nodeHalf) {
-      for (const spec of specsIn(read(file), RELATIVE)) {
-        if (!spec.endsWith('.js')) bad.push(`${file}: ${spec}`)
-      }
-    }
-    expect(bad).toEqual([])
-  })
-
   it('node 侧：包名 import 只许 cordis——Service 基类必须是 home 里那一份；内核包的包根一加载就启动 Electron 应用，只能 import type', () => {
     const allowed = new Set(['cordis'])
-    const bare: string[] = []
-    for (const file of nodeHalf) {
-      for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:') && !allowed.has(spec)) bare.push(`${file}: ${spec}`)
-      }
-    }
+    const bare = [...read('index.js').matchAll(BARE)]
+      .map((m) => m[1]!)
+      .filter((spec) => !spec.startsWith('node:') && !allowed.has(spec))
     expect(bare).toEqual([])
-  })
-
-  it('浏览器侧：包名 import 只许页面 importmap 里的四个，dockview 得打包进 client.js', () => {
-    const leaked = specsIn(read(CLIENT), BARE).filter((s) => !PAGE_IMPORTMAP_NAMES.has(s))
-    expect(leaked).toEqual([])
   })
 
   it('浏览器侧：dockview 真的在 client.js 里（外置了的话这条会失败）', () => {
@@ -124,16 +60,10 @@ describe.skipIf(!built)('产物', () => {
     for (const name of ['layout-grid', 'receipt', 'gauge', 'zap']) expect(client).toContain(`name: "${name}"`)
   })
 
-  it('两张样式表都生成了，各自的隔离规则不同', () => {
-    const own = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
-    const dockview = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
-    // 外壳自己那张靠类名前缀隔离：类选择器一律以 .shell\: 开头
-    expect(classSelectors(own).filter((s) => !s.startsWith('.shell\\:') && !DARK_FLAG.has(s)).sort()).toEqual([])
-    // 出现 data-gwb-plugin 说明构建改成了按选择器限定范围（scope）的做法。症状是状态栏两个
-    // portal 到 body 的菜单没有样式，而构建照样通过
-    expect(stripComments(own)).not.toContain('data-gwb-plugin')
-    // dockview 那张**不许有任何 scope 规则**：portal 元素放在 body 下，限定在容器里的规则匹配不上它们。
-    // 先去掉注释——两张表开头的注释都提到 data-gwb-plugin，不去掉的话查到的是说明文字而不是规则
+  it('dockview.css 不按选择器限定范围，带着我们自己的主题', () => {
+    const dockview = read('dockview.css')
+    // 不许有任何 scope 规则：portal 元素放在 body 下，限定在容器里的规则匹配不上它们。
+    // 先去掉注释——表头的注释提到了 data-gwb-plugin，不去掉的话查到的是说明文字而不是规则
     expect(stripComments(dockview)).not.toContain('data-gwb-plugin')
     expect(dockview).toContain('.dockview-theme-gwb')
   })
@@ -143,7 +73,7 @@ describe.skipIf(!built)('产物', () => {
    * 裁少了是它自带的主题生效、盖掉我们的值。两种都不报错，所以在这里检查。
    */
   it('dockview 自带的主题一个都不许剩，除了我们自己那个', () => {
-    const css = stripComments(fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8'))
+    const css = stripComments(read('dockview.css'))
     const theirs = [...css.matchAll(/\.dockview-[a-z0-9-]+/g)]
       .map((m) => m[0])
       .filter((c) => c !== '.dockview-theme-gwb')
@@ -151,7 +81,7 @@ describe.skipIf(!built)('产物', () => {
   })
 
   it('裁完之后基础规则还在——窗格容器本身的规则不能被裁掉', () => {
-    const css = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
+    const css = read('dockview.css')
     // 这几个类是窗格容器的基本结构，全由 dockview 的 JS 创建，规则少一条就是一处没样式
     for (const cls of ['.dv-groupview', '.dv-tabs-and-actions-container', '.dv-tab', '.dv-sash', '.dv-drop-target']) {
       expect(css).toContain(cls)
@@ -160,54 +90,6 @@ describe.skipIf(!built)('产物', () => {
     const bytes = Buffer.byteLength(css, 'utf8')
     expect(bytes).toBeGreaterThan(45_000)
     expect(bytes).toBeLessThan(75_000)
-  })
-
-  /* —— 零字面 fallback 与颜色白名单 ——
-   * 规则正本：docs-site「令牌与颜色：共享规则」第六节。两条都在测试时读取正本，不手写名单。 */
-
-  it('style.css 零字面 fallback——值只许查表（令牌变量或 currentcolor 关键字）', () => {
-    const css = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
-    /** tw-animate-css 包内写死的动画默认值（animation 简写、enter/exit 变换那一组），
-     *  令牌映射文件（theme.reference.css）管不到：它们是动画的运行时默认（时长 0s、次数 1、位移 0、缩放 1），不是设计值。 */
-    const mechanismDefault = (key: string, fb: string) =>
-      key.startsWith('--tw-animation-') ||
-      key.startsWith('--tw-enter-') ||
-      key.startsWith('--tw-exit-') ||
-      (key === '--tw-ease' && fb === 'ease')
-    const bad = [...css.matchAll(/var\((--[\w-]+),\s*([^;{)]+)\)/g)]
-      .filter((m) => !mechanismDefault(m[1]!, m[2]!.trim()))
-      .map((m) => m[2]!.trim())
-      .filter((v) => !v.startsWith('var(') && v !== 'currentcolor')
-    expect([...new Set(bad)].sort()).toEqual([])
-  })
-
-  it('style.css 颜色类只在白名单内——令牌映射面 ∪ 本插件样式入口 @theme 注册的', () => {
-    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-    const tokenMap = fs.readFileSync(
-      path.join(root, 'src/tokens/theme.reference.css'),
-      'utf8',
-    )
-    const ownEntry = fs.readFileSync(path.join(root, 'src/client/styles.css'), 'utf8')
-    const allowed = new Set([
-      // 特殊色名：transparent / inherit / current 是 CSS 关键字，不是调色板也不是令牌
-      'transparent',
-      'inherit',
-      'current',
-      ...[...`${tokenMap}\n${ownEntry}`.matchAll(/--color-([\w-]+)\s*:/g)].map((m) => m[1]!),
-    ])
-    // text- 族带字号与对齐歧义，border-/divide- 带边侧与宽度歧义——这些形态不是色名
-    const NON_COLOR =
-      /^(?:[bltrxy2](?:-\d+)?|\d|center|left|right|justify|start|end|xs|sm|base|lg|xl|2xl|3xl|4xl)$/
-    const FAMILY = '(?:text|bg|border|from|via|to|divide)-'
-    const bad = new Set<string>()
-    for (const sel of classSelectors(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8'))) {
-      for (const m of sel.matchAll(new RegExp(`(?:^|\\\\:)${FAMILY}([\\w-]+)`, 'g'))) {
-        const name = m[1]!
-        if (NON_COLOR.test(name)) continue
-        if (!allowed.has(name)) bad.add(sel)
-      }
-    }
-    expect([...bad].sort()).toEqual([])
   })
 
   describe('子路径 ./pane：窗格浏览器侧入口的类型', () => {

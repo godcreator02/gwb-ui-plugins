@@ -1,33 +1,21 @@
 {
   "name": "@godcreator/gwb-baseui",
   "version": "0.1.14",
-  "author": {
-    "name": "godcreator"
-  },
-  "description": "基础界面：基础插件的官方窗格（日志、插件管理），一个窗格一个模块；硬依赖只有 gwbShell，对 core 服务（gwbLogger、gwbPluginManager）一律局部注入；只收拆掉了界面的 core 插件的窗格，界面本身就是全部功能的插件不放这里。插件管理窗格经 plugin-manager.* 命令操作插件管理（gwbPluginManager 服务上没有方法，只用来决定注不注册窗格）：「可装」列表来自 plugin-manager.search，合并多条源（来源标签 + 按源筛选）；「全部更新」调 plugin-manager.update {\"all\":true}，单个包升级给 {\"only\":[包名]}，有包升级了窗格自己调 shell.reload 整页重新加载（插件管理自己也升了就先等它的条目重新加载起来）；已装列表按 plugin-manager.list 的 unmetPeers 标出 peer 没满足的包（标签「peer 没满足」，悬停逐项列出包名、要的范围、装着的版本或「没装」；内核包那一项比的是运行中的内核）；设置部分适配 settings 0.3.0——列表不返回 secret 的值，按 isSet 显示「已设置 / 未设置」，「看一眼」用 settings.get 按位置读取明文。服务无；skill 0 份；命令 0 条。",
+  "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一个窗格一个模块，只收拆掉了界面的基础插件的窗格",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+    ".": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
-
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
-    "prepublishOnly": "pnpm build"
+    "build": "node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.7.0",
-    "@godcreator/gwb-shell": "workspace:^",
+    "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-logger": "^0.4.5",
     "@godcreator/gwb-plugin-manager": "^0.14.0"
   },
@@ -44,14 +32,13 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
-    "@tailwindcss/node": "^4.3.0",
     "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
     "cordis": "4.0.0-rc.10",
-    "esbuild": "^0.27.0",
+    "esbuild": "^0.28.2",
     "lucide-react": "^1.41.0",
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
@@ -65,7 +52,6 @@
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
   },
   "keywords": [
-    "gwb",
     "gwb-plugin"
   ]
 }
