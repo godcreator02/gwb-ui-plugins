@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { LogEntry } from '../../src/client/panes/logger/entries'
-import { ALL_SOURCES, countBySource, groupNames, keyOf, matches, type FilterState } from '../../src/client/panes/logger/filter'
+import {
+  ALL_SOURCES,
+  countBySource,
+  groupNames,
+  keyOf,
+  matches,
+  SHOW_EVERYTHING,
+  type FilterState,
+} from '../../src/client/panes/logger/filter'
 
 const at = (patch: Partial<LogEntry> = {}): LogEntry => ({
   seq: 1,
@@ -69,6 +77,16 @@ describe('搜索', () => {
     expect(() => matches(at({ msg: 'a(b' }), { ...base, search: '(' })).not.toThrow()
     expect(matches(at({ msg: 'a(b' }), { ...base, search: '(' })).toBe(true)
     expect(matches(at({ msg: 'abc' }), { ...base, search: '.*' })).toBe(false)
+  })
+})
+
+describe('SHOW_EVERYTHING', () => {
+  it('每个级别、每个来源的条目都显示', () => {
+    for (const level of ['error', 'warn', 'info', 'debug'] as const) {
+      for (const source of ['plugin', 'kernel', 'renderer'] as const) {
+        expect(matches(at({ level, source }), SHOW_EVERYTHING)).toBe(true)
+      }
+    }
   })
 })
 

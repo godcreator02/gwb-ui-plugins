@@ -44,9 +44,10 @@ describe('收一批', () => {
     expect(got.map((e) => e.seq)).toEqual([1, 2])
   })
 
-  it('不是数组就当空', () => {
-    expect(acceptEntries(undefined)).toEqual([])
-    expect(acceptEntries({ seq: 1 })).toEqual([])
+  it('整份不是数组就抛错——当成空数组，界面会把「取失败」说成「还没有日志」', () => {
+    expect(() => acceptEntries(undefined)).toThrow(/要是数组/)
+    expect(() => acceptEntries({ seq: 1 })).toThrow(/要是数组/)
+    expect(() => acceptEntries(null)).toThrow(/null/)
   })
 })
 

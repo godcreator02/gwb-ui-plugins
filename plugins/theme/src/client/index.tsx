@@ -29,10 +29,11 @@ function applyToPage(css: string): void {
 const FIELD =
   'theme:w-full theme:rounded-md theme:border theme:border-input theme:bg-transparent theme:px-2 theme:py-1 theme:text-sm theme:outline-none theme:focus-visible:border-ring'
 
-function Appearance({ host }: { host: HostBridge }): ReactElement {
+export function Appearance({ host }: { host: HostBridge }): ReactElement {
   const [fontSans, setFontSans] = useState('')
   const [fontMono, setFontMono] = useState('')
   const [customCss, setCustomCss] = useState('')
+  /** 取到当前值之前不预览也不许保存：保存一次写齐三项，这时输入框里的空串会把三项设置全覆盖掉 */
   const [loaded, setLoaded] = useState(false)
   const [notice, setNotice] = useState('')
   /** 已保存的设置对应的整段 css。null 表示还没取到，这时既不预览也不退回 */
@@ -45,11 +46,11 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
       try {
         const reply = (await host.call(VALUES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
         if (!alive) return
-        if (reply.ok !== true || typeof reply.data !== 'object' || reply.data === null) {
-          setNotice(`读取当前设置失败：${reply.error ?? JSON.stringify(reply)}`)
+        if (reply.ok !== true) {
+          setNotice(`读取当前设置失败，不能保存：${reply.error ?? JSON.stringify(reply)}`)
           return
         }
-        const next = fieldValuesOf(reply.data as Record<string, unknown>)
+        const next = fieldValuesOf(reply.data)
         setFontSans(next.fontSans)
         setFontMono(next.fontMono)
         setCustomCss(next.customCss)
@@ -58,7 +59,7 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
         applyToPage(css)
         setLoaded(true)
       } catch (err) {
-        if (alive) setNotice(`读取当前设置失败：${String(err)}`)
+        if (alive) setNotice(`读取当前设置失败，不能保存：${String(err)}`)
       }
     })()
     return () => {
@@ -66,13 +67,11 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
     }
   }, [host])
 
-  // 任何一个输入框变了就预览；取到当前值之前不预览
   const preview = buildStartupCss({ fontSans, fontMono, customCss })
   useEffect(() => {
     if (loaded) applyToPage(preview)
   }, [preview, loaded])
 
-  // 关窗格时退回已保存的样子，没保存的预览不留在页面上
   useEffect(
     () => () => {
       if (savedRef.current !== null) applyToPage(savedRef.current)
@@ -132,7 +131,8 @@ function Appearance({ host }: { host: HostBridge }): ReactElement {
       <div className="theme:flex theme:items-center theme:gap-3">
         <button
           type="button"
-          className="theme:rounded-md theme:border theme:border-input theme:bg-primary theme:px-3 theme:py-1 theme:text-primary-foreground"
+          className="theme:rounded-md theme:border theme:border-input theme:bg-primary theme:px-3 theme:py-1 theme:text-primary-foreground theme:disabled:opacity-50"
+          disabled={!loaded}
           onClick={() => void save()}
         >
           保存

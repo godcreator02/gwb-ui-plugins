@@ -38,8 +38,11 @@ export function isLogEntry(value: unknown): value is LogEntry {
   )
 }
 
+/** 整份不是数组就抛错：当成空数组的话界面会说「还没有日志」，把「取失败」说成了「没有数据」 */
 export function acceptEntries(batch: unknown): LogEntry[] {
-  if (!Array.isArray(batch)) return []
+  if (!Array.isArray(batch)) {
+    throw new Error(`日志回执要是数组，收到的是 ${batch === null ? 'null' : typeof batch}`)
+  }
   return batch.filter(isLogEntry)
 }
 

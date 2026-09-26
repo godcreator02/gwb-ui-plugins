@@ -1,6 +1,6 @@
 /** 窗格拿到的总线句柄。按形状声明、不 extends 浏览器侧的类型：本模块要能在 node 里直接测 */
 export interface PaneBusHandle {
-  /** `release` 之后什么都不做、也不报错：外壳先让插件 dispose 再 release，插件在 dispose 里 emit 仍然有效 */
+  /** `release` 之后什么都不做、也不报错；外壳先让插件 dispose 再 release，插件在 dispose 里 emit 仍然有效 */
   emit(type: string, detail?: unknown): void
   /** 回注销函数，调两次不报错 */
   on(type: string, listener: (detail: unknown) => void): () => void
@@ -66,6 +66,7 @@ export function createBusRegistry(): BusRegistry {
 
       return {
         emit(type, detail) {
+          if (released) return
           const listenersOfType = bucket.listenersByType.get(type)
           if (listenersOfType === undefined) return
           // 拷贝一份再遍历：监听函数收到事件后注销自己是常见写法，直接遍历正在被修改的集合会漏掉或重复

@@ -46,7 +46,7 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
           : 'shell:text-muted-foreground shell:hover:bg-accent/50 shell:hover:text-foreground',
       )}
       title={preview ? `${title}（预览窗格：下一次预览打开别的内容时会替换它。双击标签保持打开）` : title}
-      // 双击转正：dockview 不用 dblclick，拖拽走 pointer 事件，互不冲突；已是正式窗格时是空操作
+      // 双击转正：dockview 不用 dblclick，拖拽走 pointer 事件，互不冲突。已是正式窗格时参数不变，但照样触发一轮参数变更与布局保存
       onDoubleClick={() => props.api.updateParameters({ preview: undefined })}
     >
       <Icon className="shell:size-4 shell:shrink-0" />

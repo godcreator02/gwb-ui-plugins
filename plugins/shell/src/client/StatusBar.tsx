@@ -8,6 +8,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { SendTarget } from './open.js'
 import type { DesktopRow, SavedLayout } from '../layout.js'
 import type { OpenableSpec } from '../openable.js'
@@ -119,15 +129,28 @@ function Launcher({
   onLaunch: (spec: OpenableSpec) => Promise<void>
 }): ReactElement {
   const [groups, setGroups] = useState<LaunchGroup[] | null>(null)
+  /** 读注册表失败的原因；跟「一个窗格都没注册」分开显示 */
+  const [loadError, setLoadError] = useState<string | null>(null)
   // 连着点开两次时只认最后一次取回的
   const round = useRef(0)
   /** `quiet`：开完之后的那次重新读取，旧清单先留着，不闪「正在读取注册表…」 */
   const load = (quiet = false): void => {
     const mine = ++round.current
-    if (!quiet) setGroups(null)
-    void onList().then((next) => {
-      if (round.current === mine) setGroups(next)
-    })
+    if (!quiet) {
+      setGroups(null)
+      setLoadError(null)
+    }
+    onList().then(
+      (next) => {
+        if (round.current !== mine) return
+        setLoadError(null)
+        setGroups(next)
+      },
+      (err: unknown) => {
+        console.error(`[shell] 「新建」读不出注册表：${String(err)}`)
+        if (round.current === mine) setLoadError(String(err))
+      },
+    )
   }
   return (
     <DropdownMenu onOpenChange={(open) => open && load()}>
@@ -137,7 +160,11 @@ function Launcher({
       </DropdownMenuTrigger>
       {/* 点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 检查要跳过它 */}
       <DropdownMenuContent align="start" side="top" data-gwb-launcher="" data-gwb-status-layer="">
-        {groups === null ? (
+        {loadError !== null ? (
+          <DropdownMenuItem disabled className="shell:text-destructive">
+            读不出注册表：{loadError}
+          </DropdownMenuItem>
+        ) : groups === null ? (
           <DropdownMenuItem disabled>正在读取注册表…</DropdownMenuItem>
         ) : groups.length === 0 ? (
           <DropdownMenuItem disabled>还没有插件注册窗格</DropdownMenuItem>
@@ -203,6 +230,8 @@ export function StatusBar({
   activeDesktopId,
   savedLayouts,
   saveFailed,
+  saveBlockedBy,
+  onOverwriteLayout,
   onSwitchDesktop,
   onNewDesktop,
   onApplyLayout,
@@ -238,6 +267,10 @@ export function StatusBar({
   savedLayouts: readonly SavedLayout[]
   /** 最近一次保存布局失败时显示告警项，点它重试 */
   saveFailed: boolean
+  /** 布局文件读不回来或某张桌面的布局恢复不了的原因；有值时这一轮不保存布局，显示告警项 */
+  saveBlockedBy: string | undefined
+  /** 人确认之后：用当前布局覆盖磁盘上的布局文件，恢复自动保存 */
+  onOverwriteLayout: () => void
   onApplyLayout: (row: SavedLayout) => void
   onSaveLayout: (name: string) => void
   onDeleteLayout: (id: string) => void
@@ -245,6 +278,7 @@ export function StatusBar({
   onRetrySave: () => void
 }): ReactElement {
   const version = versionCell(versions)
+  const [confirmingOverwrite, setConfirmingOverwrite] = useState(false)
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   const toggleDark = (): void => {
     const next = !dark
@@ -301,6 +335,38 @@ export function StatusBar({
           布局保存失败
         </button>
       )}
+
+      {saveBlockedBy !== undefined && (
+        <button
+          type="button"
+          className={`${BUTTON} shell:text-destructive`}
+          data-gwb-layout-blocked=""
+          title={`${saveBlockedBy}\n这一轮不保存布局，免得覆盖磁盘上的布局文件——单击可改为用当前布局覆盖它`}
+          onClick={() => setConfirmingOverwrite(true)}
+        >
+          <TriangleAlert className="shell:size-3.5" />
+          布局没读回来，不保存
+        </button>
+      )}
+      <AlertDialog open={confirmingOverwrite} onOpenChange={(next) => !next && setConfirmingOverwrite(false)}>
+        <AlertDialogContent data-gwb-status-layer="">
+          <AlertDialogHeader>
+            <AlertDialogTitle>用当前布局覆盖磁盘上的布局文件？</AlertDialogTitle>
+            <AlertDialogDescription>{saveBlockedBy}。覆盖之后磁盘上原来那份就没了，之后照常自动保存。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmingOverwrite(false)
+                onOverwriteLayout()
+              }}
+            >
+              覆盖
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* home 只显示最后一段，全路径与各项版本在悬停提示里 */}
       <div className={CELL} title={`${home}\n${version.title}`}>

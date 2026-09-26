@@ -9,13 +9,24 @@ export interface FieldValues {
   customCss: string
 }
 
-/** `theme.values` 回执的 data：值不是字符串的项按空串处理（空串 = 没设置） */
-export function fieldValuesOf(data: Record<string, unknown>): FieldValues {
-  const textOf = (value: unknown): string => (typeof value === 'string' ? value : '')
+/**
+ * `theme.values` 回执的 data。形状不对就抛错、不当成空串：外观窗格拿这三个值当保存的底稿，
+ * 当成空串的话一点保存就把三项设置全清空
+ */
+export function fieldValuesOf(data: unknown): FieldValues {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    throw new Error(`theme.values 的回执要是对象，收到的是 ${JSON.stringify(data) ?? String(data)}`)
+  }
+  const record = data as Record<string, unknown>
+  const textOf = (key: string): string => {
+    const value = record[key]
+    if (typeof value !== 'string') throw new Error(`theme.values 回执里的 "${key}" 要是字符串，收到的是 ${typeof value}`)
+    return value
+  }
   return {
-    fontSans: textOf(data['font-sans']),
-    fontMono: textOf(data['font-mono']),
-    customCss: textOf(data['custom-css']),
+    fontSans: textOf('font-sans'),
+    fontMono: textOf('font-mono'),
+    customCss: textOf('custom-css'),
   }
 }
 

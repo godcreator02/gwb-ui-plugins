@@ -1,13 +1,13 @@
 /**
  * 「可装」一栏拿到检索结果之后的事：与已装列表对照、本地筛选、汇总。检索本身由插件管理（`plugin-manager.search`）做；
- * 结果按形状收窄，不 import 插件管理的 `SearchRow`
+ * 结果按形状收窄，不 import 插件管理的 `PluginRow`
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 与插件管理的 `SearchRow` 同形 */
+/** 与插件管理的 `PluginRow` 同形 */
 export interface SearchRow {
   pkg: string
   /** registry 上的最新版 */
@@ -45,9 +45,11 @@ export function scopeOptions(packages: readonly SearchRow[]): ScopeOption[] {
   return scopesInFirstSeenOrder.map((scope) => ({ scope, count: countsByScope.get(scope)! }))
 }
 
-/** 检索回执里「哪几条源没查成」那句；没有或不是字符串回空串 */
+/** 检索回执里「哪几条源没查成」那句；没有这个字段回空串，不是字符串时回一句形状不对，不当成都查成了 */
 export function acceptNote(raw: unknown): string {
-  return typeof raw === 'string' ? raw : ''
+  if (raw === undefined) return ''
+  if (typeof raw === 'string') return raw
+  return `plugin-manager.search 回执里的 note 形状不对（${JSON.stringify(raw)}），哪几条源没查成看不出来`
 }
 
 function acceptSearchRow(item: unknown): SearchRow | undefined {

@@ -4,9 +4,9 @@ import type { DockviewApi } from 'dockview-react'
 import type { PanelLike } from '../src/panels.js'
 
 /**
- * 全井枢纽的账本：井的进出、活动桌面的同拍语义、一张桌面的快照、实例在哪张桌面、
- * 组的最近激活顺序、命令口与注入钩子的收放。假井只喂 `panels` / `getPanel` / `groups` /
- * `activeGroup` 那几格形状。
+ * wellHub 记的页面级状态：容器的加入与删除、活动桌面当场生效、一张桌面的快照、实例在哪张桌面、
+ * 组的最近激活顺序、命令入口与注入的钩子。假容器只实现 `panels` / `getPanel` / `groups` /
+ * `activeGroup` 这几项。
  */
 
 type FakePanel = PanelLike & { id: string }
@@ -19,7 +19,7 @@ interface FakeGroup {
   box?: { x: number; y: number; w: number; h: number }
 }
 
-/** 一口假井：组按顺序摆着，panels 是各组标签摊平，getPanel 按 id 找 */
+/** 假容器：组按顺序排列，panels 是各组标签连成一列，getPanel 按 id 找 */
 function fakeWell(groups: FakeGroup[], activeGroup?: string): DockviewApi {
   const rows = groups.flatMap((g) => g.panels)
   return {
@@ -40,12 +40,12 @@ function fakeWell(groups: FakeGroup[], activeGroup?: string): DockviewApi {
   } as unknown as DockviewApi
 }
 
-/** 一口只有一组的假井 */
+/** 只有一组的假容器 */
 function oneGroup(panels: FakePanel[]): DockviewApi {
   return fakeWell([{ id: 'g1', panels }], 'g1')
 }
 
-/** 一格插件窗格的 params 三件套 */
+/** 一份插件窗格，params 带 pluginKey / entryId / paneId */
 function pane(id: string, extra: Record<string, unknown> = {}): FakePanel {
   return {
     id,
@@ -54,8 +54,8 @@ function pane(id: string, extra: Record<string, unknown> = {}): FakePanel {
   }
 }
 
-describe('井的进出', () => {
-  it('挂上就查得到，clearWells 全拆且活动桌面归零', () => {
+describe('容器的加入与删除', () => {
+  it('加入就查得到，clearWells 全部删除且活动桌面清空', () => {
     const hub = createWellHub()
     hub.addWell('d1', fakeWell([]))
     hub.setActiveDesktop('d1')
@@ -64,14 +64,14 @@ describe('井的进出', () => {
     hub.clearWells()
     expect(hub.wells().size).toBe(0)
     expect(hub.activeDesktop()).toBe('')
-    // 最近激活的账跟着井一起清
+    // 最近激活顺序跟着容器一起清掉
     hub.addWell('d1', fakeWell([{ id: 'g1', panels: [] }]))
     expect(hub.deskOf('d1')?.recent).toEqual([])
   })
 })
 
-describe('removeWell：删掉一张桌面时拆它的井', () => {
-  it('井与最近激活的账一起摘，别的桌面不动', () => {
+describe('removeWell：删掉一张桌面时删它的容器', () => {
+  it('容器与最近激活顺序一起删，别的桌面不动', () => {
     const hub = createWellHub()
     hub.addWell('d1', fakeWell([{ id: 'g1', panels: [] }]))
     hub.addWell('d2', fakeWell([{ id: 'g1', panels: [pane('plugin:e1:main')] }]))
@@ -92,7 +92,7 @@ describe('活动桌面的同拍语义', () => {
   })
 })
 
-describe('deskOf：一张桌面的快照，只摘这一张', () => {
+describe('deskOf：一张桌面的快照，只读这一张', () => {
   it('组按顺序、标签按标签条顺序，每个标签带定义、key、预览；组带活动标签与矩形', () => {
     const hub = createWellHub()
     hub.addWell(
@@ -135,7 +135,7 @@ describe('deskOf：一张桌面的快照，只摘这一张', () => {
     expect(hub.deskOf('d1')?.groups.flatMap((g) => g.tabs.map((t) => t.id))).toEqual(['plugin:e1:main'])
   })
 
-  it('没挂井的桌面回 undefined', () => {
+  it('没挂载容器的桌面回 undefined', () => {
     expect(createWellHub().deskOf('nope')).toBeUndefined()
   })
 })
@@ -164,7 +164,7 @@ describe('最近用过的组：按桌面记激活顺序，只在运行时', () =
     expect(hub.deskOf('d2')?.recent).toEqual(['g3'])
   })
 
-  it('已经没了的组记账时顺手摘掉，账不会越记越长', () => {
+  it('已经不在的组，记顺序时顺手去掉，顺序表不会越记越长', () => {
     const hub = createWellHub()
     const groups: FakeGroup[] = [{ id: 'g1', panels: [] }]
     hub.addWell('d1', fakeWell(groups))
@@ -172,10 +172,14 @@ describe('最近用过的组：按桌面记激活顺序，只在运行时', () =
     hub.noteActiveGroup('d1', 'g1')
     expect(hub.deskOf('d1')?.recent).toEqual(['g1'])
   })
+
+  it('记顺序的桌面没挂载容器：抛错（订阅在加入容器之后才建、在删除容器之前注销）', () => {
+    expect(() => createWellHub().noteActiveGroup('d1', 'g1')).toThrow('d1')
+  })
 })
 
-describe('注册表缓存：同步地问「这一格是哪一类」', () => {
-  it('记下最近取到的那份表；表里没有的（件卸了）当 tool', () => {
+describe('注册表缓存：同步地问「这个窗格是哪一类」', () => {
+  it('记下最近取到的那份表；表里没有的（插件卸载了）当 tool', () => {
     const hub = createWellHub()
     expect(hub.paneKind('e1', 'main')).toBe('tool')
     hub.notePanes([{ entryId: 'e1', pkg: 'pkg', id: 'main', title: 'M', kind: 'document' }])
@@ -185,7 +189,7 @@ describe('注册表缓存：同步地问「这一格是哪一类」', () => {
 })
 
 describe('entries：切换器与 shell.pane.list 的清单', () => {
-  it('挂着的桌面从活井摘，没挂过的桌面从落盘布局读，按桌面顺序', () => {
+  it('已挂载的桌面从容器读，没挂载过的桌面从保存的布局读，按桌面顺序', () => {
     const hub = createWellHub()
     hub.addWell(
       'd1',
@@ -222,11 +226,11 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
     ])
   })
 
-  it('没注入桌面操作（外壳还没落树）时回空清单', () => {
-    expect(createWellHub().entries()).toEqual([])
+  it('没注入桌面操作、也没递桌面清单：抛错——回空清单的话推给 node 侧就成了「一个窗格都没开」', () => {
+    expect(() => createWellHub().entries()).toThrow('桌面清单')
   })
 
-  it('递进来桌面清单就照它摘，不等注入（开机那一下井的 onReady 比注入早）', () => {
+  it('传入桌面清单就照它读，不等注入（开机时容器的 onReady 比注入早）', () => {
     const hub = createWellHub()
     hub.addWell('d1', oneGroup([pane('plugin:e1:main')]))
     expect(hub.entries([{ id: 'd1', name: '桌面 1', layout: null }]).map((e) => [e.desktop, e.instance])).toEqual([
@@ -236,7 +240,7 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
 })
 
 describe('takenAnywhere：实例 id 全页唯一', () => {
-  it('别的井里占着也算占', () => {
+  it('别的容器里占着也算占用', () => {
     const hub = createWellHub()
     hub.addWell('d1', fakeWell([]))
     hub.addWell('d2', oneGroup([pane('plugin:e1:main:2')]))
@@ -245,8 +249,8 @@ describe('takenAnywhere：实例 id 全页唯一', () => {
   })
 })
 
-describe('命令口与注入钩子', () => {
-  it('releaseHost 只收自己那份——新壳先挂、旧壳后收，不能把新的清掉', () => {
+describe('命令入口与注入的钩子', () => {
+  it('releaseHost 只清掉自己那份——换外壳时新外壳先挂载、旧外壳后卸载，不能把新的清掉', () => {
     const hub = createWellHub()
     const first = { call: async () => undefined }
     const second = { call: async () => undefined }
@@ -257,7 +261,7 @@ describe('命令口与注入钩子', () => {
     expect(hub.host()).toBeUndefined()
   })
 
-  it('桌面操作摘了之后是 undefined', () => {
+  it('桌面操作移除之后是 undefined', () => {
     const hub = createWellHub()
     hub.setDeskOps({ switchTo: () => undefined, ensureMounted: async () => undefined, rows: () => [], createDesktop: () => '', notify: () => undefined })
     expect(hub.deskOps()).toBeDefined()
@@ -265,7 +269,7 @@ describe('命令口与注入钩子', () => {
     expect(hub.deskOps()).toBeUndefined()
   })
 
-  it('flush 扳的是最新的那个钩子，摘了之后再扳是空操作', () => {
+  it('flush 调的是最新注入的那个钩子，移除之后再调什么都不做', () => {
     const hub = createWellHub()
     const calls: string[] = []
     hub.setFlusher(() => calls.push('one'))

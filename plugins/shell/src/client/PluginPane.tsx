@@ -126,8 +126,9 @@ export function PluginPane({
         const target = paneTargetIn(await fetchPanes(host), entryId, paneId)
         // 身份标记取注册表里此刻的包名：面板 params 里的 pluginKey 是开窗格那一刻存进布局文件的，包改名后还是旧名
         container.setAttribute('data-gwb-plugin', target.pkg)
-        // 插件可以没有样式表
-        if (target.style !== undefined) await loadStyle(target.style)
+        if (target.style !== undefined && !(await loadStyle(target.style))) {
+          throw new Error(`${target.pkg} 注册窗格 ${paneId} 时报的样式表加载不了：${target.style}`)
+        }
         if (disposed) return
         const mountPane = await importMountPane(target.client, target.pkg)
         if (disposed) return

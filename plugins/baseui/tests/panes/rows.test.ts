@@ -47,13 +47,13 @@ describe('判形', () => {
     expect(got[0]!.entries.map((e) => e.id)).toEqual(['data'])
   })
 
-  it('entryId 缺了就用不带前缀的 id——命令收的是 entryId，空着等于这条条目操作不了', () => {
-    const got = acceptPackages([{ ...pkg(), entries: [{ id: 'data', entryId: '' }] }])
-    expect(got[0]!.entries[0]!.entryId).toBe('data')
+  it('**entryId 缺了不拿 id 顶替**：命令收的是完整 entryId，顶替后发出去的是另一个值。按回执形状不对报错，点名是哪条条目', () => {
+    expect(() => acceptPackages([{ ...pkg(), entries: [{ id: 'data', entryId: '' }] }])).toThrow(/data.*entryId/)
+    expect(() => acceptPackages([{ ...pkg(), entries: [{ id: 'data' }] }])).toThrow(/回执形状不对/)
   })
 
   it('disabled / active / group 只认 true，别的一律当 false', () => {
-    const got = acceptPackages([{ ...pkg(), entries: [{ id: 'x', disabled: 'yes', active: 1, group: 'true' }] }])
+    const got = acceptPackages([{ ...pkg(), entries: [{ id: 'x', entryId: 'home:x', disabled: 'yes', active: 1, group: 'true' }] }])
     expect(got[0]!.entries[0]).toMatchObject({ disabled: false, active: false, group: false })
   })
 
@@ -154,9 +154,9 @@ describe('两层行', () => {
     expect(toRows([{ pkg: '', installed: false, unmetPeers: [], entries: [entry({ id: 'g', pkg: '', group: true })] }])).toEqual([])
   })
 
-  it('包名是空串但条目不是分组的，留着并说清楚', () => {
+  it('包名是空串但条目不是分组的，留着', () => {
     const rows = toRows([{ pkg: '', installed: false, unmetPeers: [], entries: [entry({ id: 'x', pkg: '' })] }])
-    expect(rows[0]!.title).toBe('（条目没写 name）')
+    expect(rows.map((r) => [r.pkg, r.entries.map((e) => e.id)])).toEqual([['', ['x']]])
   })
 })
 
@@ -213,16 +213,16 @@ describe('peer 没满足', () => {
 })
 
 describe('汇总', () => {
-  it('数包、数条目、数「没加载起来」那几条', () => {
+  it('数包、数条目', () => {
     const rows = toRows([
       pkg({ entries: [entry(), entry({ id: 'b', active: false })] }),
       pkg({ pkg: '@godcreator/gwb-x', entries: [] }),
     ])
-    expect(summarize(rows)).toEqual({ packages: 2, entries: 2, attention: 1 })
+    expect(summarize(rows)).toEqual({ packages: 2, entries: 2 })
   })
 
-  it('空表是三个零', () => {
-    expect(summarize([])).toEqual({ packages: 0, entries: 0, attention: 0 })
+  it('空表是两个零', () => {
+    expect(summarize([])).toEqual({ packages: 0, entries: 0 })
   })
 })
 
@@ -233,13 +233,15 @@ describe('命令回执', () => {
 
   it('**error 一个字都不丢**——失败原因与 pnpm 输出的最后几行都只在这一句里', () => {
     const got = asResult({ ok: false, error: 'pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION' })
-    expect(got.ok).toBe(false)
-    expect(got.error).toBe('pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION')
+    expect(got).toEqual({ ok: false, error: 'pnpm add 没成（退出码 1）\nERR_PNPM_NO_MATCHING_VERSION' })
   })
 
   it('没成却没给话时也得有句话——空提示跟没提示一样', () => {
-    expect(asResult({ ok: false }).error).not.toBe('')
-    expect(asResult({ ok: false, error: '' }).error).not.toBe('')
+    for (const raw of [{ ok: false }, { ok: false, error: '' }]) {
+      const got = asResult(raw)
+      if (got.ok) throw new Error('应当是失败回执')
+      expect(got.error).not.toBe('')
+    }
   })
 
   it('回了个认不出的东西也当没成，不崩', () => {

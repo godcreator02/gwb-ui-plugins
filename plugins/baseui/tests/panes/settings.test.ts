@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   acceptSettings,
+  bareId,
   deleteSettingValues,
   describeSettingsDeletion,
   dirtySlots,
   fieldState,
+  orphanSettings,
+  parseSlotKey,
   secretPlaceholder,
+  SHARED_SECTION,
+  sharedSettings,
+  slotKey,
   type SettingRow,
 } from '../../src/client/panes/plugin-manager/settings'
 
@@ -66,6 +72,78 @@ describe('acceptSettings：secret 那三格随回执收下', () => {
   })
 })
 
+describe('acceptSettings：认不出的整行丢掉', () => {
+  it('type 认不出的那一行丢掉，不当成 string', () => {
+    const got = acceptSettings([
+      { section: 'gitea', key: 'mode', type: 'enum', value: 'a', live: true },
+      { section: 'gitea', key: 'base-url', type: 'string', value: 'x', live: true },
+    ])
+    expect(got.map((setting) => setting.key)).toEqual(['base-url'])
+  })
+
+  it('没有 type 的行也丢掉', () => {
+    expect(acceptSettings([{ section: 'gitea', key: 'mode', value: 'a', live: true }])).toEqual([])
+  })
+})
+
+describe('slotKey / parseSlotKey', () => {
+  it('拼了再拆回原样，section 里有 / 也拆得回来', () => {
+    const pos = { section: 'a/b', key: 'token' }
+    expect(parseSlotKey(slotKey(pos))).toEqual(pos)
+  })
+
+  it('切不成两段就抛错，不拿空串去调设置命令', () => {
+    expect(() => parseSlotKey('gitea')).toThrow(/section\/key/)
+    expect(() => parseSlotKey('a/b/c')).toThrow(/section\/key/)
+  })
+})
+
+describe('bareId', () => {
+  it('取末段', () => {
+    expect(bareId('home:hello')).toBe('hello')
+    expect(bareId('hello')).toBe('hello')
+  })
+})
+
+describe('orphanSettings：没有插件声明的设置', () => {
+  const setting = (patch: Partial<SettingRow>): SettingRow => ({ section: 'gitea', key: 'token', type: 'string', ...patch })
+
+  it('未声明、又对不上任何条目的才算', () => {
+    const orphan = setting({ section: 'gone', live: false })
+    expect(orphanSettings([orphan], ['home:gitea'])).toEqual([orphan])
+  })
+
+  it('公共区 * 里正被声明着的项不算——它对不上任何条目，但有人声明', () => {
+    expect(orphanSettings([setting({ section: '*', key: 'proxy' })], ['home:gitea'])).toEqual([])
+  })
+
+  it('公共区里没人声明的项算', () => {
+    const shared = setting({ section: '*', key: 'proxy', live: false })
+    expect(orphanSettings([shared], ['home:gitea'])).toEqual([shared])
+  })
+
+  it('对得上条目的未声明项画在条目下，不在这里重复', () => {
+    expect(orphanSettings([setting({ live: false })], ['home:gitea'])).toEqual([])
+  })
+})
+
+describe('sharedSettings：公共区里此刻有插件声明着的项', () => {
+  const setting = (patch: Partial<SettingRow>): SettingRow => ({ section: 'gitea', key: 'token', type: 'string', ...patch })
+
+  it('只收 section 是 * 且有人声明的；没人声明的归 orphanSettings，条目分区的不收', () => {
+    const declared = setting({ section: SHARED_SECTION, key: 'proxy' })
+    const undeclared = setting({ section: SHARED_SECTION, key: 'old', live: false })
+    expect(sharedSettings([declared, undeclared, setting({})])).toEqual([declared])
+  })
+
+  it('与 orphanSettings 不重叠：公共区每一项只出现在一处', () => {
+    const all = [setting({ section: SHARED_SECTION, key: 'proxy' }), setting({ section: SHARED_SECTION, key: 'old', live: false })]
+    const shared = sharedSettings(all)
+    const orphans = orphanSettings(all, ['home:gitea'])
+    expect([...shared, ...orphans].map((s) => s.key).sort()).toEqual(['old', 'proxy'])
+  })
+})
+
 describe('fieldState：一格画成哪一态', () => {
   it('secret + isSet → 已设置态', () => {
     expect(fieldState(row({ isSet: true }))).toBe('secret-set')
@@ -98,9 +176,8 @@ describe('secretPlaceholder：空框里写什么', () => {
     expect(secretPlaceholder({})).toBe('未设置')
   })
 
-  it('isSet 说设过了却没给掩码时兜一个——占位符不能是空的', () => {
+  it('isSet 说设过了却没给掩码时兜一个——占位符不能是空的（空掩码在 acceptSettings 那里就丢了）', () => {
     expect(secretPlaceholder({ isSet: true })).toBe('已设置（••••，不在此显示）')
-    expect(secretPlaceholder({ isSet: true, mask: '' })).toBe('已设置（••••，不在此显示）')
   })
 })
 
@@ -123,7 +200,7 @@ describe('deleteSettingValues：删条目、卸载时连设置值一起删', () 
     { section: 'gitea', key: 'base-url' },
   ]
 
-  it('回执 ok:false 不算删掉——命令总线失败不抛，只回 ok:false', async () => {
+  it('回执 ok:false 不算删掉', async () => {
     const outcome = await deleteSettingValues(
       async (_command, pos) => (pos.key === 'token' ? { ok: false, error: '写不进 settings.json' } : { ok: true }),
       'settings.delete',

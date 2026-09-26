@@ -275,6 +275,13 @@ describe('启动器：launchGoesTo / launchSpec', () => {
     ])
     expect(notices).toEqual([])
   })
+
+  it('活动桌面的容器没挂上：抛错，不装作点了没反应', async () => {
+    setup({ desktops: ['d1'], active: 'd1' })
+    wellHub.setActiveDesktop('d9')
+    await expect(launchSpec(specForPane(toolRow))).rejects.toThrow('d9')
+    expect(() => launchGoesTo(specForPane(toolRow))).toThrow('d9')
+  })
 })
 
 describe('openRegisteredPane', () => {
@@ -365,6 +372,11 @@ describe('focusInstance / closeInstance', () => {
     await closeInstance('d2', 'p')
     expect(log).toEqual(['d2 close p'])
   })
+
+  it('桌面操作还没注入：抛错', async () => {
+    await expect(focusInstance('d1', 'p')).rejects.toThrow('桌面操作')
+    await expect(closeInstance('d1', 'p')).rejects.toThrow('桌面操作')
+  })
 })
 
 describe('sendPane', () => {
@@ -396,6 +408,29 @@ describe('sendPane', () => {
     })
     expect(dock('d2').addPanelCalls[0]?.params).not.toHaveProperty('preview')
     expect(notices).toEqual(['d2: 已送到『桌面 2』'])
+  })
+
+  it('送到新桌面、定义已不在注册表里：不建桌面、不关源窗格，warn 一句', async () => {
+    const { dock, log } = setup({ desktops: ['d1'], active: 'd1', rows: [] })
+    const group = dock('d1').newGroup('d1-g1')
+    dock('d1').seed(group, 'plugin:home:hello:doc', pluginParams('doc'), '文档')
+    await sendPane('plugin:home:hello:doc', { newDesktop: '' }, false)
+    expect(log).toEqual([])
+    expect(String(warn.mock.calls[0]?.[0])).toContain('定义不在注册表里')
+  })
+
+  it('目标桌面挂上了却读不出快照：抛错，而且不先关掉源窗格（关了开不回来，这一份就没了）', async () => {
+    const { dock, log } = setup({ desktops: ['d1', 'd2'], active: 'd1' })
+    const group = dock('d1').newGroup('d1-g1')
+    dock('d1').seed(group, 'plugin:home:hello:doc', pluginParams('doc'), '文档')
+    const ops = wellHub.deskOps()!
+    wellHub.removeWell('d2')
+    wellHub.setDeskOps({
+      ...ops,
+      ensureMounted: (desktopId) => (desktopId === 'd2' ? Promise.resolve(asApi(dock('d2').api)) : ops.ensureMounted(desktopId)),
+    })
+    await expect(sendPane('plugin:home:hello:doc', { desktop: 'd2' }, false)).rejects.toThrow('d2')
+    expect(log).toEqual([])
   })
 
   it('follow：送完切过去，不提示；newDesktop：先建一张桌面', async () => {

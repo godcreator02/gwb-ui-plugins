@@ -1,5 +1,5 @@
 /**
- * 按插件管理 `inventory.ts` 的形状收窄，不 import 那边的类型。
+ * 按插件管理 `receipts.ts` 的形状收窄，不 import 那边的类型。
  * 分包、条目两层：一个包能有多条条目，`name` 是装哪个包，`id` 才是身份
  */
 
@@ -7,7 +7,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 与插件管理的 `PluginEntryView` 同形 */
+/** 与插件管理的 `EntrySnapshot` 同形 */
 export interface EntryView {
   /** 不带前缀的 id，cordis.yml 与日志里出现的是它 */
   id: string
@@ -40,16 +40,22 @@ export interface PackageView {
   unmetPeers: UnmetPeer[]
 }
 
-/** 认不出的丢掉、不报错：插件管理改了形状而窗格没跟上时，宁可少显示几行也不要整个窗格空白 */
+/**
+ * 没有 id 的丢掉。缺 entryId 的抛错、不拿 id 顶替：enable / disable / remove-entry 收的都是完整 entryId，
+ * 顶替后发出去的是另一个值
+ */
 function acceptEntry(value: unknown): EntryView | undefined {
   if (!isRecord(value)) return undefined
   const id = value['id']
   if (typeof id !== 'string' || id === '') return undefined
   const entryId = value['entryId']
+  if (typeof entryId !== 'string' || entryId === '') {
+    throw new Error(`plugin-manager.list 回执形状不对：条目 ${id} 没有 entryId，这条条目没法启用、停用或删除`)
+  }
   const pkg = value['pkg']
   return {
     id,
-    entryId: typeof entryId === 'string' && entryId !== '' ? entryId : id,
+    entryId,
     pkg: typeof pkg === 'string' ? pkg : '',
     disabled: value['disabled'] === true,
     active: value['active'] === true,
@@ -173,11 +179,8 @@ function toEntryRow(entry: EntryView): EntryRow {
   }
 }
 
-/** 卸载是包级动作（`plugin-manager.uninstall`），入口在窗格里，不在行上 */
 export interface PackageRow {
   pkg: string
-  /** 包名为空（条目没写 name）时显示一句说明 */
-  title: string
   spec?: string
   /** home 的 dependencies 里有它；false 是 yml 里有条目、包却不在 home 里 */
   installed: boolean
@@ -194,7 +197,6 @@ function packageRowOf(view: PackageView): PackageRow | undefined {
   if (view.pkg === '' && entries.length === 0) return undefined
   const row: PackageRow = {
     pkg: view.pkg,
-    title: view.pkg === '' ? '（条目没写 name）' : view.pkg,
     installed: view.installed,
     entries,
     unmetPeers: view.unmetPeers,
@@ -248,31 +250,21 @@ export function unmetPeerMark(row: Pick<PackageRow, 'unmetPeers'>): UnmetPeerMar
 export interface Summary {
   packages: number
   entries: number
-  /** 没停用也没加载起来的条目数 */
-  attention: number
 }
 
 export function summarize(rows: readonly PackageRow[]): Summary {
   let entries = 0
-  let attention = 0
-  for (const row of rows) {
-    entries += row.entries.length
-    for (const entry of row.entries) if (entry.attention) attention += 1
-  }
-  return { packages: rows.length, entries, attention }
+  for (const row of rows) entries += row.entries.length
+  return { packages: rows.length, entries }
 }
 
-/** 命令的回执；`error` 一个字都不许丢 */
-export interface CallResult {
-  ok: boolean
-  data?: unknown
-  error?: string
-}
+/** 命令的回执，与命令总线的回执同形；`error` 一个字都不许丢，失败时一定非空 */
+export type CallResult = { ok: true; data: unknown } | { ok: false; error: string }
 
 export function asResult(value: unknown): CallResult {
   if (!isRecord(value)) return { ok: false, error: `命令返回了认不出的值：${String(value)}` }
   const error = value['error']
-  if (value['ok'] === true) return value['data'] === undefined ? { ok: true } : { ok: true, data: value['data'] }
+  if (value['ok'] === true) return { ok: true, data: value['data'] }
   // 失败却没给原因时也要有句话：空的错误提示跟没提示一样
   return { ok: false, error: typeof error === 'string' && error !== '' ? error : '命令失败，没有给出原因' }
 }

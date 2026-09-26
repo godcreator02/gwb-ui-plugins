@@ -65,6 +65,8 @@ export function DesktopPanel({
   const [over, setOver] = useState<string | null>(null)
   const spring = useRef<number | undefined>(undefined)
   const active = desktops.find((d) => d.id === activeId)
+  // 切桌面只切到清单里的，删桌面先切走再删，开机时 active 已校验在 desktops 里
+  if (active === undefined) throw new Error(`[shell] 活动桌面 ${activeId} 不在桌面清单里`)
 
   /** 送到是异步的（可能要先在后台挂载容器），桌面清单不一定变，送完自己重新读取 */
   const refresh = (): void => setSections(onSections())
@@ -170,7 +172,7 @@ export function DesktopPanel({
           onDragLeave={springLeave}
         >
           <Monitor className="shell:size-3.5" />
-          {active?.name ?? '桌面'}
+          {active.name}
         </PopoverTrigger>
         <PopoverContent
           side="top"

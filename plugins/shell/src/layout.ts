@@ -4,7 +4,7 @@ export const LAYOUT_DOC = 'layout'
 export const LAYOUT_GET_COMMAND = 'shell.layout.get'
 export const LAYOUT_SAVE_COMMAND = 'shell.layout.save'
 
-/** 改形状就加一；读到 v2 当场迁移，更老的当没有 */
+/** 改形状就加一；读到 v2 当场迁移，别的版本认不出 */
 export const LAYOUT_VERSION = 3
 
 /** 一套人手起名存下的布局 */
@@ -91,7 +91,7 @@ function migrateV2Doc(raw: Record<string, unknown>): LayoutDoc | null {
   return { v: LAYOUT_VERSION, active: 'd1', desktops: [{ id: 'd1', name: '主桌面', layout: current }], saved }
 }
 
-/** 磁盘上读到的 → 布局文件。认不出回 null（调用方回默认布局）；v2 当场迁成 v3，迁移结果不写回 */
+/** 磁盘上读到的 → 布局文件。认不出回 null；v2 当场迁成 v3，迁移结果不写回 */
 export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
   if (!isPlainObject(raw)) return null
   if (raw.v === 2) return migrateV2Doc(raw)
@@ -106,9 +106,41 @@ export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
   return { v: LAYOUT_VERSION, active, desktops, saved }
 }
 
-/** 第一次开机或文件认不出时用：一张「桌面 1」，layout 为 null */
+/** 第一次开机、读不回布局文件时用：一张「桌面 1」，layout 为 null */
 export function defaultDoc(): LayoutDoc {
   return { v: LAYOUT_VERSION, active: 'd1', desktops: [{ id: 'd1', name: '桌面 1', layout: null }], saved: [] }
+}
+
+/** 开机从哪份布局开始；`saveBlockedBy` 有值时 doc 是默认布局，这一轮不能保存，否则会覆盖磁盘上那份读不回来的 */
+export interface InitialLayout {
+  doc: LayoutDoc
+  saveBlockedBy?: string
+}
+
+function versionLabelOf(data: unknown): string {
+  if (!isPlainObject(data)) return `内容是 ${data === null ? 'null' : typeof data}`
+  return data.v === undefined ? '没有 v' : `v=${JSON.stringify(data.v)}`
+}
+
+/**
+ * `shell.layout.get` 的结果（`Promise.allSettled` 的一项）→ 开机用的布局。只有回 ok、`data` 是 undefined
+ * （gwbData 对不存在的文档回 undefined）才算第一次开机；调不通、回失败、认不出都停止保存
+ */
+export function initialLayoutOf(settled: PromiseSettledResult<unknown>): InitialLayout {
+  if (settled.status === 'rejected') {
+    return { doc: defaultDoc(), saveBlockedBy: `${LAYOUT_GET_COMMAND} 调不通：${String(settled.reason)}` }
+  }
+  const reply = settled.value
+  if (!isPlainObject(reply) || reply.ok !== true) {
+    const error = isPlainObject(reply) && typeof reply.error === 'string' ? reply.error : `回的是 ${reply === undefined ? 'undefined' : JSON.stringify(reply)}`
+    return { doc: defaultDoc(), saveBlockedBy: `${LAYOUT_GET_COMMAND} 没回布局文件：${error}` }
+  }
+  if (reply.data === undefined) return { doc: defaultDoc() }
+  const doc = parseLayoutDoc(reply.data)
+  if (doc === null) {
+    return { doc: defaultDoc(), saveBlockedBy: `磁盘上的布局文件认不出（${versionLabelOf(reply.data)}，外壳认 v2 与 v${String(LAYOUT_VERSION)}）` }
+  }
+  return { doc }
 }
 
 /** 容器挂载之后什么时候保存：不保存、排一次防抖保存、立刻保存 */

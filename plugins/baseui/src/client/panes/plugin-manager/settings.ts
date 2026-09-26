@@ -1,7 +1,6 @@
 /**
- * `settings.all` 按 section（条目 id 的末段）平铺，这里按形状收窄（设置插件 `registry.ts` 的 SettingView）、
- * 再按条目归组。settings 0.3.0 起列表对 secret 行不回 `value` 与 `default`，只回 `secret` / `isSet` / 设过才有的 `mask`；
- * 看明文走 `settings.get`
+ * `settings.all` 按 section（条目 id 的末段；公共区是 `*`）平铺，这里按形状收窄（设置插件 `registry.ts` 的 SettingView）、
+ * 再按条目归组。secret 行没有 `value` 与 `default`，只有 `secret` / `isSet` / 设过才有的 `mask`；看明文走 `settings.get`
  */
 
 import { asResult } from './rows'
@@ -33,8 +32,9 @@ export interface SettingRow {
   mask?: string
 }
 
-function settingTypeOf(rawType: unknown): SettingType {
-  return (TYPES as readonly string[]).includes(rawType as string) ? (rawType as SettingType) : 'string'
+/** 认不出的 type 回 undefined，那一行整行丢掉：当成 string 画出来，保存时会把别的类型写成字符串 */
+function settingTypeOf(rawType: unknown): SettingType | undefined {
+  return (TYPES as readonly unknown[]).includes(rawType) ? (rawType as SettingType) : undefined
 }
 
 /** `isSet` 只认布尔，`mask` 只认非空串（空掩码会被当成设了个空值） */
@@ -52,6 +52,7 @@ function acceptSetting(item: unknown): SettingRow | undefined {
   if (typeof section !== 'string' || section === '') return undefined
   if (typeof key !== 'string' || key === '') return undefined
   const type = settingTypeOf(item['type'])
+  if (type === undefined) return undefined
   const row: SettingRow = { section, key, type }
   const title = item['title']
   const description = item['description']
@@ -94,8 +95,7 @@ export function fieldState(row: Pick<SettingRow, 'type' | 'isSet'>): FieldState 
 /** 设过了显示定长掩码（按真实长度打码等于泄露长度），没设过直说，不留空框 */
 export function secretPlaceholder(row: Pick<SettingRow, 'isSet' | 'mask'>): string {
   if (row.isSet !== true) return '未设置'
-  const mask = typeof row.mask === 'string' && row.mask !== '' ? row.mask : '••••'
-  return `已设置（${mask}，不在此显示）`
+  return `已设置（${row.mask ?? '••••'}，不在此显示）`
 }
 
 /**
@@ -109,7 +109,7 @@ export function dirtySlots(draft: Record<string, unknown> | undefined): Array<[s
 /** `home:hello` → `hello`，即设置的 section */
 export function bareId(entryId: string): string {
   const parts = entryId.split(':')
-  return parts[parts.length - 1] ?? entryId
+  return parts[parts.length - 1]!
 }
 
 /** `settings.set` / `settings.delete` 按它定位；两段各自 encodeURIComponent，section 里有 `/` 也拆得回来 */
@@ -117,9 +117,12 @@ export function slotKey(setting: Pick<SettingRow, 'section' | 'key'>): string {
   return `${encodeURIComponent(setting.section)}/${encodeURIComponent(setting.key)}`
 }
 
+/** 只收 `slotKey` 拼出来的串；切不成两段就抛错，不拿空串去调 `settings.set` / `settings.delete` */
 export function parseSlotKey(slot: string): { section: string; key: string } {
-  const [section, key] = slot.split('/').map((part) => decodeURIComponent(part))
-  return { section: section ?? '', key: key ?? '' }
+  const parts = slot.split('/')
+  if (parts.length !== 2) throw new Error(`设置槽 ${JSON.stringify(slot)} 不是 slotKey 拼出来的「section/key」`)
+  const [section, key] = parts.map((part) => decodeURIComponent(part)) as [string, string]
+  return { section, key }
 }
 
 export function settingsForEntry(all: readonly SettingRow[], entryId: string): SettingRow[] {
@@ -133,7 +136,7 @@ export interface SettingsDeletion {
   failures: string[]
 }
 
-/** 逐项 `settings.delete`，一项失败不停下。命令总线失败回 `{ ok: false }` 不抛，成功与否只看回执 */
+/** 逐项 `settings.delete`，一项失败不停下。失败有两种：回执 `ok: false`，或调用本身抛错（如 IPC 断了），都记进失败项 */
 export async function deleteSettingValues(
   call: (command: string, args: { section: string; key: string }) => Promise<unknown>,
   command: string,
@@ -162,8 +165,20 @@ export function describeSettingsDeletion(outcome: SettingsDeletion): string {
   return parts.join('')
 }
 
-/** section 对不上界面上任何条目的：多半是条目删了值没清，或者插件停着还没声明 */
+/**
+ * 此刻没有插件声明（`live: false`）、又对不上界面上任何条目的：多半是条目删了值没清，或者插件停着。
+ * 是否有人声明只看回执的 `live`，不按 section 推：公共区 `*` 对不上任何条目，里面的项却可能正被声明着。
+ * 对得上条目的未声明项画在那个条目下（带「未声明」标记），不在这里重复
+ */
 export function orphanSettings(all: readonly SettingRow[], entries: readonly string[]): SettingRow[] {
   const entrySections = new Set(entries.map(bareId))
-  return all.filter((setting) => !entrySections.has(setting.section))
+  return all.filter((setting) => setting.live === false && !entrySections.has(setting.section))
+}
+
+/** 设置插件公共区的分区名（与设置插件 `paths.ts` 的 `SHARED_SECTION` 一致）：声明 `shared` 的项写在这里，不属于任何条目 */
+export const SHARED_SECTION = '*'
+
+/** 公共区里此刻有插件声明着的项。按条目分区找不到它们；没人声明的归 `orphanSettings` */
+export function sharedSettings(all: readonly SettingRow[]): SettingRow[] {
+  return all.filter((setting) => setting.section === SHARED_SECTION && setting.live !== false)
 }

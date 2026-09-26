@@ -253,9 +253,11 @@ function indexRightOfActiveTab(group: DeskGroup): number {
   return activeIndex < 0 ? group.tabs.length : activeIndex + 1
 }
 
+/** `targetGroup` 给的组都取自这张快照，目标是某一组时 `groupInDesk` 一定在 */
 function openAtTarget(target: Target, groupInDesk: DeskGroup | undefined): OpenAt {
   if (!('group' in target)) return target
-  return { group: target.group, index: groupInDesk === undefined ? 0 : indexRightOfActiveTab(groupInDesk) }
+  if (groupInDesk === undefined) throw new Error(`目标组 ${target.group} 不在这张桌面的快照里`)
+  return { group: target.group, index: indexRightOfActiveTab(groupInDesk) }
 }
 
 function groupOfTarget(desk: Desk, target: Target): DeskGroup | undefined {

@@ -25,6 +25,7 @@ import {
   openRegisteredPane,
   sendPane,
   TAB_COMPONENT,
+  type SendTarget,
 } from './open.js'
 import { applyStartupCss, GWB_THEME, THEME_CLASSES } from './theme-boot.js'
 import { groupForLauncher, listOpenable, specsForDefaults, type OpenableSpec } from '../openable.js'
@@ -33,9 +34,8 @@ import {
   LAYOUT_GET_COMMAND,
   LAYOUT_SAVE_COMMAND,
   LAYOUT_VERSION,
-  defaultDoc,
+  initialLayoutOf,
   nextDesktopId,
-  parseLayoutDoc,
   upsertSaved,
   wellBootPlan,
   type DesktopRow,
@@ -65,7 +65,7 @@ const SWEEP_DELAY_MS = 500
 
 /** 推给 node 侧缓存（`shell.pane.sync`）；推不上只记一条 warn */
 function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string): void {
-  const sync = { entries: wellHub.entries(), desktops: rows.map(({ id, name }) => ({ id, name })), active }
+  const sync = { entries: wellHub.entries(rows), desktops: rows.map(({ id, name }) => ({ id, name })), active }
   void host.call(PANE_SYNC_COMMAND, sync).then(
     (reply) => {
       const typed = reply as { ok?: boolean; error?: string }
@@ -110,12 +110,15 @@ function App({
   home,
   versions,
   initialDoc,
+  initialSaveBlockedBy,
 }: {
   specs: OpenableSpec[]
   home: string
   versions: Versions
-  /** 磁盘上的布局文件；第一次开机或认不出时是 defaultDoc() */
+  /** 磁盘上的布局文件；第一次开机或读不回来时是 defaultDoc() */
   initialDoc: LayoutDoc
+  /** 开机读不回布局文件的原因；有值时这一轮不保存布局，免得覆盖磁盘上那份 */
+  initialSaveBlockedBy: string | undefined
 }): ReactElement {
   /** 已挂载的各容器的 api，挂载后常驻 */
   const [apis, setApis] = useState<Record<string, DockviewApi>>({})
@@ -125,6 +128,9 @@ function App({
   const [activeId, setActiveId] = useState(initialDoc.active)
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
+  /** 布局文件读不回来（开机时）或某张桌面的布局恢复不了（挂载时）的原因：有值就不写磁盘，直到人在状态栏确认覆盖 */
+  const [saveBlockedBy, setSaveBlockedBy] = useState(initialSaveBlockedBy)
+  const saveBlockedRef = useRef(initialSaveBlockedBy)
   /** 每保存一次加一；「桌面」面板开着时据此重新读取清单 */
   const [panesTick, setPanesTick] = useState(0)
 
@@ -154,29 +160,30 @@ function App({
   const flushSave = useCallback((): void => {
     window.clearTimeout(timerRef.current)
     const host = wellHub.host()
-    if (host === undefined) return
-    // 整份写入：已挂载的桌面读容器当下的 toJSON，没挂载的用它保存着的那条
-    const doc: LayoutDoc = {
-      v: LAYOUT_VERSION,
-      active: activeIdRef.current,
-      desktops: rowsRef.current.map((row) => {
-        const api = apisRef.current[row.id]
-        return api === undefined ? row : { ...row, layout: api.toJSON() as unknown as Record<string, unknown> }
-      }),
-      saved: savedRef.current,
+    // 挂载那段先 setHost 再渲染；卸载时先 flush 再 releaseHost
+    if (host === undefined) throw new Error('[shell] 保存布局时命令入口不在')
+    if (saveBlockedRef.current === undefined) {
+      const doc: LayoutDoc = {
+        v: LAYOUT_VERSION,
+        active: activeIdRef.current,
+        desktops: rowsRef.current.map((row) => {
+          const api = apisRef.current[row.id]
+          return api === undefined ? row : { ...row, layout: api.toJSON() as unknown as Record<string, unknown> }
+        }),
+        saved: savedRef.current,
+      }
+      void host.call(LAYOUT_SAVE_COMMAND, doc).then(
+        (reply) => {
+          const typed = reply as { ok?: boolean; error?: string }
+          setSaveFailed(typed.ok !== true)
+          if (typed.ok !== true) console.error(`[shell] 布局没存上：${typed.error ?? '没说原因'}`)
+        },
+        (err: unknown) => {
+          setSaveFailed(true)
+          console.error(`[shell] 布局没存上：${String(err)}`)
+        },
+      )
     }
-    void host.call(LAYOUT_SAVE_COMMAND, doc).then(
-      (reply) => {
-        const typed = reply as { ok?: boolean; error?: string }
-        setSaveFailed(typed.ok !== true)
-        if (typed.ok !== true) console.error(`[shell] 布局没存上：${typed.error ?? '没说原因'}`)
-      },
-      (err: unknown) => {
-        setSaveFailed(true)
-        console.error(`[shell] 布局没存上：${String(err)}`)
-      },
-    )
-    // 窗格清单跟保存同一节律推给 node 侧
     pushPanes(host, rowsRef.current, activeIdRef.current)
     setPanesTick((n) => n + 1)
   }, [])
@@ -200,6 +207,8 @@ function App({
     return () => {
       for (const sub of subs.values()) sub.dispose()
       subs.clear()
+      // 卸载前已 flush 过；卸载途中容器销毁若又排了一次保存，到时命令入口已交还
+      window.clearTimeout(timerRef.current)
       wellHub.clearWells()
     }
   }, [])
@@ -238,8 +247,11 @@ function App({
         event.api.fromJSON(row.layout as unknown as SerializedDockview)
         restored = true
       } catch (err) {
-        // 保存的布局坏了或 dockview 升了版本：回默认布局，不阻止容器启动
-        console.warn(`[shell] 桌面「${row.name}」的布局恢复不了，回默认：${String(err)}`)
+        // 保存的布局坏了或 dockview 升了版本：回默认布局，不阻止容器启动；但不再保存，否则默认布局会覆盖磁盘上那份
+        const reason = `桌面「${row.name}」的布局恢复不了：${String(err)}`
+        console.error(`[shell] ${reason}——这一轮不保存布局`)
+        saveBlockedRef.current = reason
+        setSaveBlockedBy(reason)
       }
     }
     // 运行时新建的桌面不打开默认布局；第一次开机、v2 迁移出的 null、恢复失败这三种才打开
@@ -344,7 +356,9 @@ function App({
           closed += 1
         }
       } else {
-        closed = entriesOfLayout(id, row?.layout ?? null).length
+        // afterDelete 认出了这个 id，它一定在清单里
+        if (row === undefined) throw new Error(`[shell] 删桌面：${id} 不在桌面清单里`)
+        closed = entriesOfLayout(id, row.layout).length
       }
       wellSubsRef.current.get(id)?.dispose()
       wellSubsRef.current.delete(id)
@@ -390,7 +404,7 @@ function App({
   /** 当场取注册表与插件名表，按插件分组，每一行带上点下去会去哪 */
   const launchList = async (): Promise<LaunchGroup[]> => {
     const host = wellHub.host()
-    if (host === undefined) return []
+    if (host === undefined) throw new Error('[shell] 读注册表时命令入口不在')
     const [panes, plugins] = await Promise.all([fetchPanes(host), fetchPlugins(host)])
     return groupForLauncher(listOpenable(panes), plugins).map((group) => ({
       entryId: group.entryId,
@@ -417,10 +431,20 @@ function App({
         switchTo(row.id)
       } else if (payload.action === 'new') {
         createDesktop(typeof payload.name === 'string' ? payload.name : undefined)
-      } else if (payload.action === 'rename' && typeof payload.id === 'string' && typeof payload.name === 'string') {
+      } else if (payload.action === 'rename') {
+        if (typeof payload.id !== 'string' || typeof payload.name !== 'string') {
+          console.warn(`[shell] 桌面改名的字段不对，不执行：${JSON.stringify({ id: payload.id, name: payload.name })}`)
+          return
+        }
         renameDesk(payload.id, payload.name)
-      } else if (payload.action === 'delete' && typeof payload.id === 'string') {
+      } else if (payload.action === 'delete') {
+        if (typeof payload.id !== 'string') {
+          console.warn(`[shell] 删桌面的字段不对，不执行：${JSON.stringify({ id: payload.id })}`)
+          return
+        }
         deleteDesk(payload.id)
+      } else {
+        console.warn(`[shell] 认不出的桌面动作，不执行：${JSON.stringify(payload.action)}`)
       }
     })
     return off
@@ -429,7 +453,11 @@ function App({
   // node 侧转来的窗格动作（shell.pane.focus / send / close）
   useEffect(() => {
     const off = window.gwb.on((payload) => {
-      if (!isPaneAction(payload) || typeof payload.instance !== 'string') return
+      if (!isPaneAction(payload)) return
+      if (typeof payload.instance !== 'string') {
+        console.warn(`[shell] 窗格动作的 instance 不是字符串，不执行：${JSON.stringify(payload.instance)}`)
+        return
+      }
       const instance = payload.instance
       const row = wellHub.entries().find((e) => e.instance === instance)
       if (row === undefined) {
@@ -439,11 +467,17 @@ function App({
       if (payload.action === 'focus') void focusInstance(row.desktop, instance)
       else if (payload.action === 'close') void closeInstance(row.desktop, instance)
       else if (payload.action === 'send') {
-        const to =
-          typeof payload.desktop === 'string'
-            ? { desktop: payload.desktop }
-            : { newDesktop: typeof payload.newDesktop === 'string' ? payload.newDesktop : '' }
+        // node 侧的 parsePaneArgs 只转发二者给一的；两个都不是字符串就不猜，免得新建一张桌面
+        let to: SendTarget
+        if (typeof payload.desktop === 'string') to = { desktop: payload.desktop }
+        else if (typeof payload.newDesktop === 'string') to = { newDesktop: payload.newDesktop }
+        else {
+          console.warn(`[shell] 送到别的桌面：desktop 与 newDesktop 都不是字符串，不执行：${JSON.stringify({ desktop: payload.desktop, newDesktop: payload.newDesktop })}`)
+          return
+        }
         void sendPane(instance, to, payload.follow === true)
+      } else {
+        console.warn(`[shell] 认不出的窗格动作，不执行：${JSON.stringify(payload.action)}`)
       }
     })
     return off
@@ -468,7 +502,7 @@ function App({
 
   /** 应用到活动那个容器上；已存布局是模板，应用后即弃，之后照常自动保存 */
   const applySaved = (row: SavedLayout): void => {
-    if (activeApi === null) return
+    if (activeApi === null) throw new Error(`[shell] 应用布局「${row.name}」：活动桌面 ${activeId} 的容器还没挂载`)
     try {
       activeApi.fromJSON(row.layout as unknown as SerializedDockview)
     } catch (err) {
@@ -479,7 +513,8 @@ function App({
 
   /** 存活动那个容器；同名覆盖，空名不存 */
   const saveCurrent = (name: string): void => {
-    if (activeApi === null || name === '') return
+    if (activeApi === null) throw new Error(`[shell] 另存布局「${name}」：活动桌面 ${activeId} 的容器还没挂载`)
+    if (name === '') return
     setSaved((prev) => upsertSaved(prev, name, activeApi.toJSON() as unknown as Record<string, unknown>))
     scheduleSave()
   }
@@ -491,7 +526,7 @@ function App({
 
   /** 逐个关掉活动容器里的窗格再打开默认布局；不用 `api.clear()`，它内部状态对不上时会抛错 */
   const resetLayout = (): void => {
-    if (activeApi === null) return
+    if (activeApi === null) throw new Error(`[shell] 重置布局：活动桌面 ${activeId} 的容器还没挂载`)
     for (const panel of activeApi.panels) activeApi.removePanel(panel)
     openDefaults(activeApi, activeIdRef.current)
   }
@@ -551,6 +586,12 @@ function App({
         activeDesktopId={activeId}
         savedLayouts={saved}
         saveFailed={saveFailed}
+        saveBlockedBy={saveBlockedBy}
+        onOverwriteLayout={() => {
+          saveBlockedRef.current = undefined
+          setSaveBlockedBy(undefined)
+          flushSave()
+        }}
         onSwitchDesktop={(id) => switchTo(id)}
         onNewDesktop={(name) => {
           createDesktop(name)
@@ -565,40 +606,19 @@ function App({
   )
 }
 
-/** 没有、取不到、认不出都回 null（按默认布局启动）；第一次开机没有文件不算错、不告警 */
-async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
-  try {
-    const reply = (await host.call(LAYOUT_GET_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
-    if (reply.ok !== true) {
-      console.warn(`[shell] ${LAYOUT_GET_COMMAND} 没回布局文件：${reply.error ?? '没说原因'}`)
-      return null
-    }
-    if (reply.data === undefined || reply.data === null) return null
-    const doc = parseLayoutDoc(reply.data)
-    if (doc === null) console.warn('[shell] 磁盘上的布局文件认不出，当没有处理（回默认布局）')
-    return doc
-  } catch (err) {
-    console.error(`[shell] ${LAYOUT_GET_COMMAND} 调不通：${String(err)}`)
-    return null
-  }
-}
-
 /** 异步准备完回同步的挂载那段；页面上的副作用都放在挂载那段里，准备途中被 dispose 就一样都不发生 */
 async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => MountedTree> {
-  // 三张表都加载完才渲染
-  await Promise.all(args.styles.map((href) => loadStyle(href)))
+  const styleLoaded = await Promise.all(args.styles.map((href) => loadStyle(href)))
+  const failedStyles = args.styles.filter((_href, index) => !styleLoaded[index])
+  if (failedStyles.length > 0) throw new Error(`外壳的样式表加载不了：${failedStyles.join('、')}`)
   applyStartupCss(args.startupCss)
 
   const panes = await fetchPanes(args.host)
   const specs = listOpenable(panes)
   // 布局文件要在第一帧之前取到，否则先显示默认布局再跳到恢复的，会闪一下
-  const initialDoc = (await fetchLayoutDoc(args.host)) ?? defaultDoc()
-  const activeRow = initialDoc.desktops.find((d) => d.id === initialDoc.active)
-  console.log(
-    `[shell] 表里 ${specs.length} 个窗格可开：${specs.map((s) => s.id).join('、') || '（表是空的）'}；` +
-      `${initialDoc.desktops.length} 张桌面（活动：「${activeRow?.name ?? initialDoc.active}」），` +
-      `存着 ${initialDoc.saved.length} 套布局`,
-  )
+  const [layoutReply] = await Promise.allSettled([args.host.call(LAYOUT_GET_COMMAND)])
+  const initial = initialLayoutOf(layoutReply)
+  if (initial.saveBlockedBy !== undefined) console.error(`[shell] ${initial.saveBlockedBy}——按默认布局打开，这一轮不保存布局`)
 
   return () => {
     wellHub.setHost(args.host)
@@ -608,7 +628,9 @@ async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => M
     // 只是身份标记，不参与任何选择器；样式隔离靠类名前缀
     root.setAttribute('data-gwb-plugin', SELF)
     const reactRoot = createRoot(root)
-    reactRoot.render(<App specs={specs} home={args.home} versions={args.versions} initialDoc={initialDoc} />)
+    reactRoot.render(
+      <App specs={specs} home={args.home} versions={args.versions} initialDoc={initial.doc} initialSaveBlockedBy={initial.saveBlockedBy} />,
+    )
     return {
       unmount() {
         // 卸载前立刻保存一次，最多丢最后 400ms 的挪动

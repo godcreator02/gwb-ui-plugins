@@ -55,12 +55,14 @@ export interface ShellBridge {
   /**
    * 打开本插件的另一个窗格。**来源就是调它的这一份**：新窗格开在它旁边（`placement` 缺省按目标组
    * 规则，`'side'` 开到旁边）、开在它所在的那张桌面上，**从不切桌面**。**身份是
-   * `options.key`**：本桌面已经开着装这份内容的窗格就激活它，没开着才开新的一份
-   * （`preview: true` 时优先放进目标组的预览窗格）。认不出 paneId 什么都不做。
+   * `options.key`**，按窗格类别查已开的：工具窗格查这张桌面的所有组，有同一 key 的就激活它，
+   * 这张桌面没有、别的桌面上有就在那张桌面激活它（不切过去，状态栏提示）；文档窗格只查目标组。
+   * 没找到才开新的一份（`preview: true` 时优先放进目标组的预览窗格）。认不出 paneId 什么都不做。
    *
    * `options.params` 用来**让开出来的几份彼此不同**：它原样传给那一份的
-   * `mountPane`（`pane.params`），并且随布局保存、重启后还在。必须可 JSON
-   * 序列化，保留键与代价见 `OpenPaneOptions`。
+   * `mountPane`（`pane.params`），并且随布局保存、重启后还在，所以必须可 JSON 序列化。
+   * 与外壳保留键（`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview`）重名的键打开时摘掉，
+   * console 里 warn 一句。
    */
   openPane(paneId: string, options?: OpenPaneOptions): void
   /**

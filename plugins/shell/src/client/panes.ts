@@ -20,31 +20,36 @@ export function paneTargetIn(rows: PaneRow[], entryId: string, paneId: string): 
 }
 
 /**
- * 取不到回空表并记一条 error：一个插件都没注册是合法状态，外壳照样画出空容器。
+ * 取不到就抛错：空表是「一个插件都没注册」，取失败当成空表的话启动器会说「还没有插件注册窗格」。
  * 取到的顺手记进 wellHub，标签菜单要同步地问窗格是哪一类
  */
 export async function fetchPanes(host: HostBridge): Promise<PaneRow[]> {
+  let reply: { ok?: boolean; data?: unknown; error?: string }
   try {
-    const reply = (await host.call(PANES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
-    if (reply.ok !== true || !Array.isArray(reply.data)) {
-      console.error(`[shell] ${PANES_COMMAND} 没回一张表：${reply.error ?? JSON.stringify(reply)}`)
-      return []
-    }
-    const rows = reply.data as PaneRow[]
-    wellHub.notePanes(rows)
-    return rows
+    reply = (await host.call(PANES_COMMAND)) as typeof reply
   } catch (err) {
-    console.error(`[shell] ${PANES_COMMAND} 调不通：${String(err)}`)
-    return []
+    throw new Error(`${PANES_COMMAND} 调不通：${String(err)}`, { cause: err })
   }
+  if (reply.ok !== true || !Array.isArray(reply.data)) {
+    throw new Error(`${PANES_COMMAND} 没回一张表：${reply.error ?? JSON.stringify(reply)}`)
+  }
+  const rows = reply.data as PaneRow[]
+  wellHub.notePanes(rows)
+  return rows
 }
 
-/** 启动器的组名用它；取不到回空表，组名退回包名 */
+/** 启动器的组名用它；取不到回空表、组名退回包名，并记一条 error */
 export async function fetchPlugins(host: HostBridge): Promise<PluginRow[]> {
+  let reply: { ok?: boolean; data?: unknown; error?: string }
   try {
-    const reply = (await host.call(PLUGINS_COMMAND)) as { ok?: boolean; data?: unknown }
-    return reply.ok === true && Array.isArray(reply.data) ? (reply.data as PluginRow[]) : []
-  } catch {
+    reply = (await host.call(PLUGINS_COMMAND)) as typeof reply
+  } catch (err) {
+    console.error(`[shell] ${PLUGINS_COMMAND} 调不通，启动器的组名退回包名：${String(err)}`)
     return []
   }
+  if (reply.ok !== true || !Array.isArray(reply.data)) {
+    console.error(`[shell] ${PLUGINS_COMMAND} 没回一张表，启动器的组名退回包名：${reply.error ?? JSON.stringify(reply)}`)
+    return []
+  }
+  return reply.data as PluginRow[]
 }

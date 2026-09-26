@@ -163,6 +163,19 @@ describe('createBusRegistry：按条目分桶', () => {
     expect(stay.heard).toEqual([7])
   })
 
+  it('release 之后 emit 什么都不做、也不报错：关掉的窗格残留的异步代码发不出事件', () => {
+    const reg = createBusRegistry()
+    const gone = reg.acquire('x')
+    const stay = reg.acquire('x')
+    const { heard, listener } = spy()
+    stay.on('t', listener)
+    gone.release()
+    gone.emit('t', 1)
+    expect(heard).toEqual([])
+    stay.emit('t', 2)
+    expect(heard).toEqual([2])
+  })
+
   /**
    * 桶里那层是 `Set`，**按函数引用去重**：两格挂了同一个函数只存一份，谁先摘谁就把
    * 它摘走了。实践上碰不着——每一格的听众是它自己那棵树的闭包——但这条语义得钉住，

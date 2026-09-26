@@ -121,6 +121,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   /** 键是 entryId */
   private readonly pluginTable: PluginRegistry
   private readonly logInfo: (message: string) => void
+  private readonly logError: (message: string) => void
   private readonly kernel: GwbKernelApi
   /** 页面经 `shell.pane.sync` 推来的窗格清单；页面还没推过是 undefined */
   private paneCache: PaneSync | undefined
@@ -132,6 +133,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     const logger = ctx.logger('gwb-shell')
     const logWarn = (message: string): void => logger.warn(message)
     this.logInfo = (message: string): void => logger.info(message)
+    this.logError = (message: string): void => logger.error(message)
     const iconCatalogOrLoadError = loadIconCatalog()
     if (typeof iconCatalogOrLoadError === 'string') {
       logger.error(`图标名单 ${ICON_CATALOG_URL.href} 读不出（${iconCatalogOrLoadError}）——产物不全，登记时不再核对图标名`)
@@ -143,8 +145,8 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   [Service.init](): void {
     const commandBus = this.ctx.gwbCommands
-    // static inject 保证了它在，这句只为收窄类型
-    if (commandBus === undefined) return
+    // 声明只能写成可选（与 gwb-commands 发的那份修饰符一致）；static inject 保证了它在，不在就是加载顺序坏了
+    if (commandBus === undefined) throw new Error('gwbCommands 不在：static inject 本该保证它在，外壳不加载')
     this.registerTableCommands(commandBus)
     this.registerLayoutCommands(commandBus)
     this.registerEnvCommand(commandBus)
@@ -229,7 +231,7 @@ export default class GwbShell extends Service implements GwbShellApi {
           '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
       },
       async (): Promise<ShellEnv> => {
-        const userStartupCss = await startupCss(commandBus)
+        const userStartupCss = await startupCss(commandBus, this.logError)
         return userStartupCss === undefined ? envWithoutStartupCss : { ...envWithoutStartupCss, startupCss: userStartupCss }
       },
     )
@@ -452,7 +454,6 @@ export default class GwbShell extends Service implements GwbShellApi {
     const owner = this.ownerOfCaller()
     const unregister = this.paneTable.register(owner, spec)
     this.logInfo(`窗格 ${spec.id}（${spec.title}，${spec.kind === 'document' ? '文档窗格' : '工具窗格'}）登记上了（${owner.pkg}）`)
-    // 注销登记在调用方的 effect 上，调用方卸载时窗格跟着注销
     this.ctx.effect(() => unregister)
     return unregister
   }

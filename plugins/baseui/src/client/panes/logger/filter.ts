@@ -1,4 +1,4 @@
-import { LEVELS, type LogEntry, type LogLevel, type LogSource } from './entries'
+import { SOURCES, type LogEntry, type LogLevel, type LogSource } from './entries'
 
 /** 越小越严重 */
 const SEVERITY: Record<LogLevel, number> = { error: 0, warn: 1, info: 2, debug: 3 }
@@ -15,10 +15,11 @@ export interface FilterState {
   search: string
 }
 
-export const ALL_SOURCES: ReadonlySet<LogSource> = new Set(['plugin', 'kernel', 'renderer'])
+export const ALL_SOURCES: ReadonlySet<LogSource> = new Set(SOURCES)
 
-export const EMPTY_FILTER: FilterState = {
-  level: LEVELS[LEVELS.length - 1]!,
+/** 什么都不筛：最低一级门限、三个来源全开 */
+export const SHOW_EVERYTHING: FilterState = {
+  level: 'debug',
   sources: ALL_SOURCES,
   key: '',
   search: '',
@@ -59,8 +60,7 @@ export function groupNames(entries: readonly LogEntry[]): { source: LogSource; n
     }
     names.add(entry.name)
   }
-  const sourceOrder: LogSource[] = ['plugin', 'kernel', 'renderer']
-  return sourceOrder
+  return SOURCES
     .filter((source) => namesBySource.has(source))
     .map((source) => ({ source, names: [...namesBySource.get(source)!].sort() }))
 }

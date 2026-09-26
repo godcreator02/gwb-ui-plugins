@@ -49,6 +49,8 @@ import {
   parseSlotKey,
   secretPlaceholder,
   settingsForEntry,
+  SHARED_SECTION,
+  sharedSettings,
   slotKey,
   type SettingRow,
   type SettingsDeletion,
@@ -161,7 +163,7 @@ interface UpdateInfo {
   latest: string
 }
 
-/** `plugin-manager.outdated` 的 data → 包名 → 版本差距。认不出的项丢弃、不抛错，与 rows.ts 同一规则 */
+/** `plugin-manager.outdated` 的 data → 包名 → 版本差距。认不出的项丢弃、不抛错 */
 function acceptUpdates(raw: unknown): Record<string, UpdateInfo> {
   const out: Record<string, UpdateInfo> = {}
   if (!isRecord(raw)) return out
@@ -176,12 +178,12 @@ function acceptUpdates(raw: unknown): Record<string, UpdateInfo> {
   return out
 }
 
-/** 条目的四态 → 徽标。文案与提示的正本在 rows.ts 的 FACES，这儿只管颜色 */
-const STATE_BADGE: Record<EntryRow['state'], { text: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
-  active: { text: '已加载', variant: 'secondary' },
-  stalled: { text: '没加载起来', variant: 'destructive' },
-  disabled: { text: '已停用', variant: 'outline' },
-  'disabled-running': { text: '停用了还在运行', variant: 'destructive' },
+/** 条目的四态 → 徽标颜色。文案与提示的正本在 rows.ts 的 FACES */
+const STATE_BADGE: Record<EntryRow['state'], 'secondary' | 'outline' | 'destructive'> = {
+  active: 'secondary',
+  stalled: 'destructive',
+  disabled: 'outline',
+  'disabled-running': 'destructive',
 }
 
 type Filter = 'all' | 'on' | 'off' | 'bad'
@@ -259,8 +261,6 @@ function SettingField({
           ? '已设置。列表命令 settings.all 不返回 secret 的值（只返回设过没有与遮掉的值），所以这个框平常是空的——点右边的眼睛按位置读明文'
           : '没设过。填上再点「保存」就设上了'
     const look = (): void => {
-      // 有草稿时按钮已禁用，这里再拦一次，写明读的是磁盘上那份、不是草稿
-      if (edited || peek.kind === 'loading') return
       if (peek.kind === 'shown') {
         setPeek({ kind: 'idle' })
         return
@@ -405,6 +405,7 @@ function EntryCard({
   draft,
   saveError,
   saving,
+  settingsError,
   onValue,
   onReveal,
   onSave,
@@ -431,6 +432,8 @@ function EntryCard({
   draft: Record<string, unknown> | undefined
   saveError: string | undefined
   saving: boolean
+  /** `settings.all` 没取到的原因，空串是取到了。取不到时 `card.settings` 是空的，不能说成没声明 */
+  settingsError: string
   onValue: (slot: string, next: unknown) => void
   /** 按位置读一项的明文（`settings.get`），供 secret 项的「看一眼」用 */
   onReveal: (row: SettingRow) => Promise<string>
@@ -470,8 +473,8 @@ function EntryCard({
                   未保存
                 </Badge>
               )}
-              <Badge variant={badge.variant} className="baseui:shrink-0 baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
-                {badge.text}
+              <Badge variant={badge} className="baseui:shrink-0 baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
+                {entry.text}
               </Badge>
               {update !== undefined && (
                 <Badge
@@ -545,7 +548,11 @@ function EntryCard({
               <span>{entry.hint}</span>
             </div>
           )}
-          {card.settings.length === 0 ? (
+          {settingsError !== '' ? (
+            <p className="baseui:px-3 baseui:py-3 baseui:text-xs baseui:whitespace-pre-wrap baseui:break-all baseui:text-destructive">
+              设置取不到：{settingsError}
+            </p>
+          ) : card.settings.length === 0 ? (
             <p className="baseui:px-3 baseui:py-3 baseui:text-xs baseui:text-muted-foreground">
               这个插件没声明设置项。
               {entry.state !== 'active' && '（插件加载起来才会声明——没加载时这里多半是空的）'}
@@ -607,7 +614,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** null 是「还没取到」，跟「取到了但一个包都没有」不是一回事——三份表各自独立 */
   const [rows, setRows] = useState<PackageRow[] | null>(null)
   const [settingsRows, setSettingsRows] = useState<SettingRow[] | null>(null)
+  /** `settings.all` 没取到的原因，空串是取到了 */
+  const [settingsError, setSettingsError] = useState('')
   const [faces, setFaces] = useState<Record<string, Face>>({})
+  /** `shell.plugins` 没取到的原因，空串是取到了。取不到时标题用条目 id */
+  const [facesError, setFacesError] = useState('')
   /** 取表本身没成时的那句话。跟操作的回执分开——它说的是整个列表都没有内容 */
   const [listError, setListError] = useState('')
   /** 上一次操作的回执。**error 一个字都不丢**，pnpm 输出的最后几行在里面 */
@@ -621,8 +632,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
-  /** 删条目确认框：要删的条目 + 「一并删除设置值」 */
-  const [asking, setAsking] = useState<{ card: Card; homeSettings: SettingRow[] } | null>(null)
+  /** 删条目确认框里的那条条目；null 是确认框关着 */
+  const [asking, setAsking] = useState<{ card: Card } | null>(null)
   const [alsoDrop, setAlsoDrop] = useState(true)
   /** 卸载确认框：**包级**——这个包的全部条目和包本身。isSelf 表示卸载的是插件管理自己 */
   const [askingUninstall, setAskingUninstall] = useState<{
@@ -634,6 +645,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [uninstallDrop, setUninstallDrop] = useState(false)
   const [installInput, setInstallInput] = useState('')
   const [orphansOpen, setOrphansOpen] = useState(false)
+  const [sharedOpen, setSharedOpen] = useState(false)
   const [noEntryOpen, setNoEntryOpen] = useState(false)
   /** 「已安装 / 可安装」两段。可安装那段见 market.tsx */
   const [tab, setTab] = useState<'installed' | 'market'>('installed')
@@ -645,7 +657,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [updatingAll, setUpdatingAll] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
-    // 三份表**各取各的、各自失败**——设置插件没装时插件管理照样能用，只是展开区空着
+    // 三份表**各取各的、各自失败**——设置插件没装时插件管理照样能用，展开区写明设置取不到的原因
     const [list, settings, faces] = await Promise.allSettled([
       args.host.call(LIST),
       args.host.call(SETTINGS_ALL),
@@ -654,23 +666,42 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     if (list.status === 'fulfilled') {
       const result = asResult(list.value)
       if (result.ok) {
-        setRows(toRows(acceptPackages(result.data)))
-        setListError('')
+        try {
+          setRows(toRows(acceptPackages(result.data)))
+          setListError('')
+        } catch (err: unknown) {
+          // 回执形状不对（如条目缺 entryId）：原因显示在列表的位置
+          setListError(err instanceof Error ? err.message : String(err))
+        }
       } else {
-        setListError(result.error ?? '')
+        setListError(result.error)
       }
     } else {
       setListError(`读取插件列表失败：${String(list.reason)}`)
     }
     if (settings.status === 'fulfilled') {
       const result = asResult(settings.value)
-      setSettingsRows(result.ok ? acceptSettings(result.data) : null)
+      if (result.ok) {
+        setSettingsRows(acceptSettings(result.data))
+        setSettingsError('')
+      } else {
+        setSettingsRows(null)
+        setSettingsError(result.error)
+      }
     } else {
       setSettingsRows(null)
+      setSettingsError(String(settings.reason))
     }
     if (faces.status === 'fulfilled') {
       const result = asResult(faces.value)
-      if (result.ok) setFaces(acceptFaces(result.data))
+      if (result.ok) {
+        setFaces(acceptFaces(result.data))
+        setFacesError('')
+      } else {
+        setFacesError(result.error)
+      }
+    } else {
+      setFacesError(String(faces.reason))
     }
   }, [args.host])
 
@@ -685,7 +716,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         const result = asResult(await args.host.call(OUTDATED))
         if (!result.ok) {
           setUpdates(null)
-          if (manual) setNotice({ ok: false, text: result.error ?? '' })
+          if (manual) setNotice({ ok: false, text: result.error })
           return
         }
         setUpdates(acceptUpdates(isRecord(result.data) ? result.data['updates'] : undefined))
@@ -700,16 +731,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   )
 
   useEffect(() => {
-    let alive = true
-    void refresh().catch((err: unknown) => {
-      if (alive) setListError(`读取插件列表失败：${String(err)}`)
-    })
+    // refresh 不会 reject：三条命令用 allSettled 取，失败原因各自写进状态
+    void refresh()
     // 窗格打开时查一次新版本。查不成不提示——没有 pnpm 时不该每打开一次窗格都报一次错，
     // 点「检查更新」按钮才显示原因
     void checkOutdated(false)
-    return () => {
-      alive = false
-    }
   }, [refresh, checkOutdated])
 
   /** 执行完一定重新取表：没有事件推送，不重取的话界面停在旧样子上，看起来就是点了没反应 */
@@ -717,7 +743,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setBusy(true)
     try {
       const result = asResult(await args.host.call(command, params))
-      setNotice(result.ok ? { ok: true, text: done } : { ok: false, text: result.error ?? '' })
+      setNotice(result.ok ? { ok: true, text: done } : { ok: false, text: result.error })
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
     }
@@ -783,6 +809,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     return orphanSettings(settingsRows, cards.map((card) => card.entry.entryId))
   }, [settingsRows, cards])
 
+  /**
+   * 公共区里有插件声明着的项：按条目分区找不到，单独一块。草稿、保存错误按 `SHARED_SECTION` 记，
+   * 和条目的 entryId 放在同一张表里——entryId 是 kebab-case 分段，不会等于 `*`
+   */
+  const shared = useMemo(() => (settingsRows === null ? [] : sharedSettings(settingsRows)), [settingsRows])
+  const sharedDirtyCount = dirtySlots(drafts[SHARED_SECTION]).length
+
   const summary = useMemo(() => summarize(rows ?? []), [rows])
   const onCount = cards.filter((card) => !card.entry.disabled).length
   const badCount = cards.filter((card) => card.entry.attention).length
@@ -800,7 +833,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** 读不到就抛，由那一项如实显示原因：显示成空框会被读成「没设过」 */
   const revealSecret = async (row: SettingRow): Promise<string> => {
     const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
-    if (!result.ok) throw new Error(result.error ?? '读取失败')
+    if (!result.ok) throw new Error(result.error)
     const value = result.data
     // 命令返回「ok 但没值」＝这一项磁盘上没有值。**如实说没设过**，不显示成空框
     if (value === undefined) throw new Error('这一项磁盘上没有值（没设过）')
@@ -826,12 +859,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setSavingId(entryId)
     const failures: string[] = []
     for (const [slot, value] of slots) {
-      const pos = parseSlotKey(slot)
       try {
+        const pos = parseSlotKey(slot)
         const result = asResult(await args.host.call(SETTINGS_SET, { ...pos, value }))
-        if (!result.ok) failures.push(`${pos.section}.${pos.key}：${result.error ?? ''}`)
+        if (!result.ok) failures.push(`${pos.section}.${pos.key}：${result.error}`)
       } catch (err: unknown) {
-        failures.push(`${pos.section}.${pos.key}：${String(err)}`)
+        failures.push(`${slot}：${String(err)}`)
       }
     }
     setSavingId(null)
@@ -845,11 +878,24 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
     discardEntry(entryId)
-    // 设置写进磁盘了，重新取一份 settings，让「未声明」这类标记跟着更新
-    const settings = await args.host.call(SETTINGS_ALL)
-    const result = asResult(settings)
-    if (result.ok) setSettingsRows(acceptSettings(result.data))
-    setNotice({ ok: true, text: '设置存好了' })
+    // 设置写进磁盘了，重新取一份 settings，让「未声明」这类标记跟着更新。草稿已经清掉，
+    // 重新取失败时不能留着旧的那份：卡片会显示保存之前的值
+    let reloadError: string
+    try {
+      const result = asResult(await args.host.call(SETTINGS_ALL))
+      if (result.ok) {
+        setSettingsRows(acceptSettings(result.data))
+        setSettingsError('')
+        setNotice({ ok: true, text: '设置存好了' })
+        return
+      }
+      reloadError = result.error
+    } catch (err: unknown) {
+      reloadError = String(err)
+    }
+    setSettingsRows(null)
+    setSettingsError(reloadError)
+    setNotice({ ok: false, text: `设置存好了，但重新读取设置没成：${reloadError}` })
   }
 
   const install = async (): Promise<void> => {
@@ -860,7 +906,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       // 失败时插件管理已经把 pnpm 输出的最后几行拼进 error
       const result = asResult(await args.host.call(INSTALL, { pkg }))
       if (!result.ok) {
-        setNotice({ ok: false, text: result.error ?? '' })
+        setNotice({ ok: false, text: result.error })
       } else {
         const receipt = isRecord(result.data) ? result.data : {}
         const entryId = typeof receipt['entryId'] === 'string' ? `，条目 ${receipt['entryId']}` : ''
@@ -904,7 +950,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       setNotice({ ok: view.ok, text: view.text })
       if (view.pageReloadNeeded) {
         const reloaded = await reloadPageAfterUpdate(view)
-        if (!reloaded.ok) setNotice({ ok: false, text: `${view.text}\n界面没有整页重新加载：${reloaded.error ?? ''}` })
+        if (!reloaded.ok) setNotice({ ok: false, text: `${view.text}\n界面没有整页重新加载：${reloaded.error}` })
       }
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
@@ -928,25 +974,30 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     try {
       const result = asResult(await args.host.call(REMOVE_ENTRY, { entryId: entry.entryId }))
       if (!result.ok) {
-        setNotice({ ok: false, text: result.error ?? '' })
+        setNotice({ ok: false, text: result.error })
       } else {
         const deletion = alsoDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
+        // 设置没取到时 settings 是空的，勾了「一并删除」也删不了，要说出来
+        const settingsUnknown = alsoDrop && settingsError !== '' ? `；设置取不到（${settingsError}），设置值没删` : ''
         setNotice({
-          ok: deletion.failures.length === 0,
-          text: `条目 ${entry.id} 删了，包没动${describeSettingsDeletion(deletion)}`,
+          ok: deletion.failures.length === 0 && settingsUnknown === '',
+          text: `条目 ${entry.id} 删了，包没动${describeSettingsDeletion(deletion)}${settingsUnknown}`,
         })
       }
+    } catch (err: unknown) {
+      setNotice({ ok: false, text: String(err) })
+    }
+    setAsking(null)
+    try {
       await refresh()
     } finally {
       setBusy(false)
     }
-    setAsking(null)
   }
 
   const askRemove = (card: Card): void => {
-    // 设置只有 settings.json 一份，section 就是条目不带前缀的 id——展开区里列出的就是全部
     setAlsoDrop(true)
-    setAsking({ card, homeSettings: card.settings })
+    setAsking({ card })
   }
 
   /** 打开卸载确认框。条目数与设置值都从当前的 cards 里现算 */
@@ -969,7 +1020,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       const result = asResult(await args.host.call(UNINSTALL, { pkg }))
       if (!result.ok) {
         // 失败时插件管理已经把原因与 pnpm 输出的最后几行拼进 error
-        setNotice({ ok: false, text: result.error ?? '' })
+        setNotice({ ok: false, text: result.error })
       } else {
         const deletion = uninstallDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
         const touchedSettings = deletion.deleted > 0 || deletion.failures.length > 0
@@ -980,11 +1031,15 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           }`,
         })
       }
+    } catch (err: unknown) {
+      setNotice({ ok: false, text: String(err) })
+    }
+    setAskingUninstall(null)
+    try {
       await refresh()
     } finally {
       setBusy(false)
     }
-    setAskingUninstall(null)
   }
 
   // ── 渲染───────────────────────────────────────────────────────────────────
@@ -1094,6 +1149,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <div className="baseui:flex-1 baseui:overflow-auto">
             {listError !== '' && <p className="baseui:p-6 baseui:text-sm baseui:whitespace-pre-wrap baseui:text-destructive">{listError}</p>}
 
+            {facesError !== '' && (
+              <p className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-1.5 baseui:text-xs baseui:break-all baseui:text-warning" title={facesError}>
+                插件的显示名与图标取不到（shell.plugins），下面用条目 id 代替：{facesError}
+              </p>
+            )}
+
             {listError === '' && rows !== null && cards.length === 0 && (
               <p className="baseui:p-6 baseui:text-sm baseui:text-muted-foreground">home 里一条条目都没有。</p>
             )}
@@ -1110,6 +1171,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 draft={drafts[card.entry.entryId]}
                 saveError={saveErrors[card.entry.entryId]}
                 saving={savingId === card.entry.entryId}
+                settingsError={settingsError}
                 onValue={(slot, next) => onValue(card.entry.entryId, slot, next)}
                 onReveal={revealSecret}
                 onSave={() => void saveEntry(card.entry.entryId)}
@@ -1146,6 +1208,63 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                   </Button>
                 </span>
               </div>
+            )}
+
+            {/* 公共设置与下面「没有插件声明的设置」一样只在没筛选时出现；交互与条目卡片里的设置一致 */}
+            {search === '' && filter === 'all' && shared.length > 0 && (
+              <Collapsible open={sharedOpen} onOpenChange={setSharedOpen} className="baseui:border-t baseui:border-border">
+                <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
+                  <ChevronRight
+                    className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', sharedOpen && 'baseui:rotate-90')}
+                  />
+                  <span className="baseui:text-sm baseui:text-muted-foreground">公共设置</span>
+                  <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
+                    {shared.length}
+                  </Badge>
+                  {sharedDirtyCount > 0 && (
+                    <Badge className="baseui:shrink-0 baseui:border-0 baseui:bg-warning/15 baseui:px-1.5 baseui:py-0 baseui:text-[10px] baseui:text-warning">
+                      未保存
+                    </Badge>
+                  )}
+                  <span className="baseui:text-xs baseui:text-muted-foreground">设置插件公共区（*）里的项，不属于哪一个插件，别的插件不用声明也读得到</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="baseui:bg-muted/30">
+                    <div className="baseui:divide-y baseui:divide-border">
+                      {shared.map((s) => {
+                        const slot = slotKey(s)
+                        const draft = drafts[SHARED_SECTION]
+                        return (
+                          <SettingLine
+                            key={slot}
+                            row={s}
+                            value={draft?.[slot] !== undefined ? draft[slot] : s.value}
+                            onChange={(next) => onValue(SHARED_SECTION, slot, next)}
+                            onReveal={revealSecret}
+                          />
+                        )
+                      })}
+                    </div>
+                    {sharedDirtyCount > 0 && (
+                      <div className="baseui:flex baseui:items-center baseui:gap-2 baseui:border-t baseui:border-border baseui:px-3 baseui:py-2">
+                        {saveErrors[SHARED_SECTION] !== undefined ? (
+                          <span className="baseui:flex-1 baseui:text-xs baseui:break-all baseui:whitespace-pre-wrap baseui:text-destructive">
+                            {saveErrors[SHARED_SECTION]}
+                          </span>
+                        ) : (
+                          <span className="baseui:flex-1 baseui:text-xs baseui:text-muted-foreground">改了 {sharedDirtyCount} 项，还没保存</span>
+                        )}
+                        <Button size="xs" variant="ghost" disabled={savingId === SHARED_SECTION} onClick={() => discardEntry(SHARED_SECTION)}>
+                          放弃
+                        </Button>
+                        <Button size="xs" disabled={savingId === SHARED_SECTION} onClick={() => void saveEntry(SHARED_SECTION)}>
+                          {savingId === SHARED_SECTION ? '保存中…' : '保存'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/*
@@ -1414,7 +1533,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
-  // 认不出的 paneId 报错、不改用别的窗格——「注册了 x 却显示成 installed」是那种没有任何现象的错
+  // 认不出的 paneId 如实报错，不改用别的窗格
   if (args.pane.id === PANE_ID) {
     // 弹出层（下拉、确认框）portal 到 `args.shell.portal`（本窗格所在桌面的浮层挂载点），桌面切走时一起隐藏；
     // 样式靠类名前缀隔离，不依赖放在窗格容器里（见外壳页「菜单 portal 到哪都有样式」一节）
@@ -1425,7 +1544,7 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
   return root
 }
 
-/** 窗格插件浏览器侧的入口。导出名是 `mountPane`——外壳占整个页面，窗格占窗格容器里的一个窗格 */
+/** 窗格浏览器侧的入口：外壳按导出名 `mountPane` 调用它，挂进窗格容器给的那个元素 */
 export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   // **不给容器加 position:relative**：确认框用 fixed 定位，不依赖最近的 positioned 祖先，遮罩盖住整张桌面
   // 而不是只盖这个窗格

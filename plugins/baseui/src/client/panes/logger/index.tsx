@@ -8,11 +8,13 @@ import {
   clockOf,
   LEVELS,
   mergeEntries,
+  SOURCES,
   type LogEntry,
   type LogLevel,
   type LogSource,
 } from './entries'
-import { ALL_SOURCES, countBySource, groupNames, matches, type FilterState } from './filter'
+import { countBySource, groupNames, matches, SHOW_EVERYTHING, type FilterState } from './filter'
+import { acceptWhere, asResult, type LogWhere } from './receipts'
 import { ScrollText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,6 +56,8 @@ const EVENT = 'gwb-logger'
 const BACKLOG_COMMAND = 'logger.backlog'
 const WHERE_COMMAND = 'logger.where'
 
+const REFETCH_FAILED = '切回这个桌面时补取历史日志失败，切走期间的日志没有显示：'
+
 const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I', debug: 'D' }
 
 const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', info: 'Info', debug: 'Debug' }
@@ -77,14 +81,12 @@ const ROW_TONE: Record<LogLevel, string> = {
 
 function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const [entries, setEntries] = useState<LogEntry[]>([])
+  /** 取历史段失败的原因。有日志时显示在列表上方，一条都没有时显示在空态里；之后补取成功就清掉 */
   const [failed, setFailed] = useState('')
-  const [where, setWhere] = useState<{ home: string; logFile: string } | null>(null)
-  const [filter, setFilter] = useState<FilterState>({
-    level: 'debug',
-    sources: ALL_SOURCES,
-    key: '',
-    search: '',
-  })
+  const [where, setWhere] = useState<LogWhere | null>(null)
+  /** 取不到日志文件位置时脚注少显示路径，改显示原因 */
+  const [whereFailed, setWhereFailed] = useState('')
+  const [filter, setFilter] = useState<FilterState>(SHOW_EVERYTHING)
   const [stick, setStick] = useState(true)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -92,7 +94,9 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     let alive = true
     const take = (batch: unknown): void => {
       if (!alive) return
-      setEntries((prev) => mergeEntries(prev, acceptEntries(batch), CAP))
+      // 在更新函数外面收窄：acceptEntries 会抛错，更新函数在渲染时才执行，在那里抛会让整个窗格崩掉
+      const accepted = acceptEntries(batch)
+      setEntries((prev) => mergeEntries(prev, accepted, CAP))
     }
     // 先订阅、后取历史：反过来会漏掉两者之间推来的条目；交叠部分靠 seq 去重
     const off = window.gwb.on((payload) => {
@@ -103,9 +107,18 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     })
     args.host.call(BACKLOG_COMMAND).then(
       (res) => {
-        const r = res as { ok?: boolean; data?: unknown; error?: string }
-        if (r.ok === true) take(r.data)
-        else if (alive) setFailed(`读取历史日志失败：${r.error ?? '没有给出原因'}`)
+        if (!alive) return
+        const r = asResult(res)
+        if (!r.ok) {
+          setFailed(`读取历史日志失败：${r.error}`)
+          return
+        }
+        try {
+          take(r.data)
+          setFailed('')
+        } catch (err: unknown) {
+          setFailed(`读取历史日志失败：${String(err)}`)
+        }
       },
       (err: unknown) => {
         if (alive) setFailed(`读取历史日志失败：${String(err)}`)
@@ -117,20 +130,29 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     }
   }, [])
 
-  // 桌面切走时停止渲染，切回时重取一次历史段补上，交叠靠 seq 去重
   const visibleRef = useRef(true)
   useEffect(() => {
     const off = args.shell.onVisibility((visible) => {
+      const wasVisible = visibleRef.current
       visibleRef.current = visible
-      if (visible === false) return
+      // 注册时外壳先回调一次当前值；只有从切走变成切回才补取，挂载时的历史段由上一个 effect 取
+      if (!visible || wasVisible) return
       args.host.call(BACKLOG_COMMAND).then(
         (res) => {
-          const r = res as { ok?: boolean; data?: unknown }
-          if (r.ok === true) setEntries((prev) => mergeEntries(prev, acceptEntries(r.data), CAP))
+          const r = asResult(res)
+          if (!r.ok) {
+            setFailed(`${REFETCH_FAILED}${r.error}`)
+            return
+          }
+          try {
+            const accepted = acceptEntries(r.data)
+            setEntries((prev) => mergeEntries(prev, accepted, CAP))
+            setFailed('')
+          } catch (err: unknown) {
+            setFailed(`${REFETCH_FAILED}${String(err)}`)
+          }
         },
-        () => {
-          /* 补取失败不影响之后的实时事件，不报错 */
-        },
+        (err: unknown) => setFailed(`${REFETCH_FAILED}${String(err)}`),
       )
     })
     return off
@@ -140,11 +162,20 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     let alive = true
     args.host.call(WHERE_COMMAND).then(
       (res) => {
-        const data = (res as { data?: { home?: string; logFile?: string } }).data
-        if (alive && data !== undefined) setWhere({ home: data.home ?? '', logFile: data.logFile ?? '' })
+        if (!alive) return
+        const r = asResult(res)
+        if (!r.ok) {
+          setWhereFailed(`取不到日志文件位置：${r.error}`)
+          return
+        }
+        try {
+          setWhere(acceptWhere(r.data))
+        } catch (err: unknown) {
+          setWhereFailed(`取不到日志文件位置：${String(err)}`)
+        }
       },
-      () => {
-        /* 取不到只是脚注少显示路径，不报错 */
+      (err: unknown) => {
+        if (alive) setWhereFailed(`取不到日志文件位置：${String(err)}`)
       },
     )
     return () => {
@@ -156,7 +187,6 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const counts = useMemo(() => countBySource(entries), [entries])
   const groups = useMemo(() => groupNames(entries), [entries])
 
-  // 跟随最新行时，每次有新行就滚到底部
   useEffect(() => {
     if (!stick) return
     const el = listRef.current
@@ -173,7 +203,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   }
 
   const clearFilter = (): void => {
-    setFilter({ level: 'debug', sources: ALL_SOURCES, key: '', search: '' })
+    setFilter(SHOW_EVERYTHING)
   }
 
   // 选中的级别实心，更严重的几级浅色高亮，表示显示这一级及以上
@@ -185,7 +215,10 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   }
 
   const filtering =
-    filter.level !== 'debug' || filter.sources.size !== ALL_SOURCES.size || filter.key !== '' || filter.search !== ''
+    filter.level !== SHOW_EVERYTHING.level ||
+    filter.sources.size !== SHOW_EVERYTHING.sources.size ||
+    filter.key !== SHOW_EVERYTHING.key ||
+    filter.search !== SHOW_EVERYTHING.search
 
   return (
     /* baseui:relative 是「回到底部」浮动按钮的定位参照，必须放在窗格根这一层：放进滚动容器的话
@@ -207,7 +240,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
         </div>
 
         <div className="baseui:ml-1.5 baseui:flex baseui:items-center baseui:gap-1 baseui:border-l baseui:border-border baseui:py-0.5 baseui:pl-2.5">
-          {(['plugin', 'kernel', 'renderer'] as LogSource[]).map((s) => {
+          {SOURCES.map((s) => {
             const on = filter.sources.has(s)
             return (
               <button
@@ -275,6 +308,12 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
         </div>
       </div>
 
+      {failed !== '' && entries.length > 0 && (
+        <div className="baseui:border-b baseui:border-border baseui:bg-destructive/[0.08] baseui:px-2.5 baseui:py-1 baseui:text-[11.5px] baseui:text-destructive">
+          {failed}
+        </div>
+      )}
+
       <div
         ref={listRef}
         className="baseui:flex-1 baseui:overflow-y-auto baseui:overflow-x-hidden"
@@ -311,7 +350,6 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
         {shown.length === 0 && (
           <div className="baseui:flex baseui:flex-col baseui:items-center baseui:gap-2.5 baseui:py-14 baseui:text-sm baseui:text-muted-foreground">
             <ScrollText size={26} className="baseui:opacity-25" aria-hidden />
-            {/* 空态要区分「一条都没有」和「全被筛掉了」——后者带一个「清筛选」按钮 */}
             {entries.length === 0 ? (
               (failed === '' ? '还没有日志。' : failed)
             ) : (
@@ -346,7 +384,12 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             className="baseui:truncate baseui:font-mono baseui:text-[10.5px] baseui:opacity-85"
             title={`home：${where.home}`}
           >
-            {where.logFile === '' ? where.home : where.logFile}
+            {where.logFile}
+          </span>
+        )}
+        {whereFailed !== '' && (
+          <span className="baseui:truncate baseui:text-destructive" title={whereFailed}>
+            {whereFailed}
           </span>
         )}
       </div>
@@ -356,12 +399,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
-  // 认不出的 paneId 直接报错、不改用日志窗格：否则「注册了 x 却显示成日志」不会有任何提示
-  if (args.pane.id === 'logger') root.render(<LoggerPane args={args} />)
-  else
-    root.render(
-      <p className="baseui:p-3 baseui:text-sm baseui:text-destructive">本插件没有叫 {args.pane.id} 的窗格</p>,
-    )
+  root.render(<LoggerPane args={args} />)
   return root
 }
 

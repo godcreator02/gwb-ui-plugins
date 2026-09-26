@@ -55,7 +55,7 @@ export interface WellHub {
   deskOps(): DeskOps | undefined
   /**
    * 所有桌面上开着的窗格，按桌面顺序：已挂载的从容器读，没挂载过的从保存的布局读。
-   * 桌面清单缺省问注入的桌面操作；开机时容器的 onReady 比注入早，由调用方传入
+   * 桌面清单缺省问注入的桌面操作，还没注入时抛错；开机时容器的 onReady 比注入早，由调用方传入
    */
   entries(rows?: readonly DesktopRow[]): PaneEntry[]
 }
@@ -176,7 +176,9 @@ export function createWellHub(): WellHub {
     },
     noteActiveGroup(desktopId, groupId) {
       const api = containersByDesktop.get(desktopId)
-      const existingGroupIds = new Set(api === undefined ? [] : groupsOf(api).map((group) => group.id))
+      // 订阅在 addWell 之后才建、在 removeWell / clearWells 之前注销
+      if (api === undefined) throw new Error(`[shell] 给桌面 ${desktopId} 记组的激活顺序时它的容器不在——订阅没跟着容器一起注销`)
+      const existingGroupIds = new Set(groupsOf(api).map((group) => group.id))
       // 顺手去掉已经不在的组，顺序表不会越记越长
       const olderGroupIds = (recentGroupsByDesktop.get(desktopId) ?? []).filter((id) => id !== groupId && existingGroupIds.has(id))
       recentGroupsByDesktop.set(desktopId, [groupId, ...olderGroupIds])
@@ -201,7 +203,8 @@ export function createWellHub(): WellHub {
       return injectedDeskOps
     },
     entries(rows = injectedDeskOps?.rows()) {
-      if (rows === undefined) return []
+      // 回空表的话推给 node 侧就成了「一个窗格都没开」
+      if (rows === undefined) throw new Error('[shell] 列开着的窗格要桌面清单：桌面操作还没注入，调用方得自己传进来')
       return rows.flatMap((row) => {
         const api = containersByDesktop.get(row.id)
         return api === undefined ? entriesOfLayout(row.id, row.layout) : mountedEntries(row.id, api)

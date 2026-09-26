@@ -56,7 +56,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
       if (!result.ok) {
         setRows(null)
         setSourceNote('')
-        setLoadError(result.error ?? '')
+        setLoadError(result.error)
         return
       }
       const receipt: Record<string, unknown> = typeof result.data === 'object' && result.data !== null ? (result.data as Record<string, unknown>) : {}
@@ -92,14 +92,13 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         await onChanged()
       }
       // error 里带着 pnpm 输出的最后几行，一个字都不能丢
-      else setFailed((prev) => ({ ...prev, [pkg]: result.error ?? '' }))
+      else setFailed((prev) => ({ ...prev, [pkg]: result.error }))
     } catch (err: unknown) {
       setFailed((prev) => ({ ...prev, [pkg]: String(err) }))
     }
     setBusyPkg('')
   }
 
-  /** 表还没取到时只读 */
   const readOnly = installed === null
   const index = installed ?? NO_INDEX
   const scopes = useMemo(() => scopeOptions(rows ?? []), [rows])
@@ -172,9 +171,6 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
           <p className="baseui:text-sm baseui:text-destructive">查不到 registry，下面空着不代表没有插件。</p>
           <p className="baseui:mt-1 baseui:whitespace-pre-wrap baseui:break-all baseui:text-xs baseui:text-destructive">{loadError}</p>
-          <p className="baseui:mt-1 baseui:text-xs baseui:text-muted-foreground">
-            搜索由插件管理的 plugin-manager.search 提供；插件管理版本太旧、还没有这条命令时这里查不到，先在「已安装」那一栏把 @godcreator/gwb-plugin-manager 更新到最新版。
-          </p>
         </div>
       )}
 

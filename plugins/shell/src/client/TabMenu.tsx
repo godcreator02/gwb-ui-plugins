@@ -22,18 +22,20 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
   /** 打开那一刻才找挂载点：标签第一次渲染时锚点还不在 DOM 里，那时算会退回 body */
   const [host, setHost] = useState<HTMLElement | null>(null)
   const params = (tab.params ?? {}) as Record<string, unknown>
-  const entryId = typeof params.entryId === 'string' ? params.entryId : undefined
-  const paneId = typeof params.paneId === 'string' ? params.paneId : undefined
+  // 缺 entryId / paneId（布局文件里这一份坏了）时窗格正文已显示出错（PluginPanel）；在渲染里抛错会让整个外壳白屏，
+  // 所以这里只是不给「在旁边再开一份」
+  const identity =
+    typeof params.entryId === 'string' && typeof params.paneId === 'string' ? { entryId: params.entryId, paneId: params.paneId } : undefined
+  const besideTarget = identity !== undefined && wellHub.paneKind(identity.entryId, identity.paneId) === 'document' ? identity : undefined
   const preview = params.preview === true
-  const kind = entryId === undefined || paneId === undefined ? 'tool' : wellHub.paneKind(entryId, paneId)
   const self = tab.api.id
 
   const order = (): string[] => tab.api.group.panels.map((p) => p.id)
   const keep = (): void => tab.api.updateParameters({ preview: undefined })
 
-  const openBeside = (): void => {
+  const openBeside = ({ entryId, paneId }: { entryId: string; paneId: string }): void => {
     const host = wellHub.host()
-    if (host === undefined || entryId === undefined || paneId === undefined) return
+    if (host === undefined) throw new Error('[shell] 在旁边再开一份：命令入口不在')
     if (preview) keep()
     const key = typeof params.key === 'string' ? params.key : ''
     const mine = pluginParamsIn(params)
@@ -73,8 +75,12 @@ export function TabMenu({ tab, children }: { tab: IDockviewPanelHeaderProps; chi
       </ContextMenuTrigger>
       <ContextMenuContent container={host} data-gwb-tab-menu={self}>
         {preview && <ContextMenuItem data-gwb-tab-action="keep" onSelect={keep}>保持打开</ContextMenuItem>}
-        {kind === 'document' && <ContextMenuItem data-gwb-tab-action="beside" onSelect={openBeside}>在旁边再开一份</ContextMenuItem>}
-        {(preview || kind === 'document') && <ContextMenuSeparator />}
+        {besideTarget !== undefined && (
+          <ContextMenuItem data-gwb-tab-action="beside" onSelect={() => openBeside(besideTarget)}>
+            在旁边再开一份
+          </ContextMenuItem>
+        )}
+        {(preview || besideTarget !== undefined) && <ContextMenuSeparator />}
         <ContextMenuSub>
           <ContextMenuSubTrigger data-gwb-tab-action="send">送到</ContextMenuSubTrigger>
           <ContextMenuSubContent>

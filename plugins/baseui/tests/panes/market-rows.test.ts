@@ -101,10 +101,14 @@ describe('toRows 的源筛：与文本筛 AND 叠加', () => {
 })
 
 describe('acceptNote：聚合回执里「哪几条源没查成」的收窄', () => {
-  it('字符串原样过，其余一概当没有', () => {
+  it('字符串原样过，没有这个字段回空串', () => {
     expect(acceptNote('这几条源没查成：@x')).toBe('这几条源没查成：@x')
     expect(acceptNote(undefined)).toBe('')
-    expect(acceptNote(7)).toBe('')
+  })
+
+  it('**不是字符串就说形状不对**：当成没有会把「哪几条源没查成」藏起来', () => {
+    expect(acceptNote(7)).toContain('形状不对')
+    expect(acceptNote(['@x'])).toContain('形状不对')
   })
 })
 

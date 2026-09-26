@@ -156,11 +156,9 @@ function registerAppearancePaneWheneverShellIsLoaded(ctx: GwbContext): void {
 
 export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
-  const commandBus = ctx.gwbCommands
-  // inject 保证了它在，这句只为收窄类型
-  if (commandBus === undefined) return
   defineThemeSettings(ctx.gwbSettings)
-  registerThemeCommands(ctx, commandBus)
+  // 命令插件的增强把它声明成可选、这边的声明必须与之一致；inject 保证它在
+  registerThemeCommands(ctx, ctx.gwbCommands!)
   registerAppearancePaneWheneverShellIsLoaded(ctx)
   log.info(`外观就绪：三项设置 + 三条命令（启动样式走 ${STARTUP_COMMAND}）`)
 }
