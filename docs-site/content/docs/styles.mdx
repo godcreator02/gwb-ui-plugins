@@ -48,7 +48,7 @@ docfirst: none
 所以外壳里那张令牌表只做一件事：把语义变量的值在页面上写一份。亮色写在 `:root`、暗色写在 `.dark`
 （`<html>` 上的一个类）：
 
-{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="1-1" */}
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="1-1" hash="e19065a8a9f5" blob="ce74d1a59f41" */}
 
 **换主题＝换这一份值。** 插件那边的规则里写的是 `var(--primary)` 而不是某个具体颜色，所以
 页面上这份值一变，所有插件立即跟着变，**一个都不用重新构建**。状态栏的亮暗开关做的事就是
@@ -56,7 +56,7 @@ docfirst: none
 
 同一份表还负责两件全页只该有一份的事——给所有元素一个默认边框色、给 `body` 定底色与字体：
 
-{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="98-111" */}
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="98-111" hash="82e9d70b2db6" blob="ce74d1a59f41" */}
 
 字体那一行尤其要紧：**不经 Tailwind 工具类的那些 DOM**（dockview 渲染的标签条、插件里没写工具类的
 普通 HTML）全靠从 `body` 继承。
@@ -87,13 +87,13 @@ Tailwind，表合并成一张不就行了」。不行。得一步一步看清楚
 **第二步：子集本身没问题，问题出在几张子集表放进了同一个层（layer）。** Tailwind 的工具类全在
 `@layer utilities` 里，插件的表只写这一层、不声明层与层的顺序：
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" hash="33bd996daefc" blob="58e7b2609682" */}
 
 顺序由**先加载的那张令牌表**声明，而这张表还得把 preflight 包进 `base` 层——CSS 里
 **未分层的规则优先级高于所有分层规则**，preflight 原样放进去就是一份未分层的规则，会覆盖每一个
 插件的工具类：
 
-{/* ref file="../plugins/shell/build.ts" lines="114-131" */}
+{/* ref file="../plugins/shell/build.ts" lines="157-174" hash="5d0202b6fd31" blob="6889aecb6ab8" */}
 
 **第三步：同层、同权重，谁生效只看文档顺序。** 于是问题是这样发生的——甲插件的元素上
 带着两个类，一条管四边、一条只改左右；乙插件只用到了前者，所以**乙的表里没有后者**；而乙的表
@@ -148,7 +148,7 @@ Tailwind，表合并成一张不就行了」。不行。得一步一步看清楚
 
 </Diagram>
 
-「忘写前缀」还能用一条守卫测试拦住（第四节），而上面那三种一条都拦不住。
+「忘写前缀」还能由 devkit 的样式检查拦住（第四节），而上面那三种一条都拦不住。
 
 **工具链原生支持这个做法**，不用自己改写：Tailwind 4 的 `prefix()` 写在拆开的主题导入上、
 shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwind-merge）对带前缀的
@@ -162,7 +162,7 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 每个插件自己有一份 `components.json`，要什么组件就从 shadcn 官方拉什么，**拉下来就是这个插件
 自己目录里的一个 tsx 文件**，跟着这个插件一起被 esbuild 打包进它自己的产物：
 
-{/* ref file="../plugins/baseui/components.json" lines="6-12" */}
+{/* ref file="../plugins/baseui/components.json" lines="6-12" hash="c71e1f15e2f1" blob="7a64d0da68a9" */}
 
 那两个插件的按钮长得一样，是因为**源码来自同一处**（同一个 registry、同一个 `style` 与
 `baseColor`），而颜色**读的是同一份令牌**。运行时它们是两段互不相识的代码。
@@ -181,24 +181,27 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 机制是页面级的 **importmap**：一张「包名 → 文件地址」的表。react 的四个包名由**内核包**提供——内核包构建时把
 react 打成浏览器能直接 import 的文件，放在页面入口旁边；外壳不带 react，只在包清单里写明它要的内核版本：
 
-{/* ref file="../plugins/shell/package.json" lines="33-39" */}
+{/* ref file="../plugins/shell/package.json" lines="25-31" hash="d709147c544e" blob="e3e50de8d75d" */}
 
 这张表写死在内核的页面入口 `index.html` 里，只有这四个包名，外壳的第一句 import 之前就已经在页面上；内核启动时不计算、
 不读任何包清单。正本在内核仓文档站接缝 5「页面上的 react」。
 
-插件那边对应的做法是：react 系四个裸名**外置**，其余依赖一律**打包进本插件的产物**——
+插件那边对应的做法是：importmap 里的那几个包名**外置**，其余依赖一律**打包进本插件的产物**。外置名单不在插件里手抄，
+构建时从装好的内核包页面入口 `dist/index.html` 里读那段 importmap（peer 写了内核包，pnpm 把它装在插件包的
+`node_modules` 里），读不到就不构建——
 
-{/* ref file="../plugins/baseui/build.ts" lines="5-14" */}
+{/* ref file="../plugins/baseui/build.ts" lines="19-35" hash="e2c7362a3156" blob="4a23f5f4d363" */}
 
 外置的判据很明确：**在 importmap 里的才许外置**。不在里头的（组件用的那些库）外置成裸名，
-就是运行期一句「解析不到这个模块」。
+就是运行期一句「解析不到这个模块」。名单从内核现读，内核的 importmap 哪天变了，重新构建就跟上，不用改插件；
+为什么不写死四个名字，见轨迹卡[外置名单从内核页面入口现读](/trajectory/2026-09-26-importmap-names-from-kernel-page)。
 
 <Diagram name="importmap-flow" title="react 的四个包名怎么全页只解析到一份">
 
 - 内核包构建时把 react 打包进 `dist/react/`，和页面入口 `index.html` 在同一个目录下
 - `index.html` 里写死一张 importmap，只有 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 四个包名，地址相对 `index.html` 指向 `./react/…`
 - 页面一加载这张表就在，外壳的 client.js 在它之后才 import
-- 外壳和各插件的 client.js 构建时都把这四个包名设成 external，浏览器按 importmap 把它们解析到内核包里的同一份文件
+- 外壳和各插件的 client.js 构建时从装好的内核包 `dist/index.html` 读出这几个包名、设成 external，浏览器按 importmap 把它们解析到内核包里的同一份文件
 
 </Diagram>
 
@@ -215,17 +218,18 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 **第一步：importmap 已经在页面上，然后才 import 外壳的浏览器端代码。** 它写死在内核的页面入口里，
 页面一加载就在；没有它，外壳顶层那句 `import { … } from 'react'` 就解析不到。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="645-649" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="667-671" hash="4aad6ebc512a" blob="56f920646dec" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home、三张样式表的地址，外加这一刻的用户外观样式
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="41-54" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="41-54" hash="4e6fc7ac5d7c" blob="24452becf052" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="218-236" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="220-238" hash="7e8c67575845" blob="247cd11bdbae" */}
 
-**第三步：三张表全部注入、并且都等到加载完成，才往下走。** 令牌那张必须最先——层顺序是它声明的；
+**第三步：三张表全部注入、并且都等到加载完成，才往下走。** 有一张加载不了，外壳就不往下走，根节点上写一句
+「外壳起不来」和那张表的地址。令牌那张必须最先——层顺序是它声明的；
 dockview 那张表的类名不由我们写（改不了名，也就加不上前缀），所以它整张不做隔离；
 外壳自己那张类名一律带自己的前缀。
 
@@ -234,17 +238,18 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 用户自己写的那段 CSS 要能覆盖令牌的默认值，同权重下靠文档顺序决定谁生效，所以它得是 head 里靠后的那张；
 而「重启后启动即生效」要求它在第一帧之前插入页面。
 
-{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="6-18" */}
+{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="6-18" hash="1826a6969b08" blob="20e3479e96b1" */}
 
 **第五步：加上 `.dark`、加上身份标记，然后 `createRoot`。** 深色是默认状态，令牌的暗色那一套在这里
 生效。身份标记只用来辨认，不参与任何选择器（第四节「窗格容器上那两样东西」还会再说一遍）。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="603-611" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="623-629" hash="7a270f2fe89c" blob="56f920646dec" */}
 
 **第六步：开一个窗格时**——从注册表里取这个插件注册时提供的两个地址 → **先注入它的样式表、等它加载完成**
-→ 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。
+→ 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。样式表加载不了就停在这一步，
+窗格里显示「加载失败」和那张表的地址，不带着没样式的界面继续挂载。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="124-154" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="124-159" hash="4adceb25a3d2" blob="914c83ed9b10" */}
 
 最后一步里「等它加载完成再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 发生在样式表加载完成之前，那一瞬间是一堆没有样式的元素。这两件事因此放在同一个清理单元里——拆成两处
@@ -258,7 +263,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 | 模块 | 管什么 | 它**不知道**什么 |
 | --- | --- | --- |
-| 令牌表（住外壳包里） | 值：语义变量的两套值、preflight、层顺序声明 | 不知道有哪些插件，不知道 Tailwind 前缀这回事，没有 node 端（产物是两份 css，2026-09-22 起随外壳包发布） |
+| 令牌表（在外壳包里） | 值：语义变量的两套值、preflight、层顺序声明 | 不知道有哪些插件，不知道 Tailwind 前缀这回事，没有 node 端（产物是两份 css，2026-09-22 起随外壳包发布） |
 | 每个插件自己的表 | 规则：本插件用到的那些工具类，类名带本插件的前缀 | 不知道别的插件存在，不知道值最终是多少（它只写 `var(…)`） |
 | 外壳 | 转交与容器：注入三张表、给每个窗格一个容器、把这个窗格变成容器查询的根 | **不知道任何插件的类名**，也不知道插件的表里有什么 |
 | 主题插件 | 用户覆盖：字体两项 + 一整段自定义 CSS，交给外壳在最后注入；「外观」窗格预览时直接改外壳注入的那张样式元素 `#gwb-theme-style` | 不知道任何插件存在，也不知道外壳把它注入在第几位（node 侧只交出一段字符串）；只认得那张样式元素的 id，这个 id 与外壳各写一份，见[插件之间怎么连](/docs/wiring) |
@@ -275,7 +280,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 依赖方向是：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值），**插件 → 外壳**
 （注册窗格时提供自己那两个地址），**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行），**内核 → 谁都不依赖**
-（它只读清单字段）。反向的箭头一条都没有：
+（importmap 写死在它自己的页面入口里）。反向的箭头一条都没有：
 
 - 令牌表不知道有哪些插件，所以加一个插件、删一个插件，它一个字都不用改
 - 外壳不知道插件的类名，所以插件改自己的样式，外壳不用重新构建
@@ -300,7 +305,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 **映射文件**（`theme.reference.css`）是插件在构建期引用的那份，它把「类名怎么解析到变量」这件事告诉编译器，但**一个变量
 声明都不输出**：
 
-{/* ref file="../plugins/shell/src/tokens/theme.reference.css" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" hash="943b2ea0f02b" blob="f5bcf4c3f472" */}
 
 值和映射**必须分成两个文件**，理由见下一节。插件那边引用的写法是固定的一行，
 第六节有可以照抄的出处。
@@ -318,7 +323,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 插件把自己浏览器端脚本与样式表的位置告诉外壳，值从自己的 `import.meta.url` 算成 `file://`：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-18" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-18" hash="25817d2e0de9" blob="dc10ab495563" */}
 
 `style` **是可选的**——插件可以没有样式表，那是正常情况而不是错。不给也不抛，调用方照常注册它。
 给了就要合格：`client` 的路径以 `.js` 结尾、`style` 的路径以 `.css` 结尾，都得是 `file://` 地址，不合格
@@ -343,9 +348,10 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 
 主题插件是可选的，所以外壳**先看命令总线上有没有这条命令，没有就不调**——调一条不在的命令，
 总线会记一条「执行了不存在的命令」warn，而没装可选插件不是问题，每个没装主题的 home 每次启动都
-带着这条 warn 只会让人去查一个不存在的问题。命令在但返回失败、返回空白，一律当没有：
+带着这条 warn 只会让人去查一个不存在的问题。命令在、返回空白是用户没设置，当没有；返回失败或返回的不是字符串
+也不带启动样式、外壳照常启动，但在 `gwb.log` 记一条 error——那是主题插件出了问题，不是没装：
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-14" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-22" hash="832189c40baa" blob="f4110e1b6678" */}
 
 这是用命令实现「可选依赖」的常规做法：**问总线有没有，不拿调用失败来判断在不在**。为什么查在 node 端、
 不在浏览器端，见轨迹卡[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
@@ -374,7 +380,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 层顺序与 preflight，为什么由令牌表来管
 
-{/* ref file="../plugins/shell/build.ts" lines="114-131" */}
+{/* ref file="../plugins/shell/build.ts" lines="157-174" hash="5d0202b6fd31" blob="6889aecb6ab8" */}
 
 **这段说明什么**：插件的表只写工具类那一层、不声明层与层的先后，所以顺序只能由**先加载的那张**
 来声明。而 preflight 是一份未分层的规则，**未分层的规则优先级高于所有分层规则**——不把它包进
@@ -384,7 +390,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### `theme.reference.css` 为什么单独一个文件
 
-{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" hash="c42f2e242752" blob="f5bcf4c3f472" */}
 
 **这段说明什么**：以引用的方式导入只能阻止主题块输出，**阻止不了普通规则输出**。把带
 `:root { … }` 的变量值文件（`tokens.css`）一起引进插件的构建里，每个插件的表里都会多出一整份 `:root`，和页面上那张
@@ -401,7 +407,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 插件的样式入口：五行，一行都不能省
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" hash="33bd996daefc" blob="58e7b2609682" */}
 
 **这段说明什么**：第一行把内置主题引进来**只为让类名解析得出来**，一个变量声明都不输出，
 前缀写在这条拆开的导入上才生效；第二行是令牌的映射文件，**不引它颜色类整个是空的**；
@@ -412,7 +418,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 注入样式表：等它加载完成，而且永不移除
 
-{/* ref file="../plugins/shell/src/client/asset.ts" */}
+{/* ref file="../plugins/shell/src/client/asset.ts" hash="a516d6664273" blob="875b98ab0c68" */}
 
 **这段说明什么**：整个文件就两件事。**等 `load` 事件**——只 append 是不够的，第一帧完全可能
 发生在样式表加载完成之前。**注入过就不移除**——移除它需要引用计数，而计数错了的症状是「关掉一个窗格，另一个窗格
@@ -420,62 +426,58 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="198-200" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="199-201" hash="630170c3e816" blob="914c83ed9b10" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：
 工具条窄了折行、宽了收回一行（要按宽度换向的排布，用的就是 `@md:` 那类变体），
 拖动分隔条时立即变化：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1068-1078" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="1123-1133" hash="773224e5eb5a" blob="29f349d69a7a" */}
 
 旁边那个身份属性**只用来辨认**。按位置隔离的方案要靠它限定选择器范围；本仓按类名前缀隔离，
 加不加它样式都一样。留着是为了在 devtools 里一眼看出这个窗格是哪个插件的。**正因为少加一个也
 不会有任何现象**，别把它当成「样式生效的前提」去写代码。
 
-### 守卫：怎么检查「忘写前缀」
+### 怎么检查「忘写前缀」：devkit 的样式检查
 
-前缀方案唯一的失效点是忘写前缀，而它**当场就看得见**——但看得见不等于拦得住，所以配一条
-守卫测试拦住：
+前缀方案唯一的失效点是忘写前缀，而它**当场就看得见**——但看得见不等于拦得住。拦它的不是本仓的测试，
+是 devkit 的样式检查：`devkit.dev` 构建之后、`devkit.release` 发版之前，对构建后有 `dist/style.css` 的插件都跑一遍，
+没过的 `devkit.dev` 不装进 home、`devkit.release` 一个包都不发。检查只有 devkit 里一份（生命周期插件仓
+`gwb-lifecycle-plugins` 的 `plugins/devkit/src/style-check.ts`），本仓不留副本。它查两层：
 
-{/* ref file="../plugins/baseui/tests/prefix.test.ts" lines="7-25" */}
-
-**这段说明什么**：把源码里的字符串字面量切成 token，拿插件自己那份样式入口**去掉前缀**当输入，
-逐个交给编译器，看「这个 token 编得出规则吗」。**去掉前缀是关键**：带前缀的编译器对一个漏了前缀的
+**源码层**：把样式入口所在目录下 `.tsx` 里的字符串字面量切成 token，拿插件自己那份样式入口**去掉前缀**当输入，
+逐个交给 Tailwind 编译器，看「这个 token 编得出规则吗」。**去掉前缀是关键**：带前缀的编译器对一个漏了前缀的
 类只会返回「不认识」，跟对任何一句中文的回答一模一样，分不出漏没漏；去掉之后，「编得出来」
-本身就等价于「它是个类名」。
+本身就等价于「它是个类名」。编译是**增量**的——候选一旦交给它就留在里面，所以判据不是「跟空基线比」，
+而是**逐个传入，看这一步的输出有没有变**。同一层还查前缀排在变体后面（`hover:baseui:…`，Tailwind 不报错、
+一条规则都不出）的写法。
 
-判据那一步也有要注意的地方：
+**产物层**：`dist/style.css` 里的类选择器一律带本插件的前缀（唯一放行的是页面级的亮暗标志 `.dark`，它只以
+**祖先**的身份出现）；身份属性 `data-gwb-plugin` **出现就算失败**——有它就说明构建用的是
+按位置隔离，而症状（弹出层没有样式）得把菜单打开才看得见，构建照样通过；另外查 `var()` 不写死 fallback、
+颜色类只用外壳 `theme.reference.css` 与本插件样式入口里声明的色名。
 
-{/* ref file="../plugins/baseui/tests/prefix.test.ts" lines="118-130" */}
+这套检查有两处看不到：它只扫 `.tsx`，`.ts` 文件与模板串 `${…}` 插值里拼出来的类名不查；反过来，`.tsx` 里任何
+字符串只要跟工具类同名就会被当成漏了前缀的类名，所以不是类名的字符串（比如外观窗格里与 `font-sans` 同名的设置键）
+放在 `.ts` 文件里。
 
-编译是**增量**的——候选一旦交给它就留在里面，所以判据不是「跟空基线比」，而是**逐个传入，看
-这一步有没有让产物变大**。
+### 样式检查查不出的那一条：标记类
 
-产物那边再加两条检查，一条查隔离、一条防止构建用上按位置隔离：
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="325-328" hash="5b044d463983" blob="a70e8f4051de" */}
 
-{/* ref file="../plugins/baseui/tests/artifact.test.ts" lines="112-121" */}
-
-**这段说明什么**：产物里的类选择器一律带本插件的前缀（唯一放行的是页面级的亮暗标志，它只以
-**祖先**的身份出现）；而那个身份属性**在任何一张表里出现都算失败**——有它就说明构建用的是
-按位置隔离，而症状（弹出层没有样式）得把菜单打开才看得见，构建照样通过。
-
-### 守卫检查不出的那一条：标记类
-
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="286-289" */}
-
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="301-303" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="340-342" hash="58da358955c3" blob="a70e8f4051de" */}
 
 **这两段说明什么**：上面加的是**锚**，下面是去找那个锚的变体。带前缀之后，变体编出来的选择器
 认的是**带前缀的锚**，所以两头必须一起带前缀——锚要是写成裸的，DOM 上就没有那个类，选择器
 **永远匹配不上**，而且不报错：类名在、规则也在，只是对不上。
 
-**上面那条守卫检查不出这一条**：锚本身不是工具类（它是个纯标记），在无前缀的编译下也编不出
+**上面那套样式检查查不出这一条**：锚本身不是工具类（它是个纯标记），在无前缀的编译下也编不出
 规则，所以「编得出的就是漏了前缀」这条判据对它天然检查不出来。全过程记在[遇到过的问题](/docs/walls)。
 
 ### 用户自定义 CSS：为什么它能覆盖一切
 
-{/* ref file="../plugins/theme/src/startup-css.ts" lines="20-30" */}
+{/* ref file="../plugins/theme/src/startup-css.ts" lines="16-26" hash="0403e4a4a171" blob="694ae7e05e50" */}
 
 **这段说明什么**：主题插件把三样设置拼成一段 CSS 交给外壳，纯函数、不碰 DOM——node 端用它处理
 那条命令，浏览器端用它做编辑时的实时预览，**两处用同一份逻辑**，不然「存进去的」和「页面上
@@ -485,7 +487,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 未分层的规则优先级高于所有分层规则（跟 preflight 那条是同一个语法事实的两面），所以它能覆盖
 令牌的默认值，也能覆盖任何一个插件的工具类。设置项的说明里就是这么写的：
 
-{/* ref file="../plugins/theme/src/index.ts" lines="79-85" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="79-85" hash="3ee4e3ede971" blob="3421d30a778b" */}
 
 整条路径，连同「外观」窗格的预览与保存、状态栏的亮暗开关：
 
@@ -565,14 +567,14 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 **三、构建脚本补一步**：编译本插件那张表，输入就是那份入口，扫描范围由入口里最后那条决定。
 
-{/* ref file="../plugins/baseui/package.json" lines="23-27" */}
+{/* ref file="../plugins/baseui/package.json" lines="12-15" hash="6452e7b61706" blob="44756dff0a79" */}
 
 **四、拉组件**：`shadcn add` 什么就有什么，拉下来是本插件目录里的文件，跟着本插件一起打包。
 组件的运行时依赖**打包进本插件的产物**，别外置（不在 importmap 里的裸名，外置就会在运行时报错）。
 
 **五、注册窗格时把两个地址提供给外壳**，值从自己的 `import.meta.url` 算成 `file://`。
 
-**六、抄两条守卫**：忘写前缀那条、产物形状那条。第四节都引用了出处，照抄换个前缀就行。
+**六、用 `devkit.dev` 装进隔离 home**：它构建之后跑第四节那套样式检查，回执 `ok: true` 才算过；不用在插件里另抄检查前缀的测试。
 
 ### 会静默失效的几种写法
 
@@ -583,8 +585,8 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 | --- | --- | --- |
 | 入口里没引令牌的映射文件（`theme.reference.css`） | 颜色类**整个是空的**——语义色编不出对应的变量引用 | 五行入口一行不省 |
 | 入口里没引动画那个包 | 动画那一类类名一个字节都不输出，菜单打开关闭没有过渡动画 | 同上 |
-| 类名忘了带前缀 | 那个类不生效，页面上就是那一处没样式 | 前缀守卫 |
-| 标记类（当锚的那种）没带前缀 | 变体的选择器**永远不命中**，类名和规则都在，只是对不上 | **守卫检查不出来**，只能靠知道这条 |
+| 类名忘了带前缀 | 那个类不生效，页面上就是那一处没样式 | devkit 的样式检查（只查 `.tsx` 里的字面量） |
+| 标记类（当锚的那种）没带前缀 | 变体的选择器**永远不命中**，类名和规则都在，只是对不上 | **样式检查查不出来**，只能靠知道这条 |
 | 在插件的表里写 `:root { --primary: … }` | 要么覆盖了全页，要么跟别处不一致 | 令牌是页面共享的那一份，插件的表里不碰它 |
 | 想按窗格宽度换布局，却写成了视口断点 | 按整窗大小判，拖窄这个窗格毫无反应 | 用容器查询变体（带 `@` 的那种），根是外壳给的容器 |
 

@@ -23,11 +23,11 @@ plugin-manager.install {"pkg":"@godcreator/gwb-baseui"}
 
 ## 怎么用
 
-装齐后开工作台，日志与「插件管理」两个窗格出现在窗格注册表里即通——agent 侧核对：
+装齐后开工作台，日志与「插件管理」两个窗格出现在窗格注册表里就说明装好了——agent 侧核对：
 `plugin-manager.list` 回的表里有 `baseui` 条目，`shell.panes` 里有
 `plugin:home:baseui:logger` 与 `plugin:home:baseui:plugin-manager`。
 
 ## 文档
 
 `docs-site/` 是文档站：`cd docs-site && pnpm install && pnpm dev`，看 `http://localhost:4323`。
-这份 README 是生成物，正本是 `docs-site/content/outputs/readme.mdx`。
+这份 README 是生成物，正本是 `docs-site/content/docs/outputs/readme.mdx`。

@@ -1,0 +1,38 @@
+---
+born-at: 2026-09-26T09:26
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 布局读不回来停止保存
+domain: shell
+---
+
+## 背景
+
+外壳开机读布局文件时，`shell.layout.get` 调不通、回失败、版本认不出，都当成「没有文件」按默认布局启动；某张桌面挂载时保存的布局
+`fromJSON` 恢复不了，也回默认布局、只记一条 warn。[默认布局打开后自己排保存](2026-09-25-first-boot-layout-save.md)之后，
+默认布局一打开就会排一次防抖保存，于是这几种情况下磁盘上那份读不回来的真布局，几百毫秒后就被默认布局整份覆盖，再也找不回来。
+
+pivots-from:: [默认布局打开后自己排保存](2026-09-25-first-boot-layout-save.md)
+
+## 结论与边界
+
+- 只有 `shell.layout.get` 回 ok、`data` 是 undefined（gwbData 对不存在的文档回 undefined）才算第一次开机，安安静静按默认布局打开、照常保存
+- 调不通、回失败、版本认不出（开机时），或某张桌面的布局恢复不了（挂载时）：那张桌面照样按默认布局打开，不阻止外壳启动；但这一轮停止保存布局，页面控制台一条 error，状态栏出现「布局没读回来，不保存」
+- 人点那一项、在确认框里点「覆盖」之后，才用当前布局整份写一次、恢复自动保存；不点，磁盘上那份原样留着，下次开机还能再读
+- 判断抽成纯函数 `initialLayoutOf`（`plugins/shell/src/layout.ts`），单测在 `plugins/shell/tests/layout-read.test.ts`
+- 点开某套已存布局恢复不了，仍然只报错、不回默认，没有变
+
+## 否掉的候选
+
+- **沿用「认不出就回默认」**：外壳能照常打开、看起来没出事，但接着的自动保存会覆盖掉磁盘上的布局。读不回来多半是暂时的（数据插件没起来、IPC 断了）或者能修的（dockview 升级后格式变了、手改坏了文件），覆盖掉就没有修的机会了
+- **读不回来就不启动外壳**：一次读失败就让整个工作台没有界面，人连状态栏都看不到，更没法决定要不要覆盖
+
+## 代价与遗留
+
+- dockview 升级后旧布局恢复不了时，人要在状态栏点一次确认覆盖，否则这一轮开的窗格、挪的位置都不会保存
+- gwbData 的 `readDoc` 对「文件损坏、解析不了」与「文件不存在」都回 undefined，外壳分不出这两种：文件坏了仍然照第一次开机处理，接着被默认布局覆盖。这一条要基础插件仓改，已投进 `gwb-base-plugins` 文档站的收件页（`future/inbox/2026-09-26-gwb-ui-plugins-readdoc-corrupt-looks-missing.mdx`）
+
+## 依据
+
+提交 `77348b6`（`plugins/shell/src/layout.ts` 的 `initialLayoutOf`、`plugins/shell/src/client/index.tsx` 的停止保存与覆盖、
+`plugins/shell/src/client/StatusBar.tsx` 的告警项与确认框），测试 `plugins/shell/tests/layout-read.test.ts` 先写失败再修（提交说明里写明）。写卡时手上没有隔离 home 里的实机记录，未存探针。

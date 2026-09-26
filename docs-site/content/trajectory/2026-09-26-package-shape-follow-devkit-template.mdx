@@ -1,0 +1,36 @@
+---
+born-at: 2026-09-26T09:26
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 包结构对齐模板
+domain: 仓库
+---
+
+## 背景
+
+devkit 0.23.3 起，新建仓的模板不再带 `tests/prefix.test.ts`、`tests/artifact.test.ts`，样式检查只在 devkit 里有一份
+（`devkit.dev` 构建之后、`devkit.release` 发之前跑）；模板的 node 侧改成 esbuild 打成一个文件，构建前先清空 `dist/`。
+本仓三个插件是照更早的模板写的：node 侧用 tsc 逐个文件输出，三份 `prefix.test.ts` 是模板原样的旧副本（没有「前缀排在变体后面」那条），
+清单里还有 `keywords` 的 `gwb`、`prepublishOnly`，文档站也在仓根 pnpm workspace 里，仓根 `pnpm build` 连带构建文档站。
+这些是生命周期插件仓投来的收件（devkit 0.23.3 那条）里列的。
+
+## 结论与边界
+
+- 三个插件的 `build.ts` 照模板重写：第一步删 `dist/`；node 侧用 esbuild 打成一个 `dist/index.js`（外置 peer 里的包、`electron`、`cordis`）；浏览器侧外置名单从内核页面入口读（见[外置名单读内核页面入口](2026-09-26-importmap-names-from-kernel-page.md)）。外壳另加 `tsconfig.build.json` 只输出包根的声明，`./pane` 子路径的类型路径不变；外观、基础界面不提供服务，不再输出 `.d.ts`
+- 删掉三份 `prefix.test.ts`，`artifact.test.ts` 里和 devkit 样式检查重复的用例（类名前缀、`data-gwb-plugin`、`var()` fallback、颜色类）删掉，本仓独有的留下（外壳的 dockview 打包与裁剪、图标名单、`./pane` 子路径的类型等）
+- 清单：`keywords` 只留 `gwb-plugin`；删 `prepublishOnly`、`author`、`exports["./package.json"]`；`files` 去掉 `src`；同仓依赖写 `workspace:*`；外壳 peer 里的 `cordis` 改成 `^4.0.0-rc.10`
+- 仓根：pnpm workspace 只收 `plugins/*`，文档站移出 workspace、自带 lock 在站目录里 install；仓根 `build` 只构建插件，发版时不再连带构建文档站；仓根的 `doc`、`doc:render` 转到 `pnpm --dir docs-site run …`
+
+## 否掉的候选
+
+- **保留模板测试副本**：副本不会跟着 devkit 更新，容器里十几份 `prefix.test.ts` 没有一份带「前缀排在变体后面」那条；留着就有两套判据，副本放过的问题照样在发版时被 devkit 拦下
+- **node 侧继续 tsc 逐个文件输出**：和模板不一致，devkit 的规矩里「node 侧相对 import 带扩展名」那条已经删了，逐个文件输出的包漏写 `.js` 只能靠 tsconfig 的 `nodenext` 在类型检查时报
+
+## 代价
+
+- 源码层的前缀检查只剩 devkit 那一份，只在 `devkit.dev` / `devkit.release` 时跑，仓根 `pnpm check` 不再查前缀；改了界面不跑 `devkit.dev` 就发现不了漏写的前缀
+- 文档站不在 workspace 里，第一次要单独在 `docs-site/` 里 `pnpm install`
+
+## 依据
+
+提交 `9b681ad`；生命周期插件仓的收件（devkit 0.23.3，那个仓的提交 `1544088`）与轨迹卡 `2026-09-25-rules-only-checked-ones`。未存探针。

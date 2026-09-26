@@ -23,7 +23,7 @@ docfirst: none
 先逐条注销、再释放——顺序反过来的话分组可能已经删除，注销不起作用，而分组没删除的情况正是这几行
 要解决的。
 
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="90-99" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="91-100" hash="e168b539d2bb" blob="5d100ef7d28c" */}
 
 同时定下的两条语义：`emit` 在 `release` 之后**什么都不做、也不报错**（外壳的清理顺序是「先让插件
 dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍然有效）；分组里存监听函数用的是 `Set`，
@@ -45,7 +45,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 所以窗格 id 是个**不透明的键**，不要从中拆出各段。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="102-105" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="102-105" hash="93be55e6bdef" blob="b379931bbf63" */}
 
 ### `typeof` 一个类是 `function`，按「是对象」判断它就等于不存在
 
@@ -55,7 +55,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 `typeof` 是 `'function'`，而那句 `isRecord(bw)` 只认 `typeof === 'object'`——于是 `getAllWindows`
 永远是 undefined。0.2.3 以为是 ESM `default` 导出方式的问题，改错了地方；0.2.4 才改对：对象或函数都继续往下取。
 
-{/* ref file="../plugins/shell/src/reload.ts" lines="32-47" */}
+{/* ref file="../plugins/shell/src/reload.ts" lines="32-47" hash="b921b167ea14" blob="a62b7924ba69" */}
 
 **判据**：凡是按形状收窄一个「可能是类」的东西（`BrowserWindow`、`Service` 子类、任何构造器），
 `isRecord` 那种「是对象」的类型守卫要配上 `typeof === 'function'`；而且**报错要说清是哪一层没认出**
@@ -82,8 +82,8 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 插件的 `dispose` 移到提交之外调用。内核换外壳的顺序不用改。**从旧版外壳换下来的那一次仍会报错**——
 报错出自被换下那个版本的 `dispose`，从 0.7.2 起换成别的版本才不再报。
 
-{/* ref file="../plugins/shell/src/client/shell-mount.ts" */}
-{/* ref file="../plugins/shell/src/client/mount-handle.ts" */}
+{/* ref file="../plugins/shell/src/client/shell-mount.ts" hash="e4c16141fbac" blob="e8ed3731b5e6" */}
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="a615e471ee01" blob="5729085de9d8" */}
 
 ---
 
@@ -94,7 +94,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 迁移 shell 那批纯逻辑时遇到两条。**规则本身没错，是这两处代码故意违反它**：
 
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="68-80" */}
+{/* ref file="../plugins/shell/src/client/bus.ts" lines="68-81" hash="d46b50621032" blob="5d100ef7d28c" */}
 
 - **`unicorn/no-useless-spread`** —— `for (const listener of [...listenersOfType])` 那份拷贝是有意的：监听函数
   收到事件后注销自己是常见情况，直接遍历正在被修改的集合会漏掉或重复。规则看不出「遍历期间集合会被改」
@@ -120,15 +120,16 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 所以外壳按 import 拿到这两个服务的类型，在 `src/index.ts` 里自己再声明一遍，内容与那两份 d.ts 一致：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="27-33" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="27-33" hash="e45a4dec342a" blob="ce7bdd967ed2" */}
 
 pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这段声明就可以删掉。
 
 ### react 的打包在内核仓
 
 react 没有 ESM 入口、只能用 esbuild 打包、react-dom 在工厂函数内部 `require('react')` 要修补——这三处问题随 react
-一起搬到了内核包，正本在内核仓文档站「页面上的包名」与内核仓的 `apps/desktop/scripts/build-react.ts`。本仓的插件只把
-react 的四个包名外置，不再自己打包 react。
+一起搬到了内核包，正本在内核仓文档站「页面上的包名」与内核仓的 `apps/desktop/scripts/build-react.ts`。本仓的插件不再自己
+打包 react，浏览器侧只把内核页面入口 importmap 里的那几个包名外置——名单在构建时从装好的内核包 `dist/index.html` 里读，
+不在本仓手抄（见样式与组件页的[还有一份东西要共享：React 实例](/docs/styles#还有一份东西要共享react-实例)）。
 
 ---
 
@@ -137,7 +138,7 @@ react 的四个包名外置，不再自己打包 react。
 
 ### preflight 必须放进 `@layer base`，否则它的优先级高于所有插件的工具类
 
-{/* ref file="../plugins/shell/build.ts" lines="120-125" */}
+{/* ref file="../plugins/shell/build.ts" lines="157-162" hash="df0c7a15b6b7" blob="6889aecb6ab8" */}
 
 CSS 里**未分层的规则优先级高于所有分层规则**。插件的样式表只写 `@layer utilities { … }`、自己
 不声明层顺序，所以顺序得由先加载的令牌表来声明；而 Tailwind 的 `preflight.css` 是一份
@@ -145,7 +146,7 @@ CSS 里**未分层的规则优先级高于所有分层规则**。插件的样式
 
 ### 变量值与类名映射必须拆成两个文件
 
-{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" */}
+{/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="1-2" hash="c42f2e242752" blob="f5bcf4c3f472" */}
 
 `theme(reference)` 只阻止 `@theme` 块的输出，**阻止不了普通规则**。把写着 `:root { --background: … }`
 的变量值文件（tokens.css）一起引进插件的构建里，每个插件的样式表都会多出一整份 `:root`，与页面上令牌表
@@ -401,7 +402,7 @@ modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。�
 设置的正是分支的逻辑尺寸，渲染出来回到原高，多给出去的高度从同一列的其他组那里扣回。两组叠放、三组叠放时的
 上中下位置，加上根节点是纵向的情况，六种布局测下来，其他组的宽高偏差都不到 1px。
 
-{/* ref file="../plugins/shell/src/client/open.ts" lines="260-271" */}
+{/* ref file="../plugins/shell/src/client/open.ts" lines="289-297" hash="d701bd7e3227" blob="c3574996f7de" */}
 
 ### 产物测试的正则要锚定在行首，否则会被 dockview 自己的错误消息误导
 
@@ -440,7 +441,7 @@ Tailwind v4 下 `tailwind.config` 填空字符串（v4 没有配置文件了）�
 
 ### 别写 `baseUrl`——TS 7 把它移除了
 
-{/* ref file="../plugins/baseui/tsconfig.json" lines="1-12" */}
+{/* ref file="../plugins/baseui/tsconfig.json" hash="dd27268e795f" blob="8b9b948ea666" */}
 
 shadcn 文档教的是 `baseUrl` + `paths` 那套旧写法，照抄会遇到
 `error TS5102: Option 'baseUrl' has been removed`。TS 7 里 `paths` 直接相对 tsconfig
@@ -493,7 +494,7 @@ CLI 把 `cn` 装进 **`dependencies`**。按本仓规则「打包进本插件产
 
 样式入口开头的注释写明四行 import 一行都不能省，也写了它带出的那批全局规则无害：
 
-{/* ref file="../plugins/baseui/src/client/styles.css" lines="2-3" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="2-3" hash="e45b6c43dc68" blob="58e7b2609682" */}
 
 ### CSS 注释里写 `--tw-enter-*` 时那个 `*/` 会提前结束注释，报错完全不指向根因
 
@@ -537,16 +538,16 @@ Could not resolve value for theme function: theme(reference)
 **没有任何一处会报错**——跟本页上面那条「不引入 `tw-animate-css` 就不生成规则」性质相同、表现不同：
 这次规则生成了，只是它引用的类名和元素上加的类名不是同一个。
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="286-289" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="325-328" hash="5b044d463983" blob="a70e8f4051de" */}
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="301-303" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="340-342" hash="58da358955c3" blob="a70e8f4051de" */}
 
 上下两段是一对：日志行上加 `baseui:group`，行里的来源名用 `baseui:group-hover:` 引用它，
 **两边都带前缀**才对得上。
 
 **判据**：凡是「一个类当标记、另一个类的变体引用它」的搭配——`group` / `peer` 这一类，还有
-`group/<名>` 这种具名变体——两边一起带前缀。测试查不出这一条：`group` 本身在不带前缀编译时
-也生成不出规则（它不是工具类，只是个标记），所以 `prefix.test.ts` 那条「能生成规则的就是
+`group/<名>` 这种具名变体——两边一起带前缀。devkit 的样式检查查不出这一条：`group` 本身在不带前缀编译时
+也生成不出规则（它不是工具类，只是个标记），所以样式检查查 `.tsx` 源码时那条「去掉前缀能生成规则的就是
 漏了前缀」的判据对它不起作用。
 
 ### lucide 图标上的 `.lucide` 类不是前缀隔离的漏洞
@@ -557,7 +558,7 @@ Could not resolve value for theme function: theme(reference)
 识别图标的标记。
 
 **判断隔离有没有失效要看样式表，不看 DOM**：失效的定义是「产物里有一条不带前缀的类
-选择器」，产物测试查的正是这个。DOM 上有一个没有任何规则匹配的类名，不会因此影响到
+选择器」，devkit 的样式检查查的正是这个。DOM 上有一个没有任何规则匹配的类名，不会因此影响到
 别的元素的样式。
 
 **所以别顺手去掉它**（改 `iconNode`、加 `className` 覆盖都能做到）：去掉之后隔离一点没变强，

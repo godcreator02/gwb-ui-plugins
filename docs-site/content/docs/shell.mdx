@@ -13,18 +13,18 @@ docfirst: none
   容器常驻保活**），把注册表里的每个窗格打开
 
 下游开发入口是随本包发布的 `gwb-shell` 说明书：`skill.read {"name":"gwb-shell"}`。
-它统一规定窗格接入、shadcn 官方源码、配套 tokens 与多桌面浮层；正本在
-`content/outputs/skills/gwb-shell.mdx`，生成到 `plugins/shell/skills/gwb-shell/SKILL.md`。
+它统一规定窗格接入、shadcn 官方源码、配套令牌与多桌面浮层；正本在
+`content/docs/outputs/skills/gwb-shell.mdx`，生成到 `plugins/shell/skills/gwb-shell/SKILL.md`。
 `gwbSkills` 通过局部注入登记该目录：这个服务不在时外壳照常运行，服务后加载时补登记，卸载时自动注销。
 devkit 只引用这份说明书并提供模板，不复制 UI 规则。
 
 ## 它的接口
 
-{/* ref file="../plugins/shell/src/index.ts" lines="99-112" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="99-112" hash="eadff41d759f" blob="24452becf052" */}
 
 插件给的那几样，与服务替它填上的身份：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="1-32" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="1-32" hash="a20a998a6b18" blob="dc10ab495563" */}
 
 ## 怎么用
 
@@ -49,7 +49,7 @@ export function apply(ctx: GwbContext) {
 可以开多份，每份装一个内容。说的是「打开这个动作对它是什么意思」，不是「能开几份」——开几份
 仍取决于它**装着几份不同的内容**，见[一个窗格的身份是它装的内容](#一个窗格的身份是它装的内容)。
 `kind` 写错按 `tool` 登记、登记那一刻 `gwb.log` 里记一条 warn；`shell.panes` 的回执每条都带它。
-它只住注册表、不进面板 params，布局文件里没有它。
+它只存在注册表里、不进面板 params，布局文件里没有它。
 
 **给人看的名字归运行时**（`describeSelf`），不写进包清单——包清单里没人读的字段失效时
 没有任何机制会发现。「我是外壳」也不写在包清单里，由 node 端调 `kernel.setShell` 声明。
@@ -87,7 +87,7 @@ await args.host.call('shell.plugins')
 两侧用同一个判断函数：kebab 名拼成 lucide 的导出名（`layout-grid` → `LayoutGrid`），node 侧拿它对照
 名单，浏览器侧拿它从 lucide 全集里取图标：
 
-{/* ref file="../plugins/shell/src/pane-icon.ts" lines="4-14" */}
+{/* ref file="../plugins/shell/src/pane-icon.ts" lines="4-14" hash="fb2890c61f45" blob="eb064c296db7" */}
 
 名单是构建时从**打包进浏览器侧 `client.js` 的那份** lucide-react 生成的（`dist/pane-icons.json`，带版本号），
 所以「登记说认得」与「标签画得出」永远是同一份 lucide，产物测试检查两者一致。代价是整个
@@ -99,7 +99,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 `registerPane` 只收 `{ id, title, icon?, client?, style?, kind? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="439-458" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="441-459" hash="533523bff841" blob="247cd11bdbae" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个做法）。插件没法自报名字，也就没法冒充别人的窗格。
@@ -169,7 +169,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 - **没有 `canonicalPanelId`**——那是老布局兼容（磁盘上的窗格 id 少一段）用的，这里
   不需要它
 
-{/* ref file="../plugins/shell/src/openable.ts" */}
+{/* ref file="../plugins/shell/src/openable.ts" hash="1f85e5ae3149" blob="0f925eb72654" */}
 
 ## 浏览器侧：容器与窗格
 
@@ -179,7 +179,8 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 桌面的快照），**执行在 `open.ts`**（挑桌面、聚焦与转正 / 软换 / 开进某一组 / 对半分）；
 面板与标签是 `plugin-panel` / `PluginPane` / `GwbTab`；开机
 外观装配（注入用户外观样式 + dockview 主题）在 `theme-boot`；向主题插件取启动样式在 node 侧
-`startup-style`（`theme.startupCss` 是主题插件可选提供的命令，主题插件没装外壳照常运行）；**两侧共用的命令名在 `protocol.ts`**
+`startup-style`（`theme.startupCss` 是主题插件可选提供的命令，主题插件没装外壳照常运行；命令在却回了失败、
+或回的不是字符串，外壳照常启动、只是不带用户外观样式，`gwb.log` 里记一条 error）；**两侧共用的命令名在 `protocol.ts`**
 （纯模块，两侧各自打包进自己的产物、用同一份常量，不各自复制字符串）；布局文件的形状与判断在
 `layout.ts`。
 
@@ -187,11 +188,20 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 面板组件因此访问不到 App 的闭包；把这些状态放进面板 params 又会随布局一起保存。
 
 `bootShell` 拿到内核给的 `{ host, home, styles, startupCss?, versions }`（问 `shell.env` 来的），接管整页的
-根节点：注入三张样式表 → 注入用户外观样式 → 取一次注册表 → **取一次布局文件** → 渲染。文件没有（第一次开机 / 认不出）就从
-默认布局开始——默认布局就是「表里有几个窗格开几个窗格」，全放在一个 group 里当兄弟 tab；**工具窗格
-全页一份，整页别的桌面上已经开着的不再打开**（`specsForDefaults`，整页开着什么由桌面清单传给 `well-hub` 当场读取——
-开机时窗格容器的 onReady 比桌面操作的注入早）。这个默认只发生在三处：第一次开机、布局文件认不出回默认、
-状态栏「重置布局」；**运行时新建的桌面不用它，新建时为空**（见下文多桌面节）。
+根节点：注入三张样式表 → 注入用户外观样式 → 取一次注册表 → **取一次布局文件** → 渲染。三张样式表有一张加载不了、
+或注册表取不回来（调不通、回的不是一张表），外壳就不渲染，根节点上只写一句「外壳起不来：原因」：取失败当成空表的话，
+界面会说「还没有插件注册窗格」，跟真的一个都没注册分不开。
+
+布局文件**只有不存在**（第一次开机）才安安静静地从默认布局开始——默认布局就是「表里有几个窗格开几个窗格」，
+全放在一个 group 里当兄弟 tab；**工具窗格全页一份，整页别的桌面上已经开着的不再打开**（`specsForDefaults`，
+整页开着什么由桌面清单传给 `well-hub` 当场读取——开机时窗格容器的 onReady 比桌面操作的注入早）。读不回来
+（`shell.layout.get` 调不通、回失败、版本认不出）也按默认布局打开，但**这一轮停止保存布局**，见下文
+[布局读不回来时停止保存](#布局读不回来时停止保存)：
+
+{/* ref file="../plugins/shell/src/layout.ts" lines="125-144" hash="d364d2ed759a" blob="608a909453af" */}
+
+默认布局只在这几处打开：第一次开机、布局读不回来或某张桌面的布局恢复不了、状态栏「重置布局」；
+**运行时新建的桌面不用它，新建时为空**（见下文多桌面节）。
 
 <Diagram name="shell-takeover" title="外壳怎么接管内核的页面">
 
@@ -208,7 +218,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 分开：`dispose` 在准备完成之前调用，挂载那段就永不执行；树已挂载就当场 `unmount()`。html 上的类、
 根节点上的身份标记、`well-hub` 的命令入口都在挂载那段里设置，一起出现、一起移除。
 
-{/* ref file="../plugins/shell/src/client/shell-mount.ts" */}
+{/* ref file="../plugins/shell/src/client/shell-mount.ts" hash="e4c16141fbac" blob="e8ed3731b5e6" */}
 
 一个窗格由 `PluginPane` 承载，它是 `mountPane` 契约的外壳这一侧：
 
@@ -218,6 +228,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 - 打开窗格时 `PluginPane` 调 `shell.panes` 当场取这一条的地址
 - 有 `style` 就先注入样式表、等它加载完成
 - 动态 `import(client)`，取模块导出的 `mountPane`
+- 取注册表失败、样式表加载不了、模块里没有 `mountPane`，窗格里都显示「加载失败：原因」，不往下走
 - 调 `mountPane({ host, shell, pane }, 容器)`，收下 `{ dispose, retarget? }`
 - 关窗格时 `dispose` 排进微任务、在 React 提交之外调用，随后释放窗格间总线的句柄
 
@@ -233,18 +244,18 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 `root.unmount()` 会被 React 推迟，紧接着清空容器就会先于卸载树执行。移到提交之外之后，插件在
 `dispose` 里「同步卸载树、再清空容器」是合法写法。
 
-{/* ref file="../plugins/shell/src/client/mount-handle.ts" */}
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="a615e471ee01" blob="5729085de9d8" */}
 
 ## 布局保存：自动存 + 起名存，可以恢复
 
 布局文件是 gwbData 里的一份文档 `layout`——**单文档装三样**：
 「每张桌面各自的容器布局」（自动防抖保存，每容器一份）、「active」（重启回到哪张）与「存下来的
-清单」（人手起名），形状住 `src/layout.ts`（`LayoutDoc` / `DesktopRow` / `SavedLayout`，
+清单」（人手起名），形状定义在 `src/layout.ts`（`LayoutDoc` / `DesktopRow` / `SavedLayout`，
 纯模块、有单测）。node 侧提供两条命令给浏览器侧读写它：
 
 | 命令 | 干什么 |
 | --- | --- |
-| `shell.layout.get` | 读布局文件，没存过回 undefined（`readDoc` 对没有的文档回 undefined，**这不是错误、不告警**） |
+| `shell.layout.get` | 读布局文件，没存过回 undefined（`readDoc` 对没有的文档回 undefined，**这不是错误、不告警**）。`readDoc` 对损坏的文件也回 undefined，外壳分不出这两种，文件损坏时照第一次开机处理 |
 | `shell.layout.save` | **整份替换**。保存时校验一遍形状——浏览器侧自己的 bug 拼出的坏文件，不能覆盖磁盘上好的那份 |
 | `shell.openPane` | 跨插件开一个窗格（任何插件的），见[下文专节](#跨插件开窗格shellopenpane) |
 
@@ -253,7 +264,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 - 每张桌面一个窗格容器（一个 dockview 实例）；开机只挂载活动那张，别的桌面第一次切过去才挂载
 - 同一个文档窗格用不同的 `key` 打开两次是两份实例：第一份的 id 是基名，第二份追加 `:2`；key 与插件的 params 存在面板的 params 里
 - 容器布局一变，400ms 防抖后经 `shell.layout.save` 整份替换 gwbData 的 `layout` 文档（desktops、active、saved）；切桌面时立刻保存
-- 开机经 `shell.layout.get` 读回，活动桌面的容器用 `fromJSON` 恢复，每份窗格拿回自己的 key 与 params；读不到或认不出就按默认布局打开
+- 开机经 `shell.layout.get` 读回，活动桌面的容器用 `fromJSON` 恢复，每份窗格拿回自己的 key 与 params；文件不存在就按默认布局打开，读不回来或恢复不了也按默认布局打开，但停止保存、等人确认
 - 状态栏「布局」菜单把活动容器的布局起名存进 saved，点哪一条就恢复到活动容器上
 
 </Diagram>
@@ -268,7 +279,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
   之前，dockview 的这个事件在微任务里发、丢掉订阅之前触发的那几次，一个都收不到。所以容器挂载时开不开默认布局、
   要不要保存由纯函数 `wellBootPlan` 定：开了默认布局就排一次防抖保存，恢复成功的不保存，运行时新建的桌面立刻保存：
 
-{/* ref file="../plugins/shell/src/layout.ts" lines="114-125" */}
+{/* ref file="../plugins/shell/src/layout.ts" lines="146-157" hash="9c0b2d8d4d7d" blob="608a909453af" */}
 - **切换同步 flush**：切桌面先更新 active 再整份写一次，然后才切换显隐——
   `shell.desktop.list` 读的是磁盘上的文件，先写它才不会回上一轮的旧数据
 - **saved（人手）**：状态栏「布局」菜单里「把当前布局另存为…」把**活动那个容器**起名存进
@@ -276,12 +287,21 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
   恢复到**活动那个容器**上；行尾 ✕ 删那条。应用某套之后照常自动保存，不用另存。**快照
   与正在用的桌面是两回事**：桌面各自自动存（正在用的），saved 是模板（快照、应用后即弃）
 - **文件版本**：现行 v3；读到 v2 当场迁移（current 变第一张「主桌面」、saved 原样带走，
-  下一次自动保存写的已是 v3），认不出的版本整份当没有
+  下一次自动保存写的已是 v3），别的版本算读不回来（见下）
 
-两条失败路径分开走：**开机恢复不了**（布局文件坏 / dockview 升了版本）回默认布局并 warn，
-不阻止外壳启动；**点开某套恢复不了只报错、不回默认**——人明确要的是这一套，悄悄换回默认
-布局装作没事比失败更糟。「重置布局」也在那菜单里：清掉**活动那个容器**照「表里有几个窗格开几个」
+**点开某套已存布局恢复不了只报错、不回默认**——人明确要的是这一套，悄悄换回默认布局装作没事比失败更糟。
+「重置布局」也在那菜单里：清掉**活动那个容器**照「表里有几个窗格开几个」
 重新打开——逐个窗格关，不走 `api.clear()`（它内部状态对不上时会抛错）。
+
+### 布局读不回来时停止保存
+
+有两种情况：开机时 `shell.layout.get` 调不通、回失败、版本认不出；或者某张桌面挂载时它保存着的布局
+`fromJSON` 恢复不了（布局文件坏了、dockview 升了版本）。两种都照样把那张桌面按默认布局打开，不阻止外壳启动，
+但**这一轮不再写磁盘**：页面控制台一条 error，状态栏多一项「布局没读回来，不保存」（悬停写着原因）。点它弹确认框，
+人确认「覆盖」之后才用当前布局整份写一次、恢复自动保存；不确认，磁盘上那份原样留着，下次开机还能再读。
+
+不这样做的话，默认布局一打开就会排一次自动保存，磁盘上那份读不回来的真布局被默认布局覆盖掉，再也找不回来。
+为什么不沿用「认不出就回默认」，见轨迹卡[布局读不回来时停止保存](/trajectory/2026-09-26-layout-unreadable-stop-saving)。
 
 ## 多桌面：容器常驻保活，浮层挂载点在所在桌面
 
@@ -352,7 +372,7 @@ id 优先）、`shell.desktop.new`（`{ name? }`）、`shell.desktop.rename`（`
 删除而不合并，是用户定的：窗格里的东西存在各插件自己那里，关掉丢的只是窗格的摆放位置，确认框挡住误删；要留下
 哪个，删之前先送到别的桌面。
 
-{/* ref file="../plugins/shell/src/desktops.ts" lines="51-59" */}
+{/* ref file="../plugins/shell/src/desktops.ts" lines="51-59" hash="d6ab342d22e5" blob="cdc9e41c4a4f" */}
 
 ### 送到别的桌面、拉到本桌
 
@@ -383,7 +403,7 @@ flush 才写进去。
 **插件的状态只靠参数带过去**：步骤 2、3 之间插件被重新挂载，滚动位置、打到一半的字这类东西，
 插件想保住就得放进 `setPaneContent` 的参数里。这是文档窗格要上报内容的第二个理由。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="348-374" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="350-376" hash="303a030a65d4" blob="0f925eb72654" */}
 
 **拉到本桌**：在「桌面」面板里把别的桌面上的窗格拖到当前桌面上——等于送到当前桌面，送到之后
 激活它，不涉及切桌面。
@@ -410,7 +430,7 @@ node 侧缓存（`shell.pane.sync`，页面专用，别的调用方推进来就�
 `tool`）。focus / send / close 转发之前拿缓存检查一下实例与目标桌面在不在，认不出当场回错；
 **回执 ok 只代表转发了**，与 `shell.desktop.*` 那几条相同。
 
-{/* ref file="../plugins/shell/src/pane-actions.ts" lines="7-13" */}
+{/* ref file="../plugins/shell/src/pane-actions.ts" lines="7-13" hash="9fb2651eeda4" blob="fb1659d884db" */}
 
 **模态框只盖住所在桌面的主区**：状态栏 z 更高、永远可点，开着模态框也能切到别的桌面。
 
@@ -425,7 +445,7 @@ mountPane({ host, shell, pane }, container) => { dispose(); retarget?(params) }
 | | 是什么 |
 | --- | --- |
 | `host.call(command, args?)` | 命令通道，走到宿主分发再原路回 |
-| `shell.openPane(paneId, { key?, params?, preview?, placement? })` | 打开**本插件**的另一个窗格。**来源自动就是调它的这一份**：新窗格落在它旁边、开在它那张桌面上，从不切桌面；`placement` 缺省 `'auto'`（按目标组规则），`'side'` 开到旁边，认不出的值当 `'auto'` |
+| `shell.openPane(paneId, { key?, params?, preview?, placement? })` | 打开**本插件**的另一个窗格。**来源自动就是调它的这一份**：新窗格开在它那张桌面上、按[目标组规则](#一个窗格的身份是它装的内容)选组，从不切桌面；`placement` 缺省 `'auto'`（按目标组规则），`'side'` 开到旁边，认不出的值当 `'auto'` |
 | `shell.setPaneTitle(title)` | 改这个窗格标签上的标题 |
 | `shell.setPaneContent({ key, params?, title? })` | **上报这个窗格此刻装的内容**：原地换了内容之后上报一次，外壳改这一份的 key（与参数、标题），不软换、不重新挂载。见[下文专节](#上报内容setpanecontent) |
 | `shell.keepPane()` | 把这个窗格留住：它不再是预览窗格 |
@@ -482,16 +502,17 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 
 ## 跨插件开窗格：`shell.openPane`
 
-插件手里的 `args.shell` 只开得了自己那几个窗格（上一节）；跨插件的场景要打开**别人的**窗格——第一个
-需求方是单元文件夹窗格里启动站点的按钮：点了要打开站点插件的预览窗格，而页面上
-可能一个站点插件的窗格都没开。命令里的这条入口：
+插件手里的 `args.shell` 只开得了自己那几个窗格（上一节）；跨插件的场景要打开**别人的**窗格。眼下的调用方是
+块笔记的两个插件：查询插件与日记插件在自己的窗格里点一个块，要打开块笔记核心插件 `@godcreator/gwb-bn-core`
+的阅读窗格 `reader`，而那个窗格属于另一个插件（`gwb-block-note` 仓 `plugins/gwb-bn-query/src/client/shell.ts` 与 `plugins/gwb-bn-journal/src/client/shell.ts` 里的 `openPaneOf`：
+先经 `shell.panes` 找到那个窗格的 `entryId`，再调 `shell.openPane`，带上自己的 `pane.instance` 作 `from`）。命令里的这条入口：
 
-{/* ref file="../plugins/shell/src/open-pane.ts" */}
+{/* ref file="../plugins/shell/src/open-pane.ts" hash="d7e2d335637b" blob="4b59d533f10f" */}
 
-判据是**边界落在哪一层**：「插件报不出别人的窗格」防的是插件**冒充**别人（注册时身份不由
-自己报、开窗格时 entryId 由闭包绑定），防的不是「经总线请别人打开窗格」——命令总线本就是可信的接口
-（`docs-site.stop` 能杀进程树，开窗格不比它敏感），devkit 转调 `docs-site.create` 已是插件
-互调的先例。插件手里的 `args.shell` 仍然只开得了自己那几个窗格。
+判据是**边界在哪一层**：「插件报不出别人的窗格」防的是插件**冒充**别人（注册时身份不由
+自己报、开窗格时 entryId 由闭包绑定），防的不是「经总线请别人打开窗格」——命令总线本就是可信的接口，
+任何插件都能经它调别的插件的命令（基础界面插件管理窗格调 `plugin-manager.uninstall` 能卸掉插件，开窗格不比它敏感）。
+插件手里的 `args.shell` 仍然只开得了自己那几个窗格。
 
 三条规则与 desktops 那三条相同：**容器在浏览器侧**，node 侧先查注册表（窗格不在表里当场回错，
 不转发一个注定没有效果的动作）、再经内核事件入口把动作转给页面，**回执 ok 只代表转发了**；
@@ -500,8 +521,8 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 多窗口时各页各自执行，与 desktops 那几条相同。
 
 经 `args.shell` 开时来源是自动的，经命令开时来源得调用方自己给：**`from` 是来源窗格的实例 id**（插件手上的
-`pane.instance`），新窗格落在它旁边、开在它那张桌面上；页面上哪张桌面都找不到它，就当没有来源、
-开在当前桌面，console 里一条 warn。`placement` 只认 `'auto'` / `'side'`，别的值当场回错。
+`pane.instance`），新窗格开在它那张桌面上、按目标组规则以它为来源选组；不带 `from`，或页面上哪张桌面都找不到它，
+就当没有来源、开在当前桌面（后一种 console 里一条 warn）。`placement` 只认 `'auto'` / `'side'`，别的值当场回错。
 
 决策经过见轨迹卡[跨插件开窗格走命令面](/trajectory/2026-09-13-open-pane-command)。
 
@@ -520,7 +541,7 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 
 1. 来源与要开的是**同一个窗格定义** → 来源所在的组（笔记里 Ctrl+单击，新标签开在这一列）
 2. 这张桌面上有**最近用过的同类组**（最近被激活、装着这个窗格的实例）→ 那一组（从查询视图里点一条结果，
-   落到最近在用的那一列正文里）
+   开进最近在用的那一列正文里）
 3. 有来源 → 照 `side` 算（从单元树里第一次点开文件，原文开在单元树旁边，不盖住单元树）
 4. 有活动组 → 活动组
 5. 桌面是空的 → 新建一组
@@ -552,7 +573,7 @@ want = options.key ?? ''
 `planOpen` 的输入是**一张桌面的快照**（`Desk`：各组按顺序的标签、活动标签、组的矩形，加这张
 桌面上组的最近激活顺序），由执行侧从那张桌面的容器当场读取；别的桌面开着什么不进快照。唯一跨
 桌面的是实例 id 查重（`uniquePanelId` 问所有容器）——第一份仍然就是基名，第二份起追加 `:2`，
-**序号按全页算**：别的桌面占用的序号不能用。「最近激活顺序」只在运行时记（组被激活、拖放落进
+**序号按全页算**：别的桌面占用的序号不能用。「最近激活顺序」只在运行时记（组被激活、拖放放进
 哪一组都算，在恢复布局之后才开始订阅），不保存到磁盘，整页重载后从空开始。
 
 ### 预览窗格：至多一份，可被替换，开始用就转正
@@ -563,7 +584,7 @@ pin 管的是排序与溢出，跟「别换我的内容」不是一件事。
 | | |
 | --- | --- |
 | 怎么进 | 插件开窗格时 `preview: true`。**每一组里同一个窗格的预览窗格至多一份**：两组可以各有一个，不同窗格的预览窗格同组并存 |
-| 被替换 | 下一次 `preview: true` 打开、落在同一组、内容不同 → **原地换内容**（`retarget`），位置不动、窗格数不变。别的组的预览窗格不碰 |
+| 被替换 | 下一次 `preview: true` 打开、目标组是同一组、内容不同 → **原地换内容**（`retarget`），位置不动、窗格数不变。别的组的预览窗格不碰 |
 | 怎么转正 | 插件调 `shell.keepPane()`、人**双击标签**、标签菜单「保持打开」、以正式方式打开命中它（工具窗格在别的桌面上被正式打开也算）、「在旁边再开一份」它。最后都是同一个动作：把 `preview` 从这一份的 params 上删掉。送到别的桌面时预览不带过去，到那边就是正式的 |
 | 标成什么样 | 标题前面**一个小空心圆点**（边框走 currentColor，带 `aria-label`）。**不用斜体**——中文没有真斜体，浏览器画的伪斜体很难看 |
 | 没有的动作 | **正式窗格变不回预览窗格**。VS Code 也没有 |
@@ -624,7 +645,7 @@ args.shell.setPaneContent({ key: 'lib:b', params: { root: 'b' }, title: '第二�
 「插件手上此刻是哪份参数」，面板 params 换成插件自己报的那份时，那个软换 effect 认得出来、
 什么都不做。预览窗格上报之后仍是预览窗格，转正归插件自己调 `keepPane`。
 
-{/* ref file="../plugins/shell/src/panels.ts" lines="123-139" */}
+{/* ref file="../plugins/shell/src/panels.ts" lines="123-139" hash="c878e7c98a49" blob="b53b97e488c4" */}
 
 上报的 key 跟同一组里另一份相同时，两份都留着、不合并：查重只发生在打开那一刻。上报的形状不对（`key` 不是
 字符串、`params` 不能 JSON 序列化、`title` 不是字符串）时 console 里一条 warn，这次上报不生效。
@@ -706,7 +727,7 @@ orthogonalize 那个分支），放在整个容器的边上、所有组重新分
 基准组在一列里时 dockview 把它包进新分支，还会少掉一份组间缝的高度，分完用 `splitHeightFix` 算出的高补回去。
 测量方法与数值见[遇到过的问题](/docs/walls)：
 
-{/* ref file="../plugins/shell/src/client/open.ts" lines="256-271" */}
+{/* ref file="../plugins/shell/src/client/open.ts" lines="285-297" hash="fd5aaed4e3cb" blob="c3574996f7de" */}
 
 **软换是 `api.updateParameters`，而它是合并、不是替换**：dockview 那头做的是 `{ …旧, …新 }`，
 只有值写成 `undefined` 的键才删（8.2.0 的 `DockviewPanel.update`）。所以换内容前要拿
@@ -732,18 +753,19 @@ orthogonalize 那个分支），放在整个容器的边上、所有组重新分
 | --- | --- |
 | **桌面**（切换器） | 这一项上写当前桌面的名字；点开是[「桌面」面板](#桌面面板所有桌面与上面的窗格)：所有桌面与上面的窗格，点桌面切过去、点窗格激活，右键桌面名改名、删除钮先确认，拖窗格就送到别的桌面，最下面「新建桌面…」（这一行变内联输入框，Enter 或点到别处就新建并切过去、Esc 取消，空名由外壳用「桌面 N」补上，**新建的那张为空**——窗格由人自己开）。容器常驻保活，切走的那张原样保持运行 |
 | **布局** | 已存布局清单：点哪条就把哪条恢复到**活动那个容器**上、行尾 ✕ 删哪条；「把当前布局另存为…」（这一行变内联输入框，Enter 保存、Esc 取消、**同名覆盖**）；「重置布局（当前桌面回到默认布局）」：关掉当前桌面的窗格、按默认布局重新打开 |
-| **＋ 新建**（启动器） | 点开时**当场取**注册表与插件名表，按插件分组列出全部窗格；文档窗格选了就在当前桌面的活动组开一份新的；工具窗格全页一份——当前桌面开着就激活，开在别的桌面就**切过去**激活，哪儿都没有就开进活动组。**每一行行尾写点下去会怎样**：「＋」开一份新的，「→ 当前桌面」「→ 桌面 X」去已开的那份（那几行左边一道色条）。**选了之后菜单不关**，当场重新读取清单，点外面或 Esc 才关 |
+| **＋ 新建**（启动器） | 点开时**当场取**注册表与插件名表，按插件分组列出全部窗格；注册表读不出来时菜单里写「读不出注册表：原因」，跟「还没有插件注册窗格」分开（插件名表读不出来只让组名显示成包名，页面控制台一条 error）；文档窗格选了就在当前桌面的活动组开一份新的；工具窗格全页一份——当前桌面开着就激活，开在别的桌面就**切过去**激活，哪儿都没有就开进活动组。**每一行行尾写点下去会怎样**：「＋」开一份新的，「→ 当前桌面」「→ 桌面 X」去已开的那份（那几行左边一道色条）。**选了之后菜单不关**，当场重新读取清单，点外面或 Esc 才关 |
 | **环境**（home · 版本） | 一项显示两样，都只读：home 目录的最后一段（一眼看出自己在哪个 home 里，开测试 home 时不用翻日志）与 `gwb-kernel <内核版>`；悬停列 home 全路径与内核、外壳、Electron · Node、Chromium |
 | **刷新** | `location.reload()` 重新加载整个页面——重新读取注册表、按布局文件恢复布局，主进程不重启。页面「boot 之后注册表就旧了」的手动解决办法 |
 | **亮暗** | 切 `html.dark`，令牌整套跟着换 |
 | （告警）**布局保存失败** | 只在保存失败时出现，点一下立刻重试 |
+| （告警）**布局没读回来，不保存** | 只在布局读不回来时出现，悬停写着原因；点一下弹确认框，确认后用当前布局覆盖磁盘上的文件、恢复自动保存（见[布局读不回来时停止保存](#布局读不回来时停止保存)） |
 | （提示）**… · 切过去** | 显示 10 秒，点一下切到那张桌面：送到别的桌面、没跟过去时写「已送到『X』」；插件或命令开的工具窗格在别的桌面上时写「『插件管理』在『X』」（经桌面操作的 `notify`） |
 
 **版本各自问出处**：内核版取 `gwbKernel.version`——内核读自己包清单报的，外壳不自己调 `app.getVersion()` 去猜（从源码启动内核时那是别的包的清单）。安装包版本不显示：内核不报它（判据见轨迹卡[状态栏不再显示安装包版本](/trajectory/2026-09-25-statusbar-drop-launcher)）。外壳版读本包清单；
 Electron / Node / Chromium 是主进程的 `process.versions`。这几样在 node 侧回应 `shell.env` 时拼好，
 浏览器侧只负责显示：
 
-{/* ref file="../plugins/shell/src/versions.ts" */}
+{/* ref file="../plugins/shell/src/versions.ts" hash="6e2f4435353e" blob="4a71e4a04777" */}
 
 **刷新是整页 reload，不是外壳内部重建**：渲染层那条 boot 流程（onShell 收外壳地址 →
 bootShell → 取注册表 → 取布局文件 → 恢复）原样重新执行一遍；内核那部分与页面加载无关（IPC
@@ -757,7 +779,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重新执行�
 仍是旧的 client.js，浏览器已经 import 过的模块不会重新加载，只有整页重载能让页面重新 import 到新东西。
 经页面调它时，页面在回执送回之前就开始重新加载，调用方收不到回执。
 
-{/* ref file="../plugins/shell/src/reload.ts" */}
+{/* ref file="../plugins/shell/src/reload.ts" hash="dd4f07b27b83" blob="a62b7924ba69" */}
 
 插件运行在 Electron **主进程**里，`import('electron')` 拿得到 `BrowserWindow`——开窗、重载全归插件，
 内核一样都不替插件做。三处要注意：
@@ -773,13 +795,13 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重新执行�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 注册命令那一侧把「拿不到 electron」也转成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="238-258" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="240-260" hash="0fd6a8124ed7" blob="247cd11bdbae" */}
 
 **启动与切换分开**（判据见轨迹卡[启动器与切换器分开](/trajectory/2026-09-19-launcher-switcher)）：
 「新建」只管开一个新的，「桌面」面板只管切到已开的。一个列表同时干两件事，对文档窗格就说不清点下去
 是开新的还是切过去。
 
-**启动器的判断是 `planLaunch`**（跟 `planOpen` 同住 `openable.ts`）：落点是**活动组**、不走
+**启动器的判断是 `planLaunch`**（跟 `planOpen` 同在 `openable.ts`）：目标组是**活动组**、不走
 「最近用过的同类组」；文档窗格不查重（key 空串、不带参数，插件画它的默认内容）；工具窗格当前桌面
 已有（空 key）就激活、别的桌面上有就 `reveal`（启动器是人点的，切过去），是预览就顺带转正。
 **行尾那句问的就是 `planLaunch` 自己**（`launchGoesTo`：点下去会走成激活当前桌面那份——「→ 当前桌面」、到别的
@@ -796,7 +818,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重新执行�
 
 ### 「桌面」面板：所有桌面与上面的窗格
 
-切换器与桌面清单是**同一个面板**（判据见轨迹卡[桌面面板](/trajectory/2026-09-19-desk-panel)）：面板里只摆
+切换器与桌面清单是**同一个面板**（判据见轨迹卡[桌面面板](/trajectory/2026-09-19-desk-panel)）：面板里只列
 桌面与各桌面上的窗格，照桌面本来的顺序（`desktopSections`，当前那张标「当前」，不提到最前），行内
 没有关闭、送到、拉到本桌这些钮——关窗格在标签上，送到与拉到本桌是拖拽：
 
@@ -827,7 +849,7 @@ radix 的弹出面板缺省还有一条「焦点移出去就关」：切桌面�
 别的桌面没切去过就没有容器）；点开时读一次，开着的时候桌面清单变了、或外壳又保存了一次
 （`panesTick`，别处开关了窗格都会保存）就重新读取——最多慢一个防抖窗口。两条路出同一个形状：
 
-{/* ref file="../plugins/shell/src/pane-list.ts" lines="3-20" */}
+{/* ref file="../plugins/shell/src/pane-list.ts" lines="3-20" hash="94265b69deda" blob="0908ebdcc5e5" */}
 
 点没挂载过的桌面上的窗格：先切过去（同时挂载），挂载完成再激活；送到没挂载过的桌面也是先在后台挂载。「挂载」
 由 App 的 `ensureMounted` 做——加入已挂载清单、等 `onReady` 回调，**挂载容器不等于切过去**；它连同切桌面
@@ -888,9 +910,10 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
 前缀），而且 portal 元素可能挂载在 `body` 下——包进 `:where(…)` 一条都匹配不上。前者的前缀隔离则
 **跟 DOM 位置无关**，所以状态栏那两个 portal 到 `body` 的菜单照样有样式。
 
-产物测试把两张表的两套规矩分开检查：
+两张表由两处分别检查：`style.css` 由 devkit 的样式检查查（`devkit.dev` 构建之后、`devkit.release` 发之前，
+类选择器都带 `shell:` 前缀、没有 `data-gwb-plugin`）；`dockview.css` 不带前缀，devkit 不查它，由本包的产物测试查：
 
-{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="127-139" */}
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="63-69" hash="dbcdbf535d11" blob="6c7a23225add" */}
 
 `data-gwb-plugin` 出现在**任何一张**表里都算失败——那说明构建又改回了选择器限定范围（scope）的做法，
 而症状（状态栏菜单没有样式）得开菜单才看得见，构建照样通过。
@@ -903,7 +926,7 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
 
 插件那个窗格的容器上因此只有两样东西，一样与前缀隔离无关，一样只是个标记：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="198-202" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="199-203" hash="2d5c3946560f" blob="914c83ed9b10" */}
 
 - **`@container` 让这个窗格成为容器查询的根。** **窗格不是视口**——插件里写的 `@sm:` / `@md:`
   这类变体按**这个窗格现在有多宽**判，跟整窗大小无关。同一个插件在窄窗格里竖排、在宽窗格里横排，
@@ -916,7 +939,7 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
   「样式生效的前提」去写代码。值是挂载时当场取到的注册表里的包名，不取面板 params 里的 `pluginKey`：
   那份是开窗格时存进布局文件的，包改名之后条目 id 不变、窗格照样挂载，它却一直是旧名：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="126-128" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="126-128" hash="a8e29490c4a2" blob="51c267540671" */}
 
 ### 它的 18 套主题一套都不用
 
@@ -956,7 +979,7 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
 透明与继承——它只认这四种静态组合，表达不了悬停，让它画一半只会跟 `GwbTab` 冲突。dockview 基础规则里
 标签的 `padding` 是字面值不是变量，所以主题表单独把它归零。
 
-拖放落点的底色用中性灰（`--foreground` 混 12%），不用强调色：强调色会让「放到这里」看起来像「这个组
+拖放目标区域的底色用中性灰（`--foreground` 混 12%），不用强调色：强调色会让「放到这里」看起来像「这个组
 被选中了」。浮动组不画外框，因为里面的组已经有自己的 1px 描边。
 
 滚动条的样式也写在这张表里，而这张表不限定选择器范围，所以对整页生效，插件里的滚动容器也用这一套：
@@ -1027,4 +1050,4 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
    窗格里显示一句报错。检查放在注册这一步，是因为每个插件的窗格都要经过它，理由见轨迹卡
    [窗格地址在注册时检查](/trajectory/2026-09-24-pane-address-check-at-register)
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="58-76" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="58-76" hash="dd23cb084578" blob="dc10ab495563" */}

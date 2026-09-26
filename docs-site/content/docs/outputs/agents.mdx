@@ -5,7 +5,7 @@ description: 仓根 AGENTS.md 的正本——render 生成到仓根，只写仓�
 
 # gwb-ui-plugins
 
-**本页回答**：在这个仓干活的 agent 先看什么、怎么跑、门禁是哪几条、什么碰不得。
+**本页回答**：在这个仓干活的 agent 先看什么、怎么跑、提交前要过哪几项检查、什么碰不得。
 
 ## 这个仓是什么
 
@@ -22,7 +22,7 @@ description: 仓根 AGENTS.md 的正本——render 生成到仓根，只写仓�
 ## 依赖现状
 
 * **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、日志、插件管理）写 `^<源上 latest>`，
-  同仓的（shell / theme / baseui 之间）写 `workspace:^`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
+  同仓的（shell / theme / baseui 之间）写 `workspace:*`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
   不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
 * **只按命令名调用的插件不写 peer**：不用它的服务、也不 import 它的类型，只经命令总线按名字调它的命令（命令不在就回执说明）——如 baseui 调 `settings.*`、shell 调 `theme.startupCss`
 * 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见 [插件之间怎么连](docs-site/content/docs/wiring.mdx)
@@ -37,24 +37,29 @@ description: 仓根 AGENTS.md 的正本——render 生成到仓根，只写仓�
 ## 先读
 
 `docs-site/content/docs/`：[系统地图](docs-site/content/docs/system-map.mdx) → 要改的那块的页 →
-[术语表](docs-site/content/docs/glossary.mdx)。在途的活在 `docs-site/content/spec/`。写插件、在隔离 home
-里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，写文档读 skill「docfirst-docs」
-（随插件 `@godcreator/gwb-docfirst-workflow` 发布）。
+[术语表](docs-site/content/docs/glossary.mdx)。在途的活在 `docs-site/content/future/spec/`，别的仓投来的反馈在
+`docs-site/content/future/inbox/`。写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，
+写文档、分区、钉码怎么确认读 skill「docfirst-docs」（随插件 `@godcreator/gwb-docfirst-workflow` 发布）。
 
 ## 怎么跑
 
 ```bash
 pnpm install
+pnpm build        # 只构建 plugins/* 下的三个插件
 pnpm check        # typecheck + lint + test
 ```
 
-下游 UI 接入规范随 shell 的 `gwb-shell` skill 发布；正本是 `content/outputs/skills/gwb-shell.mdx`，
+文档站是独立的 pnpm 工程，不在仓根 workspace 里：第一次先在 `docs-site/` 里 `pnpm install`。文档检查在站目录
+`pnpm doc`，重新生成生成物 `pnpm doc:render`（仓根的同名脚本就是 `pnpm --dir docs-site run …`）。
+
+下游 UI 接入规范随 shell 的 `gwb-shell` skill 发布；正本是 `docs-site/content/docs/outputs/skills/gwb-shell.mdx`，
 由本站 render 到 `plugins/shell/skills/`。改接入要求时同步检查 devkit 模板。
 
-## 门禁
+## 提交前的检查
 
-提交前都要绿：`pnpm check`；文档检查单独 `cd docs-site && pnpm doc`。
+都要绿：仓根 `pnpm check`；站目录 `pnpm doc`。改了被钉的代码，同一个提交里在站目录 `pnpm doc:confirm`，
+剩下的黄灯逐条复核后 `pnpm doc:confirm <页…> --accept`。
 
-## 红线
+## 不能做的事
 
-* 这份 AGENTS.md 是生成物，正本是 `docs-site/content/outputs/agents.mdx`，改那边
+* 这份 AGENTS.md 是生成物，正本是 `docs-site/content/docs/outputs/agents.mdx`，改那边

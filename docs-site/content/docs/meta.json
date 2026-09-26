@@ -8,6 +8,7 @@
     "shell",
     "styles",
     "tokens",
-    "walls"
+    "walls",
+    "outputs"
   ]
 }

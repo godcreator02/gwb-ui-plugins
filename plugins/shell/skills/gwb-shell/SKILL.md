@@ -8,17 +8,16 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 **本页回答**：带界面的插件怎样接进外壳的窗格、组件、令牌与浮层，做完怎样验收。
 
 建仓、改完装进测试 home 查看（`devkit.dev`）、测试 home 与发版读 `skill.read {"name":"gwb-devkit"}`。下面各节从
-`devkit.scaffold` 生成的插件出发：它已带一个窗格、样式入口 `src/client/styles.css`、前缀测试与产物测试。
+`devkit.scaffold` 生成的插件出发：它已带一个窗格和样式入口 `src/client/styles.css`。
 
 ## 给插件加一个窗格
 
 1. node 侧 `inject` 写上 `'gwbShell'`，在 `apply` 里调 `ctx.gwbShell.registerPane({ id, title, icon, kind, client, style })`：
-
-   * `id` 非空、不含 `:`，本插件内唯一
-   * `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`。
+   - `id` 非空、不含 `:`，本插件内唯一；`title` 非空。不满足的 `registerPane` 当场抛错
+   - `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`。
      给了就必须是 `file://` 地址、路径分别以 `.js` / `.css` 结尾，否则 `registerPane` 当场抛错
-   * `icon` 写 lucide 图标页上的名字，kebab-case，如 `layout-grid`；认不出的名字照样注册，标签上显示 `#`
-   * `kind` 写 `'tool'`（缺省）或 `'document'`：工具窗格整页至多一份，打开就是显示它；文档窗格每份装一个内容，可以开多份（见下一节）
+   - `icon` 写 lucide 图标页上的名字，kebab-case，如 `layout-grid`；认不出的名字照样注册，标签上显示 `#`
+   - `kind` 写 `'tool'`（缺省）或 `'document'`：工具窗格整页至多一份，打开就是显示它；文档窗格每份装一个内容，可以开多份（见下一节）
 
    外壳在本插件卸载时自动注销这个窗格；返回的注销函数只在要提前注销时调。
 2. 调 `ctx.gwbShell.describeSelf({ title, icon })` 报插件的显示名，状态栏「新建」按它给窗格分组。
@@ -32,34 +31,40 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
    在 `container` 里 `createRoot` 渲染；返回的 `dispose` 依次停掉订阅与定时器、同步 `root.unmount()`、清空 `container`。
    这些类型不在自己代码里手写，也不用 `as` 转成它们；peer 里外壳的版本要带 `./pane` 子路径（外壳 `package.json` 的 `exports` 里有它）。
-4. 窗格里有轮询、动画或媒体时，用 `args.shell.onVisibility((visible) => …)` 在 `false` 时暂停、`true` 时恢复。
+4. 运行时要改这个窗格标签上的标题，调 `args.shell.setPaneTitle(title)`；初始标题是 `registerPane` 的 `title`。
+5. 窗格里有轮询、动画或媒体时，用 `args.shell.onVisibility((visible) => …)` 在 `false` 时暂停、`true` 时恢复。
    它注册时先回一次当前值；返回的注销函数在 `dispose` 里调。桌面切走后窗格不卸载，业务状态照常保留。
-5. 把这一版装进隔离 home：`devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}`
+6. 把这一版装进隔离 home：`devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}`
    （`packages` 必给，相对仓根的插件包目录）。
 
-**完成**：`devkit.cdp {"args":["<home 名>","cmd","shell.panes"]}` 的回执里有这个窗格，`entryId` 是本插件的条目、
-`kind` 是你写的那一类；`gwb.log` 有一行「窗格 `<id>`（…）登记上了（`<包名>`）」，没有点名这个窗格的 warn；
+**完成**：`devkit.dev` 回执 `ok: true`；`devkit.cdp {"args":["<home 名>","cmd","shell.panes"]}` 的回执里有这个窗格，
+`entryId` 是本插件的条目、`kind` 是你写的那一类；`gwb.log` 有一行「窗格 `<id>`（…）登记上了（`<包名>`）」，没有点名这个窗格的 warn；
 从状态栏「新建」打开它，窗格里显示出内容。
 
 ## 做能多开的文档窗格
 
 1. 注册时写 `kind: 'document'`。
-2. 打开一份：`args.shell.openPane(paneId, { key, params, preview, placement })`。新窗格落在调用它的这个窗格旁边、
-   开在它那张桌面上，不切桌面。`key` 是这份内容的身份，落点那一组里已开着同一 `key` 的就激活那一份，别的组、
-   别的桌面开着的不算；`params` 原样交给那一份的 `mountPane`（`args.pane.params`），并随布局保存；
-   `preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容；`placement: 'side'` 开到旁边的一组。
-   打开别的插件的窗格用命令 `shell.openPane`，带上 `from`（自己的 `args.pane.instance`）新窗格才落在自己旁边
-   （参数见 `search {"plugin":"@godcreator/gwb-shell"}`）。
+2. 打开一份：`args.shell.openPane(paneId, { key, params, preview, placement })`。新窗格开在调用它的这个窗格所在的桌面上，
+   不切桌面。开进哪一组，按顺序取第一条成立的：
+   - 调用它的就是同一个窗格（同一插件、同一窗格 id）：开进调用方自己那一组
+   - 这张桌面上有已开着这个窗格的组：开进其中最近激活过的那一组
+   - 调用方右边紧挨着有一组：开进那一组；右边没有，就把调用方那一组对半分出一组新的
+
+   `placement: 'side'` 跳过前两条，直接按第三条开到调用方右边。`key` 是这份内容的身份，目标组里已开着同一 `key`
+   的就激活那一份，别的组、别的桌面开着的不算；`params` 原样交给那一份的 `mountPane`（`args.pane.params`），
+   并随布局保存；`preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容。
+   打开别的插件的窗格用命令 `shell.openPane`，带上 `from`（自己的 `args.pane.instance`）才按上面的规则算；
+   不带 `from` 时，没有已开着这个窗格的组就开进活动组（参数见 `search {"plugin":"@godcreator/gwb-shell"}`）。
 3. 需要在换内容时保住滚动位置、输入到一半的字，就在句柄上加 `retarget(params)`：外壳换了这一份的 `params`
    后调它；句柄上没有 `retarget` 时，外壳卸载后重新挂载这一份。
 4. 用户在窗格里原地换了内容（点链接跳转、后退）后，调 `args.shell.setPaneContent({ key, params, title })` 上报。
 5. 用户开始编辑预览窗格时调 `args.shell.keepPane()`，把它变成正式窗格。
 6. 窗格里的链接按统一的手势打开，同一个手势在所有插件里意思一样：
-   * 在同类文档窗格里单击：本窗格原地换内容，换完调 `setPaneContent`
-   * 在别的窗格里单击：`openPane(…, { preview: true })`
-   * Ctrl / ⌘ + 单击或中键：`openPane(…)`，不要预览，开一个新标签并激活它
-   * Ctrl / ⌘ + Alt / ⌥ + 单击：`openPane(…, { placement: 'side' })`
-   * 悬停或点记号弹出的浮动卡片预览由插件自己画，不开窗格
+   - 在同类文档窗格里单击：本窗格原地换内容，换完调 `setPaneContent`
+   - 在别的窗格里单击：`openPane(…, { preview: true })`
+   - Ctrl / ⌘ + 单击或中键：`openPane(…)`，不要预览，开一个新标签并激活它
+   - Ctrl / ⌘ + Alt / ⌥ + 单击：`openPane(…, { placement: 'side' })`
+   - 悬停或点记号弹出的浮动卡片预览由插件自己画，不开窗格
 
 **完成**：两个不同 `key` 开出两份，各自拿到自己的 `params`；从同一个窗格再打开同一 `key` 是激活已开的那份；
 `shell.pane.list` 回执里每份的 `key` 是最后上报的那个；`shell.reload` 整页重载后每份的内容还在。
@@ -69,10 +74,9 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 1. 包根写 `components.json`（形状见下文「参考」），`tailwind.prefix` 填本插件的 CSS 前缀，即样式入口第一行
    `prefix(…)` 里那个。
 2. 配 `@/` 别名，三处都指向 `src/client`：
-
-   * 包根 `tsconfig.json`：`"paths": { "@/*": ["./src/client/*"] }`（shadcn CLI 按它决定组件放在哪）
-   * `src/client/tsconfig.json`：`"paths": { "@/*": ["./*"] }`（类型检查）
-   * `build.ts` 的 esbuild 选项：`alias: { '@': path.join(here, 'src', 'client') }`（打包）
+   - 包根 `tsconfig.json`：`"paths": { "@/*": ["./src/client/*"] }`（shadcn CLI 按它决定组件放在哪）
+   - `src/client/tsconfig.json`：`"paths": { "@/*": ["./*"] }`（类型检查）
+   - `build.ts` 的 esbuild 选项：`alias: { '@': path.join(here, 'src', 'client') }`（打包）
 
    只写 `paths`，TS 7 已移除 `baseUrl`。
 3. 在包目录运行 `shadcn add <组件…>` 从官方源添加组件。
@@ -81,8 +85,8 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 5. 按钮、输入、选择、菜单、弹窗用添加进来的官方组件，保留它们的默认状态与键盘交互，尺寸从已有的
    variant 里选。业务特有的界面可以自己写，工具栏、设置表单、提示这些公共部分照常用语义类。
 
-**完成**：组件文件在 `src/client/components/ui/` 下（包根下没有一个名字就叫 `@` 的目录）；组件里的类名都带
-本插件前缀；`pnpm check` 全绿。
+**完成**：组件文件在 `src/client/components/ui/` 下（包根下没有一个名字就叫 `@` 的目录）；`pnpm check` 全绿；
+`devkit.dev` 回执 `ok: true`。
 
 ## 用令牌配颜色与布局
 
@@ -90,20 +94,21 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 2. 每个类名都带前缀，前缀排在所有变体前面：`demo:hover:bg-accent`、`demo:@sm:flex-row`。`group` / `peer`
    这类标记类同样带前缀，两头一起写：`demo:group` 配 `demo:group-hover:…`。
 3. 颜色按用途选：
-   * 跨插件、随主题变的（背景、前景、主色、选中、警告、危险）：语义类，如 `bg-background`、`text-foreground`、
+   - 跨插件、随主题变的（背景、前景、主色、选中、警告、危险）：语义类，如 `bg-background`、`text-foreground`、
      `bg-primary`、`text-muted-foreground`、`text-destructive`、`text-warning`。可用的名字与刻度以
      `@godcreator/gwb-shell/theme.reference.css` 为准
-   * 只有本插件有、多处用到的视觉概念：写进 `src/client/tokens.css`——变量名带插件前缀、声明在 `:root`、
+   - 只有本插件有、多处用到的视觉概念：写进 `src/client/tokens.css`——变量名带插件前缀、声明在 `:root`、
      值优先派生全局令牌（如 `var(--accent)`），暗色覆盖写在 `.dark` 下；样式入口 import 它，末尾用
      `@theme inline { --color-<名>: var(--<变量>) }` 映射成本插件的工具类
-   * 只用一次、不随主题变的装饰：任意值，如 `demo:bg-[#abc]`
+   - 只用一次、不随主题变的装饰：任意值，如 `demo:bg-[#abc]`
 4. 按窗格宽度排版：窗格容器是容器查询的根，响应式用 `demo:@sm:`、`demo:@md:` 这类容器变体；官方组件里的
    视口断点（`sm:`、`md:`）要跟窗格宽度走的，改成容器变体。
 5. 需要一个跨插件共用、映射文件 `theme.reference.css` 里又没有的语义时，先找现有语义；确实要新增，就提给外壳的令牌表（UI 平台仓
    `gwb-ui-plugins` 的 `plugins/shell/src/tokens/`），外壳发版后把 peer 里外壳的下限升到带这个令牌的版本。
 
-**完成**：`pnpm build` 后 `pnpm check`，前缀测试通过，产物测试里「类选择器都带前缀」「`var()` 的 fallback
-里没有写死的值」两条通过（不是跳过）。
+**完成**：`devkit.dev` 回执 `ok: true`。它在构建之后跑样式检查：类选择器带前缀、前缀排在变体前面、没有
+`data-gwb-plugin`、`var()` 不写死 fallback、颜色类只用令牌、`.tsx` 里没有漏前缀；有一条没过就回 `ok: false`、
+逐条写明怎么改，不装进 home。
 
 ## 写浮层（弹窗、菜单、下拉、提示）
 
@@ -123,21 +128,19 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 ## 视觉验收
 
-1. `pnpm build`，再 `pnpm check`：产物测试与前缀测试检查的是这次构建出的 `dist/`。
-2. 颜色类白名单由 devkit 建仓模板的产物测试自带（`tests/artifact.test.ts` 里「颜色类只在白名单内」那一条）：
-   白名单在测试时读取外壳 `theme.reference.css` 与本插件样式入口里的 `--color-*`。
-3. `devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}` 把这一版装进隔离 home，回执 `ok: true`。
-4. 用 `devkit.cdp` 在那个 home 里逐项操作并截图（先点窗格标签再截图、量颜色前关掉过渡，做法见
+1. `devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}` 把这一版装进隔离 home，回执 `ok: true`
+   （样式检查在这一步跑，见上一节的完成判据）。
+2. 用 `devkit.cdp` 在那个 home 里逐项操作并截图（先点窗格标签再截图、量颜色前关掉过渡，做法见
    `skill.read {"name":"gwb-devkit","file":"references/evidence.md"}`）：
-   * 亮、暗两套主题（状态栏的亮暗按钮）
-   * 拖动分隔条把窗格拉窄、拉宽，布局跟着窗格宽度变
-   * 控件的 hover、focus、disabled、error 状态，以及只用键盘操作
-   * 打开每一种浮层后切桌面
-   * 关掉窗格再打开；文档窗格开两份，互不影响
-5. 读 `gwb.log` 这次新增的部分。
+   - 亮、暗两套主题（状态栏的亮暗按钮）
+   - 拖动分隔条把窗格拉窄、拉宽，布局跟着窗格宽度变
+   - 控件的 hover、focus、disabled、error 状态，以及只用键盘操作
+   - 打开每一种浮层后切桌面
+   - 关掉窗格再打开；文档窗格开两份，互不影响
+3. 读 `gwb.log` 这次新增的部分。
 
-**完成**：每一项都有截图，截图里文字与背景对比清楚、控件都有样式、浮层只出现在它所在的桌面上；前缀测试、
-产物测试、颜色类白名单都跑了且通过；`gwb.log` 新增部分没有 error，也没有「body 上还挂着」的 warn。
+**完成**：`devkit.dev` 回执 `ok: true`；每一项都有截图，截图里文字与背景对比清楚、控件都有样式、浮层只出现在
+它所在的桌面上；`gwb.log` 新增部分没有 error，也没有「body 上还挂着」的 warn。
 
 ## 参考
 
@@ -178,22 +181,32 @@ description: 写 gwb 插件的窗格、接 shadcn 组件、用主题令牌配颜
 
 约定与容易出错的地方：
 
-* 五行少了任何一行，对应的那批类都编不出规则，构建照样通过：少了映射文件，颜色类全空；少了 `tw-animate-css`，
+- 五行少了任何一行，对应的那批类都编不出规则，构建照样通过：少了映射文件，颜色类全空；少了 `tw-animate-css`，
   官方组件的 `animate-in` 一族全空
-* 插件的样式表只含本插件的工具类与本插件前缀的变量；页面的令牌值、preflight 与层顺序由外壳加载
-* 映射文件里没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
-* CSS 前缀只含小写字母，`devkit.scaffold` 从插件短名去掉其他字符得到
-* 漏写前缀不报错、构建照样通过；前缀测试查得出漏写前缀的工具类，查不出 `group` / `peer` 标记类
-* 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的文件头注释重新核对键名
-* 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
-* `params` 必须能 JSON 序列化；`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview` 是外壳的保留键，
+- 插件的样式表只含本插件的工具类与本插件前缀的变量；页面的令牌值、preflight 与层顺序由外壳加载
+- 映射文件里没有的尺寸写任意值（`demo:w-[37px]`），产物里的 `var()` 保持没有字面 fallback
+- CSS 前缀只含小写字母，`devkit.scaffold` 从插件短名去掉其他字符得到
+- 样式入口必须是 `src/` 下唯一一个写了 `prefix(…)` 的 css（注释里的不算），而且只写这一处；再有一个 css 写了
+  `prefix(…)`，样式检查认不出哪个是入口，直接算没过
+- 样式检查读包目录 `node_modules` 里装的外壳取色名：peer 里写了外壳却没在仓根 `pnpm install`，也算没过
+- 源码检查只扫样式入口所在目录（含子目录）下的 `.tsx`，而且扫的是**全部**字符串字面量，不只是 `className`：
+  按空白切开后，任何一段只要跟工具类同名（`font-sans`、`hidden`、`flex` 这类），就被当成漏了前缀的类名报出来；
+  以前缀加冒号开头、却编不出规则的字符串也报。不是类名的字符串（设置键名、命令参数）挪进 `.ts` 文件
+- 反过来，`.ts` 文件、样式入口目录以外的文件、模板串 `${…}` 插值里拼出来的类名都不查，漏了前缀不报错，只是页面上那一处没样式；
+  带前缀的 `group` / `peer` 标记类不编规则，也不在检查范围内，两头要自己核对
+- 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的文件头注释重新核对键名
+- 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
+- 外部网页链接要在系统浏览器里打开，写 `<a href="https://…" target="_blank">` 或调 `window.open`（内核 0.6.2 起
+  这两种的 http、https 地址交给系统默认浏览器）。不带 `target` 的普通 `<a href>` 点击是整个页面的跳转，内核一律拒绝，
+  点了没有任何反应，只在 `gwb.log` 里多一行 warn
+- `params` 必须能 JSON 序列化；`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview` 是外壳的保留键，
   插件传了会被去掉并在页面控制台 warn
-* `openPane`、`shell.openPane` 都不切桌面；命令回执 `ok` 表示已转交页面执行，结果用 `shell.pane.list` 查
-* `args.shell.bus` 的消息按条目分发，同一条目在各桌面上的窗格都收得到；监听的注销函数在 `dispose` 里调
-* 浏览器侧调命令用 `args.host.call(name, args)`
-* `mountPane` 用到的类型都从 `@godcreator/gwb-shell/pane` `import type`：`PaneArgs`、`PaneHandle`、`ShellBridge`、
+- `openPane`、`shell.openPane` 都不切桌面；命令回执 `ok` 表示已转交页面执行，结果用 `shell.pane.list` 查
+- `args.shell.bus` 的消息按条目分发，同一条目在各桌面上的窗格都收得到；监听的注销函数在 `dispose` 里调
+- 浏览器侧调命令用 `args.host.call(name, args)`
+- `mountPane` 用到的类型都从 `@godcreator/gwb-shell/pane` `import type`：`PaneArgs`、`PaneHandle`、`ShellBridge`、
   `HostBridge`，以及 `OpenPaneOptions`、`Placement`、`PaneKind`、`PaneContent`。这个子路径只有类型，按值 import 在构建时报错
-* 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-kernel-desktop'`（内核包的包根一加载就启动 Electron 应用，只能写 `import type`）
+- 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-kernel-desktop'`（内核包的包根一加载就启动 Electron 应用，只能写 `import type`）
 
 ## 规矩
 

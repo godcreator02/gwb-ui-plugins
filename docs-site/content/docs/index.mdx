@@ -7,7 +7,7 @@ description: 这个仓是什么、工作台的页面怎么搭起来、从哪一�
 
 **本页回答**：`gwb-ui-plugins` 是什么、工作台的页面怎么搭起来、从哪一页开始读。
 
-怎么走到今天去 [轨迹](/trajectory)，在途的活在 [交接](/spec)。
+怎么走到今天去 [轨迹](/trajectory)；还没发生的事、在途的方案与别的仓投来的反馈在 [未来](/future/overview)。
 
 ## 是什么
 
@@ -21,13 +21,13 @@ gwb 工作台的 UI 平台：三个插件放在一个仓里，要换就整套换
 
 外壳的 node 侧把自己的浏览器侧入口 `client.js` 报给内核，接管页面根，插件卸载时页面根自动交还：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="160-165" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="162-167" hash="310d87e70645" blob="247cd11bdbae" */}
 
 别的插件在 `apply` 里调 `ctx.gwbShell.registerPane` 登记窗格、交出浏览器侧入口与样式表两个地址，外壳的
 浏览器侧按注册表在窗格容器里打开它们。基础界面的必需依赖只有外壳，日志、插件管理两个服务各用一次局部注入：
 装了哪个 core 插件，就注册哪个窗格。
 
-{/* ref file="../plugins/baseui/src/index.ts" lines="34-40" */}
+{/* ref file="../plugins/baseui/src/index.ts" lines="34-40" hash="71715ecf489b" blob="595241769235" */}
 
 ## 按来意怎么读
 
@@ -39,4 +39,4 @@ gwb 工作台的 UI 平台：三个插件放在一个仓里，要换就整套换
 | 要改样式隔离、react 从哪来、外观与基础界面的依赖 | [样式与组件](/docs/styles) |
 | 要加令牌、改颜色 | [令牌与颜色](/docs/tokens) |
 | 碰到怪现象，先查有没有人遇到过 | [遇到过的问题](/docs/walls) |
-| 给别的插件写界面 | 说明书 `gwb-shell`（正本 `content/outputs/skills/gwb-shell.mdx`） |
+| 给别的插件写界面 | 说明书 `gwb-shell`（正本 [生成正本](/docs/outputs/skills/gwb-shell) 那一页，`content/docs/outputs/skills/gwb-shell.mdx`） |

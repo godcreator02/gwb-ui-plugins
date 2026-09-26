@@ -1,0 +1,35 @@
+---
+born-at: 2026-09-26T09:26
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 外置名单读内核页面入口
+domain: shell
+---
+
+## 背景
+
+跟内核 0.6 时（[外壳跟内核 0.6](2026-09-25-shell-follow-kernel-06.md)），外壳 `build.ts` 的浏览器侧外置名单写死 react 的四个包名，
+baseui 的 `build.ts` 也写死同样四个（`PAGE_IMPORTMAP_NAMES`），与内核页面入口里那张 importmap 靠人对齐。
+同一天生命周期插件仓的 devkit 选了另一条路：发版前检查与模板的 `build.ts` 都从装好的内核包页面入口 `dist/index.html`
+读那段 importmap 的键（那个仓的轨迹卡 `2026-09-25-importmap-names-from-page-entry`）。本仓的三个插件照 devkit 现行模板对齐包结构时，要在两条路里选一条。
+
+supersedes:: [外壳跟内核 0.6](2026-09-25-shell-follow-kernel-06.md)
+
+## 结论与边界
+
+- 外壳、外观、基础界面三个插件的 `build.ts` 都照模板从内核包的 `dist/index.html` 读 `<script type="importmap">` 的 `imports` 键当浏览器侧外置名单：经内核包的 `./package.json` 出口找到包目录，读不到这段 importmap 或里面没有 `imports` 就报错、不构建，不退回手写名单
+- 外壳产物测试里「浏览器侧只许 importmap 里的名字」那条删掉，改由 `devkit.release` 的发版前检查查（它读的是同一个文件）
+- 外壳跟内核 0.6 那张卡里 peer 写 `^0.6.1`、文档改成「importmap 写死在页面入口里」这两条不受影响，这里只推翻「外置名单写死四个名字」
+
+## 否掉的候选
+
+- **维持写死四个名字**：名单在内核的页面入口一份、本仓每个插件的 `build.ts` 各一份，内核往 importmap 里加或去一个名字，要改全部插件仓；而且和 devkit 模板不一致，下次照模板对齐时又要再改一遍
+
+## 代价
+
+- 读的是内核包构建产物里的一个文件，靠固定路径与 `<script type="importmap">` 这段写法找到，不在内核的接口里；内核改了页面入口的位置或写法，三个插件一起构建失败
+- 构建前必须先 `pnpm install` 装好内核包（peer 写了它）；没装时报错说的是读不到 `dist/index.html`
+
+## 依据
+
+提交 `9b681ad`（三个插件的 `build.ts`），生命周期插件仓轨迹卡 `2026-09-25-importmap-names-from-page-entry`。未存探针。

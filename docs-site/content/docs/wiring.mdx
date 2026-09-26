@@ -10,7 +10,7 @@ description: 外壳、外观、基础界面三个插件各提供什么、注入�
 每张表下面是钉码：钉在服务名、`inject` 声明、peer 条目、命令名、事件名、共享 id 这些字面量上，源码里的字面量改了，这一页就报出来。
 
 peer 里写三类：内核包 `@godcreator/gwb-kernel-desktop`（范围包含验证时用的内核）、按值 import 的 `cordis`
-（只有外壳按值 import 它）、用到的别的插件。跨仓的插件写 `^<源上 latest>`，同仓的插件写 `workspace:^`、
+（只有外壳按值 import 它）、用到的别的插件。跨仓的插件写 `^<源上 latest>`，同仓的插件写 `workspace:*`、
 发版时换成 `^<版本号>`；只是局部注入、缺了只少一部分功能的，在 `peerDependenciesMeta` 标 `optional: true`。
 **只按命令名调用的插件不写 peer**：命令总线按名字查找，命令不在就在回执里说明，不需要装好的包——基础界面调
 `settings.*`、外壳调 `theme.startupCss` 都属于这种。写进 peer 的不另写 dev，dev 里只剩库与构建工具（react、
@@ -96,7 +96,7 @@ tailwind、esbuild、类型包等）。
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.5`，`optional: true` | 登记随包的 `gwb-shell` 说明书 | 外壳照常运行，只是说明书没登记；说明书插件后加载时补登记 |
 | `gwbKernel` | `@godcreator/gwb-kernel-desktop`（内核） | 不写进 `inject`，构造时经 `requireKernel` 取 | `^0.7.0` | `setShell` 接管页面根、`emit` 推内核事件、`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
 
-peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service` 基类，写成 peer 用宿主那一份。外壳为什么非要
+peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Service` 基类，写成 peer 用宿主那一份。外壳为什么非要
 命令总线不可，见[外壳](/docs/shell)「为什么命令总线是必需依赖」一节。
 
 {/* has file="../plugins/shell/src/index.ts" text="static inject = ['gwbCommands', 'gwbData']" */}
@@ -117,7 +117,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service
 
 {/* has file="../plugins/shell/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 
-{/* has file="../plugins/shell/package.json" text="&quot;cordis&quot;: &quot;^4.0.0-rc.9&quot;" */}
+{/* has file="../plugins/shell/package.json" text="&quot;cordis&quot;: &quot;^4.0.0-rc.10&quot;" */}
 
 ### 按名字调用与约定通道
 
@@ -190,7 +190,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.9`）：外壳按值 import 它的 `Service
 | --- | --- | --- | --- | --- | --- |
 | `gwbSettings` | `@godcreator/gwb-settings` | 必需（`inject`） | `^0.3.3` | 声明、读写三项外观设置 | 本插件不加载：没有设置存不了三项外观 |
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（`inject`） | `^0.5.0` | 登记三条命令 | 本插件不加载：三条命令无法对外提供 |
-| `gwbShell` | `@godcreator/gwb-shell` | 局部注入 | `workspace:^`，`optional: true` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常生效，只是没有「外观」窗格 |
+| `gwbShell` | `@godcreator/gwb-shell` | 局部注入 | `workspace:*`，`optional: true` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常生效，只是没有「外观」窗格 |
 
 peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
@@ -204,7 +204,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
 {/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;^0.3.3&quot;" */}
 
-{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:^&quot;" */}
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:*&quot;" */}
 
 {/* has file="../plugins/theme/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 
@@ -243,7 +243,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbShell` | `@godcreator/gwb-shell` | 必需（`inject`） | `workspace:^` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格集 |
+| `gwbShell` | `@godcreator/gwb-shell` | 必需（`inject`） | `workspace:*` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格集 |
 | `gwbLogger` | `@godcreator/gwb-logger` | 局部注入 | `^0.4.5`，`optional: true` | 只用来决定登不登记日志窗格；窗格里的操作经 `logger.*` 命令 | 照常加载，只是不登记日志窗格 |
 | `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.0`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令 | 照常加载，只是不登记插件管理窗格 |
 
@@ -257,7 +257,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 {/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
 
-{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:^&quot;" */}
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:*&quot;" */}
 
 {/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-logger&quot;: &quot;^0.4.5&quot;" */}
 
@@ -270,8 +270,8 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 | 通道 | 对方 | 名字 | 用来做什么 |
 | --- | --- | --- | --- |
 | 命令总线（按名字调） | `@godcreator/gwb-plugin-manager` | `plugin-manager.list`、`plugin-manager.outdated`、`plugin-manager.search`、`plugin-manager.install`、`plugin-manager.uninstall`、`plugin-manager.update`、`plugin-manager.enable`、`plugin-manager.disable`、`plugin-manager.add-entry`、`plugin-manager.remove-entry` | 插件管理窗格的全部操作 |
-| 命令总线（按名字调） | `@godcreator/gwb-settings`（不写 peer） | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 设置区：列出、看 secret 的明文、保存、删条目或卸载时连设置值一起删（逐项看回执） |
-| 命令总线（按名字调） | `@godcreator/gwb-shell` | `shell.plugins`、`shell.reload` | 插件的显示名与图标；升级之后整页重载 |
+| 命令总线（按名字调） | `@godcreator/gwb-settings`（不写 peer） | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 设置区：按条目列出（设置插件公共区 `*` 里此刻有插件声明着的项单独成一块「公共设置」）、看 secret 的明文、保存、删条目或卸载时连设置值一起删（逐项看回执） |
+| 命令总线（按名字调） | `@godcreator/gwb-shell` | `shell.plugins`、`shell.reload` | 插件的显示名与图标；升级之后整页重载——只在升级与跟着重新加载的条目全部回到运行状态时自动调，有一条没回来就只列出失败原因、不自动刷新 |
 | 命令总线（按名字调） | `@godcreator/gwb-logger` | `logger.backlog`、`logger.where` | 历史日志、日志文件位置 |
 | 内核事件（`gwbKernel.emit` → `window.gwb.on`） | `@godcreator/gwb-logger` 的 node 侧 | `t === 'gwb-logger'` | 实时日志；外壳不转发、不认识日志 |
 
@@ -279,7 +279,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 - 基础界面插件的必需依赖只有 `gwbShell`；装了 gwbLogger 才注册日志窗格（`id: 'logger'`），装了插件管理才注册插件管理窗格（`id: 'plugin-manager'`）
 - 日志窗格调 `logger.backlog` 取历史、`logger.where` 取日志文件位置；实时日志不经 `args.host`，订阅 `window.gwb.on`、只收 `t` 为 `gwb-logger` 的事件
-- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update`、`enable`、`disable`、`add-entry`、`remove-entry`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`；升级之后调 `shell.reload` 整页重新加载
+- 插件管理窗格调 `plugin-manager.list`、`outdated`、`search`、`install`、`uninstall`、`update`、`enable`、`disable`、`add-entry`、`remove-entry`，设置部分调 `settings.all`、`get`、`set`、`delete`，插件的显示名与图标取 `shell.plugins`。升级的回执逐项列出升了的包与 `dependents`（自己没升级、因依赖的包换了版本跟着重新加载的包）；这些条目全部回到运行状态才接着调 `shell.reload` 整页重新加载，有失败的就停在失败清单上（整页刷新会把清单清掉），由人看完再点状态栏的「刷新」
 - 两个窗格互不 import，只共用 `components/ui` 下的组件
 
 </Diagram>

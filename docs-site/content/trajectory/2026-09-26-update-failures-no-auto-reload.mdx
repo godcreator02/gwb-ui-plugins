@@ -1,0 +1,37 @@
+---
+born-at: 2026-09-26T09:26
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 升级失败不自动刷新
+domain: baseui
+---
+
+## 背景
+
+[窗格自己整页刷新](2026-09-25-pane-reloads-after-update.md)之后，基础界面插件管理窗格拿到 `plugin-manager.update` 的成功回执、
+`updated` 不为空就调 `shell.reload`。回执里的 `dependents`（自己没升级、因为依赖的包换了版本跟着重新加载的包）窗格没读；
+条目重新加载失败（`action: failed`，或重新加载了却没回到 `ACTIVE`）也显示成成功。整页一刷新，窗格里的回执文字跟着没了，人看不到哪个条目没起来。
+
+同一轮还发现设置区的一处误归类：设置插件公共区（section `*`）里正被插件声明着的项，对不上任何条目，被归进了「没有插件声明」那一块。
+
+pivots-from:: [窗格自己整页刷新](2026-09-25-pane-reloads-after-update.md)
+
+## 结论与边界
+
+- 升级回执逐项列出升了的包与 `dependents`，每个条目写 `action` 与状态；回执形状不对就如实说认不出，不拼残句
+- 升了的与跟着重新加载的条目全部回到运行状态，才照旧自动调 `shell.reload`（插件管理自己也升了的，照旧先等它的条目加载起来）
+- 有一条没回到运行状态：列出失败清单，不自动整页刷新，提示人看完原因后点状态栏的「刷新」
+- 设置区：公共区里此刻有插件声明着的项单独成一块「公共设置」；「没有插件声明」只收回执里 `live: false`、又对不上任何条目的项
+
+## 否掉的候选
+
+- **有失败也照样自动刷新**：刷新之后失败清单没了，人只能去 `gwb.log` 里翻；而窗格就是为了让人不用翻日志
+
+## 代价
+
+- 有失败时界面停在旧的浏览器端代码上，直到人手动点「刷新」；这段时间里开着的窗格用的是旧版本的 `client.js`
+
+## 依据
+
+提交 `77348b6`（`plugins/baseui/src/client/panes/plugin-manager/update-receipt.ts`、`settings.ts`、`index.tsx`），测试
+`plugins/baseui/tests/panes/update-receipt.test.ts`、`settings.test.ts`。写卡时手上没有隔离 home 里的实机记录，未存探针。

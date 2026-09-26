@@ -22,6 +22,8 @@ const config = {
   // 站根落到文档首页
   redirects: async () => [
     { source: '/', destination: '/docs', permanent: true },
+    // 生成正本挪进了现状区
+    { source: '/outputs/:path*', destination: '/docs/outputs/:path*', permanent: false },
   ],
 }
 
