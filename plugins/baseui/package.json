@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一个窗格一个模块，只收拆掉了界面的基础插件的窗格",
   "type": "module",
   "exports": {
