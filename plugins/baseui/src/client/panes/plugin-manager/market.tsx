@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { RotateCw, Search } from 'lucide-react'
-import { asResult } from './rows'
-import { acceptNote, acceptPackages, scopeOf, scopeOptions, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
+import type { PluginRow } from '@godcreator/gwb-plugin-manager/receipts'
+import { callPluginManager, type CommandHost } from './receipts'
+import { scopeOf, scopeOptions, NO_INDEX, summarize, toRows, type InstalledIndex } from './market-rows'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,9 +19,8 @@ const INSTALL = 'plugin-manager.install'
 /** 源下拉里「不筛」那一项：radix 的 SelectItem 不接受空串 value */
 const ALL_SOURCES = 'all'
 
-/** host 只按用到的形状声明 */
 export interface MarketTabProps {
-  host: { call: (command: string, args?: unknown) => Promise<unknown> }
+  host: CommandHost
   /** 已装的包 → 版本范围；null 表示表还没取到，那时装没装一概不显示 */
   installed: InstalledIndex | null
   /** 父窗格在做别的操作时，整栏禁用 */
@@ -36,7 +36,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
   /** ALL_SOURCES 表示不按源筛 */
   const [source, setSource] = useState(ALL_SOURCES)
   /** null 是还没查到，与查到了但一个都没有（空数组）分开 */
-  const [rows, setRows] = useState<SearchRow[] | null>(null)
+  const [rows, setRows] = useState<PluginRow[] | null>(null)
   /** 哪几条源没查成；空串表示都查成了 */
   const [sourceNote, setSourceNote] = useState('')
   /** 检索本身失败的原因，与按包名显示在行上的安装失败分开 */
@@ -52,16 +52,15 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
   const searchNow = useCallback(async (): Promise<void> => {
     setLoading(true)
     try {
-      const result = asResult(await host.call(SEARCH))
+      const result = await callPluginManager(host, SEARCH)
       if (!result.ok) {
         setRows(null)
         setSourceNote('')
         setLoadError(result.error)
         return
       }
-      const receipt: Record<string, unknown> = typeof result.data === 'object' && result.data !== null ? (result.data as Record<string, unknown>) : {}
-      setRows(acceptPackages(receipt['packages']))
-      setSourceNote(acceptNote(receipt['note']))
+      setRows(result.data.packages)
+      setSourceNote(result.data.note ?? '')
       setLoadError('')
     } catch (err: unknown) {
       setRows(null)
@@ -86,7 +85,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
       return next
     })
     try {
-      const result = asResult(await host.call(INSTALL, { pkg }))
+      const result = await callPluginManager(host, INSTALL, { pkg })
       if (result.ok) {
         setDone(`${pkg} 已安装，条目也已加入 cordis.yml。是否加载成功，到「已安装」那一栏查看。`)
         await onChanged()

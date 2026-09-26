@@ -24,7 +24,7 @@ tailwind、esbuild、类型包等）。
 | --- | --- | --- |
 | 服务 | `gwbShell` | 方法 `registerPane(spec)`、`describeSelf(info)`、`panes()`、`plugins()`；登记与报名字都记在调用方的上下文上，调用方卸载时自动注销 |
 | 命令 | `shell.panes`、`shell.plugins` | 此刻的窗格注册表、报过名字的插件 |
-| 命令 | `shell.env` | 页面开机要的环境：home、样式表地址、用户外观样式、版本 |
+| 命令 | `shell.env` | 页面启动时要的环境：home、样式表地址、用户外观样式、版本 |
 | 命令 | `shell.layout.get`、`shell.layout.save` | 读、整份替换布局文件 |
 | 命令 | `shell.reload` | 整页重载全部窗口 |
 | 命令 | `shell.desktop.list`、`shell.desktop.switch`、`shell.desktop.new`、`shell.desktop.rename`、`shell.desktop.delete` | 桌面 |
@@ -127,10 +127,10 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Servic
 | 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-desktop` | `shell.desktop.switch` / `new` / `rename` / `delete` 转给页面执行 |
 | 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-pane` | `shell.pane.focus` / `send` / `close` 转给页面执行 |
 | 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 本插件的页面侧 | `gwb-shell-open-pane` | `shell.openPane` 转给页面执行 |
-| 共享 id | `@godcreator/gwb-theme` 的外观窗格 | 样式元素 `#gwb-theme-style` | 开机把用户外观样式写进这张样式元素；外观窗格预览时直接改它的内容。两边各写一份字符串、不互相 import |
+| 共享 id | `@godcreator/gwb-theme` 的外观窗格 | 样式元素 `#gwb-theme-style` | 页面启动时把用户外观样式写进这张样式元素；外观窗格预览时直接改它的内容。两边各写一份字符串、不互相 import |
 | 动态 import | 各窗格插件 | 注册窗格时给的 `client` 地址，取导出 `mountPane` | 打开窗格时加载插件的页面侧代码 |
 | 内核接口 | 内核 | `gwbKernel.setShell(client.js 的地址)` | 声明自己是外壳、接管页面根；包在 `ctx.effect` 里，插件卸载时交还 |
-| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 `window.gwb.command`）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面开机取环境、取表、读写布局文件、推窗格清单 |
+| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 `window.gwb.command`）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面启动时取环境、取表、读写布局文件、推窗格清单 |
 | 动态 import | Electron 主进程 | `import('electron')`，说明符放在变量里 | `shell.reload` 取 `BrowserWindow.getAllWindows()` 逐个重载 |
 
 {/* has file="../plugins/shell/src/startup-style.ts" text="export const THEME_STARTUP_COMMAND = 'theme.startupCss'" */}
@@ -163,7 +163,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Servic
 
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
-| 命令 | `theme.startupCss` | 启动样式表（字体覆盖 + 自定义 CSS），外壳开机时读 |
+| 命令 | `theme.startupCss` | 启动样式表（字体覆盖 + 自定义 CSS），外壳启动页面时读 |
 | 命令 | `theme.values` | 三项外观设置的当前值 |
 | 命令 | `theme.save` | 一次写齐三项外观设置：三个键必给、值都是字符串，参数不对回 `ok: false`、一项都不写 |
 | 设置项 | `font-sans`、`font-mono`、`custom-css` | 经 `gwbSettings` 声明，缺省空串 |
@@ -245,9 +245,19 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 | --- | --- | --- | --- | --- | --- |
 | `gwbShell` | `@godcreator/gwb-shell` | 必需（`inject`） | `workspace:*` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格集 |
 | `gwbLogger` | `@godcreator/gwb-logger` | 局部注入 | `^0.4.5`，`optional: true` | 只用来决定登不登记日志窗格；窗格里的操作经 `logger.*` 命令 | 照常加载，只是不登记日志窗格 |
-| `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.0`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令 | 照常加载，只是不登记插件管理窗格 |
+| `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.2`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令，各条命令的回执类型从它的 `./receipts` 子路径 `import type` | 照常加载，只是不登记插件管理窗格 |
 
 peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
+
+插件管理的下限是 `^0.14.2`：`./receipts` 子路径从这一版开始有。那个文件只有类型、没有任何 import，浏览器侧的 tsconfig
+（只有 DOM 类型）能直接引。窗格和插件管理用的是同一套回执类型，所以窗格里不再按形状校验这些回执：先按外层 `ok`
+分开成功与失败，失败显示 `error`，成功就按类型用 `data`；回执形状两边对不上，在构建时的类型检查里报出来。
+`remove-entry`、`enable`、`disable` 成功时只回 `{ ok: true }`，`./receipts` 没给它起名字，窗格按这个形状写成 `Acknowledged`。
+设置插件与外壳的回执不导出类型，仍按形状收窄。
+
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" text="from '@godcreator/gwb-plugin-manager/receipts'" */}
+
+{/* has file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" text="export type Acknowledged =" */}
 
 {/* has file="../plugins/baseui/src/index.ts" text="export const inject = ['gwbShell']" */}
 
@@ -261,7 +271,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 {/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-logger&quot;: &quot;^0.4.5&quot;" */}
 
-{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-plugin-manager&quot;: &quot;^0.14.0&quot;" */}
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-plugin-manager&quot;: &quot;^0.14.2&quot;" */}
 
 {/* has file="../plugins/baseui/package.json" text="&quot;peerDependenciesMeta&quot;" */}
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import type { Outcome, PluginPackageView } from '@godcreator/gwb-plugin-manager/receipts'
 import { describeUpdateReceipt, waitForOwnRemount } from '../../src/client/panes/plugin-manager/update-receipt'
 
-/** 回执 → 窗格上的几行话与接下来要不要整页重新加载。形状按插件管理 `update` 的回执收，认不出的丢掉、不崩 */
+/** 插件管理 `update` 的回执 → 窗格上的几行话与接下来要不要整页重新加载 */
 
 describe('describeUpdateReceipt', () => {
   it('升了几个包逐包一行，条目带处理结果与状态；有包升级就要整页重新加载', () => {
@@ -149,42 +150,35 @@ describe('describeUpdateReceipt', () => {
     expect(view.pageReloadNeeded).toBe(false)
     expect(view.text).toBe('pnpm add 没成（退出码 1）。一条条目都没动\nERR_PNPM_NO_MATCHING_VERSION')
   })
-
-  it('**data 形状不对：如实说回执认不出**，不说成「全都最新」，也不拼残句', () => {
-    for (const data of [
-      'nope',
-      { updated: [42, null], dependents: [], selfDeferred: false },
-      { updated: [{ pkg: '@x/gwb-hello', from: '0.2.0', entries: [] }], dependents: [], selfDeferred: false },
-      { updated: [{ pkg: '@x/gwb-hello', from: '0.2.0', to: '0.2.1', entries: [{ id: 'hello' }] }], dependents: [], selfDeferred: false },
-      { updated: [], selfDeferred: false },
-    ]) {
-      const view = describeUpdateReceipt({ ok: true, data })
-      expect(view.ok).toBe(false)
-      expect(view.pageReloadNeeded).toBe(false)
-      expect(view.text).toContain('回执形状不对')
-      expect(view.text).not.toContain('全都最新')
-    }
-  })
 })
 
 const OWN_PKG = '@godcreator/gwb-plugin-manager'
 
-function listWithOwnEntry(active: boolean): unknown {
+type ListReceipt = Outcome<PluginPackageView[]>
+
+function listWithOwnEntry(active: boolean): ListReceipt {
   return {
     ok: true,
-    data: [{ pkg: OWN_PKG, installed: true, entries: [{ id: 'plugin-manager', entryId: 'home:plugin-manager', disabled: false, active }] }],
+    data: [
+      {
+        pkg: OWN_PKG,
+        installed: true,
+        unmetPeers: [],
+        entries: [{ id: 'plugin-manager', entryId: 'home:plugin-manager', pkg: OWN_PKG, disabled: false, active, group: false }],
+      },
+    ],
   }
 }
 
 describe('waitForOwnRemount：插件管理自己的条目重新加载完才整页重新加载', () => {
   it('命令暂时不在、条目还没加载起来都接着等，加载起来就返回', async () => {
-    const replies = [{ ok: false, error: '没有这条命令：plugin-manager.list' }, listWithOwnEntry(false), listWithOwnEntry(true)]
+    const replies: ListReceipt[] = [{ ok: false, error: '没有这条命令：plugin-manager.list' }, listWithOwnEntry(false), listWithOwnEntry(true)]
     const calls: string[] = []
     const sleeps: number[] = []
     const result = await waitForOwnRemount({
       call: async (command) => {
         calls.push(command)
-        return replies.shift()
+        return replies.shift()!
       },
       sleep: async (ms) => {
         sleeps.push(ms)
@@ -199,7 +193,7 @@ describe('waitForOwnRemount：插件管理自己的条目重新加载完才整�
   })
 
   it('调用抛错也接着等', async () => {
-    const replies: Array<() => unknown> = [
+    const replies: Array<() => ListReceipt> = [
       () => {
         throw new Error('ipc 断了')
       },

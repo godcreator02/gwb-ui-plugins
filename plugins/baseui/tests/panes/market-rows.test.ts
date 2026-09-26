@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { acceptNote, acceptPackages, installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summarize, toRows, type SearchRow } from '../../src/client/panes/plugin-manager/market-rows'
+import type { PluginRow } from '@godcreator/gwb-plugin-manager/receipts'
+import { installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summarize, toRows } from '../../src/client/panes/plugin-manager/market-rows'
 
 /**
  * 「可装」那一栏的纯逻辑。筛选的是 **registry 检索结果**——`plugin-manager.search`
- * 一次取回全部结果，搜索框只在本地筛选。acceptPackages 的形状检查也在这一组里。
- * 检索**合并多条源**（@godcreator 加上 ~/.npmrc 里配的第三方源），每行的来源标签与
- * 检索回执 note 的处理（scopeOf / acceptNote）也在这一组测。
+ * 一次取回全部结果，搜索框只在本地筛选。
+ * 检索**合并多条源**（@godcreator 加上 ~/.npmrc 里配的第三方源），每行的来源标签（scopeOf）也在这一组测。
  */
 
-const row = (pkg: string, patch: Partial<SearchRow> = {}): SearchRow => ({
+const row = (pkg: string, patch: Partial<PluginRow> = {}): PluginRow => ({
   pkg,
   version: '0.0.1',
   description: `${pkg} 的一句话`,
@@ -18,24 +18,6 @@ const row = (pkg: string, patch: Partial<SearchRow> = {}): SearchRow => ({
 /** `plugin-manager.list` 已取的包行 → 索引。只收 installed === true 的 */
 const index = (...pkgs: { pkg: string; installed: boolean; spec?: string }[]) => installedIndex(pkgs)
 const installed = (pkg: string, spec?: string) => ({ pkg, installed: true, spec })
-
-describe('acceptPackages：plugin-manager.search 的 data 收窄', () => {
-  it('一份正经的表原样收下', () => {
-    expect(acceptPackages([{ pkg: 'a', version: '0.0.2', description: '甲' }])).toEqual([
-      { pkg: 'a', version: '0.0.2', description: '甲' },
-    ])
-  })
-
-  it('不是数组、不是对象、没有 pkg 的都丢掉，不崩', () => {
-    expect(acceptPackages(undefined)).toEqual([])
-    expect(acceptPackages({ pkg: 'x' })).toEqual([])
-    expect(acceptPackages([null, 7, { pkg: '' }, { pkg: 'a' }])).toEqual([{ pkg: 'a' }])
-  })
-
-  it('version / description 不是非空字符串就当没有', () => {
-    expect(acceptPackages([{ pkg: 'a', version: '', description: 7 }])).toEqual([{ pkg: 'a' }])
-  })
-})
 
 describe('scopeOf：行上源徽章的判据', () => {
   it('带 scope 的包名剥出 scope，第三方与官方都剥得出', () => {
@@ -97,18 +79,6 @@ describe('toRows 的源筛：与文本筛 AND 叠加', () => {
 
   it('scope 缺省（空串）＝不筛，老行为原样', () => {
     expect(toRows(packages, NO_INDEX, '')).toHaveLength(3)
-  })
-})
-
-describe('acceptNote：聚合回执里「哪几条源没查成」的收窄', () => {
-  it('字符串原样过，没有这个字段回空串', () => {
-    expect(acceptNote('这几条源没查成：@x')).toBe('这几条源没查成：@x')
-    expect(acceptNote(undefined)).toBe('')
-  })
-
-  it('**不是字符串就说形状不对**：当成没有会把「哪几条源没查成」藏起来', () => {
-    expect(acceptNote(7)).toContain('形状不对')
-    expect(acceptNote(['@x'])).toContain('形状不对')
   })
 })
 

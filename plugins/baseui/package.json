@@ -17,7 +17,7 @@
     "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-logger": "^0.4.5",
-    "@godcreator/gwb-plugin-manager": "^0.14.0"
+    "@godcreator/gwb-plugin-manager": "^0.14.2"
   },
   "peerDependenciesMeta": {
     "@godcreator/gwb-logger": {

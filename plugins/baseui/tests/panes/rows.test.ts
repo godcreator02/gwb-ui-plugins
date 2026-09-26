@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import type { EntrySnapshot, PluginPackageView } from '@godcreator/gwb-plugin-manager/receipts'
 import {
-  acceptPackages,
   asResult,
   stateOf,
   summarize,
   toRows,
   unmetPeerMark,
-  type EntryView,
-  type PackageView,
 } from '../../src/client/panes/plugin-manager/rows'
 
-const entry = (patch: Partial<EntryView> = {}): EntryView => ({
+const entry = (patch: Partial<EntrySnapshot> = {}): EntrySnapshot => ({
   id: 'data',
   entryId: 'home:data',
   pkg: '@godcreator/gwb-data',
@@ -20,47 +18,13 @@ const entry = (patch: Partial<EntryView> = {}): EntryView => ({
   ...patch,
 })
 
-const pkg = (patch: Partial<PackageView> = {}): PackageView => ({
+const pkg = (patch: Partial<PluginPackageView> = {}): PluginPackageView => ({
   pkg: '@godcreator/gwb-data',
   spec: '0.0.2',
   installed: true,
   entries: [entry()],
   unmetPeers: [],
   ...patch,
-})
-
-describe('判形', () => {
-  it('一份正经的表原样收下', () => {
-    const got = acceptPackages([pkg()])
-    expect(got).toHaveLength(1)
-    expect(got[0]!.entries[0]!.id).toBe('data')
-  })
-
-  it('不是数组、不是对象、没有 pkg 的都丢掉，不崩', () => {
-    expect(acceptPackages(undefined)).toEqual([])
-    expect(acceptPackages({ pkg: 'x' })).toEqual([])
-    expect(acceptPackages([null, 7, { 没有: 'pkg' }])).toEqual([])
-  })
-
-  it('坏的那条条目丢掉，同一个包里好的那条留着', () => {
-    const got = acceptPackages([{ ...pkg(), entries: [entry(), { id: 7 }, null] }])
-    expect(got[0]!.entries.map((e) => e.id)).toEqual(['data'])
-  })
-
-  it('**entryId 缺了不拿 id 顶替**：命令收的是完整 entryId，顶替后发出去的是另一个值。按回执形状不对报错，点名是哪条条目', () => {
-    expect(() => acceptPackages([{ ...pkg(), entries: [{ id: 'data', entryId: '' }] }])).toThrow(/data.*entryId/)
-    expect(() => acceptPackages([{ ...pkg(), entries: [{ id: 'data' }] }])).toThrow(/回执形状不对/)
-  })
-
-  it('disabled / active / group 只认 true，别的一律当 false', () => {
-    const got = acceptPackages([{ ...pkg(), entries: [{ id: 'x', entryId: 'home:x', disabled: 'yes', active: 1, group: 'true' }] }])
-    expect(got[0]!.entries[0]).toMatchObject({ disabled: false, active: false, group: false })
-  })
-
-  it('spec 没有就是没有（那种包 installed 也是 false）', () => {
-    const got = acceptPackages([{ pkg: 'a', installed: false, entries: [] }])
-    expect(got[0]).toEqual({ pkg: 'a', installed: false, entries: [], unmetPeers: [] })
-  })
 })
 
 describe('条目的状态：active 与 disabled 是两回事', () => {
@@ -82,7 +46,7 @@ describe('条目的状态：active 与 disabled 是两回事', () => {
 })
 
 describe('三种文案', () => {
-  const rowFor = (patch: Partial<EntryView>) => toRows([pkg({ entries: [entry(patch)] })])[0]!.entries[0]!
+  const rowFor = (patch: Partial<EntrySnapshot>) => toRows([pkg({ entries: [entry(patch)] })])[0]!.entries[0]!
 
   it('已加载：不显眼', () => {
     const row = rowFor({ active: true })
@@ -163,24 +127,6 @@ describe('两层行', () => {
 describe('peer 没满足', () => {
   const kernelPeer = { pkg: '@godcreator/gwb-kernel-desktop', range: '^0.6.0', installed: '0.7.2' }
   const shellPeer = { pkg: '@godcreator/gwb-shell', range: '^0.13.0' }
-
-  it('unmetPeers 原样收下；没装的那项没有 installed', () => {
-    const got = acceptPackages([{ ...pkg(), unmetPeers: [kernelPeer, shellPeer] }])
-    expect(got[0]!.unmetPeers).toEqual([kernelPeer, shellPeer])
-    expect(got[0]!.unmetPeers[1]).not.toHaveProperty('installed')
-  })
-
-  it('没有 unmetPeers 字段、或不是数组时当空表', () => {
-    expect(acceptPackages([{ pkg: 'a', installed: true, entries: [] }])[0]!.unmetPeers).toEqual([])
-    expect(acceptPackages([{ ...pkg(), unmetPeers: 'x' }])[0]!.unmetPeers).toEqual([])
-  })
-
-  it('认不出的那项丢掉，同一个包里好的那项留着；installed 不是非空字符串的当没装', () => {
-    const got = acceptPackages([
-      { ...pkg(), unmetPeers: [null, { range: '^1.0.0' }, { pkg: 'x', range: 7 }, { pkg: 'y', range: '^1.0.0', installed: '' }, shellPeer] },
-    ])
-    expect(got[0]!.unmetPeers).toEqual([{ pkg: 'y', range: '^1.0.0' }, shellPeer])
-  })
 
   it('toRows 把 unmetPeers 带到包那一行上', () => {
     const row = toRows([pkg({ unmetPeers: [kernelPeer] })])[0]!

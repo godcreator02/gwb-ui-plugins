@@ -1,123 +1,11 @@
+import type { EntrySnapshot, PluginPackageView, UnmetPeer } from '@godcreator/gwb-plugin-manager/receipts'
+
 /**
- * 按插件管理 `receipts.ts` 的形状收窄，不 import 那边的类型。
- * 分包、条目两层：一个包能有多条条目，`name` 是装哪个包，`id` 才是身份
+ * `plugin-manager.list` 的回执 → 界面上的行。分包、条目两层：一个包能有多条条目，`pkg` 是装哪个包，`id` 才是身份
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/** 与插件管理的 `EntrySnapshot` 同形 */
-export interface EntryView {
-  /** 不带前缀的 id，cordis.yml 与日志里出现的是它 */
-  id: string
-  /** 完整 entryId，每条命令收的都是它 */
-  entryId: string
-  pkg: string
-  /** yml 里写了 `disabled: true` */
-  disabled: boolean
-  /** fiber 确实在运行 */
-  active: boolean
-  /** `group: true` 的条目是分组，不是插件 */
-  group: boolean
-}
-
-/** peer 里写了、却没满足的一项。内核包 `@godcreator/gwb-kernel-desktop` 那一项的 `installed` 是运行中的内核版本 */
-export interface UnmetPeer {
-  pkg: string
-  /** peer 里写的范围 */
-  range: string
-  /** home 里装着的版本；没装时没有这个字段 */
-  installed?: string
-}
-
-/** 与插件管理的 `PluginPackageView` 同形 */
-export interface PackageView {
-  pkg: string
-  spec?: string
-  installed: boolean
-  entries: EntryView[]
-  unmetPeers: UnmetPeer[]
-}
-
-/**
- * 没有 id 的丢掉。缺 entryId 的抛错、不拿 id 顶替：enable / disable / remove-entry 收的都是完整 entryId，
- * 顶替后发出去的是另一个值
- */
-function acceptEntry(value: unknown): EntryView | undefined {
-  if (!isRecord(value)) return undefined
-  const id = value['id']
-  if (typeof id !== 'string' || id === '') return undefined
-  const entryId = value['entryId']
-  if (typeof entryId !== 'string' || entryId === '') {
-    throw new Error(`plugin-manager.list 回执形状不对：条目 ${id} 没有 entryId，这条条目没法启用、停用或删除`)
-  }
-  const pkg = value['pkg']
-  return {
-    id,
-    entryId,
-    pkg: typeof pkg === 'string' ? pkg : '',
-    disabled: value['disabled'] === true,
-    active: value['active'] === true,
-    group: value['group'] === true,
-  }
-}
-
-function acceptEntryList(rawEntries: unknown): EntryView[] {
-  if (!Array.isArray(rawEntries)) return []
-  const entries: EntryView[] = []
-  for (const rawEntry of rawEntries as unknown[]) {
-    const entry = acceptEntry(rawEntry)
-    if (entry !== undefined) entries.push(entry)
-  }
-  return entries
-}
-
-function acceptUnmetPeer(value: unknown): UnmetPeer | undefined {
-  if (!isRecord(value)) return undefined
-  const pkg = value['pkg']
-  const range = value['range']
-  if (typeof pkg !== 'string' || pkg === '' || typeof range !== 'string') return undefined
-  const peer: UnmetPeer = { pkg, range }
-  const installed = value['installed']
-  if (typeof installed === 'string' && installed !== '') peer.installed = installed
-  return peer
-}
-
-function acceptUnmetPeerList(rawPeers: unknown): UnmetPeer[] {
-  if (!Array.isArray(rawPeers)) return []
-  const peers: UnmetPeer[] = []
-  for (const rawPeer of rawPeers as unknown[]) {
-    const peer = acceptUnmetPeer(rawPeer)
-    if (peer !== undefined) peers.push(peer)
-  }
-  return peers
-}
-
-function acceptPackage(item: unknown): PackageView | undefined {
-  if (!isRecord(item)) return undefined
-  const pkg = item['pkg']
-  if (typeof pkg !== 'string') return undefined
-  const view: PackageView = {
-    pkg,
-    installed: item['installed'] === true,
-    entries: acceptEntryList(item['entries']),
-    unmetPeers: acceptUnmetPeerList(item['unmetPeers']),
-  }
-  const spec = item['spec']
-  if (typeof spec === 'string') view.spec = spec
-  return view
-}
-
-/** 顺序照收，插件管理已经按包名排好 */
-export function acceptPackages(raw: unknown): PackageView[] {
-  if (!Array.isArray(raw)) return []
-  const packages: PackageView[] = []
-  for (const item of raw as unknown[]) {
-    const view = acceptPackage(item)
-    if (view !== undefined) packages.push(view)
-  }
-  return packages
 }
 
 /**
@@ -148,7 +36,7 @@ const FACES: Record<EntryState, StateFace> = {
   },
 }
 
-export function stateOf(entry: Pick<EntryView, 'disabled' | 'active'>): EntryState {
+export function stateOf(entry: Pick<EntrySnapshot, 'disabled' | 'active'>): EntryState {
   if (entry.disabled) return entry.active ? 'disabled-running' : 'disabled'
   return entry.active ? 'active' : 'stalled'
 }
@@ -165,7 +53,7 @@ export interface EntryRow {
   disabled: boolean
 }
 
-function toEntryRow(entry: EntryView): EntryRow {
+function toEntryRow(entry: EntrySnapshot): EntryRow {
   const state = stateOf(entry)
   const face = FACES[state]
   return {
@@ -192,7 +80,7 @@ export interface PackageRow {
 }
 
 /** 分组条目不是插件，先去掉；去掉后既没条目也没包名的不成一行 */
-function packageRowOf(view: PackageView): PackageRow | undefined {
+function packageRowOf(view: PluginPackageView): PackageRow | undefined {
   const entries = view.entries.filter((entry) => !entry.group).map(toEntryRow)
   if (view.pkg === '' && entries.length === 0) return undefined
   const row: PackageRow = {
@@ -211,7 +99,8 @@ function packageRowOf(view: PackageView): PackageRow | undefined {
   return row
 }
 
-export function toRows(views: readonly PackageView[]): PackageRow[] {
+/** 顺序照收，插件管理已经按包名排好 */
+export function toRows(views: readonly PluginPackageView[]): PackageRow[] {
   const rows: PackageRow[] = []
   for (const view of views) {
     const row = packageRowOf(view)
@@ -258,7 +147,10 @@ export function summarize(rows: readonly PackageRow[]): Summary {
   return { packages: rows.length, entries }
 }
 
-/** 命令的回执，与命令总线的回执同形；`error` 一个字都不许丢，失败时一定非空 */
+/**
+ * 设置插件与外壳的命令回执（它们不导出回执类型，按形状收窄）；插件管理的回执用它 `./receipts` 子路径的类型，见 `receipts.ts`。
+ * `error` 一个字都不许丢，失败时一定非空
+ */
 export type CallResult = { ok: true; data: unknown } | { ok: false; error: string }
 
 export function asResult(value: unknown): CallResult {

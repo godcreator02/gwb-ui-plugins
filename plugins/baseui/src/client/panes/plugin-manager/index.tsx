@@ -27,8 +27,9 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { cn } from 'cn'
+import type { OutdatedMap, UpdateInfo } from '@godcreator/gwb-plugin-manager/receipts'
+import { callPluginManager, type Acknowledged } from './receipts'
 import {
-  acceptPackages,
   asResult,
   summarize,
   toRows,
@@ -153,27 +154,6 @@ function acceptFaces(raw: unknown): Record<string, Face> {
     if (typeof title === 'string' && title !== '') face.title = title
     if (typeof icon === 'string' && icon !== '') face.icon = icon
     out[entryId] = face
-  }
-  return out
-}
-
-/** 一个包的版本差距（`plugin-manager.outdated` 的形状，按形状校验后接收——不 import 插件管理的类型） */
-interface UpdateInfo {
-  current: string
-  latest: string
-}
-
-/** `plugin-manager.outdated` 的 data → 包名 → 版本差距。认不出的项丢弃、不抛错 */
-function acceptUpdates(raw: unknown): Record<string, UpdateInfo> {
-  const out: Record<string, UpdateInfo> = {}
-  if (!isRecord(raw)) return out
-  for (const [pkg, entry] of Object.entries(raw)) {
-    if (!isRecord(entry)) continue
-    const current = entry['current']
-    const latest = entry['latest']
-    if (typeof current === 'string' && current !== '' && typeof latest === 'string' && latest !== '') {
-      out[pkg] = { current, latest }
-    }
   }
   return out
 }
@@ -650,7 +630,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** 「已安装 / 可安装」两段。可安装那段见 market.tsx */
   const [tab, setTab] = useState<'installed' | 'market'>('installed')
   /** outdated 的表。null 是「还没查到」——跟「查到了、全都最新」（空对象）分得开 */
-  const [updates, setUpdates] = useState<Record<string, UpdateInfo> | null>(null)
+  const [updates, setUpdates] = useState<OutdatedMap | null>(null)
   const [checking, setChecking] = useState(false)
   /** 「全部更新」的确认框开着；`updatingAll` 是点了确认、升级与整页重新加载还没做完 */
   const [askingUpdateAll, setAskingUpdateAll] = useState(false)
@@ -659,20 +639,15 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const refresh = useCallback(async (): Promise<void> => {
     // 三份表**各取各的、各自失败**——设置插件没装时插件管理照样能用，展开区写明设置取不到的原因
     const [list, settings, faces] = await Promise.allSettled([
-      args.host.call(LIST),
+      callPluginManager(args.host, LIST),
       args.host.call(SETTINGS_ALL),
       args.host.call(SHELL_PLUGINS),
     ])
     if (list.status === 'fulfilled') {
-      const result = asResult(list.value)
+      const result = list.value
       if (result.ok) {
-        try {
-          setRows(toRows(acceptPackages(result.data)))
-          setListError('')
-        } catch (err: unknown) {
-          // 回执形状不对（如条目缺 entryId）：原因显示在列表的位置
-          setListError(err instanceof Error ? err.message : String(err))
-        }
+        setRows(toRows(result.data))
+        setListError('')
       } else {
         setListError(result.error)
       }
@@ -713,13 +688,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     async (manual: boolean): Promise<void> => {
       setChecking(true)
       try {
-        const result = asResult(await args.host.call(OUTDATED))
+        const result = await callPluginManager(args.host, OUTDATED)
         if (!result.ok) {
           setUpdates(null)
           if (manual) setNotice({ ok: false, text: result.error })
           return
         }
-        setUpdates(acceptUpdates(isRecord(result.data) ? result.data['updates'] : undefined))
+        setUpdates(result.data.updates)
       } catch (err: unknown) {
         setUpdates(null)
         if (manual) setNotice({ ok: false, text: String(err) })
@@ -739,10 +714,10 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   }, [refresh, checkOutdated])
 
   /** 执行完一定重新取表：没有事件推送，不重取的话界面停在旧样子上，看起来就是点了没反应 */
-  const run = async (command: string, params: unknown, done: string): Promise<void> => {
+  const run = async (invoke: () => Promise<Acknowledged | CallResult>, done: string): Promise<void> => {
     setBusy(true)
     try {
-      const result = asResult(await args.host.call(command, params))
+      const result = await invoke()
       setNotice(result.ok ? { ok: true, text: done } : { ok: false, text: result.error })
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
@@ -904,13 +879,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setBusy(true)
     try {
       // 失败时插件管理已经把 pnpm 输出的最后几行拼进 error
-      const result = asResult(await args.host.call(INSTALL, { pkg }))
+      const result = await callPluginManager(args.host, INSTALL, { pkg })
       if (!result.ok) {
         setNotice({ ok: false, text: result.error })
       } else {
-        const receipt = isRecord(result.data) ? result.data : {}
-        const entryId = typeof receipt['entryId'] === 'string' ? `，条目 ${receipt['entryId']}` : ''
-        setNotice({ ok: true, text: `已安装 ${pkg}${entryId}。是否加载成功，看这条条目的状态` })
+        setNotice({ ok: true, text: `已安装 ${pkg}，条目 ${result.data.entryId}。是否加载成功，看这条条目的状态` })
       }
     } catch (err: unknown) {
       setNotice({ ok: false, text: String(err) })
@@ -931,7 +904,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const reloadPageAfterUpdate = async (view: UpdateView): Promise<CallResult> => {
     if (view.selfDeferred) {
       const remounted = await waitForOwnRemount({
-        call: (command) => args.host.call(command),
+        call: (command) => callPluginManager(args.host, command),
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         listCommand: LIST,
         ownPkg: OWN_PKG,
@@ -946,7 +919,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     setBusy(true)
     setUpdatingAll(true)
     try {
-      const view = describeUpdateReceipt(asResult(await args.host.call(UPDATE, only === undefined ? { all: true } : { only })))
+      const view = describeUpdateReceipt(await callPluginManager(args.host, UPDATE, only === undefined ? { all: true } : { only }))
       setNotice({ ok: view.ok, text: view.text })
       if (view.pageReloadNeeded) {
         const reloaded = await reloadPageAfterUpdate(view)
@@ -972,7 +945,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     } = asking
     setBusy(true)
     try {
-      const result = asResult(await args.host.call(REMOVE_ENTRY, { entryId: entry.entryId }))
+      const result = await callPluginManager(args.host, REMOVE_ENTRY, { entryId: entry.entryId })
       if (!result.ok) {
         setNotice({ ok: false, text: result.error })
       } else {
@@ -1017,7 +990,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     const { pkg, settings } = askingUninstall
     setBusy(true)
     try {
-      const result = asResult(await args.host.call(UNINSTALL, { pkg }))
+      const result = await callPluginManager(args.host, UNINSTALL, { pkg })
       if (!result.ok) {
         // 失败时插件管理已经把原因与 pnpm 输出的最后几行拼进 error
         setNotice({ ok: false, text: result.error })
@@ -1178,8 +1151,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                 onDiscard={() => discardEntry(card.entry.entryId)}
                 onToggleEnabled={(next) =>
                   void run(
-                    next ? ENABLE : DISABLE,
-                    { entryId: card.entry.entryId },
+                    () => callPluginManager(args.host, next ? ENABLE : DISABLE, { entryId: card.entry.entryId }),
                     next ? `条目 ${card.entry.id} 启用了` : `条目 ${card.entry.id} 停用了`,
                   )
                 }
@@ -1303,8 +1275,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           title="把这一项从磁盘上删除"
                           onClick={() =>
                             void run(
-                              SETTINGS_DELETE,
-                              { section: s.section, key: s.key },
+                              async () => asResult(await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })),
                               `删除了 ${s.section}.${s.key}`,
                             )
                           }
@@ -1360,7 +1331,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           className="baseui:shrink-0"
                           disabled={busy}
                           title={`往 cordis.yml 里加一条指向 ${row.pkg} 的条目并立即加载`}
-                          onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 添加了一条条目`)}
+                          onClick={() => void run(() => callPluginManager(args.host, ADD_ENTRY, { pkg: row.pkg }), `给 ${row.pkg} 添加了一条条目`)}
                         >
                           添加条目
                         </Button>
