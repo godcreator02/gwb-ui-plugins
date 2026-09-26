@@ -19,11 +19,8 @@ describe('initialLayoutOf', () => {
     expect(initialLayoutOf(fulfilled({ ok: true }))).toEqual({ doc: defaultDoc() })
   })
 
-  it('读到一份认得出的：原样用，照常保存；v2 当场迁移', () => {
+  it('读到一份认得出的：原样用，照常保存', () => {
     expect(initialLayoutOf(fulfilled({ ok: true, data: goodDoc }))).toEqual({ doc: goodDoc })
-    const migrated = initialLayoutOf(fulfilled({ ok: true, data: { v: 2, current: grid, saved: [] } }))
-    expect(migrated.saveBlockedBy).toBeUndefined()
-    expect(migrated.doc.desktops).toEqual([{ id: 'd1', name: '主桌面', layout: grid }])
   })
 
   it('IPC 调不通：默认布局，但停止保存，原因带上报错', () => {
@@ -44,10 +41,11 @@ describe('initialLayoutOf', () => {
     expect(initialLayoutOf(fulfilled('oops')).saveBlockedBy).toBeDefined()
   })
 
-  it('版本认不出（将来的版本、老的 v1）、形状坏、内容是 null：停止保存，原因里写明版本', () => {
+  it('版本认不出（将来的版本、老的 v1 与 v2）、形状坏、内容是 null：停止保存，原因里写明版本', () => {
     for (const data of [
       { ...goodDoc, v: LAYOUT_VERSION + 1 },
       { ...goodDoc, v: 1 },
+      { v: 2, current: grid, saved: [] },
       { ...goodDoc, desktops: [] },
       { ...goodDoc, active: 'd9' },
       null,
@@ -58,5 +56,6 @@ describe('initialLayoutOf', () => {
       expect(result.saveBlockedBy).toContain('认不出')
     }
     expect(initialLayoutOf(fulfilled({ ok: true, data: { ...goodDoc, v: 9 } })).saveBlockedBy).toContain('v=9')
+    expect(initialLayoutOf(fulfilled({ ok: true, data: { ...goodDoc, v: 9 } })).saveBlockedBy).toContain(`只认 v${String(LAYOUT_VERSION)}`)
   })
 })

@@ -3,8 +3,8 @@ import { iconProblem } from '../src/pane-icon.js'
 import { createPaneRegistry, type PaneOwner } from '../src/pane-registry.js'
 
 /**
- * 窗格注册表。要钉住的是四样：身份由服务填而不是件自己报、注销只收自己那份、
- * 一条条目一个命名空间、图标名认不出当场出声。
+ * 窗格注册表。要守住的是：身份由服务填而不是插件自己报、注销只删自己那条、
+ * 一条条目一个命名空间、图标名认不出当场 warn、说不清自己是什么的当场抛错。
  */
 
 const echo: PaneOwner = { entryId: 'echo', pkg: '@godcreator/gwb-echo' }
@@ -83,7 +83,7 @@ describe('一条条目一个命名空间', () => {
       ['echo', '一号'],
       ['echo-2', '二号'],
     ])
-    // 这不叫撞名：分得开的两格
+    // 这不算重名：两个窗格按条目分得开
     expect(warn).not.toHaveBeenCalled()
   })
 
@@ -112,7 +112,7 @@ describe('注销：只收自己那份', () => {
     const { reg } = fresh()
     const off = reg.register(echo, { id: 'main', title: '旧的' })
     reg.register(echo, { id: 'main', title: '新的' })
-    // 旧那格的 effect 这时才收尾（件重挂时正是这个顺序）
+    // 旧那条的 effect 这时才清理（插件重新加载时正是这个顺序）
     off()
     expect(reg.list()[0]!.title).toBe('新的')
   })
@@ -127,9 +127,9 @@ describe('说不清自己是谁的一律抛——不静默进表', () => {
   })
 
   it('窗格 id 带冒号也抛——那是拼面板 id 的分隔符', () => {
-    // entryId 自己就带冒号（实机 `home:hello`）。窗格 id 里再有一个的话,两组不同的
-    // (条目, 窗格) 能拼出同一个面板 id,而开格那处的查重会把它当成「已经开着」、
-    // 静默追个 `:2` 上去——人看到的是标题莫名多了个 (2),源头在别的件的注册参数里
+    // entryId 自己就带冒号（实际运行时是 `home:hello`）。窗格 id 里再有一个的话，两组不同的
+    // (条目, 窗格) 能拼出同一个面板 id，而开窗格时的查重会把它当成「已经开着」、
+    // 不报错地追加一个 `:2`——人看到的是标题莫名多了个 (2)，源头在别的插件的注册参数里
     const { reg } = fresh()
     expect(() => reg.register(echo, { id: 'a:b', title: '回声' })).toThrow(/冒号/)
     expect(reg.list()).toEqual([])
@@ -212,13 +212,13 @@ describe('注册要说清是工具窗格还是文档窗格（kind），说不出
     expect(reg.list().map((p) => p.kind)).toEqual(['document', 'tool'])
   })
 
-  it('kind 写错：照 tool 进表，登记那一刻 warn 一句，点名包与窗格', () => {
-    const { reg, warn } = fresh()
-    reg.register(echo, { id: 'doc', title: '正文', kind: 'documnet' as never })
-    expect(reg.list()[0]!.kind).toBe('tool')
-    expect(warn).toHaveBeenCalledOnce()
-    const said = warn.mock.calls[0]![0]
-    for (const part of ['gwb-echo', 'doc', '"documnet"']) expect(said).toContain(part)
+  it('kind 写错当场抛，不进表；报错点名包、窗格、收到的值与认得的两个值', () => {
+    const { reg } = fresh()
+    const registerWithMisspelledKind = () => reg.register(echo, { id: 'doc', title: '正文', kind: 'documnet' as never })
+    for (const part of ['gwb-echo', '窗格 doc', '"documnet"', "'tool'", "'document'"]) {
+      expect(registerWithMisspelledKind).toThrow(part)
+    }
+    expect(reg.list()).toEqual([])
   })
 
   it('说的是「打开对它是什么意思」，不是「能开几份」——那张老的 duplicable 开关没有回来', () => {

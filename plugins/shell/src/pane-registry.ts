@@ -16,7 +16,7 @@ export interface PaneSpec {
   client?: string
   /** 样式表的 `file://` 地址，路径以 `.css` 结尾；给了却不是这样的地址，注册时抛错。不给就不注入 */
   style?: string
-  /** 不给就是 `tool`；写错按 `tool` 登记、登记时 warn */
+  /** 不给就是 `tool`；给了却不是 `'tool'` / `'document'`，注册时抛错 */
   kind?: PaneKind
 }
 
@@ -75,11 +75,10 @@ function throwWhenClientOrStyleIsNotFileUrl(owner: PaneOwner, spec: PaneSpec): v
   }
 }
 
-function kindDefaultingToTool(owner: PaneOwner, spec: PaneSpec, warn: (message: string) => void): PaneKind {
+function kindDefaultingToTool(owner: PaneOwner, spec: PaneSpec): PaneKind {
   if (spec.kind === undefined) return 'tool'
   if (isPaneKind(spec.kind)) return spec.kind
-  warn(`${owner.pkg} 的窗格 ${spec.id}：kind ${JSON.stringify(spec.kind)} 认不出（只认 'tool' / 'document'），按 'tool' 登记`)
-  return 'tool'
+  throw new Error(`${owner.pkg} 的窗格 ${spec.id}：kind 收到 ${JSON.stringify(spec.kind)}，只认 'tool' 与 'document'；不给就是 'tool'`)
 }
 
 /** `checkIcon` 认得图标名回 `undefined`，认不出回一句怎么改 */
@@ -93,9 +92,9 @@ export function createPaneRegistry(
     register(owner, spec) {
       throwWhenIdOrTitleIsUnusable(owner, spec)
       throwWhenClientOrStyleIsNotFileUrl(owner, spec)
+      const kind = kindDefaultingToTool(owner, spec)
       const iconIssue = spec.icon === undefined ? undefined : checkIcon(spec.icon)
       if (iconIssue !== undefined) warn(`${owner.pkg} 的窗格 ${spec.id}：${iconIssue}；标签上先画成 #`)
-      const kind = kindDefaultingToTool(owner, spec, warn)
       const registryKey = registryKeyOf(owner.entryId, spec.id)
       const registeredPane: RegisteredPane = { ...spec, kind, entryId: owner.entryId, pkg: owner.pkg }
       const previous = panesByRegistryKey.get(registryKey)

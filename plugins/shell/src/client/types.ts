@@ -98,12 +98,6 @@ export interface ShellBridge {
    * 人**双击标签**是同一个动作。没有反方向：正式窗格变不回预览窗格。
    */
   keepPane(): void
-  /** 窗格间的消息总线。按条目分组，同一条目的几个窗格（含同一窗格开的几份）收发同一组消息 */
-  bus: {
-    emit(type: string, detail?: unknown): void
-    /** 注册一个监听函数，返回注销函数 */
-    on(type: string, listener: (detail: unknown) => void): () => void
-  }
   /**
    * 本窗格所在桌面的**浮层挂载点**：插件里 radix Portal 的 `container` 指向它。这样浮层的 DOM
    * 在这张桌面里，桌面切走时跟着一起隐藏——挂在 `body` 下的浮层不属于任何桌面，隐藏不了，

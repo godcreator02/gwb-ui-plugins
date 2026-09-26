@@ -10,25 +10,6 @@ docfirst: none
 
 ## 服务
 
-### 窗格释放总线句柄时没注销监听函数——每个窗格只开一份时这个问题看不出来
-
-窗格间总线的 `release()` 曾经只减引用计数、分组空了才整个删除。**每个窗格只能开一份时这完全看不出
-问题**：最后一个窗格释放句柄时分组就删了，监听函数注销没注销都一样。
-
-同一个窗格能开两份之后问题就出现了：关掉两份里的一份，**它注册的监听函数仍留在分组里**（另一份还占着
-这个分组），于是关掉的那个窗格继续收到事件，回调作用在一棵已经卸载的 React 树上。症状要么是 console 里
-「往已卸载组件 setState」的警告，要么是不报错的内存泄漏。
-
-这是**新功能暴露出来的旧缺陷**，不是新代码写错的。现在句柄自己记着注册过哪些监听函数，`release` 时
-先逐条注销、再释放——顺序反过来的话分组可能已经删除，注销不起作用，而分组没删除的情况正是这几行
-要解决的。
-
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="91-100" hash="e168b539d2bb" blob="5d100ef7d28c" */}
-
-同时定下的两条语义：`emit` 在 `release` 之后**什么都不做、也不报错**（外壳的清理顺序是「先让插件
-dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍然有效）；分组里存监听函数用的是 `Set`，
-**按函数引用去重**，两个窗格注册同一个函数只存一份，谁先注销就移除了。
-
 ### 条目 id 自带 `home:` 前缀，别去掉它
 
 `fiber.entry.id` 取到的**不是** `hello`，是 **`home:hello`**——loader 把插件的条目嵌套在
@@ -83,7 +64,7 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 报错出自被换下那个版本的 `dispose`，从 0.7.2 起换成别的版本才不再报。
 
 {/* ref file="../plugins/shell/src/client/shell-mount.ts" hash="e4c16141fbac" blob="e8ed3731b5e6" */}
-{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="a615e471ee01" blob="5729085de9d8" */}
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="55850576ccec" blob="cb15104fd072" */}
 
 ---
 
@@ -92,12 +73,12 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 
 ### 两条 oxlint 误报，都出在「有意违反规则」的代码上
 
-迁移 shell 那批纯逻辑时遇到两条。**规则本身没错，是这两处代码故意违反它**：
+shell 的代码里有两处。**规则本身没错，是这两处代码故意违反它**：
 
-{/* ref file="../plugins/shell/src/client/bus.ts" lines="68-81" hash="d46b50621032" blob="5d100ef7d28c" */}
+{/* ref file="../plugins/shell/src/client/visibility.ts" lines="41-48" hash="e61ebce2e611" blob="2d7af8a39b1e" */}
 
-- **`unicorn/no-useless-spread`** —— `for (const listener of [...listenersOfType])` 那份拷贝是有意的：监听函数
-  收到事件后注销自己是常见情况，直接遍历正在被修改的集合会漏掉或重复。规则看不出「遍历期间集合会被改」
+- **`unicorn/no-useless-spread`** —— `for (const listener of [...desktopListeners])` 那份拷贝是有意的：监听函数
+  收到一次通知就注销自己是正当写法，直接遍历正在被修改的集合会漏掉或重复。规则看不出「遍历期间集合会被改」
 - **`unicorn/no-thenable`** —— 测试里 `describeHandle({ then() {} })` **故意**造一个
   thenable，检查的正是「遇到这种对象也认得出来」。规则防的是无意中把对象写成 thenable
 
@@ -250,8 +231,8 @@ for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
 
 另有一条**验收时必须知道的**：同一个 group 里不活动的那个窗格，dockview 的默认渲染器
 （`onlyWhenVisible`）**只把 DOM 从文档里移除、不卸载组件**。所以 `querySelector` 找不到它里面的
-东西，但它的 React 状态、总线监听都还在——「切走再切回来，计数还在」是正确的，
-「切走的那个窗格收不到总线事件」则不对。
+东西，但它的 React 状态、事件监听都还在——「切走再切回来，计数还在」是正确的，
+「切走的那个窗格收不到它监听的事件」则不对。
 
 ### 【未解决】dockview 的标签经 CDP 一次都点不动，真实鼠标事件也不行
 
@@ -564,7 +545,7 @@ Could not resolve value for theme function: theme(reference)
 选择器」，devkit 的样式检查查的正是这个。DOM 上有一个没有任何规则匹配的类名，不会因此影响到
 别的元素的样式。
 
-**所以别顺手去掉它**（改 `iconNode`、加 `className` 覆盖都能做到）：去掉之后隔离一点没变强，
+**所以别去掉它**（改 `iconNode`、加 `className` 覆盖都能做到）：去掉之后隔离一点没变强，
 调试时反倒少了一个标记。反过来，**验证隔离时也别拿 DOM 里的类名清单当证据**——要看的是
 `dist/*.css` 里的选择器。
 

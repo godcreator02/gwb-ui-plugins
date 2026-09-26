@@ -254,7 +254,7 @@ function App({
         setSaveBlockedBy(reason)
       }
     }
-    // 运行时新建的桌面不打开默认布局；第一次开机、v2 迁移出的 null、恢复失败这三种才打开
+    // 运行时新建的桌面不打开默认布局；布局文件里这张桌面的 layout 是 null（第一次开机就是）、恢复失败这两种才打开
     const bornEmpty = bornEmptyRef.current.delete(id)
     const plan = wellBootPlan({ restored, bornEmpty })
     if (plan.openDefaults) openDefaults(event.api, id)

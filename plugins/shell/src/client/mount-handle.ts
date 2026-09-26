@@ -31,21 +31,16 @@ export function pickRetarget(handle: unknown): ((params: Record<string, unknown>
 }
 
 /**
- * 插件的 dispose 与总线 release 排进微任务、在 React 提交之外执行：在提交里同步 `root.unmount()` 会被推迟，
- * 紧接着的清空容器就先于卸载。dispose 抛错照样 release，异常交给 `report`
+ * 插件的 dispose 排进微任务、在 React 提交之外执行：在提交里同步 `root.unmount()` 会被推迟，
+ * 紧接着的清空容器就先于卸载。dispose 抛错交给 `report`
  */
-export function disposeOutsideCommit(
-  dispose: (() => void) | undefined,
-  release: () => void,
-  report: (err: unknown) => void,
-): void {
+export function disposeOutsideCommit(dispose: (() => void) | undefined, report: (err: unknown) => void): void {
   queueMicrotask(() => {
     try {
       dispose?.()
     } catch (err) {
       report(err)
     }
-    release()
   })
 }
 

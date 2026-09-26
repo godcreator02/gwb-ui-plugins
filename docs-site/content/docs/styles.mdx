@@ -224,9 +224,9 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="32-45" hash="4e6fc7ac5d7c" blob="79f6a75dcaee" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="27-40" hash="4e6fc7ac5d7c" blob="f01f3bc6a14a" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="219-237" hash="7e8c67575845" blob="79f6a75dcaee" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="206-224" hash="7e8c67575845" blob="f01f3bc6a14a" */}
 
 **第三步：三张表全部注入、并且都等到加载完成，才往下走。** 有一张加载不了，外壳就不往下走，根节点上写一句
 「外壳起不来」和那张表的地址。令牌那张必须最先——层顺序是它声明的；
@@ -249,7 +249,7 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 → 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。样式表加载不了就停在这一步，
 窗格里显示「加载失败」和那张表的地址，不带着没样式的界面继续挂载。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="124-159" hash="4adceb25a3d2" blob="914c83ed9b10" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="118-153" hash="4adceb25a3d2" blob="97f96b60f987" */}
 
 最后一步里「等它加载完成再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 发生在样式表加载完成之前，那一瞬间是一堆没有样式的元素。这两件事因此放在同一个清理单元里——拆成两处
@@ -426,7 +426,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="199-201" hash="630170c3e816" blob="914c83ed9b10" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="193-195" hash="630170c3e816" blob="97f96b60f987" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：

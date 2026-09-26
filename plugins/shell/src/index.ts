@@ -6,12 +6,12 @@ import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
 import type { GwbSkillsApi } from '@godcreator/gwb-skills'
-import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
-import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
+import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec } from './pane-registry.js'
+import { createPluginRegistry, type PluginInfo, type PluginRegistry } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc, type LayoutDoc } from './layout.js'
 import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv, type Versions } from './protocol.js'
 import { versionsOf, type RuntimeVersions } from './versions.js'
-import { DESKTOP_EVENT, parseDeleteArgs, parseRenameArgs } from './desktops.js'
+import { DESKTOP_EVENT, parseDeleteArgs, parseRenameArgs, parseSwitchArgs, resolveDesktop } from './desktops.js'
 import { parseOpenPaneArgs } from './open-pane.js'
 import { listRowsOf, parsePaneArgs, parsePaneSync, type PaneAction, type PaneSync } from './pane-actions.js'
 import { PANE_SYNC_COMMAND } from './protocol.js'
@@ -19,13 +19,8 @@ import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 import { iconProblem, parseIconCatalog, type IconCatalog } from './pane-icon.js'
 import { startupCss } from './startup-style.js'
 
-export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
-export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
-export type { SavedLayout, LayoutDoc } from './layout.js'
-
-export { PANES_COMMAND, PLUGINS_COMMAND, ENV_COMMAND } from './protocol.js'
-export type { ShellEnv } from './protocol.js'
-export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
+export type { PaneSpec } from './pane-registry.js'
+export type { PluginInfo } from './plugin-registry.js'
 
 const PACKAGE_NAME = '@godcreator/gwb-shell'
 
@@ -67,25 +62,21 @@ function iconCheckerFor(iconCatalogOrLoadError: IconCatalog | string): (name: st
   return (name) => (typeof iconCatalogOrLoadError === 'string' ? undefined : iconProblem(name, iconCatalogOrLoadError))
 }
 
-function nonEmptyStringOrUndefined(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
-}
+const RELOAD_COMMAND = 'shell.reload'
 
-export const RELOAD_COMMAND = 'shell.reload'
+const DESKTOP_LIST_COMMAND = 'shell.desktop.list'
+const DESKTOP_SWITCH_COMMAND = 'shell.desktop.switch'
+const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
 
-export const DESKTOP_LIST_COMMAND = 'shell.desktop.list'
-export const DESKTOP_SWITCH_COMMAND = 'shell.desktop.switch'
-export const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
+const OPEN_PANE_COMMAND = 'shell.openPane'
 
-export const OPEN_PANE_COMMAND = 'shell.openPane'
+const DESKTOP_RENAME_COMMAND = 'shell.desktop.rename'
+const DESKTOP_DELETE_COMMAND = 'shell.desktop.delete'
 
-export const DESKTOP_RENAME_COMMAND = 'shell.desktop.rename'
-export const DESKTOP_DELETE_COMMAND = 'shell.desktop.delete'
-
-export const PANE_LIST_COMMAND = 'shell.pane.list'
-export const PANE_FOCUS_COMMAND = 'shell.pane.focus'
-export const PANE_SEND_COMMAND = 'shell.pane.send'
-export const PANE_CLOSE_COMMAND = 'shell.pane.close'
+const PANE_LIST_COMMAND = 'shell.pane.list'
+const PANE_FOCUS_COMMAND = 'shell.pane.focus'
+const PANE_SEND_COMMAND = 'shell.pane.send'
+const PANE_CLOSE_COMMAND = 'shell.pane.close'
 
 /** `inject: ['gwbShell']` 的插件拿到的服务 */
 export interface GwbShellApi {
@@ -96,10 +87,6 @@ export interface GwbShellApi {
   registerPane(spec: PaneSpec): () => void
   /** 报自己给人看的名字；注销同 `registerPane` */
   describeSelf(info: PluginInfo): () => void
-  /** 按注册先后 */
-  panes(): RegisteredPane[]
-  /** 按报名字的先后 */
-  plugins(): RegisteredPlugin[]
 }
 
 export default class GwbShell extends Service implements GwbShellApi {
@@ -264,7 +251,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     return parseLayoutDoc(await this.ctx.gwbData.readDoc(LAYOUT_DOC)) ?? defaultDoc()
   }
 
-  /** @internal list 读磁盘上的布局文件，其余四条转发给页面执行；回执 ok 只代表转发了 */
+  /** @internal list 读磁盘上的布局文件；switch / rename / delete 先用它检查桌面在不在，其余四条转发给页面执行，回执 ok 只代表转发了 */
   private registerDesktopCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -276,13 +263,21 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     this.registerCommand(
       commandBus,
-      { name: DESKTOP_SWITCH_COMMAND, description: '切到某张桌面', usage: '参数 { id?, name? }（id 优先，二者给一）。窗格容器在页面上，这条只把动作转发过去，回执 ok 代表转发了不是切完了' },
-      (args) => {
-        const switchArgs = args as { id?: unknown; name?: unknown } | undefined
-        const id = nonEmptyStringOrUndefined(switchArgs?.id)
-        const name = nonEmptyStringOrUndefined(switchArgs?.name)
-        if (id === undefined && name === undefined) return { ok: false, error: 'id 与 name 至少给一个' }
-        this.kernel.emit({ t: DESKTOP_EVENT, action: 'switch', ...(id === undefined ? {} : { id }), ...(name === undefined ? {} : { name }) })
+      {
+        name: DESKTOP_SWITCH_COMMAND,
+        description: '切到某张桌面',
+        usage:
+          '参数 { id?, name? }——id 是桌面 id、name 是桌面名（重名取第一张），都用 shell.desktop.list 查；给一个，两个都给按 id。给了的那项不是非空字符串、或磁盘上的布局文件里没有这张桌面，回错。窗格容器在页面上，这条只把动作转发过去，回执 ok 代表转发了不是切完了',
+      },
+      async (args) => {
+        const parsed = parseSwitchArgs(args)
+        if (!parsed.ok) return { ok: false, error: parsed.error }
+        const doc = await this.readLayoutDocOrDefault()
+        if (resolveDesktop(doc.desktops, parsed.by) === undefined) {
+          const missing = 'id' in parsed.by ? `没有桌面 ${parsed.by.id}` : `没有叫「${parsed.by.name}」的桌面`
+          return { ok: false, error: `${missing}——用 shell.desktop.list 查` }
+        }
+        this.kernel.emit({ t: DESKTOP_EVENT, action: 'switch', ...parsed.by })
         return { ok: true, relayed: true }
       },
     )
@@ -465,14 +460,6 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.logInfo(`${owner.pkg} 报了名字：${info.title}`)
     this.ctx.effect(() => unregister)
     return unregister
-  }
-
-  panes(): RegisteredPane[] {
-    return this.paneTable.list()
-  }
-
-  plugins(): RegisteredPlugin[] {
-    return this.pluginTable.list()
   }
 }
 

@@ -11,12 +11,8 @@ import {
   type MountLike,
 } from './mount-handle.js'
 import { contentUpdateOf, paramsKeyOf, parsePaneContent, pluginParamsIn } from '../panels.js'
-import { createBusRegistry } from './bus.js'
 import { visibilityHub } from './visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
-
-/** 分组按条目在窗格之间共享，所以总线注册表放在组件实例之外 */
-const busRegistry = createBusRegistry()
 
 /** 缺 `mountPane` 导出或它不是函数都抛错 */
 async function importMountPane(url: string, who: string): Promise<MountLike> {
@@ -40,7 +36,7 @@ export function PluginPane({
 }: {
   /** 完整包名 */
   pluginKey: string
-  /** 总线按它分组，`openPane` 只开得了这条条目的窗格也靠它 */
+  /** 取注册表里这一条的键；`openPane` 只开得了这条条目的窗格也靠它 */
   entryId: string
   /** 注册时给的窗格 id */
   paneId: string
@@ -87,7 +83,6 @@ export function PluginPane({
     if (container === null) return
     let disposed = false
     let dispose: (() => void) | undefined
-    const bus = busRegistry.acquire(entryId)
     // portal 用 getter 在插件用它时才查：挂载那一刻面板 DOM 可能还不在桌面 section 里，提前算会退回 body、切桌面藏不掉
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
@@ -112,7 +107,6 @@ export function PluginPane({
         updateParamsRef.current(update)
         if (content.title !== undefined) setTitleRef.current(content.title)
       },
-      bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
       get portal() {
         return portalHostOf(container)
       },
@@ -163,7 +157,7 @@ export function PluginPane({
       mountedRef.current = false
       retargetRef.current = undefined
       // 卸载路径上的异常没有别的出口，必须记下来
-      disposeOutsideCommit(dispose, () => bus.release(), (err) => {
+      disposeOutsideCommit(dispose, (err) => {
         console.error(`[shell] ${pluginKey} 的 dispose 抛了：`, err)
       })
     }

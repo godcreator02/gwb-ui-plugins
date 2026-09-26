@@ -166,13 +166,11 @@ describe('外壳服务就绪', () => {
 })
 
 describe('registerPane / describeSelf：身份从调用方的 fiber 上取', () => {
-  it('窗格表带上调用方的 entryId 与 pkg，shell.panes 回同一张表，并写一条 info', async () => {
+  it('窗格表带上调用方的 entryId 与 pkg，shell.panes 回这张表，并写一条 info', async () => {
     const { root, call, logs } = await bootShell()
     const { shell } = await callerShell(root, hello)
     shell.registerPane({ id: 'main', title: '你好', kind: 'document' })
-    const expected = [{ id: 'main', title: '你好', kind: 'document', entryId: 'home:hello', pkg: '@t/gwb-hello' }]
-    expect(shell.panes()).toEqual(expected)
-    expect(await call('shell.panes')).toEqual(expected)
+    expect(await call('shell.panes')).toEqual([{ id: 'main', title: '你好', kind: 'document', entryId: 'home:hello', pkg: '@t/gwb-hello' }])
     expect(textsOf(logs, 'info').some((t) => t.includes('窗格 main') && t.includes('文档窗格') && t.includes('@t/gwb-hello'))).toBe(true)
   })
 
@@ -184,21 +182,21 @@ describe('registerPane / describeSelf：身份从调用方的 fiber 上取', () 
   })
 
   it('调用方卸载时它登记的窗格与名字自动注销', async () => {
-    const { root } = await bootShell()
+    const { root, call } = await bootShell()
     const { shell, fiber } = await callerShell(root, hello)
     shell.registerPane({ id: 'main', title: '你好' })
     shell.describeSelf({ title: '你好插件' })
     await fiber.dispose()
-    expect(shell.panes()).toEqual([])
-    expect(shell.plugins()).toEqual([])
+    expect(await call('shell.panes')).toEqual([])
+    expect(await call('shell.plugins')).toEqual([])
   })
 
   it('返回的注销函数可以提前注销', async () => {
-    const { root } = await bootShell()
+    const { root, call } = await bootShell()
     const { shell } = await callerShell(root, hello)
     const unregister = shell.registerPane({ id: 'main', title: '你好' })
     unregister()
-    expect(shell.panes()).toEqual([])
+    expect(await call('shell.panes')).toEqual([])
   })
 
   it('调用方的 fiber 上没有 entry 就抛错', async () => {
@@ -265,10 +263,35 @@ describe('桌面命令', () => {
   })
 
   it('shell.desktop.switch：id 与 name 都没给回错；给了就转发', async () => {
-    const { call, emitted } = await bootShell()
+    const { call, emitted } = await bootShell({ layout: layoutDoc([{ id: 'd1', name: '甲' }, { id: 'd2', name: '乙' }]) })
     expect(await call('shell.desktop.switch', {})).toEqual({ ok: false, error: 'id 与 name 至少给一个' })
-    expect(await call('shell.desktop.switch', { id: 'd2', name: '' })).toEqual({ ok: true, relayed: true })
-    expect(emitted).toEqual([{ t: 'gwb-shell-desktop', action: 'switch', id: 'd2' }])
+    expect(await call('shell.desktop.switch', { id: 'd2' })).toEqual({ ok: true, relayed: true })
+    expect(await call('shell.desktop.switch', { name: '甲' })).toEqual({ ok: true, relayed: true })
+    expect(emitted).toEqual([
+      { t: 'gwb-shell-desktop', action: 'switch', id: 'd2' },
+      { t: 'gwb-shell-desktop', action: 'switch', name: '甲' },
+    ])
+  })
+
+  it('shell.desktop.switch：桌面不在布局文件里回错、写明用 shell.desktop.list 查，不转发', async () => {
+    const { call, emitted } = await bootShell({ layout: layoutDoc([{ id: 'd1', name: '甲' }]) })
+    const byMissingId = (await call('shell.desktop.switch', { id: 'd9' })) as { ok: boolean; error: string }
+    expect(byMissingId.ok).toBe(false)
+    expect(byMissingId.error).toContain('d9')
+    expect(byMissingId.error).toContain('shell.desktop.list')
+    const byMissingName = (await call('shell.desktop.switch', { name: '不存在' })) as { ok: boolean; error: string }
+    expect(byMissingName.ok).toBe(false)
+    expect(byMissingName.error).toContain('不存在')
+    expect(byMissingName.error).toContain('shell.desktop.list')
+    expect(emitted).toEqual([])
+  })
+
+  it('shell.desktop.switch：id 或 name 给了却不是非空字符串就回错，不改按另一个找', async () => {
+    const { call, emitted } = await bootShell({ layout: layoutDoc([{ id: 'd1', name: '甲' }]) })
+    for (const args of [{ id: 1, name: '甲' }, { id: 'd1', name: 2 }, { id: '', name: '甲' }, { id: 'd1', name: '' }, 'd1']) {
+      expect(((await call('shell.desktop.switch', args)) as { ok: boolean }).ok).toBe(false)
+    }
+    expect(emitted).toEqual([])
   })
 
   it('shell.desktop.new：名字去两头空白，空名不带', async () => {

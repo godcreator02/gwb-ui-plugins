@@ -77,6 +77,24 @@ export function parseRenameArgs(args: unknown): { ok: true; id: string; name: st
   return { ok: true, id: argsObject.id, name: argsObject.name.trim() }
 }
 
+/** id 优先；给了的那项不是非空字符串就回错，不改按另一项找 */
+export function parseSwitchArgs(
+  args: unknown,
+): { ok: true; by: { id: string } | { name: string } } | { ok: false; error: string } {
+  if (args !== undefined && asArgsObject(args) === undefined) return { ok: false, error: '参数 { id?, name? } 得是对象' }
+  const argsObject = asArgsObject(args) ?? {}
+  const { id, name } = argsObject
+  if (id !== undefined && (typeof id !== 'string' || id === '')) {
+    return { ok: false, error: `id 收到 ${JSON.stringify(id)}，得是非空字符串（桌面 id，用 shell.desktop.list 查）` }
+  }
+  if (name !== undefined && (typeof name !== 'string' || name === '')) {
+    return { ok: false, error: `name 收到 ${JSON.stringify(name)}，得是非空字符串（桌面名，用 shell.desktop.list 查）` }
+  }
+  if (typeof id === 'string') return { ok: true, by: { id } }
+  if (typeof name === 'string') return { ok: true, by: { name } }
+  return { ok: false, error: 'id 与 name 至少给一个' }
+}
+
 export function parseDeleteArgs(args: unknown): { ok: true; id: string } | { ok: false; error: string } {
   const argsObject = asArgsObject(args)
   if (typeof argsObject?.id !== 'string' || argsObject.id === '') return { ok: false, error: '参数 { id }：id 是桌面 id（用 shell.desktop.list 查）' }

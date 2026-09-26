@@ -103,6 +103,22 @@ describe.skipIf(!built)('产物', () => {
     it('不列 GwbShell 的私有成员（标了 @internal，tsconfig.build.json 的 stripInternal 去掉它们）', () => {
       expect(read('index.d.ts')).not.toMatch(/\bprivate\b/)
     })
+
+    it('不导出命令名常量、ShellEnv / LayoutDoc / SavedLayout 与注册表的行类型；GwbShellApi 只有 registerPane 与 describeSelf', () => {
+      const entry = read('index.d.ts')
+      expect([...entry.matchAll(/\b[A-Z_]+_COMMAND\b/g)].map((m) => m[0])).toEqual([])
+      for (const name of ['ShellEnv', 'LayoutDoc', 'SavedLayout', 'PaneOwner', 'RegisteredPane', 'RegisteredPlugin']) {
+        expect(entry).not.toMatch(new RegExp(`\\b${name}\\b`))
+      }
+      const shellApi = /export interface GwbShellApi \{([\s\S]*?)\n\}/.exec(entry)?.[1]
+      expect(shellApi).toBeDefined()
+      expect(shellApi).toMatch(/\bregisterPane\(/)
+      expect(shellApi).toMatch(/\bdescribeSelf\(/)
+      expect(shellApi).not.toMatch(/\bpanes\(/)
+      expect(shellApi).not.toMatch(/\bplugins\(/)
+      expect(entry).not.toMatch(/\bpanes\(\): /)
+      expect(entry).not.toMatch(/\bplugins\(\): /)
+    })
   })
 
   it('发布的 d.ts 里不指向文档站的页面：包里没有文档站，读 d.ts 的人打不开', () => {
@@ -145,6 +161,13 @@ describe.skipIf(!built)('产物', () => {
       ]) {
         expect(entry).toMatch(new RegExp(`export type \\{[^}]*\\b${name}\\b`))
       }
+    })
+
+    it('ShellBridge 上没有 bus', () => {
+      const shellBridge = /export interface ShellBridge \{([\s\S]*?)\n\}/.exec(read('types/client/types.d.ts'))?.[1]
+      expect(shellBridge).toBeDefined()
+      expect(shellBridge).toMatch(/\bopenPane\(/)
+      expect(shellBridge).not.toMatch(/\bbus\b/)
     })
 
     it('d.ts 链上没有包名 import——调用方的浏览器侧类型检查不用为它多列依赖', () => {

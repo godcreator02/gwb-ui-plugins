@@ -15,7 +15,8 @@ gwb 工作台的外壳：接管内核页面的根元素，提供窗格容器（�
 - **先读说明书**：`skill.read {"name":"gwb-shell"}`。加窗格、做文档窗格、在窗格里调命令、接 shadcn 组件、
   用令牌配颜色、写浮层、视觉验收的步骤与完成判据都在那里
 - **peer 写外壳**：`@godcreator/gwb-shell`，范围 `^x.y.z`
-- **node 侧类型从包根 `import type`**：服务接口 `GwbShellApi`，登记用的 `PaneSpec`、`PluginInfo`。包根的类型声明给
+- **node 侧类型从包根 `import type`**：包根只导出服务接口 `GwbShellApi` 与登记用的 `PaneSpec`、`PluginInfo`，
+  命令名不导出，调命令时直接写名字。包根的类型声明给
   cordis 的 `Context` 补了 `gwbShell` 这一项，源码里 `import type` 过包根，`ctx.gwbShell` 就有类型；
   用它的插件写 `export const inject = ['gwbShell']`
 - **浏览器侧类型从子路径 `@godcreator/gwb-shell/pane` `import type`**：`PaneArgs`、`PaneHandle`、`ShellBridge`、

@@ -19,7 +19,8 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    - `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`。
      给了就必须是 `file://` 地址、路径分别以 `.js` / `.css` 结尾，否则 `registerPane` 当场抛错
    - `icon` 写 lucide 图标页上的名字，kebab-case，如 `layout-grid`；认不出的名字照样注册，标签上显示 `#`
-   - `kind` 写 `'tool'`（缺省）或 `'document'`：工具窗格整页至多一份，打开就是显示它；文档窗格每份装一个内容，可以开多份（见下一节）
+   - `kind` 写 `'tool'`（缺省）或 `'document'`：工具窗格整页至多一份，打开就是显示它；文档窗格每份装一个内容，可以开多份（见下一节）。
+     写了这两个以外的值，`registerPane` 当场抛错
 
    外壳在本插件卸载时自动注销这个窗格；返回的注销函数只在要提前注销时调。
 2. 调 `ctx.gwbShell.describeSelf({ title, icon })` 报插件的显示名，状态栏「新建」按它给窗格分组。
@@ -307,7 +308,6 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 - `params` 必须能 JSON 序列化；`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview` 是外壳的保留键，
   插件传了会被去掉并在页面控制台 warn
 - `openPane`、`shell.openPane` 都不切桌面；命令回执 `ok` 表示已转交页面执行，结果用 `shell.pane.list` 查
-- `args.shell.bus` 的消息按条目分发，同一条目在各桌面上的窗格都收得到；监听的注销函数在 `dispose` 里调
 - `mountPane` 用到的类型都从 `@godcreator/gwb-shell/pane` `import type`：`PaneArgs`、`PaneHandle`、`ShellBridge`、
   `HostBridge`，以及 `OpenPaneOptions`、`Placement`、`PaneKind`、`PaneContent`。这个子路径只有类型，按值 import 在构建时报错
 - 页面上 `window.gwb` 的类型：`import type {} from '@godcreator/gwb-kernel-desktop'`（内核包的包根一加载就启动 Electron 应用，只能写 `import type`）

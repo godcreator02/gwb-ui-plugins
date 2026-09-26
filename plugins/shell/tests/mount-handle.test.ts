@@ -78,8 +78,8 @@ describe('pickDispose：句柄上的 dispose 才是卸载口', () => {
 })
 
 /**
- * 换内容那条分岔就在这支上：挑得到就是**软换**（件自己换、保住该保的状态），
- * 挑不到就是**硬换**（外壳拆了重挂）。所以「挑不到」是一条正常路径，不是契约不符。
+ * 换内容分两条路，由这个函数决定：取得到就是**软换**（插件自己换内容、保住该保的状态），
+ * 取不到就是**硬换**（外壳卸载后重新挂载）。所以「取不到」是一条正常路径，不是契约不符。
  */
 describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
   it('给了就回一支能调的，参数原样送到', () => {
@@ -116,33 +116,32 @@ describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
   })
 })
 
-describe('disposeOutsideCommit：拆格排在 React 提交之外', () => {
-  it('当场不拆，微任务里先 dispose 再 release', async () => {
+describe('disposeOutsideCommit：插件的 dispose 排在 React 提交之外', () => {
+  it('当场不调，微任务里才调 dispose', async () => {
     const log: string[] = []
-    disposeOutsideCommit(() => log.push('dispose'), () => log.push('release'), () => log.push('report'))
+    disposeOutsideCommit(() => log.push('dispose'), () => log.push('report'))
     log.push('commit-done')
     await Promise.resolve()
-    expect(log).toEqual(['commit-done', 'dispose', 'release'])
+    expect(log).toEqual(['commit-done', 'dispose'])
   })
 
-  it('dispose 抛了照样 release，异常交给 report', async () => {
+  it('dispose 抛了，异常交给 report', async () => {
     const log: string[] = []
     disposeOutsideCommit(
       () => {
         throw new Error('炸')
       },
-      () => log.push('release'),
       (err) => log.push(`report:${String(err)}`),
     )
     await Promise.resolve()
-    expect(log).toEqual(['report:Error: 炸', 'release'])
+    expect(log).toEqual(['report:Error: 炸'])
   })
 
-  it('没拿到 dispose（契约不符那条）也 release', async () => {
+  it('没拿到 dispose（契约不符那条）什么都不调', async () => {
     const log: string[] = []
-    disposeOutsideCommit(undefined, () => log.push('release'), () => log.push('report'))
+    disposeOutsideCommit(undefined, () => log.push('report'))
     await Promise.resolve()
-    expect(log).toEqual(['release'])
+    expect(log).toEqual([])
   })
 })
 

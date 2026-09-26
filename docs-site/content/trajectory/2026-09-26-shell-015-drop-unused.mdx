@@ -1,0 +1,51 @@
+---
+born-at: 2026-09-26T15:15
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 外壳 0.15 删掉没人用的
+domain: shell
+---
+
+## 背景
+
+外壳 0.14.4 还带着几样从没有使用者的东西：布局文件 v2 的迁移（读到 v2 当场迁成 v3）、窗格之间的消息总线
+`args.shell.bus`、服务方法 `gwbShell.panes()` / `plugins()`，以及包根导出的 16 个命令名常量和 `ShellEnv`、
+`LayoutDoc`、`SavedLayout`、`PaneOwner`、`RegisteredPane`、`RegisteredPlugin` 这些类型。另有两处容错会把调用方写错的参数
+改成别的意思继续执行：`shell.desktop.switch` 的 `id` 给了却不是非空字符串时改按 `name` 找，桌面不在也照样转发给页面、
+回 ok；`registerPane` 的 `kind` 写错时 warn 一条、按 `tool` 登记。
+
+查过有没有人在用：所有单元目录里的源码、default home 里 34 个已装包的构建产物、所有 home 与备份里的布局文件，
+都没有用到上面任何一样，磁盘上也没有 v2 的布局文件。
+
+消息总线出过一次问题，值得留下：同一个窗格能开两份以后，关掉其中一份时它注册的监听函数没被注销（另一份还占着
+那个分组，分组不删），关掉的窗格继续收到事件、回调作用在已经卸载的 React 树上。这是「每个窗格只开一份」时看不出来、
+新功能一来才暴露的旧缺陷，当时改成句柄自己记着注册过哪些监听函数、释放时逐条注销。机制删掉以后这条不再是现状，
+从「遇到过的问题」页移到这里。
+
+## 结论与边界
+
+2026-09-26 人定：现在就发外壳 0.15.0，没有使用者的一次删完，两处容错一起收紧。
+
+- 布局文件只认 v3，别的版本（含 v2）一律按「读不回来」处理：状态栏告警、这一轮不保存
+- 删掉 `args.shell.bus`（`src/client/bus.ts` 与它的测试）；`PluginPane` 卸载时只剩调插件的 `dispose`
+- `GwbShellApi` 只剩 `registerPane`、`describeSelf`；要读注册表、插件名表用命令 `shell.panes`、`shell.plugins`
+- 包根只导出 `GwbShellApi`、`PaneSpec`、`PluginInfo` 三个类型与 `ctx.gwbShell` 的增强；命令名常量改成模块内部常量，下游按名字调用
+- `shell.desktop.switch`：`id` / `name` 给了却不是非空字符串回 `ok: false`，不改按另一项找；node 侧先查磁盘上的布局文件里有没有这张桌面，没有就回 `ok: false`，错误里写明用 `shell.desktop.list` 查
+- `registerPane` 的 `kind` 只认 `'tool'`、`'document'`，不给是 `'tool'`，写了别的值当场抛错
+
+## 否掉的候选
+
+- **只删 v2 迁移、升补丁号，其余等下次破坏性版本再删**：删 v2 迁移本身不影响任何在用的下游，单独发补丁号说得过去；
+  但剩下那几样迟早要删，每发一次破坏性版本，下游凡是 peer 写了 `^0.14` 的插件都要跟着改 peer、重新发版。
+  分几次删就要让下游跟几次，攒到一次一起删，这笔代价只付一次
+
+## 代价
+
+peer 里写 `^0.14` 外壳的下游插件都要跟 0.15：devkit、dsh、unit-folder、windows-backup、collab、nas-board、news-links、
+cgm-alert。它们都没用到被删的东西，只需要把 peer 的范围改到 `^0.15` 再发版。块笔记把外壳写在 dev 里，不受发版检查影响。
+
+## 依据
+
+改动写卡时还没提交（基于 `f473b0f`，外壳 0.14.4），代码在 `plugins/shell/src/` 的 `index.ts`、`layout.ts`、`desktops.ts`、
+`pane-registry.ts`、`client/PluginPane.tsx`、`client/mount-handle.ts`，测试在 `plugins/shell/tests/`（`desktops.test.ts`、
+`layout.test.ts`、`pane-registry.test.ts`、`service.test.ts` 等）。「没有使用者」的核查由主会话做，写卡时手上没有核查命令的原始输出，未存探针。

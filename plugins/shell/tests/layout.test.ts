@@ -11,9 +11,8 @@ import {
 } from '../src/layout.js'
 
 /**
- * 布局档的纯判断：档认不认得出、v2 迁不迁得过、新条目叫什么、同名重存盖不盖。档是机器
- * 写的，但「人手改坏」「版本升了」（含多桌面时代 0.0.14 的 v1）都真会发生，认不出的那条
- * 路得钉住；v2 是昨天还在写的形状，迁移丢东西等于每次升档把人的井洗回默认，也得钉住。
+ * 布局文件的纯判断：认不认得出、新条目叫什么、同名重存覆不覆盖。文件是机器写的，但人手改坏、
+ * 版本变了（多桌面时代 0.0.14 的 v1、单容器的 v2）都真会发生，认不出的那条路要守住。
  */
 
 const grid = { grid: { root: { type: 'branch', data: [] } }, panels: {} }
@@ -38,33 +37,11 @@ describe('parseLayoutDoc：认得出才收，认不出整档当没有', () => {
     expect(parseLayoutDoc(defaultDoc())).toEqual(defaultDoc())
   })
 
-  it('版本不认识 → null（多桌面时代的 v1、将来升版本都走这条）', () => {
+  it('版本不认识 → null（多桌面时代的 v1、单容器的 v2、将来升版本都走这条）', () => {
     expect(parseLayoutDoc({ v: 1, active: 'd1', desktops: [{ id: 'd1', name: '桌面 1', layout: null }] })).toBeNull()
+    expect(parseLayoutDoc({ v: 2, current: grid, saved: [row()] })).toBeNull()
     expect(parseLayoutDoc({ v: 4, active: 'd1', desktops: [] })).toBeNull()
     expect(parseLayoutDoc({ active: 'd1', desktops: [], saved: [] })).toBeNull()
-  })
-
-  it('v2 当场迁成 v3：current 变第一口「主桌面」，saved 原样带走；current null 也收', () => {
-    expect(parseLayoutDoc({ v: 2, current: grid, saved: [row()] })).toEqual({
-      v: LAYOUT_VERSION,
-      active: 'd1',
-      desktops: [{ id: 'd1', name: '主桌面', layout: grid }],
-      saved: [row()],
-    })
-    expect(parseLayoutDoc({ v: 2, current: null, saved: [] })).toEqual({
-      v: LAYOUT_VERSION,
-      active: 'd1',
-      desktops: [{ id: 'd1', name: '主桌面', layout: null }],
-      saved: [],
-    })
-  })
-
-  it('v2 的坏档照旧整档当没有（current 坏、saved 坏）', () => {
-    expect(parseLayoutDoc({ v: 2, current: 'oops', saved: [] })).toBeNull()
-    expect(parseLayoutDoc({ v: 2, current: [], saved: [] })).toBeNull()
-    expect(parseLayoutDoc({ v: 2, current: null, saved: [{ ...row(), id: '' }] })).toBeNull()
-    expect(parseLayoutDoc({ v: 2, current: null, saved: [row(), row()] })).toBeNull()
-    expect(parseLayoutDoc({ v: 2, current: null, saved: 'nope' })).toBeNull()
   })
 
   it('desktops 坏（空表、空 id/空名、layout 坏、id 撞车）→ 整档当没有；**同名是合法的**（id 才是身份）', () => {
@@ -73,7 +50,7 @@ describe('parseLayoutDoc：认得出才收，认不出整档当没有', () => {
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: 'd1', desktops: [{ ...desktop(), name: '' }], saved: [] })).toBeNull()
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: 'd1', desktops: [{ ...desktop(), layout: 'oops' }], saved: [] })).toBeNull()
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: 'd1', desktops: [desktop(), desktop()], saved: [] })).toBeNull()
-    // 两口同名、不同 id：收。名字是人看的标签，id 才是档内部认人的键
+    // 两张桌面同名、不同 id：收。名字是给人看的标签，id 才是布局文件内部的键
     const sameName = { v: LAYOUT_VERSION, active: 'd1', desktops: [desktop(), desktop({ id: 'd2' })], saved: [] }
     expect(parseLayoutDoc(sameName)).toEqual(sameName)
   })
@@ -83,7 +60,7 @@ describe('parseLayoutDoc：认得出才收，认不出整档当没有', () => {
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: '', desktops: [desktop()], saved: [] })).toBeNull()
   })
 
-  it('saved 不是数组 / 里面坏 → null（v3 与 v2 同一条规矩）', () => {
+  it('saved 不是数组 / 里面坏 → null', () => {
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: 'd1', desktops: [desktop()] })).toBeNull()
     expect(parseLayoutDoc({ v: LAYOUT_VERSION, active: 'd1', desktops: [desktop()], saved: 'nope' })).toBeNull()
     expect(

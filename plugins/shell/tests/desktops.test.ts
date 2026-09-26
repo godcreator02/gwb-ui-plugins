@@ -7,14 +7,15 @@ import {
   isDesktopAction,
   parseDeleteArgs,
   parseRenameArgs,
+  parseSwitchArgs,
   renameDesktop,
   resolveDesktop,
 } from '../src/desktops.js'
 import type { DesktopRow } from '../src/layout.js'
 
 /**
- * 桌面纯判断：事件口上认不认得出自己的记号、按 id / 名字找不找得到那口桌面。
- * 事件口上什么件的事件都有，认错一条就把别人的动作当自己的执行了。
+ * 桌面纯判断：事件入口上认不认得出自己的标记、按 id / 名字找不找得到那张桌面、命令参数对不对。
+ * 事件入口上什么插件的事件都有，认错一条就把别人的动作当自己的执行了。
  */
 
 function desktop(over: Partial<DesktopRow> = {}): DesktopRow {
@@ -96,7 +97,18 @@ describe('deleteConfirmText：删桌面一律先确认，确认框里写什么',
   })
 })
 
-describe('命令参数：rename / delete', () => {
+describe('命令参数：switch / rename / delete', () => {
+  it('switch 要 id 或 name，两个都给按 id；给了的那项不是非空字符串就回错', () => {
+    expect(parseSwitchArgs({ id: 'd2' })).toEqual({ ok: true, by: { id: 'd2' } })
+    expect(parseSwitchArgs({ name: '摸鱼' })).toEqual({ ok: true, by: { name: '摸鱼' } })
+    expect(parseSwitchArgs({ id: 'd2', name: '摸鱼' })).toEqual({ ok: true, by: { id: 'd2' } })
+    expect(parseSwitchArgs({})).toEqual({ ok: false, error: 'id 与 name 至少给一个' })
+    expect(parseSwitchArgs(undefined)).toEqual({ ok: false, error: 'id 与 name 至少给一个' })
+    for (const args of [{ id: 3, name: '摸鱼' }, { id: '', name: '摸鱼' }, { id: 'd2', name: 2 }, { name: '' }, null, 'd2', ['d2']]) {
+      expect(parseSwitchArgs(args)).toMatchObject({ ok: false })
+    }
+  })
+
   it('rename 要 id 与非空名字', () => {
     expect(parseRenameArgs({ id: 'd2', name: ' 写作 ' })).toEqual({ ok: true, id: 'd2', name: '写作' })
     expect(parseRenameArgs({ id: 'd2', name: '  ' })).toMatchObject({ ok: false })

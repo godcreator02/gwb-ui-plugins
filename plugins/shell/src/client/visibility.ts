@@ -6,7 +6,7 @@ export interface VisibilityHub {
    * 还没通知过的桌面按可见算：容器只在第一次切到时挂载，挂载那一刻它必然可见
    */
   subscribe(desktopId: string, listener: VisibilityListener): () => void
-  /** 监听函数抛异常按监听函数隔离，与窗格间总线相同 */
+  /** 监听函数抛异常按监听函数隔离：一个抛了，别的照样收到 */
   notify(desktopId: string, visible: boolean): void
 }
 

@@ -22,7 +22,8 @@ tailwind、esbuild、类型包等）。
 
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
-| 服务 | `gwbShell` | 方法 `registerPane(spec)`、`describeSelf(info)`、`panes()`、`plugins()`；登记与报名字都记在调用方的上下文上，调用方卸载时自动注销 |
+| 服务 | `gwbShell` | 方法只有 `registerPane(spec)`、`describeSelf(info)`；登记与报名字都记在调用方的上下文上，调用方卸载时自动注销。要读注册表、插件名表用下面两条命令 |
+| 类型（包根） | `GwbShellApi`、`PaneSpec`、`PluginInfo` | node 侧 `import type` 用；包根不导出命令名常量，按名字调用即可 |
 | 命令 | `shell.panes`、`shell.plugins` | 此刻的窗格注册表、报过名字的插件 |
 | 命令 | `shell.env` | 页面启动时要的环境：home、样式表地址、用户外观样式、版本 |
 | 命令 | `shell.layout.get`、`shell.layout.save` | 读、整份替换布局文件 |
@@ -43,9 +44,9 @@ tailwind、esbuild、类型包等）。
 
 {/* has file="../plugins/shell/src/index.ts" text="describeSelf(info: PluginInfo): () => void" */}
 
-{/* has file="../plugins/shell/src/index.ts" text="panes(): RegisteredPane[]" */}
+{/* has file="../plugins/shell/src/index.ts" text="export interface GwbShellApi" */}
 
-{/* has file="../plugins/shell/src/index.ts" text="plugins(): RegisteredPlugin[]" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="22-23" hash="2f61ea755107" blob="f01f3bc6a14a" */}
 
 {/* has file="../plugins/shell/src/protocol.ts" text="'shell.panes'" */}
 

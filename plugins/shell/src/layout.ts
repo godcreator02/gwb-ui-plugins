@@ -4,7 +4,7 @@ export const LAYOUT_DOC = 'layout'
 export const LAYOUT_GET_COMMAND = 'shell.layout.get'
 export const LAYOUT_SAVE_COMMAND = 'shell.layout.save'
 
-/** 改形状就加一；读到 v2 当场迁移，别的版本认不出 */
+/** 改形状就加一；只认这一个版本，别的版本认不出 */
 export const LAYOUT_VERSION = 3
 
 /** 一套人手起名存下的布局 */
@@ -82,19 +82,9 @@ function parseDesktopRows(raw: unknown): DesktopRow[] | null {
   return desktopRows
 }
 
-/** v2 只有一个容器（current）：它成为第一张「主桌面」，saved 原样带走 */
-function migrateV2Doc(raw: Record<string, unknown>): LayoutDoc | null {
-  const current = parseContainerLayout(raw.current)
-  if (current === undefined) return null
-  const saved = parseSavedLayouts(raw.saved)
-  if (saved === null) return null
-  return { v: LAYOUT_VERSION, active: 'd1', desktops: [{ id: 'd1', name: '主桌面', layout: current }], saved }
-}
-
-/** 磁盘上读到的 → 布局文件。认不出回 null；v2 当场迁成 v3，迁移结果不写回 */
+/** 磁盘上读到的 → 布局文件。认不出（含 v3 以外的版本）回 null */
 export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
   if (!isPlainObject(raw)) return null
-  if (raw.v === 2) return migrateV2Doc(raw)
   if (raw.v !== LAYOUT_VERSION) return null
   const { active } = raw
   if (typeof active !== 'string' || active === '') return null
@@ -138,7 +128,7 @@ export function initialLayoutOf(settled: PromiseSettledResult<unknown>): Initial
   if (reply.data === undefined) return { doc: defaultDoc() }
   const doc = parseLayoutDoc(reply.data)
   if (doc === null) {
-    return { doc: defaultDoc(), saveBlockedBy: `磁盘上的布局文件认不出（${versionLabelOf(reply.data)}，外壳认 v2 与 v${String(LAYOUT_VERSION)}）` }
+    return { doc: defaultDoc(), saveBlockedBy: `磁盘上的布局文件认不出（${versionLabelOf(reply.data)}，外壳只认 v${String(LAYOUT_VERSION)}）` }
   }
   return { doc }
 }
