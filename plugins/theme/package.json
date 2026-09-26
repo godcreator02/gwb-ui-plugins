@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-theme",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格，没有外壳也照常加载",
   "type": "module",
   "exports": {
