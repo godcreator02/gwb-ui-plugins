@@ -169,7 +169,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 - **没有 `canonicalPanelId`**——那是老布局兼容（磁盘上的窗格 id 少一段）用的，这里
   不需要它
 
-{/* ref file="../plugins/shell/src/openable.ts" hash="a262056e0319" blob="e10248ceb389" */}
+{/* ref file="../plugins/shell/src/openable.ts" hash="6ec24d570010" blob="bb642a6dd7b3" */}
 
 ## 浏览器侧：容器与窗格
 
@@ -403,7 +403,7 @@ flush 才写进去。
 **插件的状态只靠参数带过去**：步骤 2、3 之间插件被重新挂载，滚动位置、打到一半的字这类东西，
 插件想保住就得放进 `setPaneContent` 的参数里。这是文档窗格要上报内容的第二个理由。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="357-383" hash="303a030a65d4" blob="e10248ceb389" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="359-385" hash="303a030a65d4" blob="bb642a6dd7b3" */}
 
 **拉到本桌**：在「桌面」面板里把别的桌面上的窗格拖到当前桌面上——等于送到当前桌面，送到之后
 激活它，不涉及切桌面。

@@ -117,11 +117,12 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    }
    ```
 
-   调用处 `catch` 住，把错误文本放进窗格的状态里显示出来。处理函数返回带 `ok` 又有别的字段的对象时（命令行工具的命令都是这种），
-   字段在回执顶层、不在 `data` 里，照那条命令的 `usage` 读。
+   调用处 `catch` 住，把错误文本放进窗格的状态里显示出来。`as GwbResult<Row[]>` 只是给类型，不检查 `data` 实际长什么样：
+   先用 `search` 看那条命令的 `usage`，`usage` 没写清 `data` 形状的，在隔离 home 里用 `devkit.cdp … cmd <命令名>` 调一次看实际回执，
+   再按看到的形状收窄。处理函数返回带 `ok` 又有别的字段的对象时（命令行工具的命令都是这种），字段在回执顶层、不在 `data` 里。
 
 **完成**：命令成功时窗格显示出 `data` 里的内容；把命令名故意写错一次，窗格上显示出「没有这条命令：…」，
-页面没有未处理的 promise 报错。
+页面没有未处理的 promise 报错。故意写错的那一次会在 `gwb.log` 留一行「调用了不存在的命令：…」的 warn，这是预期的。
 
 ## 接入 shadcn 组件
 
@@ -135,9 +136,9 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    只写 `paths`，TS 7 已移除 `baseUrl`。
 3. 在插件包目录（`plugins/<短名>/`，`components.json` 所在的那一层）运行 `pnpm dlx shadcn@latest add <组件…>`，
    如 `pnpm dlx shadcn@latest add button select dialog`，从官方源添加组件。
-4. 把 CLI 写进 `dependencies` 的组件依赖（`radix-ui`、`class-variance-authority`、`cn`、`lucide-react` 等）
+4. 把 CLI 写进 `dependencies` 的组件依赖（常见的有 `radix-ui`、`cn`，有的组件还有 `class-variance-authority`）
    挪到 `devDependencies`：它们打包进 `client.js`。组件里的 `import { cn } from 'cn'` 保持原样。
-   CLI 不一定把组件用到的包都装上（实测漏过 `lucide-react`）：逐个看生成的组件文件顶部的 import，
+   CLI 不一定把组件用到的包都装上（实测 `select`、`dropdown-menu` 用了 `lucide-react`，CLI 没装）：逐个看生成的组件文件顶部的 import，
    `package.json` 里没有的自己 `pnpm add -D <包名>`。
 5. 按钮、输入、选择、菜单、弹窗用添加进来的官方组件，保留它们的默认状态与键盘交互，尺寸从已有的
    variant 里选。业务特有的界面可以自己写，工具栏、设置表单、提示这些公共部分照常用语义类。

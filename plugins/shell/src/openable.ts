@@ -218,8 +218,10 @@ function recentGroupHoldingPane(desk: Desk, def: PaneDef): DeskGroup | undefined
 }
 
 /**
- * 这次打开落在哪一组，只在一张桌面里算。`side`：来源窗格所在组（没有来源取活动组）右边紧挨的那组，没有就把它对半分。
- * `auto` 依次取：来源就是这个窗格时的来源组、最近激活过且开着这个窗格的组、来源组旁边、活动组；桌面是空的就新建一组
+ * 这次打开落在哪一组，只在一张桌面里算。「某组旁边」指它右边紧挨的那组，没有就把它对半分出一组新的。
+ * `side`：来源窗格所在组（没有来源取活动组）旁边。
+ * `auto` 依次取：来源就是这个窗格时的来源组、最近激活过且开着这个窗格的组、来源组旁边；没有来源时取活动组本身（不分组）。
+ * 桌面是空的就新建一组
  */
 export function targetGroup(desk: Desk, def: PaneDef, placement: Placement, from?: string): Target {
   const sourceGroup = groupHoldingInstance(desk, from)

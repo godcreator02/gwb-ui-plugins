@@ -80,7 +80,7 @@ export interface ShellBridge {
   openPane(paneId: string, options?: OpenPaneOptions): void
   /**
    * 改**这个窗格**标签上的标题，转调 dockview 的 `setTitle`。初始标题由 `registerPane` 定，
-   * 这里只管运行时改。
+   * 这里只管运行时改。在 `mountPane` 里或挂载后的 effect 里调都有效；标题随布局保存，整页重载、重启后保留。
    */
   setPaneTitle(title: string): void
   /**
