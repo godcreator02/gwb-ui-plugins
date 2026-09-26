@@ -217,7 +217,10 @@ function recentGroupHoldingPane(desk: Desk, def: PaneDef): DeskGroup | undefined
   return undefined
 }
 
-/** 这次打开落在哪一组，只在一张桌面里算；规则顺序见 shell.mdx「一个窗格的身份是它装的内容」 */
+/**
+ * 这次打开落在哪一组，只在一张桌面里算。`side`：来源窗格所在组（没有来源取活动组）右边紧挨的那组，没有就把它对半分。
+ * `auto` 依次取：来源就是这个窗格时的来源组、最近激活过且开着这个窗格的组、来源组旁边、活动组；桌面是空的就新建一组
+ */
 export function targetGroup(desk: Desk, def: PaneDef, placement: Placement, from?: string): Target {
   const sourceGroup = groupHoldingInstance(desk, from)
   if (placement === 'side') {
@@ -276,7 +279,11 @@ function reservedKeysNotice(options: OpenPaneOptions | undefined, who: PaneDef):
   return reservedKeysPassed.length === 0 ? undefined : `窗格 ${who.paneId} 传的 params 里 ${reservedKeysPassed.join('、')} 是外壳的保留键，已摘掉`
 }
 
-/** 先算目标组，再按窗格类别查重；判断表见 shell.mdx「再查重、出判断」 */
+/**
+ * 先算目标组，再按窗格类别查重：同一 key 已经开着（工具窗格查整张桌面，文档窗格只查目标组）就激活它，正式打开时找到的是
+ * 预览窗格就顺带转正；工具窗格开在别的桌面上就到那张桌面激活它；要预览、目标组里已有这个窗格的预览窗格就原地换内容；
+ * 都不是才开新的一份
+ */
 export function planOpen(
   spec: OpenableSpec | undefined,
   options: OpenPaneOptions | undefined,
@@ -377,7 +384,7 @@ export function planSend(
 
 /**
  * 对半分之后基准组的高补成多少（逻辑尺寸），没变回 undefined。dockview 把竖排里的组包进新分支时
- * 塞回的是渲染后的高，补成 `2×原高−现高` 就回到原高；量法见 walls.mdx
+ * 塞回的是渲染后的高，补成 `2×原高−现高` 就回到原高
  */
 export function splitHeightFix(before: number, after: number): number | undefined {
   return Math.abs(before - after) < 0.5 ? undefined : 2 * before - after

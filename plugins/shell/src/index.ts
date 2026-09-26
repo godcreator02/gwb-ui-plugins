@@ -5,7 +5,6 @@ import { Service } from 'cordis'
 import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
-import type { GwbDataApi } from '@godcreator/gwb-data'
 import type { GwbSkillsApi } from '@godcreator/gwb-skills'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
@@ -23,14 +22,6 @@ import { startupCss } from './startup-style.js'
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
 export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
 export type { SavedLayout, LayoutDoc } from './layout.js'
-
-/** 各插件发的 `declare module 'cordis'` 在 pnpm store 布局下会加到另一个 `Context` 上，所以在本文件按真类型再声明一遍 */
-declare module 'cordis' {
-  interface Context {
-    gwbCommands?: GwbCommands
-    gwbData: GwbDataApi
-  }
-}
 
 export { PANES_COMMAND, PLUGINS_COMMAND, ENV_COMMAND } from './protocol.js'
 export type { ShellEnv } from './protocol.js'
@@ -115,15 +106,19 @@ export default class GwbShell extends Service implements GwbShellApi {
   /** 必需依赖：缺哪个本插件就不加载，cordis 在日志里写明在等谁 */
   static inject = ['gwbCommands', 'gwbData']
 
-  // 字段用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错
-  /** 键是 (entryId, 窗格 id) */
+  // 字段用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错。
+  // 私有成员都标 `@internal`：tsconfig.build.json 开了 stripInternal，发布的 d.ts 里不列它们
+  /** @internal 键是 (entryId, 窗格 id) */
   private readonly paneTable: PaneRegistry
-  /** 键是 entryId */
+  /** @internal 键是 entryId */
   private readonly pluginTable: PluginRegistry
+  /** @internal */
   private readonly logInfo: (message: string) => void
+  /** @internal */
   private readonly logError: (message: string) => void
+  /** @internal */
   private readonly kernel: GwbKernelApi
-  /** 页面经 `shell.pane.sync` 推来的窗格清单；页面还没推过是 undefined */
+  /** @internal 页面经 `shell.pane.sync` 推来的窗格清单；页面还没推过是 undefined */
   private paneCache: PaneSync | undefined
 
   constructor(ctx: GwbContext) {
@@ -159,14 +154,14 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.logReady(clientEntry)
   }
 
-  /** 本插件卸载时页面根自动交还 */
+  /** @internal 本插件卸载时页面根自动交还 */
   private takeOverPageRoot(): string {
     const clientEntry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(clientEntry))
     return clientEntry
   }
 
-  /** 说明书插件可选：不写进 static inject，它后加载时补登记、卸载时自动注销 */
+  /** @internal 说明书插件可选：不写进 static inject，它后加载时补登记、卸载时自动注销 */
   private registerOwnSkillsWheneverSkillsPluginIsLoaded(): void {
     this.ctx.inject(['gwbSkills'], (contextWithSkills) => {
       const { gwbSkills } = contextWithSkills as typeof contextWithSkills & { gwbSkills: GwbSkillsApi }
@@ -174,17 +169,19 @@ export default class GwbShell extends Service implements GwbShellApi {
     })
   }
 
+  /** @internal */
   private logReady(clientEntry: string): void {
     this.ctx.logger('gwb-shell').info(
       `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局文件走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND} / ${DESKTOP_RENAME_COMMAND} / ${DESKTOP_DELETE_COMMAND}，跨插件开窗格走 ${OPEN_PANE_COMMAND}，窗格走 ${PANE_LIST_COMMAND} / ${PANE_FOCUS_COMMAND} / ${PANE_SEND_COMMAND} / ${PANE_CLOSE_COMMAND}；已接管页面根，入口 ${clientEntry}`,
     )
   }
 
-  /** 命令总线把注销登记在调用方（本插件）的上下文上，本插件卸载时自动注销 */
+  /** @internal 命令总线把注销登记在调用方（本插件）的上下文上，本插件卸载时自动注销 */
   private registerCommand(commandBus: GwbCommands, def: Omit<GwbCommandDef, 'plugin'>, handler: (args?: unknown) => unknown): void {
     commandBus.register({ ...def, plugin: PACKAGE_NAME }, handler)
   }
 
+  /** @internal */
   private registerTableCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -198,6 +195,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.registerCommand(commandBus, { name: PLUGINS_COMMAND, description: '此刻有哪些插件报过名字', usage: '无参数' }, () => this.pluginTable.list())
   }
 
+  /** @internal */
   private registerLayoutCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -217,6 +215,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
+  /** @internal */
   private registerEnvCommand(commandBus: GwbCommands): void {
     // Electron 主进程的 process.versions 带 electron / chrome，@types/node 的形状里没有
     const runtimeVersions = process.versions as unknown as RuntimeVersions
@@ -237,6 +236,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
+  /** @internal */
   private registerReloadCommand(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -259,12 +259,12 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 认不出就回缺省布局文件 */
+  /** @internal 认不出就回缺省布局文件 */
   private async readLayoutDocOrDefault(): Promise<LayoutDoc> {
     return parseLayoutDoc(await this.ctx.gwbData.readDoc(LAYOUT_DOC)) ?? defaultDoc()
   }
 
-  /** list 读磁盘上的布局文件，其余四条转发给页面执行；回执 ok 只代表转发了 */
+  /** @internal list 读磁盘上的布局文件，其余四条转发给页面执行；回执 ok 只代表转发了 */
   private registerDesktopCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -333,7 +333,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 页面还没推过清单时不检查，照样转发 */
+  /** @internal 页面还没推过清单时不检查，照样转发 */
   private paneActionTargetError(action: PaneAction): string | undefined {
     if (this.paneCache === undefined) return undefined
     if (!this.paneCache.entries.some((entry) => entry.instance === action.instance)) {
@@ -346,6 +346,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     return undefined
   }
 
+  /** @internal */
   private registerRelayedPaneCommand(commandBus: GwbCommands, name: string, action: 'focus' | 'close' | 'send', description: string, usage: string): void {
     this.registerCommand(commandBus, { name, description, usage }, (args) => {
       const parsed = parsePaneArgs(action, args)
@@ -357,7 +358,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     })
   }
 
-  /** list 读页面推来的缓存；focus / send / close 先用缓存检查实例与目标桌面，再转发给页面执行 */
+  /** @internal list 读页面推来的缓存；focus / send / close 先用缓存检查实例与目标桌面，再转发给页面执行 */
   private registerPaneCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -410,7 +411,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 窗格不在注册表里当场回错，不转发一个注定没动静的动作；在表里也只是转发 */
+  /** @internal 窗格不在注册表里当场回错，不转发一个注定没动静的动作；在表里也只是转发 */
   private registerOpenPaneCommand(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
@@ -438,7 +439,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** 方法里的 `this.ctx` 是调用方的上下文；`fiber.entry` 是 loader 放的，不在 cordis 的类型里，按运行时形状取 */
+  /** @internal 方法里的 `this.ctx` 是调用方的上下文；`fiber.entry` 是 loader 放的，不在 cordis 的类型里，按运行时形状取 */
   private ownerOfCaller(): PaneOwner {
     const fiber = this.ctx.fiber as unknown as { entry?: { id?: unknown; options?: { name?: unknown } } } | undefined
     const entry = fiber?.entry

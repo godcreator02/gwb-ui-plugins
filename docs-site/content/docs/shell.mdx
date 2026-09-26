@@ -20,7 +20,7 @@ devkit 只引用这份说明书并提供模板，不复制 UI 规则。
 
 ## 它的接口
 
-{/* ref file="../plugins/shell/src/index.ts" lines="99-112" hash="eadff41d759f" blob="24452becf052" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="90-103" hash="eadff41d759f" blob="79f6a75dcaee" */}
 
 插件给的那几样，与服务替它填上的身份：
 
@@ -99,7 +99,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 `registerPane` 只收 `{ id, title, icon?, client?, style?, kind? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="441-459" hash="533523bff841" blob="247cd11bdbae" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="442-460" hash="48f9416aafaf" blob="79f6a75dcaee" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个做法）。插件没法自报名字，也就没法冒充别人的窗格。
@@ -169,7 +169,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 - **没有 `canonicalPanelId`**——那是老布局兼容（磁盘上的窗格 id 少一段）用的，这里
   不需要它
 
-{/* ref file="../plugins/shell/src/openable.ts" hash="1f85e5ae3149" blob="0f925eb72654" */}
+{/* ref file="../plugins/shell/src/openable.ts" hash="a262056e0319" blob="e10248ceb389" */}
 
 ## 浏览器侧：容器与窗格
 
@@ -403,7 +403,7 @@ flush 才写进去。
 **插件的状态只靠参数带过去**：步骤 2、3 之间插件被重新挂载，滚动位置、打到一半的字这类东西，
 插件想保住就得放进 `setPaneContent` 的参数里。这是文档窗格要上报内容的第二个理由。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="350-376" hash="303a030a65d4" blob="0f925eb72654" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="357-383" hash="303a030a65d4" blob="e10248ceb389" */}
 
 **拉到本桌**：在「桌面」面板里把别的桌面上的窗格拖到当前桌面上——等于送到当前桌面，送到之后
 激活它，不涉及切桌面。

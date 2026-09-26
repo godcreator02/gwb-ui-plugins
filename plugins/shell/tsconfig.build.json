@@ -4,8 +4,11 @@
     "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,
+    // 源码里标了 @internal 的（GwbShell 的私有成员）不进发布的 d.ts
+    "stripInternal": true,
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/index.ts"]
+  // own-context.d.ts 不被任何文件 import，要在这里列出才生效；它是 .d.ts，不会输出到 dist
+  "include": ["src/index.ts", "src/own-context.d.ts"]
 }

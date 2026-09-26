@@ -3,6 +3,8 @@ import type { Message, Plugin } from 'cordis'
 import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
 import { describe, expect, it, vi } from 'vitest'
 import GwbShell, { type GwbShellApi } from '../src/index.js'
+// 仓根的 tsc 顺着上一行把 src/index.ts 拉进来，它读 ctx.gwbData 要靠这份只在外壳自己编译时生效的声明
+import type {} from '../src/own-context.js'
 import { LAYOUT_VERSION, type LayoutDoc } from '../src/layout.js'
 
 /**

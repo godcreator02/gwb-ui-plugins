@@ -7,7 +7,20 @@ import type { OpenPaneOptions, PaneKind } from '../openable.js'
 import type { PaneContent } from '../panels.js'
 import type { Versions } from '../protocol.js'
 
-/** 内核提供的调用命令的接口。整条链路是：界面 → IPC → 主进程里的 ctx.gwbCommands */
+/**
+ * 调一条命令：页面 → IPC → 主进程里命令总线的 `run(command, args, { via: 'ui' })`，resolve 的就是命令总线的回执。
+ *
+ * - 处理函数返回普通值：回执是 `{ ok: true, data: <返回值> }`
+ * - 处理函数自己返回了带 `ok` 键的对象：原样交回。约定是 `{ ok: true, data? }` 或 `{ ok: false, error }`，
+ *   也可能带别的键（外壳的转发类命令回 `{ ok: true, relayed: true }`），这时不一定有 `data`
+ * - 命令不存在：`{ ok: false, error: '没有这条命令：<命令名>' }`
+ * - 处理函数抛错或 reject：`{ ok: false, error: <错误转成的字符串> }`
+ * - 没装命令插件：`{ ok: false, error }`，说明没有命令服务
+ *
+ * 所以命令本身的失败都是 resolve 成 `ok: false` 的回执，不会 reject；调用方先判 `ok === true` 再读 `data`。
+ * `args` 与回执经 IPC 按结构化克隆复制，`args` 里有函数这类复制不了的值时，调用本身抛错或 reject。
+ * 返回类型写成 `unknown`：回执的形状由各命令决定，读之前自己收窄
+ */
 export interface HostBridge {
   call(command: string, args?: unknown): Promise<unknown>
 }
@@ -32,7 +45,7 @@ export interface PaneRow {
   id: string
   title: string
   icon?: string
-  /** 浏览器侧脚本与样式表的地址，插件注册时给出。见 pane-registry 的 PaneSpec */
+  /** 浏览器侧脚本与样式表的 `file://` 地址，插件注册时给出 */
   client?: string
   style?: string
   /** 工具窗格还是文档窗格（注册时不说就是 tool） */
@@ -75,8 +88,6 @@ export interface ShellBridge {
    * 外壳把这一份的 key 换成新的；给了 `params` 就整份替换插件那部分参数（去掉保留键）；给了
    * `title` 等于同时 `setPaneTitle`。**不调 `retarget`、不重新挂载**——内容已经由插件换好了。
    * 之后布局照常保存，整页重载回到上报的内容。预览窗格上报之后仍是预览窗格，转正由 `keepPane` 做。
-   *
-   * 旧版外壳没有这个方法：插件按 `typeof shell.setPaneContent === 'function'` 判断，没有就保持旧行为。
    */
   setPaneContent(content: PaneContent): void
   /**
@@ -96,8 +107,7 @@ export interface ShellBridge {
   /**
    * 本窗格所在桌面的**浮层挂载点**：插件里 radix Portal 的 `container` 指向它。这样浮层的 DOM
    * 在这张桌面里，桌面切走时跟着一起隐藏——挂在 `body` 下的浮层不属于任何桌面，隐藏不了，
-   * 会盖在别的桌面上。不在窗格容器里（或外壳是旧版）时它是 `document.body`，跟 radix 缺省
-   * 效果相同，插件不必判空。
+   * 会盖在别的桌面上。不在窗格容器里时它是 `document.body`，跟 radix 缺省效果相同，插件不必判空。
    */
   portal: HTMLElement
   /**

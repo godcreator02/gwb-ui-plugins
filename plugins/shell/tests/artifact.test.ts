@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物测试，只查本插件独有的：dockview 与图标全集打包进了 client.js、dockview 样式表的裁剪与主题、子路径 `./pane`
+ * 产物测试，只查本插件独有的：dockview 与图标全集打包进了 client.js、dockview 样式表的裁剪与主题、主入口与子路径 `./pane`
  * 的类型、node 侧按值 import 的包名。类名前缀、`var()` fallback、颜色只用令牌、浏览器侧只许 importmap 里的名字
  * 由 devkit 的样式检查与发版前检查负责，这里不另查。
  *
@@ -90,6 +90,27 @@ describe.skipIf(!built)('产物', () => {
     const bytes = Buffer.byteLength(css, 'utf8')
     expect(bytes).toBeGreaterThan(45_000)
     expect(bytes).toBeLessThan(75_000)
+  })
+
+  describe('主入口 dist/index.d.ts 只带公开接口', () => {
+    it('不给 cordis 的 Context 补 gwbData / gwbCommands：那段只给外壳自己编译用，发出去下游没注入这两个服务也以为它们在', () => {
+      const entry = read('index.d.ts')
+      expect(entry).not.toMatch(/\bgwbData\b/)
+      expect(entry).not.toMatch(/\bgwbCommands\b/)
+      expect(entry).toMatch(/gwbShell: GwbShellApi/)
+    })
+
+    it('不列 GwbShell 的私有成员（标了 @internal，tsconfig.build.json 的 stripInternal 去掉它们）', () => {
+      expect(read('index.d.ts')).not.toMatch(/\bprivate\b/)
+    })
+  })
+
+  it('发布的 d.ts 里不指向文档站的页面：包里没有文档站，读 d.ts 的人打不开', () => {
+    const declarationFiles = fs
+      .readdirSync(distDir, { recursive: true, encoding: 'utf8' })
+      .filter((entry) => entry.endsWith('.d.ts'))
+    const pointingToDocs = declarationFiles.filter((file) => read(file).includes('.mdx'))
+    expect(pointingToDocs).toEqual([])
   })
 
   describe('子路径 ./pane：窗格浏览器侧入口的类型', () => {

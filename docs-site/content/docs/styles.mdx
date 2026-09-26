@@ -224,9 +224,9 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="41-54" hash="4e6fc7ac5d7c" blob="24452becf052" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="32-45" hash="4e6fc7ac5d7c" blob="79f6a75dcaee" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="220-238" hash="7e8c67575845" blob="247cd11bdbae" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="219-237" hash="7e8c67575845" blob="79f6a75dcaee" */}
 
 **第三步：三张表全部注入、并且都等到加载完成，才往下走。** 有一张加载不了，外壳就不往下走，根节点上写一句
 「外壳起不来」和那张表的地址。令牌那张必须最先——层顺序是它声明的；

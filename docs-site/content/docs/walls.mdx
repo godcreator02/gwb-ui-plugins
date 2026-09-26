@@ -118,11 +118,14 @@ dispose、再 release」，所以插件在自己的 dispose 里 emit 一条仍�
 试过的两条路都不行：`preserveSymlinks` 能让增强生效，但 `dockview-react` 的类型从此解析不了；把增强改写成
 `declare global` 同样不生效。
 
-所以外壳按 import 拿到这两个服务的类型，在 `src/index.ts` 里自己再声明一遍，内容与那两份 d.ts 一致：
+所以外壳按 import 拿到这两个服务的类型，自己再声明一遍，内容与那两份 d.ts 一致。这段声明放在单独的
+`src/own-context.d.ts` 里，只靠 tsconfig 的 include 生效、不被任何文件 import：放进 `src/index.ts` 的话，它会随发布的
+`dist/index.d.ts` 发给下游，没注入数据插件的下游也会在类型上以为 `ctx.gwbData` 一定在。外壳的产物测试守着发布的
+`index.d.ts` 里没有 `gwbData`、`gwbCommands`。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="27-33" hash="e45a4dec342a" blob="ce7bdd967ed2" */}
+{/* ref file="../plugins/shell/src/own-context.d.ts" lines="7-12" hash="e9f83bf25501" blob="cf7fc7829984" */}
 
-pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这段声明就可以删掉。
+pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这个文件就可以删掉。
 
 ### react 的打包在内核仓
 

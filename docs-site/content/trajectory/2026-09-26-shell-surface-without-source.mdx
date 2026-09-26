@@ -1,0 +1,37 @@
+---
+born-at: 2026-09-26T10:40
+type: choice
+parent: [2026-09-12-shell-refactor-round]
+label: 只凭说明书与 d.ts 写窗格
+domain: shell
+---
+
+## 背景
+
+2026-09-26 人问：外壳的说明书对不对、发布的 `.d.ts` 够不够、下游能不能不读外壳源码就写完自己的窗格。做了一次实测：
+让一个子代理扮演插件作者，只许读说明书、装好的外壳包里的 `.d.ts` 与 `theme.reference.css`、命令用法，不许读本仓与别的插件仓的源码，
+从 `devkit.scaffold` 起写一个带 Select、下拉菜单、调命令、`onVisibility` 和可多开文档窗格的插件，装进隔离 home `ui-refresh-2609260916` 验证。
+做成了，`devkit.dev` 通过、浮层切桌面隐藏、两份文档窗格各拿各的参数、重载后都在；但有三处只能靠猜（浮层的 `container` 改法要看 baseui
+源码、`host.call` 回什么、一个插件多个窗格怎么共用入口），另有一批没写或写错的地方。
+
+## 结论与边界
+
+- 说明书 gwb-shell 补齐实测记下的缺口：浮层改法直接写成代码、不再指向 baseui 源码；新增「在窗格里调命令」一节写清回执；补多窗格共用 `client` / `style`、文档窗格的 `key` 取内容身份、shadcn CLI 怎么运行与漏装的依赖、JSX 属性值也被样式检查扫、验收时用命令打开窗格；「规矩」只指向 `references/rules.md`
+- 发布的类型声明只给下游要用的：`GwbShell` 的私有成员标 `@internal`、`tsconfig.build.json` 开 `stripInternal`；外壳为绕开 pnpm 布局给自己补的 `gwbCommands?` / `gwbData` 挪进不被 import 的 `src/own-context.d.ts`，不再随 `dist/index.d.ts` 发给下游；产物测试守着这两条
+- `HostBridge.call` 只在注释里写清回执（命令失败都 resolve 成 `ok: false`，只有 IPC 复制不了参数时才 reject），返回类型保持 `Promise<unknown>`
+- 三个插件包各有一份写给使用者的 README（正本在 `content/docs/outputs/packages/`），不再发出仓根那份
+- 导出的名字一个没删，外壳升 y
+
+## 否掉的候选
+
+- **收窄 `host.call` 的返回类型**：对现有下游的调用写法都兼容（实测五个下游的浏览器侧类型检查通过），但给 `HostBridge` 造替身实现的一方（本仓 `panes-fetch.test.ts`、`well-hub.test.ts` 故意回坏形状或 `undefined`）会类型报错，等于破坏实现方；注释写清就够下游用
+- **主入口只导出类型、类挪进别的模块**：loader 按包名 import default，挪来挪去不如 `stripInternal` 简单，运行时导出一点不动
+
+## 代价
+
+- `own-context.d.ts` 只靠 tsconfig 的 include 生效，新写的测试若经 `src/index.ts` 被仓根 tsc 拉进来，要自己 `import type {} from '../src/own-context.js'`（`tests/service.test.ts` 已这样做）
+- 实测撞上的生命周期仓问题（模板窗格缺 `icon` / `kind` / `describeSelf`、样式检查把 JSX 属性值当类名、仓根 `pnpm -r` 撞 Windows 长路径、规矩分页读不到）只投了反馈，说明书这边先写了绕法
+
+## 依据
+
+隔离 home `ui-refresh-2609260916` 的截图（`out/cdp/`），实测插件仓在会话 scratchpad（不入库）；下游兼容核查：10 个下游插件用去掉 `gwbData` 增强的外壳 d.ts 跑各自的 tsc，改前改后都通过。
