@@ -26,6 +26,9 @@ importers:
 
   plugins/baseui:
     dependencies:
+      '@godcreator/gwb-commands':
+        specifier: ^0.5.6
+        version: 0.5.6(@godcreator/gwb-kernel-desktop@0.10.0(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10)
       '@godcreator/gwb-kernel-desktop':
         specifier: ^0.10.0
         version: 0.10.0(cordis@4.0.0-rc.10)

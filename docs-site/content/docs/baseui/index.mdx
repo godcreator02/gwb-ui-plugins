@@ -1,39 +1,50 @@
 ---
 title: 基础界面插件 gwb-baseui
-description: 整套基础插件的界面：一个界面插件管全部基础插件、默认全装。必需依赖只有外壳，用到的基础服务局部注入、缺了就不登记对应窗格，只按命令名调的不注入；一窗格一模块；窗格对基础插件的操作都经命令总线按名字调
+description: 整套基础插件的界面：一个界面插件管全部基础插件、默认全装，另登记查内核日志文件的命令 logger.query。必需依赖只有外壳，用到的基础服务局部注入、缺了就不登记对应的窗格或命令，只按命令名调的不注入；一窗格一模块；窗格对基础插件的操作都经命令总线按名字调
 full: true
 ---
 
-包 `@godcreator/gwb-baseui`，在 `plugins/baseui/`：node 侧入口 `src/index.ts`，浏览器侧入口 `src/client/index.tsx`，
-窗格在 `src/client/panes/` 下各占一个目录，共用的组件在 `src/client/components/ui/`。
+包 `@godcreator/gwb-baseui`，在 `plugins/baseui/`：node 侧入口 `src/index.ts`，`logger.query` 的参数校验与读文件在 `src/log-query/`，
+浏览器侧入口 `src/client/index.tsx`，窗格在 `src/client/panes/` 下各占一个目录，共用的组件在 `src/client/components/ui/`。
 
 <SeamMap module="baseui" />
 
 ## 功能
 
-**整套基础插件的界面。** 日志、插件管理这些基础插件只有 node 侧，它们的界面统一由这一个插件提供，和基础插件一起默认全装。
+**整套基础插件的界面。** 插件管理这类基础插件只有 node 侧，它们的界面统一由这一个插件提供，和基础插件一起默认全装。
 它不是各个基础插件界面的临时集合：它服务的是分散在几个仓里的一整套基础插件，放不进其中任何一个插件的仓。
 眼下的窗格：
 
 | 窗格 | id | 什么时候有 | 做什么 |
 | --- | --- | --- | --- |
-| 日志 | `logger` | 总是有；没装日志插件时窗格里显示命令调用失败的原因 | 看 `gwb.log` 里最近的日志，可见时每秒取新写的；按来源与级别筛选、日志文件在哪 |
+| 日志 | `logger` | 总是有；`logger.query` 不在时窗格里显示命令调用失败的原因 | 看 `gwb.log` 里最近的日志，可见时每秒取新写的；按来源与级别筛选、日志文件在哪 |
 | 插件管理 | `plugin-manager` | 装了插件管理 | 装、卸、升级、启停插件与条目，改各插件的设置 |
+
+**查日志文件的命令 `logger.query` 也由本插件登记。** 日志由内核写进 `<home>/gwb.log`（一行一个 JSON，轮转出的旧文件是 `gwb.log.1`），
+日志窗格和经 MCP 入口的 agent 都调这条命令读它。本插件默认全装，所以这条命令一直调得到。为什么不单独成一个插件，
+见[查日志的命令并进基础界面](/trajectory/2026-09-28-log-query-moves-into-baseui)。
 
 **三条规矩**，破了任何一条，它就会变成什么都往里放的插件。
 
 **一、必需依赖只有外壳，用到的基础服务一律局部注入。** 插件管理窗格跟着插件管理的服务走：缺了服务就不登记，服务后装上时补登记，服务卸载时窗格跟着注销。
-日志窗格不用日志插件的服务，只按命令名调 `logger.query`，所以不注入、总是登记：
+日志窗格只按命令名调 `logger.query`，所以不注入、总是登记：
 
-{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="44-51" hash="e0c7c39c4b33" blob="c76be1471fb4" */}
+{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="60-67" hash="e0c7c39c4b33" blob="70be177e8028" */}
 
-{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="59-71" hash="b2f1cc9aea77" blob="c76be1471fb4" */}
+{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="75-87" hash="b2f1cc9aea77" blob="70be177e8028" */}
+
+`logger.query` 跟着命令总线走：局部注入 `gwbCommands`，命令总线在才登记，它卸载时命令跟着注销；本插件卸载时也注销：
+
+{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="100-118" hash="ceed6b8e5b5b" blob="70be177e8028" */}
+
+{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="120-141" hash="5cd93b1a20aa" blob="70be177e8028" */}
 
 **二、一窗格一模块。** `panes/` 下的窗格之间零 import，只准 import `components/ui` 这一层。窗格因此各有一份按形状收窄回执的小函数，不互相引用：
 
 {/* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="1-1" hash="22410123db75" blob="706269bbc3f5" */}
 
-**三、进来的资格是「某个基础插件的官方界面」。** 界面本身就是全部功能的插件自己登记窗格，不进这里；说明书、命令总线、MCP 入口不在这里加窗格。
+**三、进来的资格是「某个基础插件的官方界面」。** 内核写的日志也算：日志窗格和查日志的 `logger.query` 都在这里。
+界面本身就是全部功能的插件自己登记窗格，不进这里；说明书、命令总线、MCP 入口不在这里加窗格。
 
 **所有窗格共用一份浏览器侧代码**，入口按 `pane.id` 分派：
 
@@ -63,11 +74,31 @@ full: true
 
 **窗格**都在外壳上登记，报的是同一对地址 `dist/client.js` 与 `dist/style.css`；另报一次名字「基础界面」、图标 `layout-grid`：
 
-{/* ref file="../plugins/baseui/src/index.ts" lines="12-35" hash="50bc925b4168" blob="bf3c83e4a655" */}
+{/* ref file="../plugins/baseui/src/index.ts" lines="19-25" hash="26d4cbff9cc4" blob="7b7e30b1a7cd" */}
+
+{/* ref file="../plugins/baseui/src/index.ts" lines="47-63" hash="c330abfe51d1" blob="7b7e30b1a7cd" */}
 
 窗格 id 在 node 侧 `registerPane` 与浏览器侧的分派里各写一份（接缝 4），改一处要改另一处。
 
-**没有 gwb 服务、命令与事件。** 窗格的每个操作都是按名字调别的插件的命令（接缝 5～8），下面「依赖」一节逐项列出。
+**命令只有一条 `logger.query`**，`effect` 标 `read`，`plugin` 不写、由命令总线从条目取包名。日志文件的位置是内核的 `dataDir` 下的 `gwb.log`：
+
+{/* ref file="../plugins/baseui/src/index.ts" lines="27-45" hash="28cd476cc2fc" blob="7b7e30b1a7cd" */}
+
+参数、回执与报错以 `usage` 为准：参数 `{ limit?, minLevel?, name?, text?, after? }` 都可省，认不出的键、类型不对直接报错；
+回执 `{ file, cursor, entries }`，`cursor` 是 `gwb.log` 里最后一个完整行末尾的字节位置，下一次作 `after` 传回来：
+
+{/* ref file="../plugins/baseui/src/log-query/query.ts" lines="13-18" hash="51db280a3f1c" blob="279374238193" */}
+
+它从文件末尾按块倒着读，凑够 `limit` 条就停，不把整份文件读进内存；`gwb.log` 比 `after` 小就说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾。
+末尾内核还没写完的半行不返回，下一次再读；日志文件是外部输入，有一行不是内核写的形状就整次报错，写明文件与行首：
+
+{/* ref file="../plugins/baseui/tests/log-query.test.ts" lines="134-149" hash="0b0e23968715" blob="cb8a161b12a7" */}
+
+{/* ref file="../plugins/baseui/tests/log-query.test.ts" lines="151-171" hash="53abd77ae2df" blob="cb8a161b12a7" */}
+
+{/* ref file="../plugins/baseui/tests/log-query.test.ts" lines="211-221" hash="c3b674f379b8" blob="cb8a161b12a7" */}
+
+**没有 gwb 服务与事件。** 窗格的每个操作都是按名字调命令（接缝 5～8），下面「依赖」一节逐项列出。
 
 ## 依赖
 
@@ -76,12 +107,13 @@ full: true
 | 服务 | 怎么接 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- |
 | `gwbShell`（`@godcreator/gwb-shell`） | 必需注入，peer `workspace:*` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格 |
+| `gwbCommands`（`@godcreator/gwb-commands`） | 局部注入，peer 且 `optional` | 登记 `logger.query`；类型从它的包根 `import type` | 照常加载，只是不登记 `logger.query` |
 | `gwbPluginManager`（`@godcreator/gwb-plugin-manager`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记插件管理窗格；回执类型从它的 `./receipts` 子路径引 | 照常加载，只是没有插件管理窗格 |
-| 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 的类型 | 类型检查不过 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 的类型；登记 `logger.query` 时取 `ctx.gwbKernel.dataDir` 定位 `gwb.log` | 类型检查不过；不在 gwb 内核里登记命令时当场抛错 |
 
-{/* ref file="../plugins/baseui/package.json" lines="16-25" hash="67f0f9b8858e" blob="777574813dcf" */}
+{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="61114a993822" blob="ff8a4dc6eef7" */}
 
-插件管理是可选的，node 侧源码里对它只有 `import type {}`；写成运行时 import，没装它的 home 里就不止少一个窗格，还多一句 `ERR_MODULE_NOT_FOUND`：
+命令总线和插件管理都是可选的，node 侧源码里对它们只有 `import type`；写成运行时 import，没装它们的 home 里就多一句 `ERR_MODULE_NOT_FOUND`：
 
 {/* ref file="../plugins/baseui/tests/artifact.test.ts" lines="34-37" hash="a367c112a075" blob="c0f0522eb0ca" */}
 
@@ -89,7 +121,7 @@ full: true
 
 | 对方 | 命令 | 谁调、做什么 | 回执怎么认 |
 | --- | --- | --- | --- |
-| 日志插件 | `logger.query` | 日志窗格：挂载时取最近一批，可见时每秒带 `after` 取新写的；底栏显示回执里的 `file` | 按形状逐项收窄，有一条不对就整批报错；日志插件不写 peer |
+| 本插件的 node 侧 | `logger.query` | 日志窗格：挂载时取最近一批，可见时每秒带 `after` 取新写的；底栏显示回执里的 `file` | 按形状逐项收窄，有一条不对就整批报错；窗格与 `src/log-query/` 互不 import |
 | 插件管理 | `plugin-manager.*` | 插件管理窗格：列表、查新版本、搜索、装卸、升级、启停、增删条目 | `import type` 插件管理的回执类型，只按外层 `ok` 分开成功与失败 |
 | 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删 | 按形状收窄；设置插件不写 peer |
 | 外壳 | `shell.plugins`、`shell.reload` | 插件管理窗格：条目标题与图标、升级后整页重新加载 | 按形状收窄 |
@@ -121,4 +153,5 @@ full: true
 
 **不收功能插件的界面。** 界面本身就是全部功能的插件自己登记窗格。
 
-**不调基础插件服务上的方法。** 注入插件管理的服务只为判断它在不在；所有操作经命令总线按名字调，窗格在页面上也拿不到 node 侧的服务。
+**除了登记 `logger.query`，不调基础插件服务上的方法。** node 侧只调命令总线的 `register`；注入插件管理的服务只为判断它在不在；
+窗格的所有操作经命令总线按名字调，窗格在页面上也拿不到 node 侧的服务。

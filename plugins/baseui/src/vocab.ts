@@ -1,0 +1,15 @@
+import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
+
+/** 不要把 gwbKernel 写进 `export const inject` */
+export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {
+  const kernel = ctx.gwbKernel
+  if (kernel === undefined) {
+    throw new Error('ctx.gwbKernel 不在——这个插件跑在一个不是 gwb 内核的 cordis 宿主里')
+  }
+  return kernel
+}
+
+/** 数组不算 */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

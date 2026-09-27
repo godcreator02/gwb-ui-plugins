@@ -1,10 +1,11 @@
 /**
  * 基础界面插件 @godcreator/gwb-baseui 的内部接缝图：包首页 <SeamMap module="baseui" /> 画的就是它。
- * 虚线框是包里的文件或目录，方块是它对外给的东西；灰色实线框是包外的外壳与三个基础插件。坐标在 baseui.layout.ts。
+ * 虚线框是包里的文件或目录，方块是它对外给的东西；灰色实线框是包外的外壳与两个基础插件。坐标在 baseui.layout.ts。
  */
 import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
 
-/* ref file="../plugins/baseui/src/index.ts" lines="12-35" hash="50bc925b4168" blob="bf3c83e4a655" */
+/* ref file="../plugins/baseui/src/index.ts" lines="19-63" hash="2583acd32ff7" blob="7b7e30b1a7cd" */
+/* ref file="../plugins/baseui/src/log-query/query.ts" lines="13-18" hash="51db280a3f1c" blob="279374238193" */
 /* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */
 /* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="80-97" hash="daecad3c3be5" blob="2dff8422ae22" */
 /* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="24-43" hash="1891a30ecae2" blob="c3df10ff09fd" */
@@ -14,10 +15,11 @@ export const baseuiGraph = defineSeamGraph({
   id: 'baseui',
   title: '基础界面插件内部的文件与接缝',
   intro:
-    '基础界面插件内部接缝图：虚线框是包里的文件或目录，框里的方块是它对外给的东西，灰色实线框是包外的外壳、日志插件、插件管理与设置插件。' +
-    '右边的 src/index.ts 是 node 侧：必需依赖只有外壳；日志窗格总是登记，插件管理的服务用一次局部注入，服务在才登记插件管理窗格。' +
+    '基础界面插件内部接缝图：虚线框是包里的文件或目录，框里的方块是它对外给的东西，灰色实线框是包外的外壳、插件管理与设置插件。' +
+    '右边的 src/index.ts 是 node 侧：必需依赖只有外壳；日志窗格总是登记，插件管理的服务用一次局部注入，服务在才登记插件管理窗格；' +
+    '命令总线也用一次局部注入，有它才登记 logger.query，处理函数在中间的 src/log-query/。' +
     '左边是浏览器侧：一个 client.js 按窗格 id 分派给 panes/ 下的各个窗格，窗格之间互不 import，只共用 components/ui。' +
-    '窗格对基础插件的所有操作都经命令总线按名字调。',
+    '窗格的所有操作都经命令总线按名字调，日志窗格调的 logger.query 也不例外。',
   frameLabel: '文件或目录',
   modules: [
     {
@@ -102,13 +104,15 @@ export const baseuiGraph = defineSeamGraph({
       caps: [{ id: 'pm', name: '插件管理', ident: 'gwbPluginManager · plugin-manager.* · ./receipts' }],
     },
     {
-      id: 'logger',
-      name: '日志插件',
-      pkg: '@godcreator/gwb-logger',
-      role: null,
-      outside: true,
-      blurb: '不写 peer、不注入：日志窗格只按命令名调 logger.query，回执 { file, cursor, entries }。没装日志插件时命令回失败，窗格照样登记，里面显示失败的原因。',
-      caps: [{ id: 'logger', name: '日志插件', ident: 'logger.query' }],
+      id: 'log-query',
+      name: '查日志文件',
+      pkg: 'src/log-query/',
+      role: 'rose',
+      outside: false,
+      blurb:
+        'logger.query 的参数校验与读文件：读内核写的 <home>/gwb.log 与轮转出的 gwb.log.1，从末尾按块倒着读，凑够 limit 条就停；回执 { file, cursor, entries }。' +
+        '末尾内核还没写完的半行不返回；参数认不出、有一行不是内核写的形状都直接报错。',
+      caps: [{ id: 'log-query', name: '查日志文件', ident: 'logQueryFrom · queryLogFile' }],
     },
     {
       id: 'index',
@@ -117,11 +121,13 @@ export const baseuiGraph = defineSeamGraph({
       role: 'blue',
       outside: false,
       blurb:
-        'inject 只写 gwbShell。apply 报一次名字「基础界面」，无条件登记日志窗格；对插件管理开一段局部注入：服务在才登记插件管理窗格，服务卸载时窗格跟着注销，后装上时补登记。',
+        'inject 只写 gwbShell。apply 报一次名字「基础界面」，无条件登记日志窗格；对插件管理开一段局部注入：服务在才登记插件管理窗格，服务卸载时窗格跟着注销，后装上时补登记。' +
+        '对命令总线也开一段局部注入：有它才登记 logger.query（effect read，plugin 不写），它卸载时命令跟着注销。',
       caps: [
         { id: 'self', name: '报名字', ident: 'describeSelf' },
         { id: 'pm-reg', name: '登记插件管理窗格', ident: "inject(['gwbPluginManager'])" },
         { id: 'logger-reg', name: '登记日志窗格', ident: 'ctx.effect(registerPane)' },
+        { id: 'query-reg', name: '登记 logger.query', ident: "inject(['gwbCommands'])" },
       ],
     },
   ],
@@ -174,12 +180,12 @@ export const baseuiGraph = defineSeamGraph({
       n: 5,
       name: '日志命令',
       a: ['logger-data'],
-      b: ['logger'],
+      b: ['log-query'],
       iface: "host.call('logger.query', {} | { after: cursor }) → { file, cursor, entries }",
       convention: true,
       via: 'code',
       text:
-        '日志插件不导出回执类型，窗格按形状逐项收窄，有一条不对就整批报错并显示原因。条目没有序号：每次只取上次 cursor 之后新写的，两批不交叠、不去重；' +
+        '窗格经命令总线按名字调，不 import src/log-query/ 的类型，按形状逐项收窄回执，有一条不对就整批报错并显示原因。条目没有序号：每次只取上次 cursor 之后新写的，两批不交叠、不去重；' +
         '失败时 cursor 不动，下一秒再试。底栏显示回执里的 file。',
     },
     {
@@ -226,6 +232,18 @@ export const baseuiGraph = defineSeamGraph({
       via: 'code',
       text:
         '一窗格一模块：panes/ 下的窗格之间零 import，只准 import components/ui。所以日志窗格与插件管理窗格各有一份按形状收窄回执的小函数，不互相引用。',
+    },
+    {
+      n: 10,
+      name: '登记日志命令',
+      a: ['query-reg'],
+      b: ['log-query'],
+      iface: "gwbCommands.register({ name: 'logger.query', description, usage: QUERY_USAGE, effect: 'read' }, (args) => queryLogFile(logFile, logQueryFrom(args)))",
+      convention: false,
+      via: 'code',
+      text:
+        '登记时从内核的 dataDir 算出 gwb.log 的绝对路径，处理函数把参数交给 logQueryFrom 校验、再交给 queryLogFile 读文件。' +
+        '命令名、usage 与报错文字都在 src/log-query/query.ts，窗格与 agent 看到的就是这一份。',
     },
   ],
 });

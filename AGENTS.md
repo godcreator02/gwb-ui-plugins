@@ -10,21 +10,21 @@
 | ---- | -------------------------------------------------- |
 | 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；子路径 `theme.css` / `theme.reference.css` 提供令牌表；页面用的 React 由 shell 提供，kernel 管理 importmap） |
 | 外观   | `theme`（全局启动样式 + 外观窗格；没外壳也照常加载）                     |
-| 基础界面 | `baseui`（基础插件的官方窗格集：日志、插件管理）                    |
+| 基础界面 | `baseui`（基础插件的官方窗格集：日志、插件管理；另登记查日志文件的命令 `logger.query`） |
 
 ## 依赖现状
 
 * **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、插件管理）写 `^<源上 latest>`，
   同仓的（shell / theme / baseui 之间）写 `workspace:*`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
   不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
-* **只按命令名调用的插件不写 peer**：不用它的服务、也不 import 它的类型，只经命令总线按名字调它的命令（命令不在就回执说明）——如 baseui 调 `settings.*` 与 `logger.query`、shell 调 `theme.startupCss`
+* **只按命令名调用的插件不写 peer**：不用它的服务、也不 import 它的类型，只经命令总线按名字调它的命令（命令不在就回执说明）——如 baseui 调 `settings.*`、shell 调 `theme.startupCss`
 * 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见文档站首页的接缝图（[`docs-site/content/docs/index.mdx`](docs-site/content/docs/index.mdx)）
 
 ## baseui 三条规矩（破了任何一条，它就会变成什么都往里放的插件）
 
-1. 用到的基础服务**一律局部注入**（`ctx.inject([...], fn)`），必需依赖只有 `gwbShell`——缺了哪个服务就不注册对应的窗格；只按命令名调的不注入（日志窗格只调 `logger.query`，总是注册）
+1. 用到的基础服务**一律局部注入**（`ctx.inject([...], fn)`），必需依赖只有 `gwbShell`——缺了哪个服务就不注册对应的窗格或命令（`logger.query` 由 baseui 自己登记，跟着 `gwbCommands` 走）；只按命令名调的不注入（日志窗格只调 `logger.query`，总是注册）
 2. **一窗格一模块**：`panes/` 下窗格之间零 import，只准 import `components/ui` 共享层
-3. **只收基础插件的官方界面**：进 baseui 的唯一资格是它是某个基础插件的官方界面；界面本身就是全部
+3. **只收基础插件的官方界面**：进 baseui 的唯一资格是它是某个基础插件的官方界面（内核写的日志也算）；界面本身就是全部
   功能的插件（hello、将来的功能插件）自带界面，不进
 
 ## 先读

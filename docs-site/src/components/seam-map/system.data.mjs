@@ -39,9 +39,9 @@ const modules = [
     pkg: '@godcreator/gwb-baseui',
     role: 'emerald',
     outside: false,
-    blurb: '基础插件的官方窗格集：日志窗格总是登记，插件管理窗格装了插件管理才登记。必需依赖只有外壳。',
+    blurb: '基础插件的官方窗格集：日志窗格总是登记，插件管理窗格装了插件管理才登记；有命令总线时另登记查内核日志文件的命令 logger.query。必需依赖只有外壳。',
     caps: [
-      { id: 'baseui-apply', name: '窗格登记', ident: 'ctx.inject' },
+      { id: 'baseui-apply', name: '窗格与命令登记', ident: 'ctx.inject' },
       { id: 'baseui-panes', name: '日志与插件管理', ident: 'panes/' },
     ],
   },
@@ -82,10 +82,9 @@ const modules = [
     pkg: 'peer 依赖',
     role: null,
     outside: true,
-    blurb: '在别的仓里的几个插件：命令总线、数据、设置、说明书、插件管理各提供一个服务，日志插件只提供命令 logger.query。它们不依赖本仓。',
+    blurb: '在别的仓里的几个插件：命令总线、数据、设置、说明书、插件管理各提供一个服务。它们不依赖本仓。',
     caps: [
       { id: 'b-settings', name: '设置', ident: 'gwbSettings · settings.*' },
-      { id: 'b-logger', name: '日志', ident: 'logger.query' },
       { id: 'b-pm', name: '插件管理', ident: 'gwbPluginManager' },
       { id: 'b-skills', name: '说明书', ident: 'gwbSkills' },
       { id: 'b-data', name: '数据', ident: 'gwbData' },
@@ -151,15 +150,16 @@ const seams = [
   },
   /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */
   /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="bf14907298f5" blob="8a696cae264c" */
+  /* ref file="../plugins/baseui/src/index.ts" lines="27-45" hash="28cd476cc2fc" blob="7b7e30b1a7cd" */
   {
     n: 5,
     name: '命令登记',
-    a: ['commands', 'theme-core'],
+    a: ['commands', 'theme-core', 'baseui-apply'],
     b: ['b-commands'],
-    iface: 'gwbCommands.register({ name, description, usage, plugin }, handler)',
+    iface: 'gwbCommands.register({ name, description, usage, plugin?, effect? }, handler)',
     convention: false,
     via: 'code',
-    text: '外壳与外观把各自的命令登记到命令总线，plugin 写自己的包名，插件卸载时自动注销。命令总线是两者的必需依赖：外壳的窗格注册表只能经命令传到页面。',
+    text: '外壳、外观与基础界面把各自的命令登记到命令总线，插件卸载时自动注销。外壳与外观的 plugin 写自己的包名，是它们的必需依赖：外壳的窗格注册表只能经命令传到页面。基础界面局部注入命令总线，有它才登记 logger.query，plugin 不写、由命令总线取。',
   },
   /* ref file="../plugins/shell/src/layout.ts" lines="1-8" hash="36d49f61bf66" blob="51963d44d83e" */
   /* ref file="../plugins/shell/src/layout.ts" lines="29-36" hash="50ac701e1f73" blob="51963d44d83e" */
@@ -196,17 +196,18 @@ const seams = [
     via: 'disk',
     text: '外壳局部注入说明书插件，把随包发布的 skills/ 目录交给它，说明书插件从目录里读 gwb-shell/SKILL.md。说明书插件不在时外壳照常运行，后加载时补登记。',
   },
-  /* ref file="../plugins/baseui/src/index.ts" lines="12-27" hash="49c6545b0420" blob="bf3c83e4a655" */
+  /* ref file="../plugins/baseui/src/index.ts" lines="19-25" hash="26d4cbff9cc4" blob="7b7e30b1a7cd" */
+  /* ref file="../plugins/baseui/src/index.ts" lines="47-54" hash="7a50e224b968" blob="7b7e30b1a7cd" */
   /* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="1-12" hash="b79654560522" blob="f838b9d7d2ea" */
   {
     n: 9,
     name: '基础插件的窗格',
     a: ['baseui-apply', 'baseui-panes'],
-    b: ['b-logger', 'b-pm', 'b-settings'],
-    iface: "ctx.inject(['gwbPluginManager'], …)；logger.query、plugin-manager.*、settings.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
+    b: ['b-pm', 'b-settings'],
+    iface: "ctx.inject(['gwbPluginManager'], …)；plugin-manager.*、settings.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
     convention: false,
     via: 'code',
-    text: '基础界面只对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记。窗格里的操作经命令名调 logger.query、plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
+    text: '基础界面对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记，它调的 logger.query 是基础界面自己登记的。插件管理窗格里的操作经命令名调 plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */
   /* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */

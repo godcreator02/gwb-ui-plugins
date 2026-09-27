@@ -31,8 +31,7 @@ export const systemLayout: SeamLayout = {
     'k-channel': cap(750, 416, 116),
 
     'b-settings': cap(1054, 72, 176),
-    'b-logger': cap(1054, 128, 176),
-    'b-pm': cap(1054, 184, 176),
+    'b-pm': cap(1054, 128, 176),
     'b-skills': cap(1054, 246, 176),
     'b-data': cap(1054, 322, 176),
     'b-commands': cap(1054, 384, 176),

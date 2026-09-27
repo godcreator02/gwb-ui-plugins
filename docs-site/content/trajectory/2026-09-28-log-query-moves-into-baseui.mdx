@@ -1,0 +1,35 @@
+---
+born-at: 2026-09-28T00:30
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 查日志的命令并进基础界面
+domain: baseui
+---
+
+## 背景
+
+日志的写与存归内核之后（见 [日志窗格可见时拉取](2026-09-27-logger-pane-polls-when-visible.md)），日志插件
+`@godcreator/gwb-logger`（基础插件仓，0.5.0）只剩一件事：登记命令 `logger.query`，读内核写的 `<home>/gwb.log` 与 `gwb.log.1`。
+它没有服务、没有界面，唯一的调用方是基础界面的日志窗格和经 MCP 入口的 agent。
+
+用户于 2026-09-28 的原话：「gwblogger为什么还存在？塞进baseui呗」。gwb-logger 这个包在基础插件仓里删掉，由那边另做。
+
+pivots-from:: [日志窗格可见时拉取](2026-09-27-logger-pane-polls-when-visible.mdx)
+
+## 结论与边界
+
+- `logger.query` 由 `@godcreator/gwb-baseui` 登记：局部注入 `gwbCommands`，有命令总线才登记，`effect` 标 `read`，`plugin` 不写、由命令总线取
+- 命令名、参数、回执、报错一个字不变；参数校验与读文件的代码原样搬进 `plugins/baseui/src/log-query/`，查询测试的断言原样搬进 `plugins/baseui/tests/log-query.test.ts`
+- 日志文件的位置照旧是内核 `dataDir` 下的 `gwb.log`，靠文件名约定与内核对齐
+- baseui 的 peer 加上 `@godcreator/gwb-commands`（`optional`），升 0.1.23
+- 日志窗格照旧只按命令名调 `logger.query`，不 import `src/log-query/` 的任何东西，按形状收窄回执
+
+## 代价
+
+- 给 agent 用的查询命令放在界面插件里：只想查日志、不要界面的 home 也得装 baseui（进而要装外壳）。baseui 本来就与基础插件一起默认全装，所以这条命令一直调得到
+- baseui 的第三条规矩（只收基础插件的官方界面）要把「内核写的日志」也算作一个基础能力，才容得下这条命令
+
+## 依据
+
+测试 `plugins/baseui/tests/apply.test.ts`（登记与注销）、`plugins/baseui/tests/log-query.test.ts`（查询），与本卡同一提交。
+没有在隔离 home 里实机验证，未存探针。

@@ -3,7 +3,7 @@
 ## 是什么
 
 gwb 工作台的 **UI 平台**：外壳（`shell`，视觉契约的令牌表随它的包发布；页面用的 React 由 shell 提供，kernel 管理 importmap）、
-外观插件（`theme`）、基础插件的官方窗格集（`baseui`——日志与插件管理两个窗格）。要换 shell 就是整套换这个平台，
+外观插件（`theme`）、基础插件的官方窗格集（`baseui`——日志与插件管理两个窗格，另登记查日志文件的命令 `logger.query`）。要换 shell 就是整套换这个平台，
 不承诺单换。
 
 ## 怎么装（装进一个 home）
@@ -16,14 +16,14 @@ plugin-manager.install {"pkg":"@godcreator/gwb-theme"}
 plugin-manager.install {"pkg":"@godcreator/gwb-baseui"}
 ```
 
-`baseui` 的日志窗格总是有，它按命令名调 `gwb-logger` 的 `logger.query`，没装日志插件时窗格里显示命令调用失败的原因；
+`baseui` 的日志窗格总是有，它按命令名调 `logger.query`，这条命令也由 `baseui` 登记，读内核写的 `gwb.log`；
 装了 `gwb-plugin-manager` 才有插件管理窗格。
 
 ## 怎么用
 
 装齐后打开工作台，日志与「插件管理」两个窗格出现在窗格注册表里就说明装好了——agent 侧核对：
 `plugin-manager.list` 回的表里有 `baseui` 条目，`shell.panes` 里有
-`plugin:home:baseui:logger` 与 `plugin:home:baseui:plugin-manager`。
+`plugin:home:baseui:logger` 与 `plugin:home:baseui:plugin-manager`，`logger.query {"limit":5}` 回最近五条日志。
 
 ## 文档
 

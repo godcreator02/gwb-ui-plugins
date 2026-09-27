@@ -2,10 +2,26 @@ import { Context } from 'cordis'
 import { describe, expect, it } from 'vitest'
 import * as baseui from '../src/index.js'
 
+import { QUERY_USAGE } from '../src/log-query/query.js'
+
 /**
- * 基础界面插件的 apply：真实的 cordis 根上下文，外壳用替身；按现在的行为检查
- * 报名字、日志窗格总是注册、装了插件管理才注册插件管理窗格、服务卸载时窗格跟着注销。
+ * 基础界面插件的 apply：真实的 cordis 根上下文，外壳与命令总线用替身；按现在的行为检查
+ * 报名字、日志窗格总是注册、装了插件管理才注册插件管理窗格、有命令总线才登记 logger.query、服务卸载时跟着注销。
  */
+
+/** 只记登记与注销的命令总线替身 */
+function fakeCommandBus() {
+  const definitions = new Map<string, Record<string, unknown>>()
+  return {
+    list: () => [...definitions.values()],
+    register(def: Record<string, unknown>) {
+      definitions.set(String(def['name']), def)
+      return () => void definitions.delete(String(def['name']))
+    },
+  }
+}
+
+const fakeKernel = { dataDir: 'unused-home', version: 'test', emit: () => {}, setShell: () => () => {} }
 
 function fakeShell() {
   const panes = new Map<string, Record<string, unknown>>()
@@ -79,5 +95,48 @@ describe('基础界面插件 apply', () => {
     expect([...shell.panes.keys()]).toEqual(['logger'])
     await baseuiFiber.dispose()
     expect([...shell.panes.keys()]).toEqual([])
+  })
+
+  it('有命令总线：登记 logger.query（effect 是 read，plugin 不写、由命令总线取），插件卸载时注销', async () => {
+    const root = new Context()
+    const bus = fakeCommandBus()
+    root.provide('gwbShell', fakeShell())
+    root.provide('gwbKernel', fakeKernel)
+    root.provide('gwbCommands', bus)
+    const baseuiFiber = root.plugin(baseui)
+    await baseuiFiber
+    expect(bus.list()).toEqual([
+      {
+        name: 'logger.query',
+        description: '查内核写的日志文件 gwb.log（含轮转出的 gwb.log.1）：可按级别、logger 名、子串筛，只取最近几条，或只取某个位置之后新写的',
+        usage: QUERY_USAGE,
+        effect: 'read',
+      },
+    ])
+    await baseuiFiber.dispose()
+    expect(bus.list()).toEqual([])
+  })
+
+  it('没有命令总线：不登记 logger.query，窗格照常；命令总线后装上时补登记，它卸载后不留登记', async () => {
+    const root = new Context()
+    const shell = fakeShell()
+    const bus = fakeCommandBus()
+    root.provide('gwbShell', shell)
+    root.provide('gwbKernel', fakeKernel)
+    await root.plugin(baseui)
+    expect([...shell.panes.keys()]).toEqual(['logger'])
+    expect(bus.list()).toEqual([])
+
+    const commandBusFiber = root.plugin({
+      name: 'fake-command-bus',
+      apply: (ctx: Context) => {
+        ctx.provide('gwbCommands', bus)
+      },
+    })
+    await commandBusFiber
+    expect(bus.list().map((def) => def['name'])).toEqual(['logger.query'])
+    await commandBusFiber.dispose()
+    expect(bus.list()).toEqual([])
+    expect([...shell.panes.keys()]).toEqual(['logger'])
   })
 })
