@@ -91,8 +91,14 @@ full: true
 
 {/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="54-57" hash="f3d9d8177e5c" blob="a70e8f4051de" */}
 
+实时日志不经命令：日志窗格直接订阅 `window.gwb.on`，只收 `t` 为 `gwb-logger` 的事件，外壳不转发、不认识日志：
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="102-107" hash="8000480f354d" blob="a70e8f4051de" */}
+
 **跟不上某个基础插件的回执变化时**，做法是让那个插件经只有类型的子路径导出回执类型，这里 `import type`；插件管理的
 `@godcreator/gwb-plugin-manager/receipts` 是第一个。两边用同一套类型，回执形状对不上在构建时的类型检查里报出来，窗格里不再按形状校验：
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="1-12" hash="b79654560522" blob="f838b9d7d2ea" */}
 
 {/* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="14-48" hash="57475325e785" blob="f838b9d7d2ea" */}
 

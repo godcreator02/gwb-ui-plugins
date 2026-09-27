@@ -20,6 +20,14 @@ description: 外壳插件怎么拿到内核页面的 #root、准备与挂载为�
 React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动内核换外壳的顺序，见轨迹卡
 [换壳报错在外壳两层根治](/trajectory/2026-09-17-shell-swap-teardown-order)。
 
+内核这一侧的规矩：后调用 `setShell` 的替换先调用的；没有任何插件调用 `setShell` 时页面显示只读状态页。外壳的 node 侧把 `setShell` 包在 `ctx.effect` 里
+（代码见[页面上的 React](/docs/shell/react-runtime#browserimports运行时与构建共用的一份名单)），外壳卸载时自动交还页面根。外壳的测试守着两头：
+`setShell` 收到本包 `client.js` 的地址、外壳卸载时撤销；`dispose` 返回之后清空容器不再出错：
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="132-139" hash="313902694a48" blob="daecac5bbe93" */}
+
+{/* ref file="../plugins/shell/tests/shell-mount.test.ts" lines="46-59" hash="a1034353c5a4" blob="8ee6367e78a9" */}
+
 ## 起不来的时候
 
 准备段抛错，`#root` 上只写一句「外壳起不来：原因」，`dispose` 时连这句一起清掉：
@@ -52,9 +60,14 @@ React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动�
 {/* ref file="../plugins/shell/src/client/asset.ts" hash="a516d6664273" blob="875b98ab0c68" */}
 
 - **怎么认 `mountPane` 的句柄**：模块上要有 `mountPane` 函数；句柄是对象、上面有 `dispose` 函数才算契约相符，没有就在窗格里报出它回的是什么；
-  `retarget` 可选；插件的 `dispose` 排进微任务、在 React 提交之外调用，抛的错交给调用方记下
+  `retarget` 可选；插件的 `dispose` 排进微任务、在 React 提交之外调用，抛的错交给调用方记下。`mountPane` 必须同步返回句柄：
+  写成 `async` 返回的是 Promise，算契约不符，报错里点名它回的是 Promise、要同步返回
 
 {/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="55850576ccec" blob="cb15104fd072" */}
+
+{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="16-20" hash="68e9135408c4" blob="a1b67caf3550" */}
+
+{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="158-170" hash="72ed9c0991ff" blob="a1b67caf3550" */}
 
 - **挂载 effect 的依赖里故意没有插件参数**：面板参数每轮渲染都是新对象，放进依赖会让插件被反复卸载重挂；换内容走另一个 effect，按稳定序列化比对，
   见[换内容：软换与硬换](/docs/shell/panes#换内容软换与硬换)

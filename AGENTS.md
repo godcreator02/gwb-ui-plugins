@@ -29,7 +29,7 @@
 
 ## 先读
 
-`docs-site/content/docs/`：[首页的接缝图](docs-site/content/docs/index.mdx) → 要改的那个包的目录（`shell/`、`theme/`、`baseui/`，
+`docs-site/content/docs/`：[首页的接缝图与接缝总表](docs-site/content/docs/index.mdx) → 要改的那个包的目录（`shell/`、`theme/`、`baseui/`，
 目录首页是包的内部接缝图）→ [术语表](docs-site/content/docs/glossary.mdx)；怎么跑、怎么验收在 [开发与验收](docs-site/content/docs/dev.mdx)。
 在途的活在 `docs-site/content/future/spec/`，别的仓投来的反馈在
 `docs-site/content/future/inbox/`。写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，

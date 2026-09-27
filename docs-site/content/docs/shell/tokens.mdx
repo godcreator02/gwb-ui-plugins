@@ -130,7 +130,11 @@ devkit 的样式检查放行它（`.dark` 是唯一可以不带前缀的类）�
 ## 检查
 
 上面三条不许由 devkit 的样式检查查（`devkit.dev` 构建之后、`devkit.release` 发版之前，对构建后有 `dist/style.css` 的插件都查；
-没过的不装进 home、不发版）。检查只在 devkit 里有一份，本仓的插件不另写测试：
+没过的不装进 home、不发版）。检查只在 devkit 里有一份，本仓的插件不另写测试，产物测试的开头写明了这一分工：
+
+{/* ref file="../plugins/theme/tests/artifact.test.ts" lines="6-12" hash="45daf2d595ac" blob="bdf05e0187bc" */}
+
+devkit 查的是：
 
 - **没有字面默认值**：产物里 `var()` 的默认值只能是另一个 `var()` 或 `currentcolor`。`tw-animate-css` 包里写死的动画缺省值除外，
   那是动画机制的运行时默认，不是设计值，映射文件也改不到

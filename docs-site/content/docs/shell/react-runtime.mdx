@@ -75,9 +75,15 @@ React 没有浏览器能直接加载的 ESM 入口。外壳的 `scripts/build-re
 
 {/* ref file="../plugins/shell/build.ts" lines="9-13" hash="1c92206b80d2" blob="4dc419913506" */}
 
+从子路径取名单的插件，peer 里的外壳版本要带 `./browser-imports` 这个出口。浏览器侧产物里只许出现页面上登记过的包名，这一条由 devkit 的发版前检查查，
+本仓的产物测试不另查：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="7-13" hash="b521b950090a" blob="9c8cce9a0c60" */}
+
 别的插件也可以照同样的代码约定提供浏览器模块：导出一个无副作用的名单函数，在主进程里 `registerImports`。
 使用方在 peer 里写上提供方、用 cordis 的注入保证提供方先加载完成（先登记），构建时从提供方的名单取外置名。
-同一个名字只能指向一个地址：两个提供方给同名不同地址，后登记的那一方在 `registerImports` 时抛错；同名同地址算复用。
+内核按一次 `registerImports` 交来的整批登记，要么全登记上、要么一个都不登记；同一个名字只能指向一个地址：两个提供方给同名不同地址，
+后登记的那一方在 `registerImports` 时抛错；同名同地址算复用。
 
 ## 页面怎么准备 importmap
 

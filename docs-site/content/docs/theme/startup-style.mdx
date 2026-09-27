@@ -12,16 +12,22 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 ## 为什么排在三张表之后、第一帧之前
 
 外壳在三张表都加载完之后、`createRoot` 之前写启动样式。排在后面，自定义 CSS 在同样的选择器上才能靠文档顺序压过令牌表；
-在第一帧之前，重启后一打开就是用户的外观，不会先闪一下默认的样子：
+在第一帧之前，重启后一打开就是用户的外观，不会先闪一下默认的样子。样式元素按 id 找：已有就改内容，这次没有就移除，换外壳时不重复也不残留：
 
 {/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="6-18" hash="1826a6969b08" blob="20e3479e96b1" */}
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="9b37781495f0" blob="9b2b1fdf837c" */}
 
 外壳 node 侧取启动样式时先问命令在不在：没装外观插件时不调，因为调一条不在的命令，命令总线会记一条 warn，没装可选插件却每次开机都留一条；
-命令在却回失败或回的不是字符串，外壳照常起来、只记一条 error：
+回空白当用户没设置；命令在却回失败或回的不是字符串，也当没有，外壳照常起来、只记一条 error：
 
 {/* ref file="../plugins/shell/src/startup-style.ts" lines="6-22" hash="832189c40baa" blob="f4110e1b6678" */}
+
+外壳的测试守着两头：命令表里没有这条就不调；有而且回了非空字符串，`shell.env` 带上它：
+
+{/* ref file="../plugins/shell/tests/startup-style.test.ts" lines="19-25" hash="a1ac198db2b3" blob="d1e973f3ff33" */}
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="248-252" hash="33751f4d10e3" blob="daecac5bbe93" */}
 
 外观插件比外壳晚加载、开机那一刻命令表里还没有这条命令时，这一次开机不带启动样式，下一次整页重新加载就有了。
 为什么查在外壳的 node 侧、不在页面上查，见[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。

@@ -48,6 +48,10 @@ full: true
 
 {/* ref file="../plugins/theme/src/index.ts" lines="112-141" hash="2429fca1d8a1" blob="8a696cae264c" */}
 
+登记时 `plugin` 写本插件的包名：
+
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="97-104" hash="3cd8d723fba9" blob="3c7ae394ce8d" */}
+
 `theme.save` 的参数是外部输入，在这里校验：不是对象、缺键、多了别的键、值不是字符串，都当场拒绝并说清错在哪，不替调用方修正：
 
 {/* ref file="../plugins/theme/tests/apply.test.ts" lines="127-140" hash="dbdbaec4be47" blob="3c7ae394ce8d" */}
@@ -55,6 +59,12 @@ full: true
 **三项设置**的键名用设置插件要求的 kebab-case：
 
 {/* ref file="../plugins/theme/src/index.ts" lines="25-28" hash="04a57d653611" blob="8a696cae264c" */}
+
+三项在 `apply` 里先声明：设置插件只许写声明过的键，每次写入是原子的。`theme.values` 用 `get` 读，`theme.save` 用 `set` 逐项写：
+
+{/* ref file="../plugins/theme/src/index.ts" lines="63-86" hash="ff74955f188d" blob="8a696cae264c" */}
+
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="88-95" hash="98ab2af779a3" blob="3c7ae394ce8d" */}
 
 **「外观」窗格**：id 是 `appearance`，注册时报上 `dist/client.js` 与 `dist/style.css` 的 `file://` 地址，另报名字「外观」、图标 `palette`：
 

@@ -50,6 +50,12 @@ export function apply(ctx: GwbContext) {
 实际运行时带着 `home:` 前缀（`home:hello`）——loader 把插件的条目嵌在内核那条 include 下面。**这个前缀不能去掉**：注册表按它登记、
 开窗格按它判断「哪几个窗格属于这条条目」，改短了就跟注册表对不上，症状是不报错地匹配到错的窗格。
 
+外壳的测试守着这两点：注册表带上调用方的条目 id 与包名；调用方卸载时它登记的窗格与名字自动注销：
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="177-183" hash="59ee590789a8" blob="daecac5bbe93" */}
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="192-200" hash="f42e7d169a12" blob="daecac5bbe93" */}
+
 ### 注册时检查什么
 
 1. **一条条目一个命名空间**：键是（条目 id，窗格 id）。同一个包的两条条目各注册一个同名窗格，两条都在
@@ -121,6 +127,10 @@ dockview 的 `components` 表是「组件名 → React 组件」，外壳的全�
 | `pane.params` | 挂载这一刻这一份的参数；开的时候没传就没有这一项 |
 
 {/* ref file="../plugins/shell/src/client/types.ts" lines="63-113" hash="36e1b504029b" blob="2d06a12a5550" */}
+
+外壳同步调用 `mountPane`、收下它回的句柄；句柄与参数的类型：
+
+{/* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="4bd34a61e07d" blob="2d06a12a5550" */}
 
 **插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格走命令，
 见[跨插件开窗格](#跨插件开窗格shellopenpane)。

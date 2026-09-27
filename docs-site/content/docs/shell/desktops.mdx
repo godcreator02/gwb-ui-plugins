@@ -45,6 +45,15 @@ description: 一张桌面一个窗格容器、挂载后常驻；切桌面按什�
 
 node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的（没存过是 undefined）；`shell.layout.save` 整份替换，写之前校验一遍形状——
 页面自己的 bug 拼出的坏文件，不能覆盖磁盘上好的那份。外壳只认 v3，别的版本一律算读不回来，没有迁移。
+数据插件只按文档名整份读写、不认识布局的形状；每张桌面里的 dockview 布局外壳也原样存、原样交回 dockview，不解释：
+
+{/* ref file="../plugins/shell/src/layout.ts" lines="1-8" hash="36d49f61bf66" blob="51963d44d83e" */}
+
+{/* ref file="../plugins/shell/src/index.ts" lines="187-205" hash="9857ba5e75dc" blob="d8029385df74" */}
+
+形状对就整份写入，形状不对回错、磁盘上那份不变：
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="225-232" hash="2463ce3f595b" blob="daecac5bbe93" */}
 
 ### 什么时候写
 

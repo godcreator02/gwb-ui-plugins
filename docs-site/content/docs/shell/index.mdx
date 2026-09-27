@@ -69,6 +69,12 @@ full: true
 
 {/* ref file="../plugins/shell/src/layout.ts" lines="3-5" hash="97d3d72076c8" blob="51963d44d83e" */}
 
+命令登记在外壳自己的上下文上，`plugin` 一律写外壳的包名，外壳卸载时命令总线把它们一起注销；参数由各条命令的处理函数校验，不合格回 `{ ok: false, error }`：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */}
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="141-165" hash="877c8b62785b" blob="daecac5bbe93" */}
+
 ### 页面上的两个契约
 
 - **内核页面根**：`client.js` 的默认导出 `mountShell(root)` 拿走 `#root`，回 `{ dispose() }`。`dispose` 返回时 React 树必须已经卸载，
@@ -79,6 +85,32 @@ full: true
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="668-672" hash="ef6825436662" blob="9b2b1fdf837c" */}
 
 {/* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */}
+
+### 页面与 node 侧怎么通信
+
+**页面到 node 侧**是命令插件的页面客户端 `command(命令名, 参数)`（`@godcreator/gwb-commands/client`，打包进 `client.js`），
+经内核给页面的请求通道 `window.gwb.request` 走到命令总线，resolve 的是命令总线的回执。外壳的页面入口把它交给窗格当 `host.call`：
+
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="1-1" hash="047a416dccea" blob="9b2b1fdf837c" */}
+
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="685-685" hash="4772f55e3292" blob="9b2b1fdf837c" */}
+
+命令本身的失败（命令不在、处理函数抛错）都 resolve 成 `ok: false` 的回执，不 reject；规则写在 `host.call` 的类型注释里：
+
+{/* ref file="../plugins/shell/src/client/types.ts" lines="10-26" hash="d0b63df7ba34" blob="2d06a12a5550" */}
+
+**node 侧到页面**是 `gwbKernel.emit(载荷)`，页面用 `window.gwb.on(回调)` 收；内核只搬运载荷、不解释，载荷里的 `t` 说明是谁的事件。
+外壳推给自己页面的是下面三种，页面上认不出的 `t` 一律忽略。日志事件由日志插件发出，基础界面的日志窗格直接订阅，外壳不转发、不认识日志：
+
+{/* ref file="../plugins/shell/src/desktops.ts" lines="3-4" hash="c69f395af73f" blob="8d8779b5e92e" */}
+
+{/* ref file="../plugins/shell/src/pane-actions.ts" lines="4-5" hash="d56d77a3805d" blob="fb1659d884db" */}
+
+{/* ref file="../plugins/shell/src/open-pane.ts" lines="4-5" hash="d6947328f824" blob="4b59d533f10f" */}
+
+转发类命令 node 侧先校验参数，不对当场回错，对了才推事件；比如 `shell.desktop.switch` 推一条 `t` 为 `gwb-shell-desktop` 的事件：
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="273-282" hash="fea1a639c194" blob="daecac5bbe93" */}
 
 ### 包的出口
 
@@ -116,6 +148,18 @@ full: true
 {/* ref file="../plugins/shell/src/startup-style.ts" lines="6-12" hash="e3416c5d582f" blob="f4110e1b6678" */}
 
 打包进产物的库（dockview、lucide 图标全集、radix 与 shadcn 的组件、React）写在 dev 里，不是运行时依赖。
+
+**对内核包只 `import type`**：内核包的包根一加载就启动 Electron 应用，按值 import 等于在插件里再启动一个应用。`ctx.gwbKernel` 由内核提供在根上下文上、
+不会撤销，所以不写进 inject，构造时直接取。产物测试查 node 侧产物里按值 import 的包名，只许 `cordis`：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="36-42" hash="1ac9d665b0ec" blob="9c8cce9a0c60" */}
+
+**说明书登记**：外壳对说明书插件局部注入，把包根的 `skills/` 目录交给 `gwbSkills.register`，这个目录列在包清单的 `files` 里；
+说明书插件从目录里读 `gwb-shell/SKILL.md` frontmatter 的 `name` 与 `description` 登记。本仓没有测试守这一处：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="49-50" hash="ad63ef54ee4f" blob="d8029385df74" */}
+
+{/* ref file="../plugins/shell/src/index.ts" lines="153-159" hash="84067ee58a76" blob="d8029385df74" */}
 
 ## 不做的事
 
