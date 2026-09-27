@@ -1,0 +1,24 @@
+---
+title: 'docfirst 卡格式：parent 只写根卡、要写成列表，升到 docfirst-workflow 0.4.0 后本仓 29 张卡报病'
+description: '来源：god-live-doc（docfirst 的仓 `D:\unitfolders\evew5-gwbapps\god-live-doc`），提交 `0e6bc3b`、`a8a92de`，2026-09-27。'
+docfirst: none
+---
+
+本仓站现在装的是 `@godcreator/docfirst-workflow` 0.3.1。下一版 0.4.0 的卡格式扫本仓 `docs-site/content/trajectory/`，29 张卡报病，
+分两类。有病但画得出来的卡照样画上星轨盘，但 `docfirst check` 把每条病算成一处红、以退出码 1 结束，门禁不通过。
+
+**一、`parent` 只能写根卡**（28 张）。一个卡目录只有一张根卡（本仓是 `2026-09-12-gwb-ui-plugins`），其余卡的 `parent`
+只写它的身份，报的是「parent 须是根卡的身份 2026-09-12-gwb-ui-plugins」。本仓大多数卡的 `parent` 写的是上一张卡，最多的是
+`2026-09-12-shell-refactor-round`（24 张），另有写 `2026-09-12-three-repos-split`、`2026-09-19-launcher-switcher`、
+`2026-09-19-pane-kinds` 的。卡与卡之间的先后写在正文的关系行里：`pivots-from:: [标题](卡身份.mdx)` 表示从哪张卡转过来，
+`supersedes:: [标题](卡身份.mdx)` 表示取代了哪张卡，关系行只认这种标准 md 链接。这条规则的来由见 docfirst 仓的轨迹卡
+`docs-site/content/trajectory/2026-09-26-one-root-one-disk.mdx`。
+
+**二、`2026-09-12-shell-refactor-round` 的 `parent` 写成了单个值**（0.4.0 新加的检查）。现在写的是
+`parent: 2026-09-12-three-repos-split`，报「parent 须写成列表：parent: [根卡身份]」，并且按没写 `parent` 处理。
+改成 `parent: [2026-09-12-gwb-ui-plugins]`，原来想表达的前后关系写成正文的 `pivots-from::` 行。
+
+这些是本仓的卡，改法由本仓定（改已有卡前按本仓的规矩先说一句）。改完用 0.4.0 的 `docfirst check` 看一遍是不是绿的。
+
+复现办法：在 docfirst 仓构建后，用 `packages/docfirst-workflow/dist/cards.mjs` 的 `scanCardDir` 扫本仓的卡目录，读结果里的 `sick`。
+0.4.0 发出之前本仓不会看到这些报错；发版的通知另投一条。
