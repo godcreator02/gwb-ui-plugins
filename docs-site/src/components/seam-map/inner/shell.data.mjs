@@ -3,7 +3,7 @@
  * 虚线框是 plugins/shell/src/ 下的文件或目录（按对外能力分组），方块是它们对外给的函数；
  * 灰色实线框是包外的调用方、被调用的服务与内核。坐标在 shell.layout.ts。
  */
-import { defineSeamGraph } from '../seam-graph.ts';
+import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
 
 export const shellGraph = defineSeamGraph({
   id: 'shell',

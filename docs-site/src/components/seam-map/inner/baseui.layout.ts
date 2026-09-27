@@ -3,8 +3,8 @@
  * 中列是窗格按名字调的三个基础插件，右列是 node 侧入口。插件管理与日志各占一行，窗格、插件、登记三者在同一行上。
  */
 import { Cog, Component, FileText, Package, PanelsTopLeft, Puzzle, ScrollText, Settings, Split } from 'lucide-react';
-import { cap } from '../seam-diagram';
-import type { SeamLayout } from '../seam-diagram';
+import { cap } from '@godcreator/explainer-player';
+import type { SeamLayout } from '@godcreator/explainer-player';
 
 export const baseuiLayout: SeamLayout = {
   view: { w: 1200, h: 730 },

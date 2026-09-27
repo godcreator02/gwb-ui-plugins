@@ -4,8 +4,8 @@
  * 竖线落在外壳框、内核框的标题下方时停在框边上（1、2、10、14），接的是哪一处能力看高亮。
  */
 import { Boxes, Cpu, LayoutGrid, Palette, PanelsTopLeft, Puzzle, User } from 'lucide-react';
-import { cap } from './seam-diagram';
-import type { SeamLayout } from './seam-diagram';
+import { cap } from '@godcreator/explainer-player';
+import type { SeamLayout } from '@godcreator/explainer-player';
 
 export const systemLayout: SeamLayout = {
   view: { w: 1260, h: 494 },

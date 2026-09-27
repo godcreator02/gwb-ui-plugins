@@ -2,7 +2,7 @@
  * 基础界面插件 @godcreator/gwb-baseui 的内部接缝图：包首页 <SeamMap module="baseui" /> 画的就是它。
  * 虚线框是包里的文件或目录，方块是它对外给的东西；灰色实线框是包外的外壳与三个基础插件。坐标在 baseui.layout.ts。
  */
-import { defineSeamGraph } from '../seam-graph.ts';
+import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
 
 /* ref file="../plugins/baseui/src/index.ts" lines="13-39" hash="3842812c159d" blob="abe67016668a" */
 /* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */

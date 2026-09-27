@@ -4,8 +4,8 @@
  * 跨很多行的线走两列之间的空隙（x≈864–874）、最左的空隙（x=10）与最右的空隙（x=1232），不压在方块上。
  */
 import { AppWindow, Atom, Blocks, Bot, Cpu, MousePointerClick, Paintbrush, Palette, PanelTop, Puzzle, Route, Server, Share2, Table } from 'lucide-react';
-import { cap } from '../seam-diagram';
-import type { SeamLayout } from '../seam-diagram';
+import { cap } from '@godcreator/explainer-player';
+import type { SeamLayout } from '@godcreator/explainer-player';
 
 export const shellLayout: SeamLayout = {
   view: { w: 1240, h: 1164 },

@@ -15,7 +15,7 @@
     "verify:roster": "node scripts/verify-roster.mjs"
   },
   "dependencies": {
-    "@godcreator/explainer-player": "^0.1.0",
+    "@godcreator/explainer-player": "^0.1.1",
     "cn": "^0.3.0",
     "fumadocs-core": "16.15.14",
     "fumadocs-mdx": "15.4.4",

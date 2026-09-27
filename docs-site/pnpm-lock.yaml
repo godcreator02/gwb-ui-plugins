@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@godcreator/explainer-player':
-        specifier: ^0.1.0
-        version: 0.1.0(react@19.3.0)
+        specifier: ^0.1.1
+        version: 0.1.1(react@19.3.0)
       cn:
         specifier: ^0.3.0
         version: 0.3.3
@@ -334,8 +334,8 @@ packages:
       react:
         optional: true
 
-  '@godcreator/explainer-player@0.1.0':
-    resolution: {integrity: sha512-oUoHD3Z2p0dIUvFl9ErviqbHTTvt4MqIxsuc/Ud0G5iRfzhimCxIodS3RxSKq2JizS7O++40QtU6+IoDlwNIpg==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fexplainer-player/-/0.1.0/explainer-player-0.1.0.tgz}
+  '@godcreator/explainer-player@0.1.1':
+    resolution: {integrity: sha512-cxbYGd/Bovm+dRBjnqqNq6008TYlR6D8iNkKrCGegUs3yLg5FHJTQavC5z1/L7YItaA8Ylw/g5z1bnXEhnzvPg==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fexplainer-player/-/0.1.1/explainer-player-0.1.1.tgz}
     peerDependencies:
       react: '>=19'
 
@@ -2075,7 +2075,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@godcreator/explainer-player@0.1.0(react@19.3.0)':
+  '@godcreator/explainer-player@0.1.1(react@19.3.0)':
     dependencies:
       react: 19.3.0
 
