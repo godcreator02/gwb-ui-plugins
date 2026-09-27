@@ -16,7 +16,7 @@
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.10.0",
     "@godcreator/gwb-shell": "workspace:*",
-    "@godcreator/gwb-commands": "^0.5.6",
+    "@godcreator/gwb-commands": "^0.5.7",
     "@godcreator/gwb-plugin-manager": "^0.14.3"
   },
   "peerDependenciesMeta": {
