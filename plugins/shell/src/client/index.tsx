@@ -1,3 +1,4 @@
+import { command } from '@godcreator/gwb-commands/client'
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
@@ -670,7 +671,7 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
  */
 export default function mountShell(root: HTMLElement): { dispose(): void } {
   return shellHandle(root, async (alive) => {
-    const reply = (await window.gwb.command(ENV_COMMAND)) as {
+    const reply = (await command<ShellEnv>(ENV_COMMAND)) as {
       ok?: boolean
       data?: ShellEnv
       error?: string
@@ -681,7 +682,7 @@ export default function mountShell(root: HTMLElement): { dispose(): void } {
     if (!alive()) return undefined
     const { home, styles, startupCss, versions } = reply.data
     return prepareShell(
-      { host: { call: (command, args) => window.gwb.command(command, args) }, home, styles, startupCss, versions },
+      { host: { call: command }, home, styles, startupCss, versions },
       root,
     )
   })

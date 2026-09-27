@@ -1,6 +1,6 @@
 import { Context } from 'cordis'
 import type { Message, Plugin } from 'cordis'
-import type { GwbCommandContext, GwbCommandDef, GwbCommandHandler, GwbCommands } from '@godcreator/gwb-commands'
+import type { GwbCommandContext, RegisteredCommandDef, GwbCommandHandler, GwbCommands } from '@godcreator/gwb-commands'
 import { describe, expect, it, vi } from 'vitest'
 import GwbShell, { type GwbShellApi } from '../src/index.js'
 // 仓根的 tsc 顺着上一行把 src/index.ts 拉进来，它读 ctx.gwbData 要靠这份只在外壳自己编译时生效的声明
@@ -30,7 +30,7 @@ const FROM_TEST: GwbCommandContext = { via: 'plugin' }
 
 function fakeCommandBus(): GwbCommands & { handlers: Map<string, GwbCommandHandler> } {
   const handlers = new Map<string, GwbCommandHandler>()
-  const defs = new Map<string, Required<GwbCommandDef>>()
+  const defs = new Map<string, RegisteredCommandDef>()
   return {
     handlers,
     register(def, handler) {

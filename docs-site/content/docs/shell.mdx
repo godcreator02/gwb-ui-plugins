@@ -153,8 +153,9 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 ## 为什么命令总线是必需依赖
 
 注册发生在 node 侧，而摆放窗格的是浏览器侧——注册表得经命令传到浏览器侧。内核**一条原生命令都没有**：
-页面经 `gwb:command` 发来的命令全走 `ctx.gwbCommands`（命令总线，gwb-commands 插件提供），
-内核本体不认识任何插件的命令名。
+页面导入 `@godcreator/gwb-commands/client` 的 `command`，经 `window.gwb.request('commands.run', { name, args })`
+到达 commands 登记的处理器。内核只转发通道与载荷，commands 负责校验、固定来源 `via: 'ui'` 和命令回执。
+`host.call` 直接使用这个客户端，窗格的调用接口不变；客户端随 shell 打包，不另登记 importmap。
 
 所以只有一条路：shell 自己注册一条 `shell.panes`。没有命令总线，注册表传不出这个
 进程，外壳就是个打不开任何东西的空容器——那种时候不如不加载，cordis 会在日志里明说

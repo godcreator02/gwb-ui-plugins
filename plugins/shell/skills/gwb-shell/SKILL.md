@@ -101,18 +101,18 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 
 ## 在窗格里调命令
 
-1. 用 `args.host.call(name, args)`。它就是页面上的 `window.gwb.command`：经 IPC 交给主进程，由命令总线
+1. 用 `args.host.call(name, args)`。它调用 `@godcreator/gwb-commands/client`，经内核的 `commands.run` 请求通道交给主进程，由命令总线
    `ctx.gwbCommands.run` 执行，回的是命令总线的回执，形状见说明书 `gwb-commands` 的「回执参考」。
 2. 命令没成功时 promise 照常 resolve，回执是 `{ ok: false, error }`，不会 reject：
    - 命令不存在：`error` 是 `没有这条命令：<命令名>`
    - 处理函数抛错：`error` 是异常文本
    - 处理函数自己返回 `{ ok: false, error }`：原样返回
 
-   只有参数或返回值过不了 IPC（里面有函数这类不能结构化克隆的值）时调用本身才抛错，所以参数只放能 JSON 序列化的值。
-3. 回执类型用内核包的 `GwbResult`，先看 `ok` 再取 `data`；失败时把 `error` 显示在窗格里，不要吞掉换成空数据：
+   传输失败或回执形状损坏时调用会抛错；参数只放能 JSON 序列化的值。
+3. 回执类型从 `@godcreator/gwb-commands/client` 取 `GwbResult`，先看 `ok` 再取 `data`；失败时把 `error` 显示在窗格里，不要吞掉换成空数据：
 
    ```tsx
-   import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
+   import type { GwbResult } from '@godcreator/gwb-commands/client'
    import type { HostBridge } from '@godcreator/gwb-shell/pane'
 
    async function listRows(host: HostBridge): Promise<Row[]> {

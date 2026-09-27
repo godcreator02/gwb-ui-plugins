@@ -131,7 +131,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Servic
 | 共享 id | `@godcreator/gwb-theme` 的外观窗格 | 样式元素 `#gwb-theme-style` | 页面启动时把用户外观样式写进这张样式元素；外观窗格预览时直接改它的内容。两边各写一份字符串、不互相 import |
 | 动态 import | 各窗格插件 | 注册窗格时给的 `client` 地址，取导出 `mountPane` | 打开窗格时加载插件的页面侧代码 |
 | 内核接口 | 内核 | `gwbKernel.setShell(client.js 的地址)` | 声明自己是外壳、接管页面根；包在 `ctx.effect` 里，插件卸载时交还 |
-| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 `window.gwb.command`）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面启动时取环境、取表、读写布局文件、推窗格清单 |
+| 命令（页面 → 本插件 node 侧） | 本插件的 node 侧 | `shell.env`（经 commands 的 `./client` 与 `commands.run` 请求通道）、`shell.panes`、`shell.plugins`、`shell.layout.get`、`shell.layout.save`、`shell.pane.sync` | 页面启动时取环境、取表、读写布局文件、推窗格清单 |
 | 动态 import | Electron 主进程 | `import('electron')`，说明符放在变量里 | `shell.reload` 取 `BrowserWindow.getAllWindows()` 逐个重载 |
 
 {/* ref file="../plugins/shell/src/startup-style.ts" lines="4-4" hash="3ef63ccfcb9f" blob="f4110e1b6678" */}
