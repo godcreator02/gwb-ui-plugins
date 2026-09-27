@@ -324,9 +324,9 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 字符串**（外壳这边在 node 端 `startup-style.ts` 的 `THEME_STARTUP_COMMAND`，主题插件那边是它导出的
 `STARTUP_COMMAND`）：
 
-{/* has file="../plugins/shell/src/startup-style.ts" text="theme.startupCss" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="4-4" hash="3ef63ccfcb9f" blob="f4110e1b6678" */}
 
-{/* has file="../plugins/theme/src/index.ts" text="theme.startupCss" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="23-23" hash="471e464143b1" blob="8a696cae264c" */}
 
 主题插件是可选的，所以外壳**先看命令总线上有没有这条命令，没有就不调**——调一条不在的命令，
 总线会记一条「执行了不存在的命令」warn，而没装可选插件不是问题，每个没装主题的 home 每次启动都
@@ -381,7 +381,7 @@ import，只 import `components/` 下的共享组件。
 
 这个做法有一条**限制**，出在插件样式入口导入 Tailwind 内置主题时带的那个前缀上：
 
-{/* has file="../plugins/baseui/src/client/styles.css" text="prefix(baseui)" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-6" hash="774f8f302acb" blob="58e7b2609682" */}
 
 前缀会把 Tailwind **内置的**主题变量名也改掉（每个插件的前缀不同，名字对不上），所以指望在
 页面上全局声明一份 Tailwind 默认主题变量去影响所有插件是行不通的。**语义令牌只能经映射文件
@@ -515,7 +515,7 @@ import，只 import `components/` 下的共享组件。
 - **前缀改写是协议自带的。** registry 里的组件源码一律无前缀，CLI 拉取时按**消费者自己**
   `components.json` 里的前缀改写类名——跟今天从官方拉组件是同一个动作：
 
-{/* has file="../plugins/baseui/components.json" text="baseui" */}
+{/* ref file="../plugins/baseui/components.json" lines="11-11" hash="f6a0951479f4" blob="7a64d0da68a9" */}
 
   所以同一份源码拉进任何插件都自动带上那个插件的前缀，值照旧读令牌表。**现有的这些规矩
   已经允许将来增加或更换组件源头，启用时不用改架构。**

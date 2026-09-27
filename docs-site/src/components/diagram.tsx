@@ -7,6 +7,7 @@
  * 这套组件复制自基础插件仓文档站，各站各有一份。
  */
 import type { ReactNode } from 'react'
+import './diagram.css'
 import { BaseuiPanes } from './diagrams/baseui-panes'
 import { DesktopSwitch } from './diagrams/desktop-switch'
 import { ImportmapFlow } from './diagrams/importmap-flow'

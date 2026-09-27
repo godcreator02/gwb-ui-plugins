@@ -500,7 +500,7 @@ Could not resolve value for theme function: theme(reference)
 
 修法跟 TS 那条一样：把通配的 `*` 换成省略号，别让 `*` 挨着 `/`：
 
-{/* has file="../plugins/baseui/src/client/styles.css" text="--tw-enter-…" */}
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="3-3" hash="168184f0f153" blob="58e7b2609682" */}
 
 **判据**：往块注释里写 glob、通配符、路径这类东西之前，先看一眼里面有没有 `*/`——
 这条对 TS 和 CSS 一样成立，而 CSS 这边的报错更难定位。

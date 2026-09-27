@@ -1,13 +1,14 @@
 /**
- * MDX 组件名单，站这一侧的正本。mdx.tsx 用它的类型要求 React 组件表不多不少正好这几个；
- * scripts/verify-roster.mjs 拿它跟 docfirst.config.mjs 里 `components` 的转换规则逐个核对。
+ * 名册的名单，站这一侧的正本。mdx.tsx 用它的类型逼着 React 表一个不多一个不少；
+ * scripts/verify-roster.mjs 拿它跟 docfirst.config.mjs 里的压平表两头对。
  *
- * 两边缺一边都是硬失败，但表现不同：**转换规则里没有** → 生成 markdown 时报「名册外组件」；
- * **React 组件表里没有** → 站渲染时报 Expected component。
+ * 少一半的后果不一样，但都是硬失败：**压平表没有** → 打标时报「名册外组件」；
+ * **React 表没有** → 站渲染报 Expected component。
  *
- * Files / Folder / File 是 fumadocs 自己的文件树组件：目录树引用生成的就是它们，
- * 转换规则在格式包的默认表里。Diagram 是示意图（src/components/diagram.tsx）。
- * 这个文件只有能被擦除的类型写法，Node 可以直接 import 它。
+ * Files / Folder / File 是 fumadocs 自己的文件树：目录树引用注入的就是它们，
+ * 它们与 Note 的压平规则在 @godcreator/docfirst-workflow/fumadocs/roster 的 fumadocsRoster 里。
+ * Diagram 是示意图（src/components/diagram.tsx）。
+ * registry.ts 只有可擦除的类型，Node 直接运行。
  */
 export const componentNames = ['Note', 'Files', 'Folder', 'File', 'Diagram'] as const
 export type ComponentName = (typeof componentNames)[number]
