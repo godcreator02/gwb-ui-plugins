@@ -39,7 +39,7 @@ const modules = [
     pkg: '@godcreator/gwb-baseui',
     role: 'emerald',
     outside: false,
-    blurb: '基础插件的官方窗格集：日志、插件管理两个窗格，装了哪个基础插件就登记哪个窗格。必需依赖只有外壳。',
+    blurb: '基础插件的官方窗格集：日志窗格总是登记，插件管理窗格装了插件管理才登记。必需依赖只有外壳。',
     caps: [
       { id: 'baseui-apply', name: '窗格登记', ident: 'ctx.inject' },
       { id: 'baseui-panes', name: '日志与插件管理', ident: 'panes/' },
@@ -82,10 +82,10 @@ const modules = [
     pkg: 'peer 依赖',
     role: null,
     outside: true,
-    blurb: '在别的仓里的几个插件，各提供一个服务：命令总线、数据、设置、说明书、日志、插件管理。它们不依赖本仓。',
+    blurb: '在别的仓里的几个插件：命令总线、数据、设置、说明书、插件管理各提供一个服务，日志插件只提供命令 logger.query。它们不依赖本仓。',
     caps: [
       { id: 'b-settings', name: '设置', ident: 'gwbSettings · settings.*' },
-      { id: 'b-logger', name: '日志', ident: 'gwbLogger · logger.*' },
+      { id: 'b-logger', name: '日志', ident: 'logger.query' },
       { id: 'b-pm', name: '插件管理', ident: 'gwbPluginManager' },
       { id: 'b-skills', name: '说明书', ident: 'gwbSkills' },
       { id: 'b-data', name: '数据', ident: 'gwbData' },
@@ -138,17 +138,16 @@ const seams = [
   /* ref file="../plugins/shell/src/desktops.ts" lines="3-4" hash="c69f395af73f" blob="8d8779b5e92e" */
   /* ref file="../plugins/shell/src/pane-actions.ts" lines="4-5" hash="d56d77a3805d" blob="fb1659d884db" */
   /* ref file="../plugins/shell/src/open-pane.ts" lines="4-5" hash="d6947328f824" blob="4b59d533f10f" */
-  /* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="54-55" hash="ba5194942340" blob="a70e8f4051de" */
   /* ref file="../plugins/shell/src/client/index.tsx" lines="1-1" hash="047a416dccea" blob="9b2b1fdf837c" */
   {
     n: 4,
     name: '页面通道',
-    a: ['page', 'commands', 'baseui-panes'],
+    a: ['page', 'commands'],
     b: ['k-channel'],
     iface: "host.call = command(name, args)（@godcreator/gwb-commands/client）→ window.gwb.request；gwbKernel.emit({ t, … }) → window.gwb.on(cb)",
     convention: false,
     via: 'code',
-    text: '页面入口用命令插件的页面客户端 command 调命令（经内核的请求通道到命令总线）、收回执，交给窗格的 host.call 就是它；外壳 node 侧经 gwbKernel.emit 把桌面、窗格、开窗格三类动作推给页面，页面按 t 认领。日志窗格也订阅 window.gwb.on，只收 t 为 gwb-logger 的实时日志。',
+    text: '页面入口用命令插件的页面客户端 command 调命令（经内核的请求通道到命令总线）、收回执，交给窗格的 host.call 就是它；外壳 node 侧经 gwbKernel.emit 把桌面、窗格、开窗格三类动作推给页面，页面按 t 区分是哪一类。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */
   /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="bf14907298f5" blob="8a696cae264c" */
@@ -197,17 +196,17 @@ const seams = [
     via: 'disk',
     text: '外壳局部注入说明书插件，把随包发布的 skills/ 目录交给它，说明书插件从目录里读 gwb-shell/SKILL.md。说明书插件不在时外壳照常运行，后加载时补登记。',
   },
-  /* ref file="../plugins/baseui/src/index.ts" lines="13-32" hash="a52590138358" blob="abe67016668a" */
+  /* ref file="../plugins/baseui/src/index.ts" lines="12-27" hash="49c6545b0420" blob="bf3c83e4a655" */
   /* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="1-12" hash="b79654560522" blob="f838b9d7d2ea" */
   {
     n: 9,
     name: '基础插件的窗格',
     a: ['baseui-apply', 'baseui-panes'],
     b: ['b-logger', 'b-pm', 'b-settings'],
-    iface: "ctx.inject(['gwbLogger'] | ['gwbPluginManager'], …)；logger.*、plugin-manager.*、settings.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
+    iface: "ctx.inject(['gwbPluginManager'], …)；logger.query、plugin-manager.*、settings.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
     convention: false,
     via: 'code',
-    text: '基础界面对日志、插件管理两个服务各做一次局部注入，服务在才登记对应窗格；窗格里的操作经命令名调 logger.*、plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
+    text: '基础界面只对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记。窗格里的操作经命令名调 logger.query、plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */
   /* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */

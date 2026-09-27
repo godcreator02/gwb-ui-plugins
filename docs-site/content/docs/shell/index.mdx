@@ -13,7 +13,7 @@ full: true
 
 - **接管内核的页面**：声明自己是外壳，内核页面把 `#root` 交给 `client.js` 的默认导出；外壳卸载或换版本时同步交还。
   见[外壳怎么接管页面](/docs/shell/takeover)
-- **窗格注册**：插件在自己的 `apply` 里注册窗格、报名字，外壳填上身份、登记时检查参数，注册表经命令传到页面。见[窗格](/docs/shell/panes)
+- **窗格注册**：插件在自己的 `apply` 里注册窗格、报名字，外壳补上条目 id 与包名、登记时检查参数，注册表经命令传到页面。见[窗格](/docs/shell/panes)
 - **开窗格**：一个窗格开几份看它装着什么内容；开到哪一组、激活已开的还是开新的、预览窗格与换内容，都由纯函数判断。见[窗格](/docs/shell/panes)
 - **多桌面与布局保存**：一张桌面一个 dockview 窗格容器，挂载后常驻；布局自动保存、可以起名存，读不回来时停止保存。
   见[多桌面与布局保存](/docs/shell/desktops)
@@ -40,7 +40,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/index.ts" lines="468-472" hash="a711dfb6a01f" blob="d8029385df74" */}
 
-发布的 `dist/index.d.ts` 由产物测试守着：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有两个方法。
+发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有两个方法。
 
 {/* ref file="../plugins/shell/tests/artifact.test.ts" lines="107-121" hash="d20dde197087" blob="9c8cce9a0c60" */}
 
@@ -77,7 +77,7 @@ full: true
 
 ### 页面上的两个契约
 
-- **内核页面根**：`client.js` 的默认导出 `mountShell(root)` 拿走 `#root`，回 `{ dispose() }`。`dispose` 返回时 React 树必须已经卸载，
+- **内核页面根**：`client.js` 的默认导出 `mountShell(root)` 接收 `#root`，回 `{ dispose() }`。`dispose` 返回时 React 树必须已经卸载，
   见[外壳怎么接管页面](/docs/shell/takeover)
 - **窗格插件**：插件的浏览器侧模块导出 `mountPane({ host, shell, pane }, container)`，回 `{ dispose(); retarget?(params) }`。
   这些类型从子路径 `@godcreator/gwb-shell/pane` 用 `import type` 取，见[插件拿到的 args](/docs/shell/panes#插件拿到的-args)
@@ -99,8 +99,8 @@ full: true
 
 {/* ref file="../plugins/shell/src/client/types.ts" lines="10-26" hash="d0b63df7ba34" blob="2d06a12a5550" */}
 
-**node 侧到页面**是 `gwbKernel.emit(载荷)`，页面用 `window.gwb.on(回调)` 收；内核只搬运载荷、不解释，载荷里的 `t` 说明是谁的事件。
-外壳推给自己页面的是下面三种，页面上认不出的 `t` 一律忽略。日志事件由日志插件发出，基础界面的日志窗格直接订阅，外壳不转发、不认识日志：
+**node 侧到页面**是 `gwbKernel.emit(载荷)`，页面用 `window.gwb.on(回调)` 收；内核只转交载荷、不解释，载荷里的 `t` 说明是谁的事件。
+外壳推给自己页面的是下面三种，页面上认不出的 `t` 一律忽略：
 
 {/* ref file="../plugins/shell/src/desktops.ts" lines="3-4" hash="c69f395af73f" blob="8d8779b5e92e" */}
 
@@ -155,7 +155,7 @@ full: true
 {/* ref file="../plugins/shell/tests/artifact.test.ts" lines="36-42" hash="1ac9d665b0ec" blob="9c8cce9a0c60" */}
 
 **说明书登记**：外壳对说明书插件局部注入，把包根的 `skills/` 目录交给 `gwbSkills.register`，这个目录列在包清单的 `files` 里；
-说明书插件从目录里读 `gwb-shell/SKILL.md` frontmatter 的 `name` 与 `description` 登记。本仓没有测试守这一处：
+说明书插件从目录里读 `gwb-shell/SKILL.md` frontmatter 的 `name` 与 `description` 登记。本仓没有测试检查这一处：
 
 {/* ref file="../plugins/shell/src/index.ts" lines="49-50" hash="ad63ef54ee4f" blob="d8029385df74" */}
 
@@ -168,7 +168,7 @@ full: true
   [窗格地址在注册时检查](/trajectory/2026-09-24-pane-address-check-at-register)
 - **没有窗格之间的消息总线、不导出命令名常量、不迁移旧版布局文件**：没有使用者，理由见轨迹卡
   [外壳 0.15 删掉没人用的](/trajectory/2026-09-26-shell-015-drop-unused)
-- **不强制暂停藏起来的桌面**：只通知可见性，停订阅、停渲染由插件自己做，见[多桌面](/docs/shell/desktops)
+- **不强制暂停隐藏的桌面**：只通知可见性，停订阅、停渲染由插件自己做，见[多桌面](/docs/shell/desktops)
 - **不按选择器限定样式范围**：外壳与插件都用类名前缀隔离，见[样式](/docs/shell/styles)
 - **独立窗口、把标签拖进另一张桌面的指定位置、快捷键、「已开就跳过去」的设置、桌面排序、在后台打开新标签**：
   想过、先不做，各自在等什么见[路线](/future/roadmap)

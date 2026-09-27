@@ -7,11 +7,11 @@ description: 一张页面上几个插件的样式怎么放在一起——令牌�
 装进同一个 home 运行时才第一次放在一起。浏览器给的条件是固定的：只有一个 DOM、一套级联、一个 JS 运行环境
 （一份模块缓存、一份 importmap）。「几个插件共享一套外观」对照这三条，其实是三个问题：
 
-| 共享什么 | 答案 | 凭什么 |
+| 共享什么 | 答案 | 依据 |
 | --- | --- | --- |
 | 颜色、圆角、字体这些**值** | 全页一份 | CSS 自定义属性沿 DOM 继承，`:root` 上写一次，全树读得到 |
 | 工具类这些**规则** | 各一份，而且必须互相隔离 | 每个插件按需编译，各是各的子集，放在一起会互相覆盖 |
-| 按钮、菜单这些**组件** | 共享源码的出处，不共享运行时对象 | 每个插件各自拉取 shadcn 源码、各自打包 |
+| 按钮、菜单这些**组件** | 共享源码的出处，不共享运行时对象 | 每个插件各自用 shadcn 命令行生成组件源码、各自打包 |
 
 全页用同一个例子：baseui 的日志窗格（类名前缀 `baseui`）和外观插件的外观窗格（前缀 `theme`）同时开着，
 外壳（前缀 `shell`）画状态栏和窗格容器。React 这份 JS 运行时怎么全页只有一份，见[页面上的 React](/docs/shell/react-runtime)。
@@ -52,7 +52,7 @@ Tailwind 按需编译：用到哪个类才输出哪条规则，所以每个插�
 
 <NameIsolation />
 
-按名字隔离只剩一种坏法：忘写前缀。而它当场看得见（那个类不生效），并且由 devkit 的样式检查拦住（见下文）。
+按名字隔离只剩一种出错的方式：忘写前缀。而它当场看得见（那个类不生效），并且由 devkit 的样式检查查出（见下文）。
 工具链原生支持这个做法：Tailwind 4 的 `prefix()` 写在拆开的主题导入上，shadcn 的 `components.json` 有 `tailwind.prefix`，
 组件里合并类名用的 `cn` 对带前缀的类名照样合并得对。
 
@@ -68,9 +68,9 @@ Tailwind 按需编译：用到哪个类才输出哪条规则，所以每个插�
 
 ## 组件：共享源头，不共享运行时
 
-两个插件的按钮长得一样，不是因为它们运行同一段代码。每个插件有自己的 `components.json`，`shadcn add` 拉下来的是这个插件
+两个插件的按钮长得一样，不是因为它们运行同一段代码。每个插件有自己的 `components.json`，`shadcn add` 生成的是这个插件
 目录里的一个 tsx 文件，跟着这个插件一起打包；颜色读的是同一份令牌。`tailwind.prefix` 让 CLI 直接写出带前缀的类名，
-拉下来的组件不用手改：
+生成的组件不用手改：
 
 {/* ref file="../plugins/baseui/components.json" lines="11-11" hash="f6a0951479f4" blob="7a64d0da68a9" */}
 
@@ -112,7 +112,7 @@ dockview 自带的主题一套都不用：构建时凡是选择器带 `.dockview
 
 {/* ref file="../plugins/shell/src/client/dockview-theme.css" lines="1-3" hash="05658cae90f0" blob="88651873c676" */}
 
-裁剪是每次构建都运行的代码，写坏了两头都不报错：裁多了某处没样式，裁少了它的主题悄悄覆盖外壳的值。产物测试查这两头：
+裁剪是每次构建都运行的代码，写错了两种情况都不报错：裁多了某处没样式，裁少了它的主题悄悄覆盖外壳的值。产物测试两种都查：
 
 {/* ref file="../plugins/shell/tests/artifact.test.ts" lines="75-93" hash="9bbf56d5925f" blob="9c8cce9a0c60" */}
 
@@ -157,7 +157,7 @@ dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表�
 - 第二行是外壳的令牌映射文件，不引它，颜色类整个是空的（为什么值与映射分两个文件，见[令牌与颜色](/docs/shell/tokens)）
 - 第三行只引工具类、不引 preflight（那是页面级的一份，在令牌表里），并关掉自动扫描；不关的话 `dist/` 里的产物也会被扫进来，
   凭空多出一批没人用的类
-- 第四行是 `tw-animate-css`，shadcn 组件的 `animate-in` 一族出自它，不引就一条规则都不出，菜单没有过渡动画。它顺带输出的一批不带前缀的
+- 第四行是 `tw-animate-css`，shadcn 组件的 `animate-in` 这一组类出自它，不引就一条规则都不出，菜单没有过渡动画。它顺带输出的一批不带前缀的
   `@keyframes` 与 `@property` 每张表各一份、内容相同，无害
 - 第五行指定扫描范围
 
@@ -177,7 +177,7 @@ dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表�
 
 ### 窗格是容器查询的根
 
-窗格容器上跟样式沾边的只有两样东西。`@container` 让这个窗格成为容器查询的根，插件里写的 `@sm:`、`@md:` 这类变体问的是这个窗格现在有多宽，
+窗格容器上跟样式有关的只有两样东西。`@container` 让这个窗格成为容器查询的根，插件里写的 `@sm:`、`@md:` 这类变体问的是这个窗格现在有多宽，
 跟整个窗口多大无关：窗格可能被拖成 300px 的一条，也可能占满一千多像素，而窗口始终没变。`data-gwb-plugin` 只是身份标记，
 给人在开发者工具里认出这个窗格是谁的；前缀隔离下有没有它样式都一样，别把它当成样式生效的前提：
 
@@ -185,7 +185,7 @@ dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表�
 
 ### devkit 的样式检查
 
-前缀隔离唯一的坏法是忘写前缀，拦它的是 devkit 的样式检查：`devkit.dev` 构建之后、`devkit.release` 发版之前，对构建后有 `dist/style.css`
+前缀隔离唯一出错的方式是忘写前缀，查它的是 devkit 的样式检查：`devkit.dev` 构建之后、`devkit.release` 发版之前，对构建后有 `dist/style.css`
 的插件都查，没过的不装进 home、不发版。检查只在 devkit 里有一份（生命周期插件仓 `gwb-lifecycle-plugins` 的
 `plugins/devkit/src/style-check.ts`），本仓不留副本。它查两层：
 
@@ -198,9 +198,9 @@ dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表�
 它查不出的有两类。`.ts` 文件与模板串 `${…}` 里拼出来的类名不查。标记类也查不出：`group`、`peer` 这类类自己不出规则，
 只给 `group-hover:` 这类变体当祖先用；带前缀之后变体编出的选择器认的是带前缀的标记类，所以两边必须一起带前缀：
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="325-328" hash="5b044d463983" blob="a70e8f4051de" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="238-241" hash="79baecd695c6" blob="2dff8422ae22" */}
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="340-342" hash="58da358955c3" blob="a70e8f4051de" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="253-255" hash="58da358955c3" blob="2dff8422ae22" */}
 
 上面一行加的是 `baseui:group`，下面用 `baseui:group-hover:` 引用它。标记类写成裸的 `group`，DOM 上就没有 `.baseui\:group`，
 选择器永远匹配不上，而且不报错：类名在、规则也在，只是对不上。裸的 `group` 在不带前缀的编译下也编不出规则，
@@ -215,10 +215,10 @@ dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表�
 ## 不做的事
 
 - **不用 Shadow DOM**：`@property` 声明在 shadow root 里被忽略，而 Tailwind 4 大量用它；弹层「点外面关掉」这类判断在 shadow 边界上问题很多；
-  而且值本来就该穿透，shadow 把值也挡在外面
+  而且值本来就该传到每个插件的元素上，shadow 边界把值也隔开了
 - **不共享组件库**：所有插件从一个包里 import 按钮，CSS 一点都省不下（每个插件仍要为自己用到的类编一张表），换来一条必需依赖，那个包升一次版所有插件跟着升
 - **不让每个插件自带令牌**：几个插件几份颜色值，换主题要所有插件一起重新构建、一起发版
 
 还剩一处耦合：Tailwind 内部那批 `@property` 不随前缀走，每张表各注册一遍同名的那批，以后注册的为准，所以全生态得用同一个 Tailwind 主版本。
-前缀改写 Tailwind 出厂变量名带来的字面默认值，已由令牌表接管出厂刻度解决，见[令牌国有化](/trajectory/2026-09-12-token-nationalization)。
+前缀改写 Tailwind 默认变量名带来的字面默认值，已由令牌表给出 Tailwind 默认刻度的值解决，见[令牌国有化](/trajectory/2026-09-12-token-nationalization)。
 另一个一直要付的代价是源码里每个类多一个前缀。

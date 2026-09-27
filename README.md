@@ -16,8 +16,8 @@ plugin-manager.install {"pkg":"@godcreator/gwb-theme"}
 plugin-manager.install {"pkg":"@godcreator/gwb-baseui"}
 ```
 
-`baseui` 的窗格随基础插件装没装增减：装了 `gwb-logger` 就有日志窗格，装了 `gwb-plugin-manager` 就有
-插件管理窗格，缺了哪个就不显示对应的窗格。
+`baseui` 的日志窗格总是有，它按命令名调 `gwb-logger` 的 `logger.query`，没装日志插件时窗格里显示命令调用失败的原因；
+装了 `gwb-plugin-manager` 才有插件管理窗格。
 
 ## 怎么用
 

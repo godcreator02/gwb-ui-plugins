@@ -20,12 +20,12 @@ full: true
 | 1 | 接口类型 | 三个插件的 node 侧 ↔ 内核包 `@godcreator/gwb-kernel-desktop` | `GwbContext`、`GwbKernelApi`、`requireKernel` | 插件和运行中的内核兼不兼容，由插件管理拿 peer 里内核包的范围去比 | [外壳的依赖](/docs/shell#依赖) |
 | 2 | 外壳接管 | 外壳的页面入口 `client.js` ↔ 内核的页面根 | `setShell`、默认导出 `mountShell` | 窗口怎么开、页面在哪个窗口里由内核负责；窗格与桌面全在外壳的浏览器侧 | [准备与挂载分成两段](/docs/shell/takeover#准备与挂载分成两段) |
 | 3 | 浏览器模块 | 外壳的 React 运行时 ↔ 内核的浏览器模块登记 | `registerImports`、`browserImports()`、`prepareImports` | 内核不带 React、不决定它的版本，升级 React 就是发外壳的新版本 | [页面上的 React](/docs/shell/react-runtime) |
-| 4 | 页面通道 | 外壳的页面入口与命令、基础界面的日志窗格 ↔ 内核给页面的 `window.gwb`、命令插件的页面客户端 | `command`、`host.call`、`gwbKernel.emit`、`window.gwb.on` | 命令交给谁执行、回执长什么样由命令总线决定；日志事件由日志插件发出 | [页面与 node 侧怎么通信](/docs/shell#页面与-node-侧怎么通信) |
+| 4 | 页面通道 | 外壳的页面入口与命令 ↔ 内核给页面的 `window.gwb`、命令插件的页面客户端 | `command`、`host.call`、`gwbKernel.emit`、`window.gwb.on` | 命令交给谁执行、回执长什么样由命令总线决定；内核只转交 `emit` 的载荷、不解释 | [页面与 node 侧怎么通信](/docs/shell#页面与-node-侧怎么通信) |
 | 5 | 命令登记 | 外壳命令、外观的命令 ↔ 命令总线 `gwbCommands` | `gwbCommands.register` | 命令总线不校验参数、对所有插件开放，参数由各自的处理函数校验 | [外壳的命令](/docs/shell#命令)、[外观的接口](/docs/theme#接口) |
 | 6 | 布局文件 | 外壳命令 `shell.layout.get` / `save` ↔ 数据插件 `gwbData` | `readDoc('layout')`、`writeDoc('layout', …)` | 数据插件不认识布局的形状，形状与版本由外壳定 | [布局文件](/docs/shell/desktops#布局文件) |
 | 7 | 外观设置 | 外观的设置与命令 ↔ 设置插件 `gwbSettings` | `define`、`get`、`set` | 设置值存在哪、怎么存由设置插件负责 | [外观的接口](/docs/theme#接口) |
 | 8 | 说明书登记 | 外壳随包发布的 `skills/gwb-shell/` ↔ 说明书插件 `gwbSkills` | `gwbSkills.register`、`SKILL.md` | 说明书写什么由本站的正本负责；agent 怎么找到、什么时候读由说明书插件和 MCP 入口负责 | [外壳的依赖](/docs/shell#依赖) |
-| 9 | 基础插件的窗格 | 基础界面的窗格登记与两个窗格 ↔ 日志、插件管理、设置 | `ctx.inject`、`logger.*`、`plugin-manager.*`、`settings.*`、`@godcreator/gwb-plugin-manager/receipts` | 日志怎么记、插件怎么装卸、设置存在哪由各自的插件负责 | [基础界面的依赖](/docs/baseui#依赖) |
+| 9 | 基础插件的窗格 | 基础界面的窗格登记与两个窗格 ↔ 日志、插件管理、设置 | `ctx.inject`、`logger.query`、`plugin-manager.*`、`settings.*`、`@godcreator/gwb-plugin-manager/receipts` | 日志怎么记、插件怎么装卸、设置存在哪由各自的插件负责 | [基础界面的依赖](/docs/baseui#依赖) |
 | 10 | 窗格注册 | 外观、基础界面、别的带界面的插件的 node 侧 ↔ 外壳的 `gwbShell` | `registerPane`、`describeSelf` | 注册不打开窗格；什么时候开、开在哪由外壳的浏览器侧决定 | [注册](/docs/shell/panes#注册) |
 | 11 | 窗格挂载 | 带界面的插件的浏览器侧 ↔ 外壳的窗格契约 | `mountPane`、`@godcreator/gwb-shell/pane` | 插件在容器里怎么渲染、用不用 React 由插件决定 | [插件拿到的 args](/docs/shell/panes#插件拿到的-args)、[一个窗格从注册到关闭](/docs/shell/takeover#一个窗格从注册到关闭) |
 | 12 | 外置名单 | 带界面的插件的构建脚本 ↔ 外壳的 `@godcreator/gwb-shell/browser-imports` | `Object.keys(browserImports())` | 内核不决定哪些包名外置，名单归外壳 | [外置名单之外的都打包进插件](/docs/shell/react-runtime#外置名单之外的都打包进插件) |
@@ -37,4 +37,4 @@ full: true
 
 - [外壳](/docs/shell)：接管页面根，提供窗格注册、窗格容器与多张桌面、状态栏，随包发布令牌表、页面用的 React 和给写界面的人读的说明书 `gwb-shell`
 - [外观](/docs/theme)：三项外观设置拼成启动样式交给外壳，有外壳时提供「外观」窗格；没有外壳也照常加载
-- [基础界面](/docs/baseui)：日志与插件管理两个基础插件的窗格，装了哪个就登记哪个；两个窗格互不 import，只共用组件层
+- [基础界面](/docs/baseui)：日志与插件管理两个基础插件的窗格，日志窗格总是登记，插件管理窗格装了插件管理才登记；两个窗格互不 import，只共用组件层

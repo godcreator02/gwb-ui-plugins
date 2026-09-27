@@ -4,9 +4,10 @@
  */
 import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
 
-/* ref file="../plugins/baseui/src/index.ts" lines="13-39" hash="3842812c159d" blob="abe67016668a" */
+/* ref file="../plugins/baseui/src/index.ts" lines="12-35" hash="50bc925b4168" blob="bf3c83e4a655" */
 /* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */
-/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="54-57" hash="f3d9d8177e5c" blob="a70e8f4051de" */
+/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="80-97" hash="daecad3c3be5" blob="2dff8422ae22" */
+/* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="24-43" hash="1891a30ecae2" blob="c3df10ff09fd" */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="94-112" hash="ee56bdf714a4" blob="156ed4e1bb07" */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="20-48" hash="48f444e7d3a8" blob="f838b9d7d2ea" */
 export const baseuiGraph = defineSeamGraph({
@@ -14,7 +15,7 @@ export const baseuiGraph = defineSeamGraph({
   title: '基础界面插件内部的文件与接缝',
   intro:
     '基础界面插件内部接缝图：虚线框是包里的文件或目录，框里的方块是它对外给的东西，灰色实线框是包外的外壳、日志插件、插件管理与设置插件。' +
-    '右边的 src/index.ts 是 node 侧：必需依赖只有外壳，日志与插件管理的服务各用一次局部注入，服务在才登记对应的窗格。' +
+    '右边的 src/index.ts 是 node 侧：必需依赖只有外壳；日志窗格总是登记，插件管理的服务用一次局部注入，服务在才登记插件管理窗格。' +
     '左边是浏览器侧：一个 client.js 按窗格 id 分派给 panes/ 下的各个窗格，窗格之间互不 import，只共用 components/ui。' +
     '窗格对基础插件的所有操作都经命令总线按名字调。',
   frameLabel: '文件或目录',
@@ -64,10 +65,10 @@ export const baseuiGraph = defineSeamGraph({
       role: 'emerald',
       outside: false,
       blurb:
-        '历史日志与日志文件位置经命令取，实时日志订阅页面的 window.gwb.on，外壳不转发、不认识日志。' +
-        '回执与推送的形状在窗格里逐项校验。本窗格不许调用 console：页面的 console 也是日志来源，打一条会被推回来再打。',
+        '只调 logger.query：挂载时取最近一批，所在桌面可见时每秒带上次回执的 cursor 取新写的，切走不调、切回立刻取一次，同一时刻最多一个请求。' +
+        '回执在窗格里逐项校验，有一条不对就整批报错。本窗格不许调用 console：页面的 console 也是日志来源，打一条会写进日志文件、下一次拉取时读回来再打。',
       caps: [
-        { id: 'logger-data', name: '历史、位置与实时日志', ident: 'logger.backlog · logger.where · window.gwb.on' },
+        { id: 'logger-data', name: '可见时拉取日志', ident: 'logger.query { after: cursor }' },
         { id: 'logger-mount', name: '日志窗格', ident: 'mountPane' },
       ],
     },
@@ -77,7 +78,7 @@ export const baseuiGraph = defineSeamGraph({
       pkg: 'components/ui/',
       role: 'cyan',
       outside: false,
-      blurb: 'shadcn 拉下来的组件源码，类名带 baseui: 前缀，跟着 client.js 一起打包。panes/ 下的窗格只准 import 这一层。',
+      blurb: 'shadcn 命令行生成到本包里的组件源码，类名带 baseui: 前缀，跟着 client.js 一起打包。panes/ 下的窗格只准 import 这一层。',
       caps: [{ id: 'ui', name: '共享组件', ident: 'Button · Select · Switch · AlertDialog · …' }],
     },
     {
@@ -106,8 +107,8 @@ export const baseuiGraph = defineSeamGraph({
       pkg: '@godcreator/gwb-logger',
       role: null,
       outside: true,
-      blurb: '可选 peer。服务 gwbLogger 只用来决定登不登记日志窗格；历史与位置经 logger.* 命令，实时日志经内核事件推给页面，事件里带标记 t: \'gwb-logger\'。',
-      caps: [{ id: 'logger', name: '日志插件', ident: "gwbLogger · logger.* · 事件 t:'gwb-logger'" }],
+      blurb: '不写 peer、不注入：日志窗格只按命令名调 logger.query，回执 { file, cursor, entries }。没装日志插件时命令回失败，窗格照样登记，里面显示失败的原因。',
+      caps: [{ id: 'logger', name: '日志插件', ident: 'logger.query' }],
     },
     {
       id: 'index',
@@ -116,11 +117,11 @@ export const baseuiGraph = defineSeamGraph({
       role: 'blue',
       outside: false,
       blurb:
-        'inject 只写 gwbShell。apply 报一次名字「基础界面」，再对日志、插件管理各开一段局部注入：服务在才登记窗格，服务卸载时窗格跟着注销，后装上时补登记。',
+        'inject 只写 gwbShell。apply 报一次名字「基础界面」，无条件登记日志窗格；对插件管理开一段局部注入：服务在才登记插件管理窗格，服务卸载时窗格跟着注销，后装上时补登记。',
       caps: [
         { id: 'self', name: '报名字', ident: 'describeSelf' },
         { id: 'pm-reg', name: '登记插件管理窗格', ident: "inject(['gwbPluginManager'])" },
-        { id: 'logger-reg', name: '登记日志窗格', ident: "inject(['gwbLogger'])" },
+        { id: 'logger-reg', name: '登记日志窗格', ident: 'ctx.effect(registerPane)' },
       ],
     },
   ],
@@ -135,21 +136,11 @@ export const baseuiGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '报名字无条件做一次；每个窗格的 registerPane 包在各自局部注入的 ctx.effect 里，登记记在那段子上下文上，服务一卸载就注销。' +
+        '报名字无条件做一次。日志窗格的 registerPane 包在 apply 的 ctx.effect 里，本插件卸载时注销；插件管理窗格的包在局部注入的 ctx.effect 里，服务一卸载就注销。' +
         '每个窗格报的 client 与 style 都是同一对地址：dist/client.js 与 dist/style.css。',
     },
     {
       n: 2,
-      name: '日志服务在不在',
-      a: ['logger-reg'],
-      b: ['logger'],
-      iface: "ctx.inject(['gwbLogger'], …)",
-      convention: false,
-      via: 'code',
-      text: '只看服务在不在，不调它的任何方法。没装日志插件时这一段一直等着，其余照常；日志插件后装上时补登记日志窗格。',
-    },
-    {
-      n: 3,
       name: '插件管理服务在不在',
       a: ['pm-reg'],
       b: ['pm'],
@@ -157,10 +148,10 @@ export const baseuiGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '同上，只决定登不登记插件管理窗格。插件管理升级自己时服务会短暂不在，这段时间里插件管理窗格也不在注册表里——所以升级后要等它回来再整页刷新。',
+        '只看服务在不在，不调它的任何方法，只决定登不登记插件管理窗格。插件管理升级自己时服务会短暂不在，这段时间里插件管理窗格也不在注册表里——所以升级后要等它回来再整页刷新。',
     },
     {
-      n: 4,
+      n: 3,
       name: '挂载窗格',
       a: ['shell-pane'],
       b: ['dispatch'],
@@ -170,7 +161,7 @@ export const baseuiGraph = defineSeamGraph({
       text: '外壳打开本插件的哪个窗格，都 import 同一个 dist/client.js、调它导出的 mountPane。类型从 @godcreator/gwb-shell/pane 引。',
     },
     {
-      n: 5,
+      n: 4,
       name: '按 id 分派',
       a: ['dispatch'],
       b: ['pm-mount', 'logger-mount'],
@@ -180,19 +171,19 @@ export const baseuiGraph = defineSeamGraph({
       text: '入口按 pane.id 调对应窗格目录里的 mountPane。id 是 node 侧 registerPane 时写的字符串，两处各写一份，改一处要改另一处。',
     },
     {
-      n: 6,
-      name: '日志命令与推送',
+      n: 5,
+      name: '日志命令',
       a: ['logger-data'],
       b: ['logger'],
-      iface: "host.call('logger.backlog' | 'logger.where') · window.gwb.on(payload => payload.t === 'gwb-logger')",
+      iface: "host.call('logger.query', {} | { after: cursor }) → { file, cursor, entries }",
       convention: true,
       via: 'code',
       text:
-        '日志插件不导出回执类型，窗格按形状逐项收窄，形状不对就把原因显示出来。先订阅推送、再取历史，交叠的部分按序号去重；' +
-        '桌面切走时收到的推送丢掉，切回来再取一次历史补上。',
+        '日志插件不导出回执类型，窗格按形状逐项收窄，有一条不对就整批报错并显示原因。条目没有序号：每次只取上次 cursor 之后新写的，两批不交叠、不去重；' +
+        '失败时 cursor 不动，下一秒再试。底栏显示回执里的 file。',
     },
     {
-      n: 7,
+      n: 6,
       name: '插件管理命令',
       a: ['pm-ops'],
       b: ['pm'],
@@ -204,7 +195,7 @@ export const baseuiGraph = defineSeamGraph({
         '回执形状对不上在构建时的类型检查里报出来，窗格只按外层 ok 分开成功与失败。',
     },
     {
-      n: 8,
+      n: 7,
       name: '设置命令',
       a: ['pm-ops'],
       b: ['settings-plugin'],
@@ -215,7 +206,7 @@ export const baseuiGraph = defineSeamGraph({
         '设置插件不导出回执类型，窗格按形状收窄。settings.all 不回 secret 项的值，要看明文另调 settings.get；保存逐键 settings.set，有一个失败就全留在草稿里。',
     },
     {
-      n: 9,
+      n: 8,
       name: '外壳命令',
       a: ['pm-ops'],
       b: ['shell-cmds'],
@@ -226,7 +217,7 @@ export const baseuiGraph = defineSeamGraph({
         'shell.plugins 给条目标题与图标，取不到就用条目 id。shell.reload 只在升级回执里升了的与跟着重新加载的条目全部回到运行状态时才调。',
     },
     {
-      n: 10,
+      n: 9,
       name: '只 import 共享组件',
       a: ['logger-mount', 'pm-mount'],
       b: ['ui'],
