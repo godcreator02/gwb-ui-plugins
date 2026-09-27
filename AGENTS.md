@@ -5,12 +5,12 @@
 ## 这个仓是什么
 
 **gwb 的 UI 平台仓**。立场：**shell 是一个 UI 平台的整体，要换整套换**；令牌表（视觉契约）并在 shell 包里，
-页面用的 react 由内核包提供，不为假想的第二外壳实现维护独立契约包。`gwb-tokens` / `gwb-shared-react` 两个
+页面用的 React 由 shell 提供，kernel 管理 importmap，不为假想的第二外壳实现维护独立契约包。`gwb-tokens` / `gwb-shared-react` 两个
 共享包已停发，registry 上的旧版别再引。
 
 |      | 插件 / 包                                              |
 | ---- | -------------------------------------------------- |
-| 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；子路径 `theme.css` / `theme.reference.css` 提供令牌表；页面用的 react 由内核包提供） |
+| 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；子路径 `theme.css` / `theme.reference.css` 提供令牌表；页面用的 React 由 shell 提供，kernel 管理 importmap） |
 | 外观   | `theme`（全局启动样式 + 外观窗格；没外壳也照常加载）                     |
 | 基础界面 | `baseui`（基础插件的官方窗格集：日志、插件管理）                    |
 

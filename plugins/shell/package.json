@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "外壳：内核页面根的唯一入口，提供窗格容器与窗格注册服务 gwbShell，并随包提供令牌表和 UI 接入说明书",
   "type": "module",
   "exports": {
@@ -12,6 +12,10 @@
     "./theme.reference.css": "./dist/theme.reference.css",
     "./pane": {
       "types": "./dist/types/client/pane-api.d.ts"
+    },
+    "./browser-imports": {
+      "types": "./dist/browser-imports.d.ts",
+      "default": "./dist/browser-imports.js"
     }
   },
   "files": [
@@ -23,7 +27,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-kernel-desktop": "^0.8.0",
     "@godcreator/gwb-commands": "^0.5.0",
     "@godcreator/gwb-data": "^0.1.7",
     "@godcreator/gwb-skills": "^0.4.5",

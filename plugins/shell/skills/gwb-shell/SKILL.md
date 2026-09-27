@@ -11,6 +11,10 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 `devkit.scaffold` 生成的插件出发：它已带一个窗格和样式入口 `src/client/styles.css`。模板里的 `registerPane` 只写了
 `id`、`title`、`client`、`style`，也没有调 `describeSelf`：下一节第 1 步的 `icon`、`kind` 和第 2 步照这里补上。
 
+## 浏览器依赖
+
+构建从 `@godcreator/gwb-shell/browser-imports` 导入 `browserImports()`，以它的键作为 external；peer 的 shell 版本必须带这个出口。React 的产物和版本由 shell 提供。shell 加载窗格前会 prepareImports；使用额外提供方时写明 peer，并用 cordis 注入保证其先登记。已注入地址变更后整页重载。
+
 ## 给插件加一个窗格
 
 1. node 侧 `inject` 写上 `'gwbShell'`，在 `apply` 里调 `ctx.gwbShell.registerPane({ id, title, icon, kind, client, style })`：

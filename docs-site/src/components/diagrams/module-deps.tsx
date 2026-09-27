@@ -25,7 +25,7 @@ export function ModuleDeps() {
 
       <Arrow from={[109, 308]} to={[109, 336]} label="peer 依赖" />
       <Box x={24} y={336} w={170} h={70} lines={['基础仓插件', 'commands · data', 'settings · logger …']} mono />
-      <Box x={210} y={336} w={170} h={70} lines={['内核', '提供 react', 'importmap 写死在页面入口']} />
+      <Box x={210} y={336} w={170} h={70} lines={['内核', '登记与准备模块', 'React 文件归 shell']} />
       <Note x={20} y={428}>反方向的依赖一条都没有；内核不依赖任何插件。</Note>
     </svg>
   )

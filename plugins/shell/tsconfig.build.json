@@ -10,5 +10,5 @@
     "rootDir": "src"
   },
   // own-context.d.ts 不被任何文件 import，要在这里列出才生效；它是 .d.ts，不会输出到 dist
-  "include": ["src/index.ts", "src/own-context.d.ts"]
+  "include": ["src/index.ts", "src/browser-imports.ts", "src/own-context.d.ts"]
 }

@@ -16,6 +16,7 @@ import type { HostBridge, ShellBridge } from './types.js'
 
 /** 缺 `mountPane` 导出或它不是函数都抛错 */
 async function importMountPane(url: string, who: string): Promise<MountLike> {
+  await window.gwb.prepareImports()
   const mod: unknown = await import(/* @vite-ignore */ url)
   const mount = pickMountPane(mod)
   if (mount === undefined) throw new Error(`${who} 的 client.js 没有 mountPane 导出——那是窗格插件的入口名`)

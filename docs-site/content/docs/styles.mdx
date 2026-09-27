@@ -93,7 +93,7 @@ Tailwind，表合并成一张不就行了」。不行。得一步一步看清楚
 **未分层的规则优先级高于所有分层规则**，preflight 原样放进去就是一份未分层的规则，会覆盖每一个
 插件的工具类：
 
-{/* ref file="../plugins/shell/build.ts" lines="157-174" hash="5d0202b6fd31" blob="6889aecb6ab8" */}
+{/* ref file="../plugins/shell/build.ts" lines="140-157" hash="5d0202b6fd31" blob="4dc419913506" */}
 
 **第三步：同层、同权重，谁生效只看文档顺序。** 于是问题是这样发生的——甲插件的元素上
 带着两个类，一条管四边、一条只改左右；乙插件只用到了前者，所以**乙的表里没有后者**；而乙的表
@@ -176,33 +176,16 @@ shadcn 的 `components.json` 里有 `tailwind.prefix`、`cn` 那个包（tailwin
 
 ### 还有一份东西要共享：React 实例
 
-上面三问都是 CSS 的事。JS 这边只有一样是共享的——react 相关的那几个包。
+JS 的模块解析由 kernel 提供，React 的版本和文件归 shell。shell 构建四个 ESM 文件，用 browserImports() 返回地址，在 setShell 前经 registerImports 登记。页面 await prepareImports 后才 import shell；窗格也在 import 前准备映射。
 
-机制是页面级的 **importmap**：一张「包名 → 文件地址」的表。react 的四个包名由**内核包**提供——内核包构建时把
-react 打成浏览器能直接 import 的文件，放在页面入口旁边；外壳不带 react，只在包清单里写明它要的内核版本：
+{/* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */}
 
-{/* ref file="../plugins/shell/package.json" lines="25-31" hash="d709147c544e" blob="e3e50de8d75d" */}
+构建从 @godcreator/gwb-shell/browser-imports 取 Object.keys(browserImports()) 作为 external。其他提供方也可以用相同代码契约登记模块；没有提供方的库打包进本插件。
 
-这张表写死在内核的页面入口 `index.html` 里，只有这四个包名，外壳的第一句 import 之前就已经在页面上；内核启动时不计算、
-不读任何包清单。正本在内核仓文档站接缝 5「页面上的 react」。
-
-插件那边对应的做法是：importmap 里的那几个包名**外置**，其余依赖一律**打包进本插件的产物**。外置名单不在插件里手抄，
-构建时从装好的内核包页面入口 `dist/index.html` 里读那段 importmap（peer 写了内核包，pnpm 把它装在插件包的
-`node_modules` 里），读不到就不构建——
-
-{/* ref file="../plugins/baseui/build.ts" lines="19-35" hash="e2c7362a3156" blob="4a23f5f4d363" */}
-
-外置的判据很明确：**在 importmap 里的才许外置**。不在里头的（组件用的那些库）外置成裸名，
-就是运行期一句「解析不到这个模块」。名单从内核现读，内核的 importmap 哪天变了，重新构建就跟上，不用改插件；
-为什么不写死四个名字，见轨迹卡[外置名单从内核页面入口现读](/trajectory/2026-09-26-importmap-names-from-kernel-page)。
-
-<Diagram name="importmap-flow" title="react 的四个包名怎么全页只解析到一份">
-
-- 内核包构建时把 react 打包进 `dist/react/`，和页面入口 `index.html` 在同一个目录下
-- `index.html` 里写死一张 importmap，只有 `react`、`react/jsx-runtime`、`react-dom`、`react-dom/client` 四个包名，地址相对 `index.html` 指向 `./react/…`
-- 页面一加载这张表就在，外壳的 client.js 在它之后才 import
-- 外壳和各插件的 client.js 构建时从装好的内核包 `dist/index.html` 读出这几个包名、设成 external，浏览器按 importmap 把它们解析到内核包里的同一份文件
-
+<Diagram name="importmap-flow" title="React 的代码提供方与页面准备">
+- shell 构建 React，browserImports() 给出本地文件 URL
+- 主进程登记，页面 prepareImports 追加 importmap
+- 准备完成后动态加载，所有使用方解析到相同 URL
 </Diagram>
 
 **这份共享现在换来的是什么，要说清楚**：一是字节——带界面的每个插件不必各带一份 React；二是
@@ -215,18 +198,17 @@ hook 立即报错。现在把这条留着，比将来再统一便宜得多。
 
 把上面几件事按时间排一遍，就是外壳启动时做的事。每一步都有它必须在那个位置的理由：
 
-**第一步：importmap 已经在页面上，然后才 import 外壳的浏览器端代码。** 它写死在内核的页面入口里，
-页面一加载就在；没有它，外壳顶层那句 `import { … } from 'react'` 就解析不到。
+**第一步：shell 登记运行时，然后页面准备 importmap，再 import 外壳的浏览器代码。** 提供方先登记，页面等待 prepareImports 成功，才解析模块。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="667-671" hash="4aad6ebc512a" blob="56f920646dec" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="667-671" hash="ef6825436662" blob="2bf1b309827d" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home、三张样式表的地址，外加这一刻的用户外观样式
 （第四步用）。地址由 node 端算（自身的表从 `import.meta.url` 算，令牌表经 `fileUrlOfPackageExport` 按包名解析到本包自己的产物），**顺序是写死的**：
 令牌、dockview、外壳自己那张。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="27-40" hash="4e6fc7ac5d7c" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="28-41" hash="4e6fc7ac5d7c" blob="d8029385df74" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="206-224" hash="7e8c67575845" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="208-226" hash="7e8c67575845" blob="d8029385df74" */}
 
 **第三步：三张表全部注入、并且都等到加载完成，才往下走。** 有一张加载不了，外壳就不往下走，根节点上写一句
 「外壳起不来」和那张表的地址。令牌那张必须最先——层顺序是它声明的；
@@ -246,10 +228,10 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="623-629" hash="7a270f2fe89c" blob="56f920646dec" */}
 
 **第六步：开一个窗格时**——从注册表里取这个插件注册时提供的两个地址 → **先注入它的样式表、等它加载完成**
-→ 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。样式表加载不了就停在这一步，
+→ 准备 importmap → 再动态 import 它的脚本 → 调它的挂载函数、把容器交出去 → 保存它返回的清理句柄。样式表加载不了就停在这一步，
 窗格里显示「加载失败」和那张表的地址，不带着没样式的界面继续挂载。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="118-153" hash="4adceb25a3d2" blob="97f96b60f987" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="119-154" hash="4adceb25a3d2" blob="056b20dadf53" */}
 
 最后一步里「等它加载完成再 import」不是讲究，是必需的：`<link>` 是异步取的，插件的第一帧完全可能
 发生在样式表加载完成之前，那一瞬间是一堆没有样式的元素。这两件事因此放在同一个清理单元里——拆成两处
@@ -267,20 +249,20 @@ dockview 那张表的类名不由我们写（改不了名，也就加不上前�
 | 每个插件自己的表 | 规则：本插件用到的那些工具类，类名带本插件的前缀 | 不知道别的插件存在，不知道值最终是多少（它只写 `var(…)`） |
 | 外壳 | 转交与容器：注入三张表、给每个窗格一个容器、把这个窗格变成容器查询的根 | **不知道任何插件的类名**，也不知道插件的表里有什么 |
 | 主题插件 | 用户覆盖：字体两项 + 一整段自定义 CSS，交给外壳在最后注入；「外观」窗格预览时直接改外壳注入的那张样式元素 `#gwb-theme-style` | 不知道任何插件存在，也不知道外壳把它注入在第几位（node 侧只交出一段字符串）；只认得那张样式元素的 id，这个 id 与外壳各写一份，见[插件之间怎么连](/docs/wiring) |
-| 内核 | 提供 react 的四个包名，页面入口里写死 importmap | 不认识任何类名，不认识任何插件 |
+| 内核 | 提供模块登记和页面准备机制；React 归 shell | 不认识任何类名，不认识任何插件 |
 
 <Diagram name="module-deps" title="本仓各模块的依赖方向">
 
 - 带界面的插件依赖令牌表（构建期引用映射文件、运行期读页面上的变量值）与外壳（注册窗格时交出两个地址，浏览器侧 `import type` 外壳的类型）
 - 外壳经一条可选命令 `theme.startupCss` 用到主题插件，没装主题插件外壳照常运行
 - 本仓的插件以 peer 依赖基础仓插件（commands、data、settings、logger 等），基础仓不依赖本仓
-- 内核自己提供 react，importmap 写死在页面入口里，不依赖任何插件
+- shell 提供 React，内核接收通用映射，不依赖具体插件
 
 </Diagram>
 
 依赖方向是：**插件 → 令牌**（构建期引用映射文件 `theme.reference.css`、运行期读页面上那份变量值），**插件 → 外壳**
 （注册窗格时提供自己那两个地址），**外壳 → 主题插件**（一条可选命令，外壳没有它也照常运行），**内核 → 谁都不依赖**
-（importmap 写死在它自己的页面入口里）。反向的箭头一条都没有：
+（只提供通用登记与准备机制）。反向的箭头一条都没有：
 
 - 令牌表不知道有哪些插件，所以加一个插件、删一个插件，它一个字都不用改
 - 外壳不知道插件的类名，所以插件改自己的样式，外壳不用重新构建
@@ -368,9 +350,9 @@ plugin-manager 是只有 node 端的 core 插件，各自的浏览器端代码�
 也只有一份。做法参照 VS Code 的内置视图：**合并的是发布，不是开发**——`panes/` 下的窗格之间互不
 import，只 import `components/` 下的共享组件。
 
-### 页面上只有 react 可以共享
+### 其他浏览器模块提供方
 
-importmap 里只有 react 的四个包名，插件没有办法再往页面上加共享的包名：别的依赖一律打包进自己的 `client.js`。
+其他插件可以用代码出口与 registerImports 提供模块。使用方写明 peer 依赖并从提供方取外置名单；未声明提供方的库打包进自己的 client.js。同名不同 URL 拒绝，已加载地址变化需整页重载。
 
 ---
 
@@ -380,7 +362,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 层顺序与 preflight，为什么由令牌表来管
 
-{/* ref file="../plugins/shell/build.ts" lines="157-174" hash="5d0202b6fd31" blob="6889aecb6ab8" */}
+{/* ref file="../plugins/shell/build.ts" lines="140-157" hash="5d0202b6fd31" blob="4dc419913506" */}
 
 **这段说明什么**：插件的表只写工具类那一层、不声明层与层的先后，所以顺序只能由**先加载的那张**
 来声明。而 preflight 是一份未分层的规则，**未分层的规则优先级高于所有分层规则**——不把它包进
@@ -426,7 +408,7 @@ importmap 里只有 react 的四个包名，插件没有办法再往页面上加
 
 ### 窗格容器上那两样东西
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="193-195" hash="630170c3e816" blob="97f96b60f987" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="194-196" hash="630170c3e816" blob="056b20dadf53" */}
 
 **这段说明什么**：`@container` 让这个窗格成为**容器查询的根**——插件里写的 `@sm:` / `@md:`
 这类变体问的是**这个窗格现在有多宽**，跟整窗大小无关。窗格里这份界面跟着这个窗格的宽度走：

@@ -18,6 +18,7 @@ import { PANE_SYNC_COMMAND } from './protocol.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 import { iconProblem, parseIconCatalog, type IconCatalog } from './pane-icon.js'
 import { startupCss } from './startup-style.js'
+import { browserImports } from './browser-imports.js'
 
 export type { PaneSpec } from './pane-registry.js'
 export type { PluginInfo } from './plugin-registry.js'
@@ -143,6 +144,7 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   /** @internal 本插件卸载时页面根自动交还 */
   private takeOverPageRoot(): string {
+    this.ctx.effect(() => this.kernel.registerImports(browserImports()))
     const clientEntry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(clientEntry))
     return clientEntry

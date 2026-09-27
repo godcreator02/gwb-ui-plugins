@@ -108,12 +108,13 @@ shell 的代码里有两处。**规则本身没错，是这两处代码故意违
 
 pnpm 的链接布局哪天不再让同一个 cordis 出现两份，这个文件就可以删掉。
 
-### react 的打包在内核仓
+### React 由 shell 打包
 
-react 没有 ESM 入口、只能用 esbuild 打包、react-dom 在工厂函数内部 `require('react')` 要修补——这三处问题随 react
-一起搬到了内核包，正本在内核仓文档站「页面上的包名」与内核仓的 `apps/desktop/scripts/build-react.ts`。本仓的插件不再自己
-打包 react，浏览器侧只把内核页面入口 importmap 里的那几个包名外置——名单在构建时从装好的内核包 `dist/index.html` 里读，
-不在本仓手抄（见样式与组件页的[还有一份东西要共享：React 实例](/docs/styles#还有一份东西要共享react-实例)）。
+React 没有浏览器可直接使用的 ESM 入口；shell 的 scripts/build-react.ts 将四个入口打进 dist/react/，react-dom 的 require('react') 探针改为引用同一个 React 实例。入口具名导出、探针和单例约束由 tests/react-bundles.test.ts 检查。
+
+{/* ref file="../plugins/shell/scripts/build-react.ts" hash="badded06c298" blob="dc34780ce771" */}
+
+运行时与构建名单复用 shell 的 browserImports()；升级 React 发布 shell，kernel 不再随其升级。
 
 ---
 
@@ -122,7 +123,7 @@ react 没有 ESM 入口、只能用 esbuild 打包、react-dom 在工厂函数�
 
 ### preflight 必须放进 `@layer base`，否则它的优先级高于所有插件的工具类
 
-{/* ref file="../plugins/shell/build.ts" lines="157-162" hash="df0c7a15b6b7" blob="6889aecb6ab8" */}
+{/* ref file="../plugins/shell/build.ts" lines="140-145" hash="df0c7a15b6b7" blob="4dc419913506" */}
 
 CSS 里**未分层的规则优先级高于所有分层规则**。插件的样式表只写 `@layer utilities { … }`、自己
 不声明层顺序，所以顺序得由先加载的令牌表来声明；而 Tailwind 的 `preflight.css` 是一份
@@ -400,7 +401,7 @@ shell 的产物测试第一次运行就报「`dockview-enterprise` 被打包进 
 
 第一版正则在整个文件里找 `import '…'`，773KB 的 client.js 里什么文本都有。改成用 `^import` 锚定行首：
 依据的是**产物的格式**——tsc 与 esbuild 都把顶层 import 写在行首，字符串字面量里的那种
-总带着缩进。跟内核仓打包 react-dom 时那条补丁正则属于同一类，容易失效，但比在整个文件里搜索可靠得多。
+总带着缩进。跟shell 打包 react-dom 时那条补丁正则属于同一类，容易失效，但比在整个文件里搜索可靠得多。
 
 同一个测试文件里检查「dockview.css 不许有 scope 规则」的那条也出过类似的错：两张样式表**开头的
 注释里都提到了这件事**，`toContain('data-gwb-plugin')` 查到的是说明文字而不是规则。检查规则之前先

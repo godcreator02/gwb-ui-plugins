@@ -666,7 +666,7 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
 
 /**
  * 内核契约的默认导出：拿走 `#root`，回 `{ dispose }`。环境问 node 侧的 `shell.env`；
- * react 的 importmap 写死在内核的页面入口里、先于本模块就在页面上，所以顶层的 react 包名解析得到
+ * shell 的主进程部分登记 react；内核准备好映射后才 import 本模块
  */
 export default function mountShell(root: HTMLElement): { dispose(): void } {
   return shellHandle(root, async (alive) => {

@@ -20,12 +20,12 @@ devkit 只引用这份说明书并提供模板，不复制 UI 规则。
 
 ## 它的接口
 
-{/* ref file="../plugins/shell/src/index.ts" lines="81-90" hash="f1793bcd6f29" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */}
 
 包根导出的类型只有这个接口与 `PaneSpec`、`PluginInfo`（外加给 cordis `Context` 补的 `gwbShell`），
 命令名、布局文件的形状、注册表里一条的形状都不导出：下游经命令按名字调用，回执形状看命令的 `usage`。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="22-23" hash="2f61ea755107" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="23-24" hash="2f61ea755107" blob="d8029385df74" */}
 
 插件给的那几样，与服务替它填上的身份：
 
@@ -104,7 +104,7 @@ lucide 全集进了 `client.js`——为什么值、没选的两条路，见轨�
 `registerPane` 只收 `{ id, title, icon?, client?, style?, kind? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="437-455" hash="48f9416aafaf" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="439-457" hash="48f9416aafaf" blob="d8029385df74" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个做法）。插件没法自报名字，也就没法冒充别人的窗格。
@@ -211,7 +211,7 @@ dockview 的 `addPanel` 遇到重复 id 会**同步抛 Error**，所以实例 id
 <Diagram name="shell-takeover" title="外壳怎么接管内核的页面">
 
 - shell 插件的 node 侧调 `gwbKernel.setShell(client.js 的地址)`，包在 `ctx.effect` 里，插件卸载时自动撤销
-- 内核记下地址，经 `gwb:shell` 推给页面；react 的 importmap 写死在内核的页面入口里，页面一加载就在
+- shell 先 registerImports(browserImports())，再 setShell；内核推地址给页面，页面 prepareImports 后才加载
 - 页面 import client.js，把 `#root` 交给它的默认导出 `mountShell`，留下返回的 `dispose`
 - `mountShell` 调 `shell.env` 取 home、三张样式表的地址、启动样式与版本号，交给 `bootShell`：注入样式表 → 注入启动样式 → 取注册表与布局文件 → 给 `<html>` 加 `dark` 类 → `createRoot(#root)` 渲染
 - shell 插件卸载时内核推 url 为 null，页面调 `dispose`，外壳同步卸载 React 树
@@ -790,7 +790,7 @@ bootShell → 取注册表 → 取布局文件 → 恢复）原样重新执行�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 注册命令那一侧把「拿不到 electron」也转成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="227-247" hash="0fd6a8124ed7" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="229-249" hash="0fd6a8124ed7" blob="d8029385df74" */}
 
 **启动与切换分开**（判据见轨迹卡[启动器与切换器分开](/trajectory/2026-09-19-launcher-switcher)）：
 「新建」只管开一个新的，「桌面」面板只管切到已开的。一个列表同时干两件事，对文档窗格就说不清点下去
@@ -921,7 +921,7 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
 
 插件那个窗格的容器上因此只有两样东西，一样与前缀隔离无关，一样只是个标记：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="193-197" hash="2d5c3946560f" blob="97f96b60f987" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="194-198" hash="2d5c3946560f" blob="056b20dadf53" */}
 
 - **`@container` 让这个窗格成为容器查询的根。** **窗格不是视口**——插件里写的 `@sm:` / `@md:`
   这类变体按**这个窗格现在有多宽**判，跟整窗大小无关。同一个插件在窄窗格里竖排、在宽窗格里横排，
@@ -934,7 +934,7 @@ dragstart 把单例填上）——放下之后的处理全部执行真实代码�
   「样式生效的前提」去写代码。值是挂载时当场取到的注册表里的包名，不取面板 params 里的 `pluginKey`：
   那份是开窗格时存进布局文件的，包改名之后条目 id 不变、窗格照样挂载，它却一直是旧名：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="120-122" hash="a8e29490c4a2" blob="97f96b60f987" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="121-123" hash="a8e29490c4a2" blob="056b20dadf53" */}
 
 ### 它的 18 套主题一套都不用
 

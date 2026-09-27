@@ -73,11 +73,18 @@ async function bootShell(options: { layout?: unknown } = {}) {
   root.logger.exporter({ export: (message) => void logs.push(message) })
   const emitted: unknown[] = []
   const shellEntries: (string | null)[] = []
+  const imports: Record<string, string>[] = []
+  const revokeImports = vi.fn()
   root.provide('gwbKernel', {
     dataDir: 'D:/fake-home',
     version: '9.9.9',
     emit: (payload: unknown) => void emitted.push(payload),
+    registerImports: (mapping: Record<string, string>) => {
+      imports.push(mapping)
+      return revokeImports
+    },
     setShell: (url: string) => {
+      expect(Object.keys(imports[0] ?? {}).sort()).toEqual(['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'])
       shellEntries.push(url)
       return () => void shellEntries.push(null)
     },
@@ -93,7 +100,7 @@ async function bootShell(options: { layout?: unknown } = {}) {
     if (handler === undefined) throw new Error(`没注册 ${name}`)
     return await handler(args, FROM_TEST)
   }
-  return { root, logs, emitted, shellEntries, bus, data, call, shellFiber }
+  return { root, logs, emitted, shellEntries, bus, data, call, shellFiber, revokeImports }
 }
 
 async function callerShell(root: Context, entry: { id: string; pkg: string } | null) {
@@ -123,11 +130,12 @@ function layoutDoc(desktops: { id: string; name: string }[], active = desktops[0
 
 describe('外壳服务就绪', () => {
   it('把页面根要过来：setShell 收到本包 client.js 的地址，外壳卸载时撤销', async () => {
-    const { shellEntries, shellFiber } = await bootShell()
+    const { shellEntries, shellFiber, revokeImports } = await bootShell()
     expect(shellEntries).toHaveLength(1)
     expect(shellEntries[0]).toMatch(/\/client\.js$/)
     await shellFiber.dispose()
     expect(shellEntries.at(-1)).toBeNull()
+    expect(revokeImports).toHaveBeenCalledTimes(1)
   })
 
   it('登记全部 17 条命令，plugin 都写包名', async () => {

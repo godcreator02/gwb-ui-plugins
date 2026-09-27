@@ -46,7 +46,7 @@ tailwind、esbuild、类型包等）。
 
 {/* has file="../plugins/shell/src/index.ts" text="export interface GwbShellApi" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="22-23" hash="2f61ea755107" blob="f01f3bc6a14a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="23-24" hash="2f61ea755107" blob="d8029385df74" */}
 
 {/* has file="../plugins/shell/src/protocol.ts" text="'shell.panes'" */}
 
@@ -95,7 +95,7 @@ tailwind、esbuild、类型包等）。
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（`static inject`） | `^0.5.0` | 登记本插件的全部命令；处理 `shell.env` 时查 `theme.startupCss` 在不在 | 本插件不加载，cordis 在日志里写明在等它。注册表经命令传到页面，没有命令总线外壳打不开任何窗格 |
 | `gwbData` | `@godcreator/gwb-data` | 必需（`static inject`） | `^0.1.7` | 布局文件存成 gwbData 的文档 `layout` | 本插件不加载。布局没地方存，重启一次就没了 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.5`，`optional: true` | 登记随包的 `gwb-shell` 说明书 | 外壳照常运行，只是说明书没登记；说明书插件后加载时补登记 |
-| `gwbKernel` | `@godcreator/gwb-kernel-desktop`（内核） | 不写进 `inject`，构造时经 `requireKernel` 取 | `^0.7.0` | `setShell` 接管页面根、`emit` 推内核事件、`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
+| `gwbKernel` | `@godcreator/gwb-kernel-desktop`（内核） | 不写进 `inject`，构造时经 `requireKernel` 取 | `^0.8.0` | `setShell` 接管页面根、`emit` 推内核事件、`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
 
 peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Service` 基类，写成 peer 用宿主那一份。外壳为什么非要
 命令总线不可，见[外壳](/docs/shell)「为什么命令总线是必需依赖」一节。
@@ -108,7 +108,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Servic
 
 {/* has file="../plugins/shell/src/layout.ts" text="export const LAYOUT_DOC = 'layout'" */}
 
-{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
+{/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.8.0&quot;" */}
 
 {/* has file="../plugins/shell/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.0&quot;" */}
 
@@ -193,13 +193,13 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：外壳按值 import 它的 `Servic
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（`inject`） | `^0.5.0` | 登记三条命令 | 本插件不加载：三条命令无法对外提供 |
 | `gwbShell` | `@godcreator/gwb-shell` | 局部注入 | `workspace:*`，`optional: true` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常生效，只是没有「外观」窗格 |
 
-peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
+peer 里另有内核包 `^0.8.0`，只为 `import type` 取 `GwbContext`。
 
 {/* has file="../plugins/theme/src/index.ts" text="export const inject = ['gwbSettings', 'gwbCommands']" */}
 
 {/* has file="../plugins/theme/src/index.ts" text="ctx.inject(['gwbShell']" */}
 
-{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
+{/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.8.0&quot;" */}
 
 {/* has file="../plugins/theme/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.0&quot;" */}
 
@@ -248,7 +248,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext`。
 | `gwbLogger` | `@godcreator/gwb-logger` | 局部注入 | `^0.4.5`，`optional: true` | 只用来决定登不登记日志窗格；窗格里的操作经 `logger.*` 命令 | 照常加载，只是不登记日志窗格 |
 | `gwbPluginManager` | `@godcreator/gwb-plugin-manager` | 局部注入 | `^0.14.3`，`optional: true` | 服务上没有方法，只用来决定登不登记插件管理窗格；窗格里的操作经 `plugin-manager.*` 命令，各条命令的回执类型从它的 `./receipts` 子路径 `import type` | 照常加载，只是不登记插件管理窗格 |
 
-peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
+peer 里另有内核包 `^0.8.0`，只为 `import type` 取 `GwbContext` 与页面上 `window.gwb` 的类型。设置插件只按命令名调用，不写 peer。
 
 插件管理的下限是 `^0.14.3`：`./receipts` 子路径 0.14.2 开始有，0.14.3 起它也导出 `remove-entry`、`enable`、`disable`
 不带 `data` 的整个回执 `Acknowledged`。那个文件只有类型、没有任何 import，浏览器侧的 tsconfig
@@ -266,7 +266,7 @@ peer 里另有内核包 `^0.7.0`，只为 `import type` 取 `GwbContext` 与页�
 
 {/* has file="../plugins/baseui/src/index.ts" text="ctx.inject(['gwbPluginManager']" */}
 
-{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
+{/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.8.0&quot;" */}
 
 {/* has file="../plugins/baseui/package.json" text="&quot;@godcreator/gwb-shell&quot;: &quot;workspace:*&quot;" */}
 

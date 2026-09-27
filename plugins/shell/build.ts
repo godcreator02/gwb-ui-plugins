@@ -1,3 +1,4 @@
+import { browserImports } from './src/browser-imports.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -21,24 +22,6 @@ function nodeSideExternals(): string[] {
   const manifest: unknown = JSON.parse(fs.readFileSync(path.join(here, 'package.json'), 'utf8'))
   const peers = isRecord(manifest) && isRecord(manifest['peerDependencies']) ? Object.keys(manifest['peerDependencies']) : []
   return ['electron', 'cordis', ...peers]
-}
-
-/**
- * 浏览器侧外置名单只从提供方读：react 的四个包名由内核包提供，写死在它页面入口 dist/index.html 的 importmap 里，
- * 构建时从装好的内核包里读（peer 写了它，pnpm 装在本包的 node_modules 里）。外置了 importmap 里没有的名字，
- * 运行时就是「Failed to resolve module specifier」
- */
-function importmapNamesOfKernel(): string[] {
-  const manifestPath = fileURLToPath(import.meta.resolve('@godcreator/gwb-kernel-desktop/package.json'))
-  const pageEntry = path.join(path.dirname(manifestPath), 'dist', 'index.html')
-  const importmapScript = /<script type="importmap">([\s\S]*?)<\/script>/.exec(fs.readFileSync(pageEntry, 'utf8'))
-  if (importmapScript === null) {
-    throw new Error(`${pageEntry} 里没有 <script type="importmap">：外置名单只从内核包页面入口的这段 importmap 读，读不到就不构建`)
-  }
-  const importmap: unknown = JSON.parse(importmapScript[1]!)
-  const imports = isRecord(importmap) ? importmap['imports'] : undefined
-  if (!isRecord(imports)) throw new Error(`${pageEntry} 的 importmap 里没有 imports`)
-  return Object.keys(imports)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,7 +51,7 @@ await build({
 await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'dist/client.js',
-  external: importmapNamesOfKernel(),
+  external: Object.keys(browserImports()),
   // shadcn 生成的组件写的是 @/… 这种别名，跟 components.json 与两份 tsconfig 的 paths 是同一条约定（都指 src/client）
   alias: { '@': path.join(here, 'src', 'client') },
   format: 'esm',
@@ -175,3 +158,6 @@ fs.copyFileSync(path.join(here, 'src', 'tokens', 'theme.reference.css'), path.jo
 
 console.log('[shell] dist/theme.css ← preflight + src/tokens/tokens.css')
 console.log('[shell] dist/theme.reference.css ← 原样复制')
+
+await build({ entryPoints: ['src/browser-imports.ts'], outfile: 'dist/browser-imports.js', absWorkingDir: here, format: 'esm', platform: 'neutral', target: 'es2022', bundle: true })
+await import('./scripts/build-react.ts')

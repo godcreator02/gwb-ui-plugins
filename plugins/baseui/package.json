@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一个窗格一个模块，只收拆掉了界面的基础插件的窗格",
   "type": "module",
   "exports": {
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-kernel-desktop": "^0.8.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-logger": "^0.4.5",
     "@godcreator/gwb-plugin-manager": "^0.14.3"
