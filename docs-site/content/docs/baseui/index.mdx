@@ -1,0 +1,110 @@
+---
+title: 基础界面插件 gwb-baseui
+description: 整套基础插件的界面：一个界面插件管全部基础插件、默认全装。必需依赖只有外壳，对每个基础服务局部注入、缺了就不登记对应窗格；一窗格一模块；窗格对基础插件的操作都经命令总线按名字调
+full: true
+---
+
+包 `@godcreator/gwb-baseui`，在 `plugins/baseui/`：node 侧入口 `src/index.ts`，浏览器侧入口 `src/client/index.tsx`，
+窗格在 `src/client/panes/` 下各占一个目录，共用的组件在 `src/client/components/ui/`。
+
+<SeamMap module="baseui" />
+
+## 功能
+
+**整套基础插件的界面。** 日志、插件管理这些基础插件只有 node 侧，它们的界面统一由这一个插件提供，和基础插件一起默认全装。
+它不是各个基础插件界面的临时集合：它服务的是分散在几个仓里的一整套基础插件，放不进其中任何一个插件的仓。
+眼下的窗格：
+
+| 窗格 | id | 什么时候有 | 做什么 |
+| --- | --- | --- | --- |
+| 日志 | `logger` | 装了日志插件 | 历史日志与实时日志、按来源与级别筛选、日志文件在哪 |
+| 插件管理 | `plugin-manager` | 装了插件管理 | 装、卸、升级、启停插件与条目，改各插件的设置 |
+
+**三条规矩**，破了任何一条，它就会变成什么都往里放的插件。
+
+**一、对每个基础服务一律局部注入，必需依赖只有外壳。** 缺了哪个服务就不登记对应的窗格，服务后装上时补登记，服务卸载时窗格跟着注销：
+
+{/* ref file="../plugins/baseui/tests/apply.test.ts" lines="65-77" hash="443f593a16c7" blob="7899e9205588" */}
+
+**二、一窗格一模块。** `panes/` 下的窗格之间零 import，只准 import `components/ui` 这一层。窗格因此各有一份按形状收窄回执的小函数，不互相引用：
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="1-1" hash="22410123db75" blob="706269bbc3f5" */}
+
+**三、进来的资格是「某个基础插件的官方界面」。** 界面本身就是全部功能的插件自己登记窗格，不进这里；说明书、命令总线、MCP 入口不在这里加窗格。
+
+**所有窗格共用一份浏览器侧代码**，入口按 `pane.id` 分派：
+
+{/* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */}
+
+**插件管理窗格升级之后自己整页刷新**，但只在升了的与跟着重新加载的条目全部回到运行状态时刷新；插件管理自己也升了就先等它回来。
+五种回执各走到哪一步，见[升级之后怎么整页刷新](/docs/baseui/update-reload)。
+
+**日志窗格**先订阅实时推送、再取历史，交叠的部分按序号去重；它不许调用 `console`，页面的 console 也是日志来源，打一条会被推回来再打：
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="30-34" hash="916e5046b362" blob="a70e8f4051de" */}
+
+类名一律带 `baseui:` 前缀。当标记用的类也要带：日志行上写 `baseui:group`，行里的变体写 `baseui:group-hover:`，
+一边漏写前缀，选择器就永远匹配不上，而且不报错，devkit 的样式检查也查不出来：
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="325-328" hash="5b044d463983" blob="a70e8f4051de" */}
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="340-342" hash="58da358955c3" blob="a70e8f4051de" */}
+
+## 接口
+
+**窗格**都在外壳上登记，报的是同一对地址 `dist/client.js` 与 `dist/style.css`；另报一次名字「基础界面」、图标 `layout-grid`：
+
+{/* ref file="../plugins/baseui/src/index.ts" lines="13-39" hash="3842812c159d" blob="abe67016668a" */}
+
+窗格 id 在 node 侧 `registerPane` 与浏览器侧的分派里各写一份（接缝 5），改一处要改另一处。
+
+**没有 gwb 服务、命令与事件。** 窗格的每个操作都是按名字调别的插件的命令（接缝 6～9），下面「依赖」一节逐项列出。
+
+## 依赖
+
+**注入的服务**：
+
+| 服务 | 怎么接 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- |
+| `gwbShell`（`@godcreator/gwb-shell`） | 必需注入，peer `workspace:*` | 登记窗格、报名字 | 本插件不加载：没有窗格容器就没有窗格 |
+| `gwbLogger`（`@godcreator/gwb-logger`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记日志窗格 | 照常加载，只是没有日志窗格 |
+| `gwbPluginManager`（`@godcreator/gwb-plugin-manager`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记插件管理窗格；回执类型从它的 `./receipts` 子路径引 | 照常加载，只是没有插件管理窗格 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 与页面上 `window.gwb` 的类型 | 类型检查不过 |
+
+{/* ref file="../plugins/baseui/package.json" lines="16-29" hash="787004cbbbd0" blob="690b50ccd4aa" */}
+
+日志与插件管理是可选的，node 侧源码里对它们只有 `import type {}`；写成运行时 import，没装它们的 home 里就不止少一个窗格，还多一句 `ERR_MODULE_NOT_FOUND`：
+
+{/* ref file="../plugins/baseui/tests/artifact.test.ts" lines="34-37" hash="837beaf4e2c8" blob="113b62297979" */}
+
+**按名字调的命令**（经外壳交给窗格的 `host.call`，命令不在就在回执里说明）：
+
+| 对方 | 命令 | 谁调、做什么 | 回执怎么认 |
+| --- | --- | --- | --- |
+| 日志插件 | `logger.backlog`、`logger.where` | 日志窗格：历史日志、日志文件位置 | 按形状逐项收窄 |
+| 日志插件 | 内核事件，`t` 为 `gwb-logger` | 日志窗格：实时日志，订阅 `window.gwb.on`，外壳不转发 | 按形状逐项收窄 |
+| 插件管理 | `plugin-manager.*` | 插件管理窗格：列表、查新版本、搜索、装卸、升级、启停、增删条目 | `import type` 插件管理的回执类型，只按外层 `ok` 分开成功与失败 |
+| 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删 | 按形状收窄；设置插件不写 peer |
+| 外壳 | `shell.plugins`、`shell.reload` | 插件管理窗格：条目标题与图标、升级后整页重新加载 | 按形状收窄 |
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="85-112" hash="0233382bc57d" blob="156ed4e1bb07" */}
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="54-57" hash="f3d9d8177e5c" blob="a70e8f4051de" */}
+
+**跟不上某个基础插件的回执变化时**，做法是让那个插件经只有类型的子路径导出回执类型，这里 `import type`；插件管理的
+`@godcreator/gwb-plugin-manager/receipts` 是第一个。两边用同一套类型，回执形状对不上在构建时的类型检查里报出来，窗格里不再按形状校验：
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="14-48" hash="57475325e785" blob="f838b9d7d2ea" */}
+
+插件管理的下限写 `^0.14.3`：这里用到的回执类型（包括启停与删条目那种不带 `data` 的 `Acknowledged`）要这一版起才全。
+`./receipts` 只有类型、没有任何 import，浏览器侧的 tsconfig（只有 DOM 类型）能直接引。为什么用到的插件都写 peer，见[用到的插件写进 peer](/trajectory/2026-09-25-plugins-as-peers)。
+
+## 不做的事
+
+**不把窗格搬到各个基础插件旁边，也不给每个基础插件各发一个界面包。** 一个界面插件管全部基础插件；基础插件的回执变了，走上面那条「导出回执类型」的路，不搬窗格。
+
+**不给说明书、命令总线、MCP 入口加窗格。**
+
+**不收功能插件的界面。** 界面本身就是全部功能的插件自己登记窗格。
+
+**不调基础插件服务上的方法。** 注入日志与插件管理的服务只为判断它们在不在；所有操作经命令总线按名字调，窗格在页面上也拿不到 node 侧的服务。

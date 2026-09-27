@@ -1,0 +1,20 @@
+/*
+ * TokenFlow 自己的画面：文件卡片的排列、运行时那块色块。
+ * 卡片、代码行、胶囊与颜色变量（--dx-*）来自 @godcreator/explainer-player 的 .dx 根元素，深浅主题跟着它切换。
+ */
+.tf-scene { display: grid; gap: 10px; }
+.tf-cards { display: grid; gap: 10px; }
+@container (min-width: 640px) {
+  .tf-cards[data-count='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+.tf-swatch {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--dx-line); font-size: 13px;
+}
+.tf-swatch code { font-family: var(--dx-mono); font-size: 12px; }
+.tf-chip {
+  flex: none; width: 44px; height: 28px; border-radius: 6px; border: 1px solid var(--dx-line);
+  transition: background-color .4s;
+}
+.tf-from { color: var(--dx-dim); margin-left: 4px; }

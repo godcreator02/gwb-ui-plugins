@@ -15,6 +15,19 @@
  * 站里自己加的组件在它后面追加。
  */
 import { fumadocsRoster } from '@godcreator/docfirst-workflow/fumadocs/roster'
+import * as seamMap from './src/components/seam-map/seam-map.ai.mjs'
+import * as shellBoot from './src/components/shell-boot/shell-boot.ai.mjs'
+import * as paneMount from './src/components/pane-mount/pane-mount.ai.mjs'
+import * as openPaneCases from './src/components/open-pane-cases/open-pane-cases.ai.mjs'
+import * as layoutBoot from './src/components/layout-boot/layout-boot.ai.mjs'
+import * as desktopSwitch from './src/components/desktop-switch/desktop-switch.ai.mjs'
+import * as subsetSheets from './src/components/subset-sheets/subset-sheets.ai.mjs'
+import * as nameIsolation from './src/components/name-isolation/name-isolation.ai.mjs'
+import * as tokenFlow from './src/components/token-flow/token-flow.ai.mjs'
+import * as reactBoot from './src/components/react-boot/react-boot.ai.mjs'
+import * as appearanceFlow from './src/components/appearance-flow/appearance-flow.ai.mjs'
+import * as customCssCases from './src/components/custom-css-cases/custom-css-cases.ai.mjs'
+import * as updateReload from './src/components/update-reload/update-reload.ai.mjs'
 
 export default {
   content: 'content',
@@ -31,8 +44,19 @@ export default {
   },
   components: {
     ...fumadocsRoster,
-    iframe: 'drop',
-    // 示意图：机读版只保留「[图] 标题」和子元素里的文字说明
-    Diagram: (node, h) => [h.paragraph(`[图] ${h.attr(node, 'title') ?? h.attr(node, 'name') ?? ''}`), ...h.children()],
+    // 自包含的讲解组件：规则读组件自己的讲解数据，把每一步、每一条写成段落
+    SeamMap: seamMap.SeamMap,
+    ShellBootSteps: shellBoot.ShellBootSteps,
+    PaneMountSteps: paneMount.PaneMountSteps,
+    OpenPaneCases: openPaneCases.OpenPaneCases,
+    LayoutBootCases: layoutBoot.LayoutBootCases,
+    DesktopSwitchSteps: desktopSwitch.DesktopSwitchSteps,
+    SubsetSheets: subsetSheets.SubsetSheets,
+    NameIsolation: nameIsolation.NameIsolation,
+    TokenFlow: tokenFlow.TokenFlow,
+    ReactBoot: reactBoot.ReactBoot,
+    AppearanceFlow: appearanceFlow.AppearanceFlow,
+    CustomCssCases: customCssCases.CustomCssCases,
+    UpdateReloadCases: updateReload.UpdateReloadCases,
   },
 }

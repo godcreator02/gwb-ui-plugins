@@ -1,0 +1,102 @@
+
+/*
+ * 接缝图 SeamDiagram（seam-diagram.tsx）。每个模块的角色色经 data-role 给出 --dx-c，框、方块、标签都从它调淡；
+ * 框外的东西用 slate；高亮的接缝用 rose。
+ */
+.seam-map .sm-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--dx-line);
+  border-radius: 12px;
+  background: var(--dx-surface);
+  padding: 6px;
+}
+/* 图放得下时不再横向滚动，浮层才能伸出图的下边而不被裁掉 */
+@container (min-width: 840px) {
+  .seam-map .sm-scroll { overflow: visible; }
+}
+.seam-map .sm-svg { display: block; width: 100%; min-width: 820px; height: auto; font-size: 12px; user-select: none; }
+.seam-map .sm-svg [role='button'] { cursor: pointer; outline: none; }
+
+/* 模块：虚线框，框外的东西是实线细框 */
+.seam-map .sm-frame {
+  fill: color-mix(in srgb, var(--dx-c) 4%, transparent);
+  stroke: color-mix(in srgb, var(--dx-c) 55%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+  transition: fill .25s, stroke .25s;
+}
+.seam-map .sm-module[data-outside='true'] .sm-frame { fill: transparent; stroke: var(--dx-line); stroke-dasharray: none; }
+.seam-map .sm-module:hover .sm-frame { stroke: var(--dx-c); }
+.seam-map .sm-module[data-focus='true'] .sm-frame { stroke: var(--dx-c); stroke-width: 1.6; fill: color-mix(in srgb, var(--dx-c) 8%, transparent); }
+.seam-map .sm-module:focus-visible .sm-frame { stroke: var(--dx-accent); stroke-width: 2; }
+.seam-map .sm-frame-name { fill: var(--dx-c); font-weight: 600; font-size: 12.5px; }
+.seam-map .sm-module[data-outside='true'] .sm-frame-name { fill: var(--dx-dim); }
+.seam-map .sm-frame-pkg { fill: var(--dx-dim); font-family: var(--dx-mono); font-size: 10.5px; }
+
+/* 能力方块 */
+.seam-map .sm-cap { transition: opacity .25s; }
+.seam-map .sm-cap rect {
+  fill: var(--dx-surface);
+  stroke: color-mix(in srgb, var(--dx-c) 40%, transparent);
+  stroke-width: 1;
+  transition: fill .25s, stroke .25s;
+}
+.seam-map .sm-cap-name { fill: var(--dx-fg); font-weight: 600; font-size: 12px; }
+.seam-map .sm-cap-ident { fill: var(--dx-dim); font-family: var(--dx-mono); font-size: 10.5px; }
+.seam-map .sm-cap[data-lit='true'] rect { fill: color-mix(in srgb, var(--dx-c) 14%, var(--dx-surface)); stroke: var(--dx-c); stroke-width: 1.5; }
+.seam-map .sm-cap[data-lit='false'] { opacity: .4; }
+
+/* 接缝：实线是代码调用，虚线是读写磁盘上的文件 */
+.seam-map .sm-seam { transition: opacity .25s; }
+.seam-map .sm-seam path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--dx-fg) 45%, transparent);
+  stroke-width: 1.3;
+  transition: stroke .25s, stroke-width .25s;
+}
+.seam-map .sm-seam[data-via='disk'] path { stroke-dasharray: 4 3; }
+.seam-map .sm-seam[data-on='true'] path { stroke: var(--dx-rose); stroke-width: 2.2; }
+.seam-map .sm-seam[data-on='false'] { opacity: .3; }
+.seam-map .sm-badge-hit { fill: transparent; }
+.seam-map .sm-badge-ring {
+  fill: var(--dx-surface);
+  stroke: color-mix(in srgb, var(--dx-fg) 45%, transparent);
+  stroke-width: 1.2;
+  transition: fill .25s, stroke .25s;
+}
+.seam-map .sm-seam[data-via='disk'] .sm-badge-ring { stroke-dasharray: 2.5 2; }
+.seam-map .sm-badge text { fill: var(--dx-fg); font-size: 10.5px; font-weight: 600; font-family: var(--dx-mono); }
+.seam-map .sm-seam[data-on='true'] .sm-badge-ring { fill: color-mix(in srgb, var(--dx-rose) 16%, var(--dx-surface)); stroke: var(--dx-rose); stroke-dasharray: none; }
+.seam-map .sm-seam[data-on='true'] .sm-badge text { fill: var(--dx-rose); font-weight: 700; }
+.seam-map .sm-seam:hover { opacity: 1; }
+.seam-map .sm-badge:hover .sm-badge-ring { stroke: var(--dx-rose); }
+.seam-map .sm-badge:focus-visible .sm-badge-ring { stroke: var(--dx-accent); stroke-width: 2; }
+
+/* 入口：灰色胶囊与箭头，不编号 */
+/* 只选直接子元素：图标内部也有 rect、line，不能被这几条改掉描边 */
+.seam-map .sm-entry > rect { fill: transparent; stroke: var(--dx-line); }
+.seam-map .sm-entry > text { fill: var(--dx-dim); font-size: 11.5px; }
+.seam-map .sm-entry > line { stroke: var(--dx-dim); stroke-width: 1.2; }
+.seam-map .sm-entry > polygon { fill: var(--dx-dim); }
+/* 图标：模块框标题前的用模块自己的角色色，入口块里的用次要文字色 */
+.seam-map .sm-module .sm-icon { color: var(--dx-c); }
+.seam-map .sm-module[data-outside='true'] .sm-icon { color: var(--dx-dim); }
+.seam-map .sm-entry .sm-icon { color: var(--dx-dim); }
+.seam-map .sm-icon { fill: none; pointer-events: none; }
+.seam-map .sm-inline-icon { display: inline-block; vertical-align: -2px; margin-right: 4px; flex: none; }
+
+/* 图例 */
+.seam-map .sm-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--dx-dim); }
+.seam-map .sm-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.seam-map .sm-lg-frame { fill: none; stroke: var(--dx-dim); stroke-dasharray: 3 2; }
+.seam-map .sm-lg-cap { fill: var(--dx-surface); stroke: var(--dx-dim); }
+.seam-map .sm-lg-code { stroke: var(--dx-fg); stroke-width: 1.4; }
+.seam-map .sm-lg-disk { stroke: var(--dx-fg); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.seam-map .sm-lg-badge { fill: var(--dx-surface); stroke: var(--dx-fg); }
+.seam-map .sm-lg-badge-n { fill: var(--dx-fg); font-size: 8px; font-family: var(--dx-mono); }
+.seam-map .sm-lg-entry { fill: none; stroke: var(--dx-dim); }
+
+.seam-map .sm-legend-hint { margin-left: auto; }
+
+/* 浮层：定位基准是 .sm-canvas（跟 svg 一样大），位置由 seam-diagram.tsx 按画布坐标换算成百分比 */
+.seam-map .sm-canvas { position: relative; }

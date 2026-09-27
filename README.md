@@ -1,7 +1,5 @@
 # gwb UI 平台插件仓
 
-**本页回答**：`gwb-ui-plugins` 是什么、怎么装、怎么用、文档在哪。
-
 ## 是什么
 
 gwb 工作台的 **UI 平台**：外壳（`shell`，视觉契约的令牌表随它的包发布；页面用的 React 由 shell 提供，kernel 管理 importmap）、
@@ -18,16 +16,16 @@ plugin-manager.install {"pkg":"@godcreator/gwb-theme"}
 plugin-manager.install {"pkg":"@godcreator/gwb-baseui"}
 ```
 
-`baseui` 的窗格随 core 插件装没装增减：装了 `gwb-logger` 就有日志窗格，装了 `gwb-plugin-manager` 就有
+`baseui` 的窗格随基础插件装没装增减：装了 `gwb-logger` 就有日志窗格，装了 `gwb-plugin-manager` 就有
 插件管理窗格，缺了哪个就不显示对应的窗格。
 
 ## 怎么用
 
-装齐后开工作台，日志与「插件管理」两个窗格出现在窗格注册表里就说明装好了——agent 侧核对：
+装齐后打开工作台，日志与「插件管理」两个窗格出现在窗格注册表里就说明装好了——agent 侧核对：
 `plugin-manager.list` 回的表里有 `baseui` 条目，`shell.panes` 里有
 `plugin:home:baseui:logger` 与 `plugin:home:baseui:plugin-manager`。
 
 ## 文档
 
-`docs-site/` 是文档站：`cd docs-site && pnpm install && pnpm dev`，看 `http://localhost:4323`。
+`docs-site/` 是文档站：`cd docs-site && pnpm install && pnpm build && pnpm start`，看 `http://127.0.0.1:4323`。
 这份 README 是生成物，正本是 `docs-site/content/docs/outputs/readme.mdx`。

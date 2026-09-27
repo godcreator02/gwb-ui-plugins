@@ -1,0 +1,27 @@
+---
+title: 升级之后怎么整页刷新
+description: 插件管理窗格点「更新」后，plugin-manager.update 的回执怎么写成几行话、什么时候自己调 shell.reload 整页重新加载、插件管理升级自己时为什么先等它回来、有条目没回来时为什么不刷新
+---
+
+插件升级之后，node 侧的条目由插件管理重新加载，页面上开着的窗格却还在用旧版本的 `client.js`，要整页重新加载才换成新的。
+插件管理自己不刷新页面，这一步由插件管理窗格做：拿到 `plugin-manager.update` 的回执，先写成窗格上的几行话，再决定刷不刷新。
+下面几种回执取自窗格的测试，选一种看它走到哪一步为止：
+
+<UpdateReloadCases />
+
+判断全在一个纯函数里：成功回执里有包升了或跟着重新加载了、而且每个条目都回到了运行状态，才要刷新；停用着的条目（`skipped`）与插件管理自己推迟的（`deferred`）不算失败：
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/update-receipt.ts" lines="46-51" hash="6b7e16c95358" blob="3cde760c6c6f" */}
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/update-receipt.ts" lines="86-100" hash="95bb2dd08613" blob="3cde760c6c6f" */}
+
+窗格拿到结论后，插件管理自己也升了就先等它回来，再调 `shell.reload`；刷新没成，把原因接在回执后面显示：
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="904-928" hash="f1b64136a733" blob="156ed4e1bb07" */}
+
+等插件管理回来是每 0.5 秒问一次 `plugin-manager.list`，最多 30 秒。每轮先等再问：回执发出时插件管理还没开始重新加载，马上问会问到旧的那份、以为已经好了：
+
+{/* ref file="../plugins/baseui/tests/panes/update-receipt.test.ts" lines="174-193" hash="af165644dac6" blob="894159a7987a" */}
+
+为什么由窗格自己刷新、为什么要等插件管理，见[窗格自己整页刷新](/trajectory/2026-09-25-pane-reloads-after-update)；
+为什么有条目没回来就不刷新，见[升级失败不自动刷新](/trajectory/2026-09-26-update-failures-no-auto-reload)。

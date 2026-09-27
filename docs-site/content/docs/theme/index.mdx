@@ -1,0 +1,105 @@
+---
+title: 外观插件 gwb-theme
+description: 全局启动样式（正文字体、等宽字体与一段自定义 CSS）加「外观」窗格；外壳经可选命令 theme.startupCss 取样式，没有外壳也照常加载
+full: true
+---
+
+包 `@godcreator/gwb-theme`，在 `plugins/theme/`：node 侧入口 `src/index.ts`，浏览器侧入口 `src/client/index.tsx`（外观窗格），
+两侧共用的拼法在 `src/startup-css.ts`。
+
+<SeamMap module="theme" />
+
+## 功能
+
+**三项设置拼成一段全局启动样式。** 正文字体、等宽字体、自定义 CSS 是 home 级设置，缺省空串，空串就是「没设置、用令牌表的默认值」。
+两个字体写成 `:root` 上的两个变量，自定义 CSS 原样接在后面，三项全空就是空串：
+
+{/* ref file="../plugins/theme/src/startup-css.ts" lines="10-26" hash="2c64618be808" blob="694ae7e05e50" */}
+
+变量名跟外壳令牌表里的一一对应，令牌表那边改名，这边要跟着改，否则字体设置悄悄不生效：
+
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="29-34" hash="fdd89770a9ee" blob="ce74d1a59f41" */}
+
+**外壳开机时取，排在外壳三张表之后、第一帧之前注入页面**（接缝 3、9）。一次开机从设置到页面走哪几步、用户的自定义 CSS 为什么能压过令牌与插件的工具类，
+见[外观设置怎么进页面](/docs/theme/startup-style)。
+
+**「外观」窗格：输入即预览，点保存才写回，没保存就关掉会退回。** 取到当前值之前保存按钮禁用：保存一次写齐三项，这时输入框里还是空串，
+一点就把三项设置全部清空：
+
+{/* ref file="../plugins/theme/tests/appearance.test.ts" lines="17-23" hash="5380aca7da64" blob="9557d94269ca" */}
+
+关窗格时把页面上的启动样式写回已保存的那一份，否则没保存的预览重启后就没了、当时却看不出来：
+
+{/* ref file="../plugins/theme/src/client/index.tsx" lines="75-80" hash="27fa291c0660" blob="d52b9b51d84a" */}
+
+**没有外壳也照常加载。** 外壳只用局部注入，三条命令不依赖它；没有外壳时只是没有「外观」窗格：
+
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="142-155" hash="ddd61eedec42" blob="3c7ae394ce8d" */}
+
+## 接口
+
+**三条命令**，都登记在本插件的上下文上，本插件卸载时一起注销：
+
+| 命令 | 参数 | 回什么 | 谁调 |
+| --- | --- | --- | --- |
+| `theme.startupCss` | 无 | 启动样式那段 CSS 字符串，没设置就是空串 | 外壳 node 侧处理 `shell.env` 时，按名字调 |
+| `theme.values` | 无 | `{ "font-sans", "font-mono", "custom-css" }` 三项现值，不是字符串的值当空串 | 外观窗格 |
+| `theme.save` | `{ "font-sans", "font-mono", "custom-css" }` 三个键都必给、值都是字符串，空串是恢复默认 | `{ ok: true }`；参数不对回 `ok: false` 与原因，一项都不写 | 外观窗格 |
+
+{/* ref file="../plugins/theme/src/index.ts" lines="112-141" hash="2429fca1d8a1" blob="8a696cae264c" */}
+
+`theme.save` 的参数是外部输入，在这里校验：不是对象、缺键、多了别的键、值不是字符串，都当场拒绝并说清错在哪，不替调用方修正：
+
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="127-140" hash="dbdbaec4be47" blob="3c7ae394ce8d" */}
+
+**三项设置**的键名用设置插件要求的 kebab-case：
+
+{/* ref file="../plugins/theme/src/index.ts" lines="25-28" hash="04a57d653611" blob="8a696cae264c" */}
+
+**「外观」窗格**：id 是 `appearance`，注册时报上 `dist/client.js` 与 `dist/style.css` 的 `file://` 地址，另报名字「外观」、图标 `palette`：
+
+{/* ref file="../plugins/theme/src/index.ts" lines="143-155" hash="823e99256e18" blob="8a696cae264c" */}
+
+**页面上的约定**：启动样式放在 `<style id="gwb-theme-style">` 里，外壳开机时写它，外观窗格预览时改它。这个 id 两边各写一份字符串、不互相 import：
+
+{/* ref file="../plugins/theme/src/client/index.tsx" lines="15-27" hash="ee0a3cb91ce3" blob="d52b9b51d84a" */}
+
+{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-4" hash="a668bd572a85" blob="20e3479e96b1" */}
+
+## 依赖
+
+| 依赖 | 怎么接 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- |
+| `gwbSettings`（`@godcreator/gwb-settings`） | 必需注入，peer | 声明、读写三项外观设置 | 本插件不加载：没有设置存不了三项外观 |
+| `gwbCommands`（`@godcreator/gwb-commands`） | 必需注入，peer | 登记三条命令 | 本插件不加载：三条命令无法对外提供 |
+| `gwbShell`（`@godcreator/gwb-shell`） | 局部注入，peer `workspace:*` 且 `optional` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常能取，只是没有「外观」窗格 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | 取 `GwbContext` 类型 | 类型检查不过；运行时不 import 它（包根一加载就启动 Electron 应用） |
+
+{/* ref file="../plugins/theme/src/index.ts" lines="30-31" hash="82c708c0994f" blob="8a696cae264c" */}
+
+{/* ref file="../plugins/theme/package.json" lines="16-26" hash="df1a0dbd889e" blob="c5d8c5059237" */}
+
+外壳写在 peer 里、标可选，不另写 dev；没有外壳时本插件照常加载，靠的是 `inject` 里没有 `gwbShell`：
+
+{/* ref file="../plugins/theme/tests/artifact.test.ts" lines="62-66" hash="312e5a1fce0a" blob="bdf05e0187bc" */}
+
+为什么用到的插件都写 peer、可选的标 `optional`，见[用到的插件写进 peer](/trajectory/2026-09-25-plugins-as-peers)。
+
+浏览器侧构建时从外壳包的 `@godcreator/gwb-shell/browser-imports` 取外置名单：React 由外壳提供，窗格代码里不打包自己的一份：
+
+{/* ref file="../plugins/theme/build.ts" lines="44-58" hash="a7745afdffad" blob="0abda5a1aaeb" */}
+
+## 不做的事
+
+**不 import 外壳，外壳也不 import 它。** 外壳取启动样式只经命令名 `theme.startupCss`，先问命令表里有没有、有才调；本插件把外壳写在 peer 里，
+外壳反过来 import 它会成环。为什么查在外壳的 node 侧、不让外观插件主动把样式交给外壳，见[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
+
+**不决定启动样式在页面上的位置。** node 侧只交出一段字符串，排在第几位、什么时候插进页面由外壳定；浏览器侧只在外观窗格开着时按 id 改那一个元素。
+
+**不检查、不改写自定义 CSS。** 只去掉首尾空白，整段原样放进页面；写宽了的选择器会改到所有插件的界面，这由写的人负责。
+
+**不管亮暗。** 亮暗开关在外壳的状态栏里，只切换 `<html>` 上的 `dark` 类，不经过本插件，也不存进设置：
+
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="282-288" hash="f167fad29959" blob="a14c05f4f333" */}
+
+**不提供 gwb 服务、不发事件。** 对外只有三条命令、三项设置与一个窗格。

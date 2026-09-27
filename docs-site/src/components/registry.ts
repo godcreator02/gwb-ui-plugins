@@ -7,8 +7,27 @@
  *
  * Files / Folder / File 是 fumadocs 自己的文件树：目录树引用注入的就是它们，
  * 它们与 Note 的压平规则在 @godcreator/docfirst-workflow/fumadocs/roster 的 fumadocsRoster 里。
- * Diagram 是示意图（src/components/diagram.tsx）。
+ * SeamMap 之后的都是自包含的讲解组件：画面与讲解文字都在 src/components/ 下各自的目录里，mdx 里只写标签；
+ * 控制条与零件来自 @godcreator/explainer-player。
  * registry.ts 只有可擦除的类型，Node 直接运行。
  */
-export const componentNames = ['Note', 'Files', 'Folder', 'File', 'Diagram'] as const
+export const componentNames = [
+  'Note',
+  'Files',
+  'Folder',
+  'File',
+  'SeamMap',
+  'ShellBootSteps',
+  'PaneMountSteps',
+  'OpenPaneCases',
+  'LayoutBootCases',
+  'DesktopSwitchSteps',
+  'SubsetSheets',
+  'NameIsolation',
+  'TokenFlow',
+  'ReactBoot',
+  'AppearanceFlow',
+  'CustomCssCases',
+  'UpdateReloadCases',
+] as const
 export type ComponentName = (typeof componentNames)[number]

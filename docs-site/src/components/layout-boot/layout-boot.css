@@ -1,0 +1,26 @@
+/*
+ * 布局开机的几种情况（layout-boot.tsx）：四个环节在宽屏排成一行、中间是箭头，窄屏竖排、箭头转向下。
+ */
+.layout-boot .lb-flow { display: grid; gap: 8px; }
+@container (min-width: 760px) {
+  .layout-boot .lb-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+}
+.layout-boot .lb-stage { display: grid; min-width: 0; }
+@container (min-width: 760px) {
+  .layout-boot .lb-stage { grid-template-columns: auto minmax(0, 1fr); align-items: stretch; }
+  .layout-boot .lb-stage:first-child { grid-template-columns: minmax(0, 1fr); }
+}
+.layout-boot .lb-arrow { color: var(--dx-dim); font-size: 16px; text-align: center; line-height: 1; padding: 2px 0; }
+@container (min-width: 760px) {
+  .layout-boot .lb-arrow { align-self: center; padding: 0 6px; }
+}
+@container (max-width: 759px) {
+  .layout-boot .lb-arrow { transform: rotate(90deg); justify-self: center; }
+}
+.layout-boot .lb-value { display: block; font-family: var(--dx-mono); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; animation: dx-pop .3s ease-out both; }
+.layout-boot .lb-value[data-empty='true'] { color: var(--dx-dim); }
+.layout-boot .lb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.layout-boot .lb-bar-label { font-size: 12px; font-weight: 600; color: var(--dx-dim); }
+@media (prefers-reduced-motion: reduce) {
+  .layout-boot .lb-value { animation: none; }
+}

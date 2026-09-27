@@ -1,0 +1,315 @@
+---
+title: 窗格
+description: 插件怎么注册窗格、外壳登记时检查什么；窗格定义与实例、窗格 id；插件拿到的 args 与类型子路径；开一个窗格落在哪一组、激活还是开新的；预览窗格、软换与硬换、上报内容；跨插件开窗格与 shell.pane.* 命令
+---
+
+整页用同一组例子：块笔记的「阅读」是文档窗格，一份装一块内容，`key` 就是那一块；「单元树」「查询」「日志」是工具窗格。
+
+## 注册
+
+插件在自己的 `apply` 里注册，想有几个窗格就注册几个：
+
+```ts
+export const inject = ['gwbShell']
+
+export function apply(ctx: GwbContext) {
+  ctx.gwbShell.registerPane({
+    id: 'reader',
+    title: '阅读',
+    icon: 'book-open',
+    kind: 'document',
+    client: new URL('./client.js', import.meta.url).href,
+    style: new URL('./style.css', import.meta.url).href,
+  })
+  ctx.gwbShell.describeSelf({ title: '块笔记', icon: 'notebook' })
+}
+```
+
+插件能给的就这几样：
+
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */}
+
+### 两类窗格
+
+`kind` 说的是「打开这个动作对它意味着什么」，不是「能开几份」：
+
+- **工具窗格**（`'tool'`，不给就是它）：整页至多一份，打开就是把它显示出来；开在别的桌面上，就到那张桌面去激活它
+- **文档窗格**（`'document'`）：每份装一个内容，开几份取决于装着几份不同的内容
+
+`kind` 只存在注册表里，不进面板参数，布局文件里没有它；开窗格时从当场取的注册表带上。为什么分这两类、工具窗格为什么整页一份，见轨迹卡
+[窗格分两类](/trajectory/2026-09-19-pane-kinds)与[工具窗格全页一份](/trajectory/2026-09-19-tool-single)。
+
+### 身份由外壳填
+
+插件只给上面那几样，条目 id 与包名由服务从**调用方的 fiber** 上取：cordis 的服务方法里，`this.ctx` 是调用方的上下文，不是外壳自己的。
+插件报不出别的名字，也就冒充不了别人的窗格；登记挂在调用方的 `ctx.effect` 上、插件卸载时自动注销，靠的也是这一点。
+
+{/* ref file="../plugins/shell/src/index.ts" lines="439-449" hash="668c08b012bc" blob="d8029385df74" */}
+
+两样都要：同一个包配两条条目，就是两份独立配置的实例，只有条目 id 分得开它们。条目 id 是 cordis.yml 里那条条目从根算起的完整 id，
+实际运行时带着 `home:` 前缀（`home:hello`）——loader 把插件的条目嵌在内核那条 include 下面。**这个前缀不能去掉**：注册表按它登记、
+开窗格按它判断「哪几个窗格属于这条条目」，改短了就跟注册表对不上，症状是不报错地匹配到错的窗格。
+
+### 注册时检查什么
+
+1. **一条条目一个命名空间**：键是（条目 id，窗格 id）。同一个包的两条条目各注册一个同名窗格，两条都在
+2. **重复注册后来者生效，并告警**：跟命令总线同一个规矩
+3. **空 id、空标题、id 里带冒号，当场抛错**：抛在插件自己的 `apply` 里，日志写明是哪个包。登记进表只会在容器里多出一个打不开的空白，回头查不到源头
+4. **`client` / `style` 给了就必须是 `file://` 地址**，路径分别以 `.js`、`.css` 结尾（后面带查询串不影响），从插件自己的模块地址算；
+   不合格就抛错，报错写明哪个包、哪个窗格、哪个字段、收到的值和该给什么，外壳不替插件改。都可以不给：不给 `style` 就不注入样式表；
+   不给 `client` 的窗格照常登记，打开后窗格里显示一句报错。检查放在注册这一步，见轨迹卡[窗格地址在注册时检查](/trajectory/2026-09-24-pane-address-check-at-register)
+5. **`kind` 给了就只认 `'tool'` 与 `'document'`**，别的值抛错：按 `tool` 登记的话，拼错了 `'documnet'` 的文档窗格会被当成整页至多一份，
+   插件作者看到的是「第二份怎么开不出来」
+
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="50-82" hash="7f4c0b9335ea" blob="22e4ca8931ac" */}
+
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="92-108" hash="3a2d978c0e3e" blob="22e4ca8931ac" */}
+
+### 图标名
+
+`icon` 写 [lucide](https://lucide.dev) 的正名，kebab-case（`layout-grid`、`file-text`），全集都认。不给：标签上画 `#`，不告警；
+认不出（拼错、改过名的旧名、写成 `LayoutGrid`）：照样登记、标签上画 `#`，登记那一刻 `gwb.log` 里一条 warn，写明哪个包的哪个窗格、该怎么写。
+`describeSelf` 的 `icon` 同一套认法。
+
+两侧用同一个换算：kebab 名拼成 lucide 的导出名，node 侧拿它对照构建时生成的名单 `dist/pane-icons.json`，浏览器侧拿它从打包进 `client.js` 的 lucide 全集里取图标。
+名单与全集出自同一份 lucide，所以「登记说认得」与「标签画得出」不会不一致。代价是整个 lucide 全集进了 `client.js`，见轨迹卡
+[窗格图标认 lucide 全集](/trajectory/2026-09-17-pane-icons-full-lucide)。
+
+{/* ref file="../plugins/shell/src/pane-icon.ts" lines="4-14" hash="fb2890c61f45" blob="eb064c296db7" */}
+
+{/* ref file="../plugins/shell/src/client/icon.ts" hash="cc705d2daa3e" blob="0f34e25a14db" */}
+
+### 为什么不用 dockview 自己的注册
+
+dockview 的 `components` 表是「组件名 → React 组件」，外壳的全部窗格都映射到同一个名字 `plugin` 上；注册表管的是「有哪些窗格可以开」。前者替代不了后者：
+注册方在主进程、消费方在页面，dockview 的注册全是同一个 JS 堆里的对象引用；dockview 所有列举接口只回已经开着的面板；标题、图标、地址、条目 id 它都没有。
+
+## 定义与实例
+
+注册表里一条是窗格**定义**；容器里一个面板是一份**实例**，装着不同内容的可以有好几份。定义拼出一个基名
+`plugin:<条目 id>:<窗格 id>`，实际运行时长这样：`plugin:home:hello:main`。实例 id 在基名上算：
+
+{/* ref file="../plugins/shell/src/openable.ts" lines="102-125" hash="7806e517e88d" blob="bb642a6dd7b3" */}
+
+- 第一份的 id **就是基名**，跟只能开一份的窗格长得一样，已保存的布局照样对得上；第二份起追加 `:2`、`:3`，标题追加「(2)」
+- 查的是**所有桌面的容器里此刻真有哪些**，不是计数器：恢复布局之后再开也不会重复，别的桌面占着的序号不能用
+- 序号跟 id 一起返回，调用方不从 id 里拆。实例 id 是不透明的键：要条目 id 或窗格 id，从面板参数里取，那里本来就分开存着
+- **窗格 id 里不许有冒号**（注册时就拒）：条目 id 自己带冒号，窗格 id 里再有一个，`home:hello` + `main` 与 `home` + `hello:main` 会拼出同一个基名，
+  查重把它当成「已经开着」，不报错地追加一个 `:2`
+
+**必须先算好唯一 id 再 `addPanel`**：dockview 的 `addPanel` 遇到已有的 id 同步抛错，不覆盖、不返回已有的那个。
+这个异常要是从容器的 `onReady` 里冲出去，整个容器起不来、白屏。默认布局、重置布局与开窗格流程都走同一处：
+
+{/* ref file="../plugins/shell/src/client/open.ts" lines="153-165" hash="8f874b33d944" blob="c3574996f7de" */}
+
+## 插件拿到的 args
+
+外壳调插件的 `mountPane(args, container)`，这是窗格插件契约的正本（内核只定页面根那一层）：
+
+| | 是什么 |
+| --- | --- |
+| `host.call(command, args?)` | 调一条命令，回命令总线的回执；命令本身的失败 resolve 成 `ok: false`，不 reject |
+| `shell.openPane(paneId, { key?, params?, preview?, placement? })` | 打开**本插件**的另一个窗格。来源就是调它的这一份：开在它那张桌面上、按目标组规则选组，从不切桌面。`placement` 缺省 `'auto'`，`'side'` 开到旁边 |
+| `shell.setPaneTitle(title)` | 改这个窗格标签上的标题，随布局保存 |
+| `shell.setPaneContent({ key, params?, title? })` | 上报这个窗格此刻装的内容，见[上报内容](#上报内容setpanecontent) |
+| `shell.keepPane()` | 把这个窗格留住：它不再是预览窗格 |
+| `shell.portal` | 本窗格所在桌面的浮层挂载点：插件里 radix Portal 的挂载点设成它，桌面切走浮层跟着藏。不在桌面里时是 `document.body` |
+| `shell.onVisibility(cb)` | 本窗格所在桌面的可见性：切走收 `false`、切回收 `true`，注册时先回调一次当下的值，回注销函数 |
+| `pane.id` | 这个窗格是本插件的哪个窗格（注册时的 id） |
+| `pane.kind` | 外壳把它当哪一类挂载的 |
+| `pane.instance` | 这一份的实例 id，全页唯一，可以当全局键 |
+| `pane.params` | 挂载这一刻这一份的参数；开的时候没传就没有这一项 |
+
+{/* ref file="../plugins/shell/src/client/types.ts" lines="63-113" hash="36e1b504029b" blob="2d06a12a5550" */}
+
+**插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格走命令，
+见[跨插件开窗格](#跨插件开窗格shellopenpane)。
+
+{/* ref file="../plugins/shell/src/client/plugin-panel.tsx" lines="27-32" hash="27aa25925692" blob="009542d6cc55" */}
+
+### 类型从 `@godcreator/gwb-shell/pane` 引
+
+插件写 `mountPane` 用到的类型都由外壳导出，用 `import type` 引，不在自己代码里手写、不用 `as` 转：
+
+```ts
+import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
+
+export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { … }
+```
+
+子路径只有类型：构建时用单独的 tsconfig 只输出声明到 `dist/types/`，`exports["./pane"]` 只有 `types` 条件。按值 import 它，esbuild 构建时报这个子路径没有导出。
+它引用到的文件里没有包名 import，插件的浏览器侧类型检查不用为它多列依赖。
+
+{/* ref file="../plugins/shell/package.json" lines="13-15" hash="e8a6592d6a4c" blob="2d44c8a19401" */}
+
+{/* ref file="../plugins/shell/src/client/tsconfig.pane-types.json" hash="c7f305108782" blob="9af4ced4f1d4" */}
+
+这几点由产物测试的「子路径 ./pane」一组守着：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="132-181" hash="8ac2fe309ca9" blob="9c8cce9a0c60" */}
+
+不从主入口 `@godcreator/gwb-shell` 导出：主入口的声明是 node 侧的，引着 cordis、内核包、命令插件与数据插件的类型，浏览器侧引它就得把这些都列进 dev；
+而 `ShellBridge.portal` 是 `HTMLElement`，node 侧的类型检查没有 DOM。选型经过见轨迹卡[窗格入口类型走子路径](/trajectory/2026-09-24-pane-types-subpath)。
+
+## 开一个窗格：落在哪、做什么
+
+一个窗格开几份，是因为它们装着不同的东西。插件开窗格时给一个不透明字符串 `key`（不给等于空串），外壳只拿它去已开的几份里找，一个字都不解释。
+开一个窗格分两步，都是纯函数，输入是**一张桌面**的快照（各组的标签、活动标签、组的矩形、组的最近激活顺序）：先算目标组，再查重、给出判断。
+选一种情况看它走到哪一条：
+
+<OpenPaneCases />
+
+- **本桌优先**：开窗格只看一张桌面——有来源开在来源那张，否则开在当前那张。文档窗格在别的组、别的桌面开着同一内容都不算命中；
+  跨桌面的只有工具窗格的查重与实例 id 的查重。插件与命令开窗格从不切桌面。判据见轨迹卡[本桌优先](/trajectory/2026-09-19-desk-first)与
+  [目标组取代按份数分档](/trajectory/2026-09-19-target-group)
+- **最近激活顺序只在运行时记**：组被激活、标签被拖进某一组都算，恢复布局之后才开始记，不存盘，整页重载后从空开始
+- **新标签插在目标组活动标签的右边**：dockview 不给位置就追加到组末尾，所以位置由判断算好。摆放永远带参照组：只给方向的放法会放到整个容器的边上、所有组重新分宽度，外壳不走那条
+
+「右边紧挨着」按组的矩形判，所以组嵌套成什么样都一样判：
+
+{/* ref file="../plugins/shell/src/openable.ts" lines="171-195" hash="2bbf1ba46c0b" blob="bb642a6dd7b3" */}
+
+**要新建组时只把基准组对半分，别的组不动**。dockview 的 `addPanel` 带参照组新建组，不给尺寸时同一排全部均分，给了宽度又从这一排最右那组扣。
+外壳走 dockview 拖放那条路：先把新窗格当不激活的标签开进基准组，再 `moveTo` 到它右边，只切基准组一半。基准组在一列里（上下叠放）时，
+dockview 把它包进新的横向分支，会少算一份组间缝的高度，切完按「2×原高−现高」把高度补回去：
+
+{/* ref file="../plugins/shell/src/client/open.ts" lines="285-297" hash="fd5aaed4e3cb" blob="c3574996f7de" */}
+
+{/* ref file="../plugins/shell/src/openable.ts" lines="387-393" hash="a44bbc4c5196" blob="bb642a6dd7b3" */}
+
+判断在 `planOpen` 里，执行侧（`open.ts`）只按判断的种类分派成 dockview 调用。读快照、算实例 id、`addPanel` 必须在同一段同步代码里，中间不能插 `await`，
+否则两次并发打开会算出同一个 id。
+
+## 预览窗格
+
+照 VS Code 那一套语义，实现是外壳自己的（dockview 的固定标签是付费模块，而且它管的是排序，不是「别换我的内容」）：
+
+| | |
+| --- | --- |
+| 怎么进 | 开窗格时 `preview: true`。**每一组里同一个窗格的预览窗格至多一份**：两组可以各有一个，不同窗格的预览窗格同组并存 |
+| 被替换 | 下一次 `preview: true` 打开、目标组是同一组、内容不同 → 原地换内容，位置不动、窗格数不变；别的组的预览窗格不碰 |
+| 怎么转正 | 插件调 `keepPane()`、人双击标签、标签菜单「保持打开」、以正式方式打开命中它（工具窗格在别的桌面上被正式打开也算）、「在旁边再开一份」它。都是同一个动作：把 `preview` 从这一份的面板参数上删掉 |
+| 标成什么样 | 标题前一个小空心圆点。预览窗格至多一份、正式窗格很多，记号打在例外身上；用形状不用深浅——没激活的标签本来就是淡色，再调淡等于没标 |
+| 没有的动作 | 正式窗格变不回预览窗格 |
+
+送到别的桌面时预览不带过去，到那边就是正式的。「每组一份」而不是「每桌一份」，见轨迹卡[预览窗格每组一个](/trajectory/2026-09-19-preview-per-group)。
+
+插件该在人真的开始用这个窗格的那一刻调 `keepPane()`（开始编辑、改了什么），不是挂载时就调——挂载时就调，等于这个插件没有预览窗格。
+它已是正式窗格时什么都不做，连一次参数变更都不发，不然每次击键都要引起一轮重渲染与一次布局保存：
+
+{/* ref file="../plugins/shell/src/client/plugin-panel.tsx" lines="33-37" hash="f63873971fc7" blob="009542d6cc55" */}
+
+## 换内容：软换与硬换
+
+外壳换掉一个窗格的面板参数（预览窗格被替换）之后，**插件给了 `retarget` 就调它（软换），没给就卸载后重新挂载（硬换）**。
+判的是句柄上有没有这个函数：
+
+```ts
+export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
+  const view = mount(container, args.pane.params)
+  return {
+    dispose: () => view.destroy(),
+    // 有它就是软换：这棵树、滚动位置、打到一半的字都留着
+    retarget: (params) => view.go(params),
+  }
+}
+```
+
+硬换是正常路径，不是契约不符：简单的插件不用为此写一行代码，代价是窗格的内部状态重来一遍。
+
+- **比的是参数的稳定序列化**（键排序后 JSON），不是对象引用：面板参数每轮渲染都是新对象，而参数本来就要求能 JSON 序列化
+- **插件还没挂载完成时什么都不做**：挂载流程读的就是最新那份，这时重新挂载只会打断正在进行的那次
+
+{/* ref file="../plugins/shell/src/panels.ts" lines="141-146" hash="d8ee43d874dd" blob="b53b97e488c4" */}
+
+**dockview 的 `updateParameters` 是合并，不是替换**：只有值写成 `undefined` 的键才删。所以换内容之前要把旧参数里多出来的键显式写成 `undefined`，
+不补这一步，上一份内容的参数会留在这个窗格里跟着保存。转正正是这条机制的另一面：删掉 `preview` 就是给它写一个 `undefined`。
+
+{/* ref file="../plugins/shell/src/panels.ts" lines="66-79" hash="666c82b31584" blob="b53b97e488c4" */}
+
+## 上报内容：`setPaneContent`
+
+软换与硬换是外壳换内容、通知插件；反方向是插件自己在窗格里换了内容（点链接原地跳转、后退前进），外壳看不见，得插件上报一次：
+
+```js
+// 原地跳到了另一块
+args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' })
+```
+
+外壳只改这一份的面板参数：`key` 换成新的；给了 `params` 就整份替换插件自己那部分（保留键移除并告警，旧的那部分多出来的键删掉）；
+给了 `title` 等于顺带 `setPaneTitle`。之后照常保存，整页重载回到上报的内容。**不调 `retarget`、不重新挂载**：外壳记着插件手上此刻是哪份参数，
+面板参数换成插件自己报的那份时，软换那一步认得出来、什么都不做。预览窗格上报之后仍是预览窗格。
+
+{/* ref file="../plugins/shell/src/panels.ts" lines="123-139" hash="c878e7c98a49" blob="b53b97e488c4" */}
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="92-110" hash="c302739cb4ad" blob="056b20dadf53" */}
+
+上报的形状不对（`key` 不是字符串、`params` 不能 JSON 序列化、`title` 不是字符串）时 console 里一条 warn，这次不生效。上报的 key 跟同组另一份相同时两份都留着：
+查重只发生在打开那一刻。前进后退的历史归插件自己管，外壳只记此刻装的是什么。
+
+送到别的桌面时插件会被重新挂载，滚动位置、打到一半的字这类状态只能靠参数带过去——这是文档窗格要上报内容的第二个理由。
+
+## 手势约定
+
+外壳看不见插件里面的点击，下面这张表是约定：各插件照着做，同一个手势在所有插件里意思一样。
+
+| 手势 | 意思 | 插件怎么做 |
+| --- | --- | --- |
+| 单击（在同类文档窗格里） | 这个窗格原地换内容 | 自己换，换完调 `setPaneContent` |
+| 单击（在别的窗格里） | 预览 | `openPane(…, { preview: true })` |
+| Ctrl / ⌘ + 单击，或中键 | 开一个新标签并激活它 | `openPane(…)`，不要预览、`placement` 缺省 |
+| Ctrl / ⌘ + Alt / ⌥ + 单击 | 开到旁边 | `openPane(…, { placement: 'side' })` |
+| 悬停或点记号 | 浮动卡片预览，不开窗格 | 插件自己画 |
+
+参考的是 Obsidian、Chrome、VS Code 与 Notion 的同类手势。Shift+单击暂不分配含义（那两个产品里是新窗口，外壳还没有独立窗口），见[路线](/future/roadmap)。
+
+## 参数与保留键
+
+`key` 回答「是不是同一个窗格」，`params` 回答「这一份里装的东西长什么样」：它原样交给那一份的 `mountPane`（`pane.params`），
+并进面板参数、跟着布局存盘，重启之后那一份拿到的还是它。代价是**必须能 JSON 序列化**：函数、DOM 节点、类实例放进去，症状是重启之后参数变了形。
+
+面板参数里另有几个键归外壳：
+
+{/* ref file="../plugins/shell/src/panels.ts" lines="48-49" hash="d7fc8d0ce02a" blob="b53b97e488c4" */}
+
+插件传了这几个键会被**移除**并出一条 console 警告——不是用外壳的值悄悄覆盖，那种现象从插件那头查不回来。反过来，插件拿到的 `pane.params` 也不含它们。
+代价是插件不能拿 `key`、`preview` 当自己的参数名；换来的是身份跟着面板参数一起存盘，整页重载之后外壳照旧认得出哪一份装着什么、哪一份是预览窗格。
+
+打开命中已开的那一份（聚焦）时 `params` 不生效：那一份装的本来就是这个内容，改参数只会让磁盘上的文件跟界面上正在运行的那份对不上。
+
+## 跨插件开窗格：`shell.openPane`
+
+插件手里的 `args.shell` 只开得了自己那几个窗格；要打开别人的窗格走命令，比如块笔记的查询与日记插件在自己的窗格里点一块，
+打开块笔记核心插件的阅读窗格：先经 `shell.panes` 找到那个窗格的条目 id，再调 `shell.openPane`，带上自己的 `pane.instance` 作 `from`。
+
+「插件报不出别人的窗格」防的是冒充（注册时身份不由自己报、开窗格时条目 id 闭包绑定），不防经命令总线请别人打开窗格：
+命令总线本来就是插件之间的接口，开窗格不比卸载插件这类命令更敏感。决策经过见轨迹卡[跨插件开窗格走命令](/trajectory/2026-09-13-open-pane-command)。
+
+{/* ref file="../plugins/shell/src/open-pane.ts" lines="46-89" hash="cf81344d96f9" blob="4b59d533f10f" */}
+
+- node 侧先查参数：`entryId`、`paneId` 非空，`key` 是字符串，`params` 能 JSON 序列化，`preview` 是布尔，`from` 非空，`placement` 只认 `'auto'` / `'side'`，别的当场回错
+- 再查注册表：窗格不在表里当场回错，不转发一个注定没效果的动作；在表里就经内核事件转给页面，**回执 ok 只代表转发了**
+- 页面执行的是插件开自己窗格的同一个函数：注册表当场取、判断照旧，`key`、`preview`、`params`、`placement` 的语义没有另写一份
+- `from` 是来源窗格的实例 id：新窗格开在它那张桌面上、以它为来源选组；不带 `from`，或页面上哪张桌面都找不到它，就当没有来源、开在当前桌面（后一种 console 里一条 warn）
+
+{/* ref file="../plugins/shell/src/index.ts" lines="411-437" hash="e8cc57dd508c" blob="d8029385df74" */}
+
+## 窗格命令：`shell.pane.*`
+
+| 命令 | 参数 | 做什么 |
+| --- | --- | --- |
+| `shell.pane.list` | 无 | 所有桌面上开着的窗格，按桌面顺序：`{ instance, desktop, group, pkg, entryId, paneId, kind, key, title, preview, active }`，`active` 是它是不是那一组的活动标签 |
+| `shell.pane.focus` | `{ instance }` | 激活它；在别的桌面就切过去 |
+| `shell.pane.send` | `{ instance, desktop?, newDesktop?, follow? }` | 送到别的桌面，`desktop`（已有桌面的 id）与 `newDesktop`（新桌面的名字，`true` 或空串用缺省名）给且只给一个，见[送到别的桌面](/docs/shell/desktops#送到别的桌面拉到本桌) |
+| `shell.pane.close` | `{ instance }` | 关掉它，插件照常 `dispose`，不切桌面 |
+
+{/* ref file="../plugins/shell/src/pane-actions.ts" lines="7-13" hash="9fb2651eeda4" blob="fb1659d884db" */}
+
+**node 侧没有窗格清单**：页面每次保存布局时（外加容器挂载完成时与开机时）把所有桌面上开着的窗格连同桌面表推给 node 侧缓存（`shell.pane.sync`，页面专用，
+别的调用方推进来就是改写了 `list` 的回执）。已挂载的桌面从容器当场读，没挂载过的从已保存的布局读。`list` 读这份缓存，最多慢一个防抖窗口（400ms），
+页面还没推过就回空表；`kind` 在 node 侧按注册表补，插件卸载了就是 `tool`。focus、send、close 转发之前拿缓存检查实例与目标桌面在不在，认不出当场回错；
+回执 ok 只代表转发了。
+
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="67-79" hash="7f2ba08e88c3" blob="9b2b1fdf837c" */}
+
+{/* ref file="../plugins/shell/src/index.ts" lines="333-356" hash="28195632f211" blob="d8029385df74" */}

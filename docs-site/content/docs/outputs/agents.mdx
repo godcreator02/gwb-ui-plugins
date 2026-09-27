@@ -5,8 +5,6 @@ description: 仓根 AGENTS.md 的正本——render 生成到仓根，只写仓�
 
 # gwb-ui-plugins
 
-**本页回答**：在这个仓干活的 agent 先看什么、怎么跑、提交前要过哪几项检查、什么碰不得。
-
 ## 这个仓是什么
 
 **gwb 的 UI 平台仓**。立场：**shell 是一个 UI 平台的整体，要换整套换**；令牌表（视觉契约）并在 shell 包里，
@@ -25,19 +23,20 @@ description: 仓根 AGENTS.md 的正本——render 生成到仓根，只写仓�
   同仓的（shell / theme / baseui 之间）写 `workspace:*`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
   不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
 * **只按命令名调用的插件不写 peer**：不用它的服务、也不 import 它的类型，只经命令总线按名字调它的命令（命令不在就回执说明）——如 baseui 调 `settings.*`、shell 调 `theme.startupCss`
-* 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见 [插件之间怎么连](docs-site/content/docs/wiring.mdx)
+* 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见文档站首页的接缝图（[`docs-site/content/docs/index.mdx`](docs-site/content/docs/index.mdx)）
 
 ## baseui 三条规矩（破了任何一条，它就会变成什么都往里放的插件）
 
-1. 对每个 core 服务**一律局部注入**（`ctx.inject([...], fn)`），必需依赖只有 `gwbShell`——缺了哪个服务就不注册对应的窗格
+1. 对每个基础服务**一律局部注入**（`ctx.inject([...], fn)`），必需依赖只有 `gwbShell`——缺了哪个服务就不注册对应的窗格
 2. **一窗格一模块**：`panes/` 下窗格之间零 import，只准 import `components/ui` 共享层
-3. **只收拆掉了界面的 core 插件的窗格**：进 baseui 的唯一资格是它是某个 core 插件的官方界面；界面本身就是全部
+3. **只收基础插件的官方界面**：进 baseui 的唯一资格是它是某个基础插件的官方界面；界面本身就是全部
   功能的插件（hello、将来的功能插件）自带界面，不进
 
 ## 先读
 
-`docs-site/content/docs/`：[系统地图](docs-site/content/docs/system-map.mdx) → 要改的那块的页 →
-[术语表](docs-site/content/docs/glossary.mdx)。在途的活在 `docs-site/content/future/spec/`，别的仓投来的反馈在
+`docs-site/content/docs/`：[首页的接缝图](docs-site/content/docs/index.mdx) → 要改的那个包的目录（`shell/`、`theme/`、`baseui/`，
+目录首页是包的内部接缝图）→ [术语表](docs-site/content/docs/glossary.mdx)；怎么跑、怎么验收在 [开发与验收](docs-site/content/docs/dev.mdx)。
+在途的活在 `docs-site/content/future/spec/`，别的仓投来的反馈在
 `docs-site/content/future/inbox/`。写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，
 写文档、分区、钉码怎么确认读 skill「docfirst-docs」（随插件 `@godcreator/gwb-docfirst-workflow` 发布）。
 

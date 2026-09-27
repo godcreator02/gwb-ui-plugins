@@ -1,0 +1,150 @@
+---
+title: 开发与验收
+description: 仓根的构建与检查命令、三个插件怎么打包、文档站怎么检查；提交前检查里两处必须照做的写法；在隔离 home 里用探针脚本验收界面时哪些做法可靠
+---
+
+## 怎么跑
+
+仓根是一个 pnpm 工作区，只收 `plugins/*` 下的三个插件；文档站 `docs-site/` 是独立的 pnpm 工程，自带锁文件，不在这个工作区里：
+
+{/* ref file="../pnpm-workspace.yaml" hash="5f58c488c5d6" blob="f8d284a19c7c" */}
+
+仓根的命令：
+
+```bash
+pnpm install
+pnpm build   # 依次构建 plugins/* 下的三个插件
+pnpm check   # typecheck + lint + test
+```
+
+{/* ref file="../package.json" lines="5-13" hash="d1ce7464bc74" blob="e8b8c9c72a57" */}
+
+**先 `pnpm build` 再 `pnpm check`**。React 产物测试直接读外壳的 `dist/react/`，没有产物时不跳过、直接失败；
+仓根的类型检查收了各插件的 `build.ts`，外观与基础界面的构建脚本从外壳的子路径 `browser-imports` 取名单，这个子路径的类型声明也是构建产物：
+
+{/* ref file="../plugins/shell/tests/react-bundles.test.ts" lines="10-20" hash="5ed15064a7f5" blob="9210eacf43e8" */}
+
+{/* ref file="../tsconfig.json" lines="12-12" hash="5e5478566b29" blob="d9d0376c6f99" */}
+
+另外三份产物测试（每个插件一份）在 `dist/` 不存在时整组跳过，所以没构建过时它们不报错，也什么都没查。
+
+### 三个插件怎么打包
+
+三个插件的 `build` 脚本都先运行 `build.ts`，再用 Tailwind 命令行把 `src/client/styles.css` 编成 `dist/style.css`：
+
+{/* ref file="../plugins/theme/package.json" lines="12-15" hash="6452e7b61706" blob="c5d8c5059237" */}
+
+`build.ts` 先清空 `dist/`，再用 esbuild 把 node 侧 `src/index.ts` 与浏览器侧 `src/client/index.tsx` 各打成一个文件。两个外置名单的来源不同：
+
+| 产物 | 外置哪些包名 | 从哪来 |
+| --- | --- | --- |
+| node 侧 `dist/index.js` | `electron`、`cordis`，加上包清单 peer 里的全部包名 | 读自己的 `package.json` |
+| 浏览器侧 `dist/client.js` | 外壳登记给页面的那几个包名（React 四个入口） | `Object.keys(browserImports())`，外壳读自己的源码，外观与基础界面读 `@godcreator/gwb-shell/browser-imports` |
+
+{/* ref file="../plugins/theme/build.ts" lines="10-18" hash="6069865c6024" blob="0abda5a1aaeb" */}
+
+{/* ref file="../plugins/theme/build.ts" lines="44-47" hash="9528639d0916" blob="0abda5a1aaeb" */}
+
+名单之外的依赖全部打包进产物。node 侧按值 import 了某个包却没写进 peer，产物里就多出一份它的拷贝；
+所以 `cordis` 固定外置，漏写 peer 时产物里留下包名、被发版前检查拦住。外观与基础界面的构建依赖外壳的产物，外壳没构建过它们构建不了。
+
+外壳的构建另外产出：`tsc` 只输出类型声明（包根一份，子路径 `./pane` 一份），窗格图标名单 `pane-icons.json`，
+裁掉 dockview 自带主题后的 `dockview.css`，令牌表 `theme.css` 与映射文件 `theme.reference.css`，以及 `browser-imports.js` 与 `dist/react/` 下的四个 React 文件：
+
+{/* ref file="../plugins/shell/package.json" lines="26-26" hash="270e2f5a79d5" blob="2d44c8a19401" */}
+
+{/* ref file="../plugins/shell/build.ts" lines="162-163" hash="5d30332bc8a6" blob="4dc419913506" */}
+
+### 文档站
+
+第一次先在 `docs-site/` 里 `pnpm install`。文档检查在站目录运行 `pnpm doc`（仓根的同名命令转到站目录），改了生成物的正本后运行 `pnpm doc:render`：
+
+{/* ref file="package.json" lines="12-14" hash="bdd90c568c21" blob="28f3b5ff6860" */}
+
+仓根的 `AGENTS.md`、`CLAUDE.md`、`README.md`，三个插件各自的 `README.md`，以及外壳随包发布的 `skills/gwb-shell/SKILL.md` 都是生成物，
+正本在本站 `content/docs/outputs/`，映射写在站配置里；改正本，不改生成物：
+
+{/* ref file="docfirst.config.mjs" lines="22-32" hash="095565f78f07" blob="aab9e5a51b95" */}
+
+## 提交前检查
+
+仓根 `pnpm check` 与站目录 `pnpm doc` 都要绿。改了被钉住的代码，同一个提交里在站目录 `pnpm doc:confirm`，剩下的黄灯逐条复核后 `pnpm doc:confirm <页…> --accept`。
+
+### 有意违反 lint 规则的地方：局部禁用，上一行写理由
+
+lint 是 `oxlint --type-aware --deny-warnings`，一条警告也不放过。有两处代码故意违反规则：
+
+{/* ref file="../plugins/shell/src/client/visibility.ts" lines="45-47" hash="ad9e84bf8702" blob="2d7af8a39b1e" */}
+
+{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="166-169" hash="9a2125f5e07d" blob="a1b67caf3550" */}
+
+- `unicorn/no-useless-spread`：遍历监听函数前先拷贝一份，因为监听函数收到一次通知就注销自己是正当写法，直接遍历正在被修改的集合会漏掉或重复
+- `unicorn/no-thenable`：测试故意造一个 thenable，查的正是「碰上这种对象也认得出来」
+
+这种地方用 `// oxlint-disable-next-line <规则名>` 只禁这一行，上一行写清为什么。不在 `.oxlintrc.json` 里关规则：全局配置只开类型感知和忽略目录，关掉一条规则，整个仓以后都查不到它防的那类错。
+
+{/* ref file="../.oxlintrc.json" hash="422820c061de" blob="d72d7cfc4bf5" */}
+
+### 插件自己再声明一遍 `Context` 上的服务
+
+命令总线与数据插件各自发布一份 `declare module 'cordis'`，给 `Context` 加上 `gwbCommands`、`gwbData`。在 pnpm 的 store 布局下，
+同一个 `cordis` 经两条链接路径进入类型检查，被当成两个模块，那两份声明加到了另一个 `Context` 上，`pnpm check` 报属性不存在，而代码没有错。
+
+外壳在 `src/own-context.d.ts` 里按真类型再声明一遍。这个文件不许被任何文件 import，只靠 tsconfig 的 `include` 生效；
+放进 `src/index.ts` 的话，它会随发布的 `dist/index.d.ts` 发给下游，没注入数据插件的下游也会以为 `ctx.gwbData` 一定在。
+不能用 `preserveSymlinks` 绕过：它让声明生效，但 `dockview-react` 的类型从此解析不了。
+
+{/* ref file="../plugins/shell/src/own-context.d.ts" lines="1-12" hash="653ad56c7051" blob="cf7fc7829984" */}
+
+{/* ref file="../plugins/shell/tsconfig.build.json" lines="12-13" hash="71da7fab7a21" blob="933db95e5520" */}
+
+外观不发布类型声明，同样的声明直接写在 `src/index.ts` 里：
+
+{/* ref file="../plugins/theme/src/index.ts" lines="8-17" hash="93a8f0eca9da" blob="8a696cae264c" */}
+
+外壳的产物测试守着发布的 `index.d.ts` 里没有这两个服务：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="96-101" hash="8131bc4e9402" blob="9c8cce9a0c60" */}
+
+## 验收方法
+
+界面的改动要在隔离 home 里实际打开页面验（怎么建隔离 home、装插件读说明书 `gwb-devkit`，不在 default 上试）。要量页面上的数字时写探针脚本，
+放在仓根 `probes/<时间>_<题目>/` 下，经 devkit 的 CDP 命令在页面里执行，目录里的 README 写问什么、怎么跑、结论：
+
+{/* tree dir="../probes" depth="1" hash="7d33da3c1370" */}
+
+{/* ref file="../probes/2609191127_split-sizing/README.md" lines="9-15" hash="41adb54385c8" blob="4c51ad513a9b" */}
+
+探针脚本运行时窗口通常在后台，Chromium 会节流后台窗口的动画与定时器。下面几条都由此而来，每条是「怎么做」加「不这样做会怎样」。
+
+**测颜色之前先关掉过渡**。插一张样式表再读 `getComputedStyle`：
+
+```js
+const kill = document.createElement('style')
+kill.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}'
+document.head.appendChild(kill)
+```
+
+不关的话，按钮这类带 `transition-all` 的元素读到的是过渡中间色（返回 `oklab(…)` 而不是原始的 `oklch(…)`），后台窗口里动画被节流，等多久都可能停在起点。
+只读 CSS 变量本身（`getPropertyValue('--primary')`）不受过渡影响。
+
+**等待用 `setTimeout`，不用 `requestAnimationFrame`**。后台窗口里 rAF 一次都不触发，等它的 Promise 永远不 resolve，`Runtime.evaluate` 一直不返回，CDP 超时断开。
+关掉过渡以后改完类名当场读就是终值，本来就不用等帧。
+
+**轮询的循环放在 node 侧**。每轮发一次独立的 `Runtime.evaluate`，页面里只做一次同步判断。写在页面里的 `setTimeout` 轮询在窗口没有焦点时同样被节流，React 的重新渲染也排在后面，可能 20 秒一次都等不到。
+
+**判断「这次的结果」时比对 `textContent` 的变化**，不给 DOM 加自己的属性做标记。React 更新时复用同一个节点，自己加的属性它不认识、也不会去掉，用 `:not([标记])` 等新结果永远等不到。
+
+**切 dockview 的标签要派发指针事件序列，并且放进轮询里反复点**。`.click()` 没有任何反应也不报错，它响应的是这一串事件：
+
+```js
+for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+  tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0 }))
+}
+```
+
+dockview 还没挂上事件监听时点击照样返回，窗格却不切换；所以每轮先看目标窗格的 DOM 出现没有，没出现就再点一次，点一次就去等只会等到超时。
+另外，同一组里不活动的窗格，dockview 只把它的 DOM 移出文档、不卸载组件：`querySelector` 找不到里面的元素，但它的状态与事件监听都还在。
+
+**已知限制：经 CDP 有时怎么都切不动 dockview 的标签**。上面的事件序列与 CDP `Input` 域的真实鼠标点击都试过，活动标签不变；这个现象不能稳定复现，
+人用鼠标点会不会遇到还没人试过，原因没有查明。遇到时改用状态栏的「桌面」面板或 `shell.pane.focus` 命令激活窗格，它们不经标签的点击。

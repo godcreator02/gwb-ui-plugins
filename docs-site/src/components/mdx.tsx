@@ -9,8 +9,20 @@ import { File, Files, Folder } from 'fumadocs-ui/components/files';
 import type { MDXComponents } from 'mdx/types';
 import type { ReactNode } from 'react';
 import { DocfirstPre } from '@godcreator/docfirst-workflow/fumadocs/pre';
-import { Diagram } from './diagram';
 import type { ComponentName } from './registry';
+import { SeamMap } from './seam-map/seam-map';
+import { ShellBootSteps } from './shell-boot/shell-boot';
+import { PaneMountSteps } from './pane-mount/pane-mount';
+import { OpenPaneCases } from './open-pane-cases/open-pane-cases';
+import { LayoutBootCases } from './layout-boot/layout-boot';
+import { DesktopSwitchSteps } from './desktop-switch/desktop-switch';
+import { SubsetSheets } from './subset-sheets/subset-sheets';
+import { NameIsolation } from './name-isolation/name-isolation';
+import { TokenFlow } from './token-flow/token-flow';
+import { ReactBoot } from './react-boot/react-boot';
+import { AppearanceFlow } from './appearance-flow/appearance-flow';
+import { CustomCssCases } from './custom-css-cases/custom-css-cases';
+import { UpdateReloadCases } from './update-reload/update-reload';
 
 export function Note({ children }: { children?: ReactNode }) {
   return <div className="note">{children}</div>;
@@ -21,7 +33,19 @@ const table: Record<ComponentName, MDXComponents[string]> = {
   Files,
   Folder,
   File,
-  Diagram,
+  SeamMap,
+  ShellBootSteps,
+  PaneMountSteps,
+  OpenPaneCases,
+  LayoutBootCases,
+  DesktopSwitchSteps,
+  SubsetSheets,
+  NameIsolation,
+  TokenFlow,
+  ReactBoot,
+  AppearanceFlow,
+  CustomCssCases,
+  UpdateReloadCases,
 };
 
 export function getMDXComponents(components?: MDXComponents) {

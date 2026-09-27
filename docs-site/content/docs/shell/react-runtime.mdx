@@ -1,0 +1,98 @@
+---
+title: 页面上的 React
+description: 页面上的 React 由外壳打包提供、经内核登记成浏览器模块（importmap）；插件浏览器侧的外置名单从外壳的 browserImports() 来；从主进程登记到窗格挂载完成的完整启动顺序
+---
+
+外壳和每个带界面的插件的浏览器侧代码都写 `import … from 'react'`，构建时这几个包名不打包进去，留给页面解析。
+解析由两个包分工：**内核**只提供通用的机制——主进程里登记「包名 → 本地文件地址」（`registerImports`），页面动态加载模块之前
+把登记的内容注入成 importmap（`prepareImports`），它不认识 React；**外壳**提供 React 本身——自己打包四个文件，自己登记，
+升级 React 只发外壳。为什么这样分，见内核仓的轨迹卡 `2026-09-27-browser-imports-service`。
+
+先看从主进程登记到一个窗格挂载完成的完整顺序，下面几节再逐段讲：
+
+<ReactBoot />
+
+## 外壳打包的四个文件
+
+React 没有浏览器能直接加载的 ESM 入口。外壳的 `scripts/build-react.ts` 把四个包名各打成一个 ESM 文件，放进 `dist/react/`；
+`react-dom` 的两个文件把 `react` 留成外置，由 importmap 指到同一个 `react.js`，全页只有一个 React 实例：
+
+{/* ref file="../plugins/shell/scripts/build-react.ts" lines="14-20" hash="7d1f34c97ec7" blob="dc34780ce771" */}
+
+打包时有两处必须手工处理，漏了都是构建通过、到页面上才报错：
+
+- **具名导出要逐个写出来**。React 的包是 CommonJS，入口再转发到别的文件，esbuild 从中推不出具名成员，直接打包只得到一个 `default`。
+  所以 `src/react/` 下每个入口显式列出具名导出，React 加了新 API 就补一行；少一行，用到它的窗格加载时报
+  「does not provide an export named …」，整个窗格空白：
+
+{/* ref file="../plugins/shell/src/react/react.ts" lines="1-9" hash="001dc56925c2" blob="1a895fd5054b" */}
+
+{/* ref file="../plugins/shell/src/react/react.ts" lines="48-50" hash="b0b5703c5858" blob="1a895fd5054b" */}
+
+- **`react-dom` 里的 `require('react')` 要换掉**。它在工厂函数内部调 `require`，esbuild 提不到顶层，产物里留一个 `__require` 探针，
+  浏览器里一运行就报错。构建脚本在文件头加一句 `import`，把探针换成只认 `react` 的同步解析器；认不出探针的形状就让构建失败：
+
+{/* ref file="../plugins/shell/scripts/build-react.ts" lines="22-43" hash="deaf9bb793a1" blob="dc34780ce771" */}
+
+这两处由外壳的测试读真实产物检查：
+
+{/* ref file="../plugins/shell/tests/react-bundles.test.ts" lines="18-34" hash="97cbcfaef23d" blob="9210eacf43e8" */}
+
+## browserImports()：运行时与构建共用的一份名单
+
+四个包名与文件地址只写在一处：外壳的 `browserImports()`。地址相对这个模块自己的发布产物算，所以装在哪个 home 里都指向那份外壳包：
+
+{/* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */}
+
+同一个函数有三个使用方。
+
+**运行时登记**：外壳插件加载时交给内核，先登记、再交出页面根（顺序的理由见上面演示的第二步）。两次调用都包在 `ctx.effect` 里，
+外壳卸载时登记与页面根一起撤销：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */}
+
+外壳的测试用一个假内核守住这个顺序：`setShell` 被调用时，四个名字必须已经登记过：
+
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="82-90" hash="78182bc2ab49" blob="daecac5bbe93" */}
+
+**外壳自己的构建**：浏览器侧 `client.js` 的外置名单就是它的键：
+
+{/* ref file="../plugins/shell/build.ts" lines="51-54" hash="9528639d0916" blob="4dc419913506" */}
+
+**其他插件的构建**：外壳把它单独打成 `dist/browser-imports.js`，经包的子路径 `@godcreator/gwb-shell/browser-imports` 发布
+（紧接着的一行运行上一节的 React 打包脚本）；baseui 与外观插件的 `build.ts` 从这个子路径取名单：
+
+{/* ref file="../plugins/shell/build.ts" lines="162-163" hash="5d30332bc8a6" blob="4dc419913506" */}
+
+{/* ref file="../plugins/baseui/build.ts" lines="44-47" hash="9528639d0916" blob="eac1c6c946db" */}
+
+它会在构建进程、发版检查进程里被执行，所以必须没有副作用、不依赖 Electron；上面那个文件里只有一个返回字面量的函数。
+
+## 外置名单之外的都打包进插件
+
+浏览器侧只有登记过的名字能留成裸的包名。不在名单里的库一律打包进插件自己的 `client.js`：外置了一个页面上没登记的名字，
+构建照样通过，到页面上加载时报「Failed to resolve module specifier」。外壳自己的 dockview 也是这样打包进 `client.js` 的：
+
+{/* ref file="../plugins/shell/build.ts" lines="9-13" hash="1c92206b80d2" blob="4dc419913506" */}
+
+别的插件也可以照同样的代码约定提供浏览器模块：导出一个无副作用的名单函数，在主进程里 `registerImports`。
+使用方在 peer 里写上提供方、用 cordis 的注入保证提供方先加载完成（先登记），构建时从提供方的名单取外置名。
+同一个名字只能指向一个地址：两个提供方给同名不同地址，后登记的那一方在 `registerImports` 时抛错；同名同地址算复用。
+
+## 页面怎么准备 importmap
+
+页面这一侧的做法在内核里（内核仓 `apps/desktop/src/preload.cjs` 与 `index.html`），外壳只负责在动态 import 之前调一次。
+内核的页面在 import 外壳之前调，外壳在 import 每个窗格插件的 `client.js` 之前调：
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="17-24" hash="a5a81f216f2b" blob="056b20dadf53" */}
+
+每次准备，preload 都向主进程要一份登记表快照，把还没注入过的名字写成一段新的 `<script type="importmap">` 追加进 `<head>`。
+所以外壳开机之后才登记的名字，在下一次开窗格时也能用上。同一个页面里注入过的映射不能撤销也不能改：已注入的名字在登记表里变了地址
+或被撤销（提供方卸载），准备时以 `GWB_IMPORTS_RELOAD_REQUIRED` 开头的错误拒绝，页面要整页重载（`shell.reload`）后按新的登记表重来，
+不会在旧的 React 模块还活着时悄悄换一份。
+
+## 全页一份 React 换来什么
+
+窗格契约交给插件的是一个 DOM 容器和一个挂载函数，插件在容器里自己 `createRoot`，没有 React 对象在插件之间传递，
+所以「全页同一个 React 实例」今天不是正确性的前提。它换来的是字节——带界面的插件不必各带一份 React——以及升级 React 只发外壳一个包。
+如果将来契约变成「插件交出 React 组件、由外壳来渲染」，同一个实例就成了前提：两份 React 下 hook 当场报错。

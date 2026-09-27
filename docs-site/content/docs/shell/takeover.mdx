@@ -1,0 +1,62 @@
+---
+title: 外壳怎么接管页面
+description: 外壳插件怎么拿到内核页面的 #root、准备与挂载为什么分成两段、卸载为什么必须同步；一个窗格从注册、挂载、换内容到关闭的每一步
+---
+
+内核的页面只有一个 `#root` 和一张状态页，它不认识任何界面。外壳是一个普通插件：node 侧告诉内核「页面归我」，
+浏览器侧的 `client.js` 被页面 import 之后接管 `#root`。下面这一路跨两个进程，一步一步看。
+
+<ShellBootSteps />
+
+## 准备与挂载分成两段
+
+`dispose` 随时可能来：外壳插件还在准备时就被卸载、或者又换了一个版本。所以 `mountShell` 与 `bootShell` 都把工作分成两段：
+异步的准备段只取东西、不碰页面；准备完交回一个同步的挂载段，页面上的副作用（主题类、身份标记、命令入口、React 树）都在这一段里一起出现、一起移除。
+
+{/* ref file="../plugins/shell/src/client/shell-mount.ts" hash="e4c16141fbac" blob="e8ed3731b5e6" */}
+
+这个文件就是全部规则：准备完成之前 `dispose` 的，挂载段永不执行；已经挂载的，`dispose` 当场同步卸载；`dispose` 之后才到的准备失败不再报。
+内核页面在调完旧外壳的 `dispose` 之后紧接着清空 `#root`，所以 `dispose` 返回时 React 树必须已经卸载完——卸载放进 Promise 就会晚于清空，
+React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动内核换外壳的顺序，见轨迹卡
+[换壳报错在外壳两层根治](/trajectory/2026-09-17-shell-swap-teardown-order)。
+
+## 起不来的时候
+
+准备段抛错，`#root` 上只写一句「外壳起不来：原因」，`dispose` 时连这句一起清掉：
+
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="650-661" hash="da9bfdef2c4a" blob="9b2b1fdf837c" */}
+
+会走到这里的是：`shell.env` 没回环境（命令调不通、回执不是 ok）、三张样式表有一张加载不了、注册表取不回来。注册表取失败不当成空表——
+空表的意思是「一个插件都没注册窗格」，两件事混在一起，人看到的就是一个空桌面、查不到原因。
+
+{/* ref file="../plugins/shell/src/client/panes.ts" lines="22-39" hash="c48e5e026033" blob="2530ca0a34f6" */}
+
+另外两样取不到不算起不来：布局文件读不回来就按默认布局打开、这一轮停止保存（见[多桌面与布局保存](/docs/shell/desktops#开机与挂载时从哪份布局开始)）；
+外观插件的 `theme.startupCss` 回了失败，外壳照常启动、只是不带用户外观样式，`gwb.log` 里一条 error。
+
+## 一个窗格从注册到关闭
+
+窗格插件只写两样东西：node 侧的 `registerPane`，浏览器侧导出的 `mountPane`。中间的一切——登记、开到哪、取地址、注入样式、import、换内容、清理——都由外壳做。
+
+<PaneMountSteps />
+
+这一路上几条必须这么写的地方：
+
+- **挂载时当场取注册表**，不用开窗格那一刻的快照：插件可能运行中才加载，布局文件里存的包名也可能是改名之前的。
+  注册表里没有这一条（插件卸载了）或注册时没给 `client`，窗格里显示「加载失败：原因」
+
+{/* ref file="../plugins/shell/src/client/panes.ts" lines="14-20" hash="0d94da49505d" blob="2530ca0a34f6" */}
+
+- **样式表先加载完再 import**，而且写在同一个 effect 里：顺序由代码保证，不靠两个 effect 的排列顺序。同一个地址只注入一次、之后不移除
+
+{/* ref file="../plugins/shell/src/client/asset.ts" hash="a516d6664273" blob="875b98ab0c68" */}
+
+- **怎么认 `mountPane` 的句柄**：模块上要有 `mountPane` 函数；句柄是对象、上面有 `dispose` 函数才算契约相符，没有就在窗格里报出它回的是什么；
+  `retarget` 可选；插件的 `dispose` 排进微任务、在 React 提交之外调用，抛的错交给调用方记下
+
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="55850576ccec" blob="cb15104fd072" */}
+
+- **挂载 effect 的依赖里故意没有插件参数**：面板参数每轮渲染都是新对象，放进依赖会让插件被反复卸载重挂；换内容走另一个 effect，按稳定序列化比对，
+  见[换内容：软换与硬换](/docs/shell/panes#换内容软换与硬换)
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="165-166" hash="8d2ce9da9d13" blob="056b20dadf53" */}

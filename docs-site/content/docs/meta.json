@@ -1,14 +1,3 @@
 {
-  "pages": [
-    "index",
-    "system-map",
-    "wiring",
-    "...",
-    "glossary",
-    "shell",
-    "styles",
-    "tokens",
-    "walls",
-    "outputs"
-  ]
+  "pages": ["index", "shell", "theme", "baseui", "dev", "glossary", "outputs"]
 }

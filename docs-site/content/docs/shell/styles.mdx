@@ -1,0 +1,224 @@
+---
+title: 样式隔离
+description: 一张页面上几个插件的样式怎么放在一起——令牌的值全页共享一份，工具类规则各一份、靠类名前缀互相隔离，组件共享的是源码出处；外壳自己的两张样式表；插件的样式表怎么进页面、谁来检查
+---
+
+外壳、基础界面（baseui）、外观（theme）这几个插件的界面渲染在同一个页面上，但它们分别构建、分别发版，
+装进同一个 home 运行时才第一次放在一起。浏览器给的条件是固定的：只有一个 DOM、一套级联、一个 JS 运行环境
+（一份模块缓存、一份 importmap）。「几个插件共享一套外观」对照这三条，其实是三个问题：
+
+| 共享什么 | 答案 | 凭什么 |
+| --- | --- | --- |
+| 颜色、圆角、字体这些**值** | 全页一份 | CSS 自定义属性沿 DOM 继承，`:root` 上写一次，全树读得到 |
+| 工具类这些**规则** | 各一份，而且必须互相隔离 | 每个插件按需编译，各是各的子集，放在一起会互相覆盖 |
+| 按钮、菜单这些**组件** | 共享源码的出处，不共享运行时对象 | 每个插件各自拉取 shadcn 源码、各自打包 |
+
+全页用同一个例子：baseui 的日志窗格（类名前缀 `baseui`）和外观插件的外观窗格（前缀 `theme`）同时开着，
+外壳（前缀 `shell`）画状态栏和窗格容器。React 这份 JS 运行时怎么全页只有一份，见[页面上的 React](/docs/shell/react-runtime)。
+
+## 值：全页一份
+
+外壳包里的令牌表 `theme.css` 由外壳最先注入页面，语义变量的值只在这里写：亮色在 `:root`，暗色在 `.dark`（`<html>` 上的类）。
+
+{/* ref file="../plugins/shell/src/tokens/tokens.css" lines="1-1" hash="e19065a8a9f5" blob="ce74d1a59f41" */}
+
+插件的规则里写的是 `var(--primary)`，不是某个颜色；页面上这份值一变，所有插件当场跟着变，一个都不用重新构建。
+值分几级、怎么演进、插件自己的颜色放哪，见[令牌与颜色](/docs/shell/tokens)。
+
+## 规则：各一份，必须隔离
+
+Tailwind 按需编译：用到哪个类才输出哪条规则，所以每个插件的表都是全集的一个子集，各不相同。插件的表只写
+`@layer utilities` 这一层、不声明层与层的先后：
+
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="8-8" hash="3233f667febb" blob="58e7b2609682" */}
+
+几张子集表都进了同一层。同层同权重，谁生效只看文档顺序，而文档顺序取决于哪个窗格先打开：
+
+<SubsetSheets />
+
+两张表都编对了、都加载成功了，控制台是干净的，页面上只有「这一块怎么跟我写的不一样」。所以隔离是必需的，要选的只是手段。
+
+## 隔离靠名字，不靠位置
+
+直觉上的办法是按位置隔离：把每个插件的规则改写成「只命中位于这个插件窗格容器底下的元素」。它的失效点在运行时，
+而且三种都不报错：
+
+- 浮层（下拉菜单、弹窗）由 radix 的 Portal 渲染到容器外面，一出容器整层没有样式
+- 外壳的根是每个窗格的祖先，外壳按位置限定的规则照样命中窗格里的同名元素
+- 哪张表先注入决定谁覆盖谁，这个顺序到运行时才定
+
+本仓按名字隔离：每个插件的类名从源头就带自己的前缀（`baseui:flex`、`shell:flex`），规则全页有效、与 DOM 位置无关，
+但只可能命中本插件画出的元素，因为别的插件写不出这个名字。选一条规则，看它在页面的 DOM 上命中了谁：
+
+<NameIsolation />
+
+按名字隔离只剩一种坏法：忘写前缀。而它当场看得见（那个类不生效），并且由 devkit 的样式检查拦住（见下文）。
+工具链原生支持这个做法：Tailwind 4 的 `prefix()` 写在拆开的主题导入上，shadcn 的 `components.json` 有 `tailwind.prefix`，
+组件里合并类名用的 `cn` 对带前缀的类名照样合并得对。
+
+外壳状态栏的菜单渲染在 `body` 下，照样有样式，所以外壳的 `dropdown-menu.tsx` 是官方原样，Portal 不带挂载点参数：
+
+{/* ref file="../plugins/shell/src/client/components/ui/dropdown-menu.tsx" lines="31-37" hash="9509ad3ff2e5" blob="f1d75aeb8d78" */}
+
+窗格插件的浮层渲染到所在桌面的浮层挂载点（`args.shell.portal`），为的是切桌面时跟着桌面一起隐藏，跟样式有没有无关：
+
+{/* ref file="../plugins/shell/src/client/desktop-context.ts" lines="6-19" hash="94bda74a41ae" blob="898ba65fba5e" */}
+
+以后再看到「菜单得渲染在某个容器里才有样式」这种要求，先查是不是有人把前缀隔离改回了按位置限定。
+
+## 组件：共享源头，不共享运行时
+
+两个插件的按钮长得一样，不是因为它们运行同一段代码。每个插件有自己的 `components.json`，`shadcn add` 拉下来的是这个插件
+目录里的一个 tsx 文件，跟着这个插件一起打包；颜色读的是同一份令牌。`tailwind.prefix` 让 CLI 直接写出带前缀的类名，
+拉下来的组件不用手改：
+
+{/* ref file="../plugins/baseui/components.json" lines="11-11" hash="f6a0951479f4" blob="7a64d0da68a9" */}
+
+代价是每个插件的产物里各有一份按钮的字节；得到的是一个插件改自己的按钮只改自己的文件，不用发共享包、不用等别人升级，
+也改不坏别人的。组件的写法与接入步骤在说明书 `gwb-shell` 里。
+
+## 外壳自己的两张样式表
+
+外壳除了令牌表，还往页面注入两张自己的表，规矩不同：
+
+| 产物 | 隔离方式 | 装什么 |
+| --- | --- | --- |
+| `dist/style.css` | 类名前缀，类选择器一律 `.shell\:` 开头 | 外壳自己 JSX 里的 Tailwind 类 |
+| `dist/dockview.css` | 没有，也做不了 | 裁过的 dockview 基础规则，加外壳自己的 dockview 主题 |
+
+`style.css` 跟插件用同一套前缀隔离，样式入口也是同样的五行，只是前缀是 `shell`：
+
+{/* ref file="../plugins/shell/src/client/styles.css" lines="6-10" hash="b030369852b0" blob="cbe6839d0e04" */}
+
+`dockview.css` 里的 `.dv-*` 类名由 dockview 的代码创建，改不了名也就加不上前缀；拖放指示器、浮动组又放在 `body` 下，
+按位置限定也匹配不上它们，所以整张不做隔离。devkit 的样式检查只查 `style.css`；`dockview.css` 由外壳自己的产物测试查，
+一条按位置限定的规则都不许有：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="63-69" hash="dbcdbf535d11" blob="9c8cce9a0c60" */}
+
+### dockview 的主题
+
+主题必须经 dockview 的 `theme` 选项传入。dockview 把主题类写在它自己的 `.dv-shell` 上，不传就是缺省的 `dockview-theme-abyss`，
+离元素比 `<html>` 近，会覆盖写在 `<html>` 上的值，容器整片变成深色：
+
+{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="20-34" hash="456e185668e2" blob="20e3479e96b1" */}
+
+dockview 自带的主题一套都不用：构建时凡是选择器带 `.dockview-` 的规则整条删掉（一条规则有几个选择器时只删属于它的那几个），
+用 postcss 解析，不按行猜：
+
+{/* ref file="../plugins/shell/build.ts" lines="96-117" hash="71de9ba6ef2b" blob="4dc419913506" */}
+
+不用它的主题，基础规则引用的 `--dv-*` 变量就得全部由外壳的主题表给值，漏一个是读到空值、不报错：
+
+{/* ref file="../plugins/shell/src/client/dockview-theme.css" lines="1-3" hash="05658cae90f0" blob="88651873c676" */}
+
+裁剪是每次构建都运行的代码，写坏了两头都不报错：裁多了某处没样式，裁少了它的主题悄悄覆盖外壳的值。产物测试查这两头：
+
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="75-93" hash="9bbf56d5925f" blob="9c8cce9a0c60" */}
+
+标签之间不画分隔线，标签的底色、字色与悬停全由外壳的标签组件 `GwbTab` 画。dockview 8.2.0 自己画标签分隔线的那几条规则，
+选择器匹配不上任何 DOM，`--dv-tab-divider-color` 只对固定标签的下边线、溢出菜单的分隔这些地方起作用：
+
+{/* ref file="../plugins/shell/src/client/dockview-theme.css" lines="39-40" hash="960c97748187" blob="88651873c676" */}
+
+### 容器的样子
+
+每个组是一张卡片：1px 描边、圆角取令牌 `--radius`、底色 `--background`；组与组之间的空隙与容器外圈露出更暗一点的容器底色。
+外圈留白只能是 `.dv-shell` 自己的 padding：dockview 按这个元素的 contentRect 定网格尺寸，加在它与网格根之间的任何一层，
+网格都会溢出、最右与最下的描边被裁掉。网格根自己要透明，否则遮住容器底色：
+
+{/* ref file="../plugins/shell/src/client/dockview-theme.css" lines="95-104" hash="069609ad15b7" blob="88651873c676" */}
+
+滚动条的样式也写在这张表里，这张表不限定范围，所以插件里的滚动容器用的也是这一套。
+
+### 亮暗不靠换类
+
+`--dv-*` 全部引用令牌，令牌跟着 `<html>` 上的 `dark` 类变，容器、标签条、插件里的按钮一起变，一行都不用重新构建。
+唯一按 `.dark` 单独给值的是浮动组的阴影：亮底上的阴影放到暗底上看不出来。这换的不是主题类，是外壳自己这张表按 `.dark`
+给不同的值，跟令牌表 `:root` / `.dark` 两套值是同一个做法：
+
+{/* ref file="../plugins/shell/src/client/dockview-theme.css" lines="158-161" hash="7124b38f038b" blob="88651873c676" */}
+
+### 升级 dockview 之后核对变量全集
+
+dockview 新版本的基础规则多引用一个 `--dv-*`，外壳的主题表就漏一个，漏了是读到空值、不报错。升级之后按 `build.ts` 同样的口径
+（删掉选择器全带 `.dockview-` 的规则）取剩下的基础规则，收集里面引用的 `--dv-*`，逐个对照 `dockview-theme.css` 里有没有声明。
+这项核对没有做成构建期检查：dockview 固定在 8.2.0，升级是有意的操作。
+
+## 插件的样式表怎么进页面
+
+### 样式入口那五行
+
+每个带界面的插件有一个样式入口 `src/client/styles.css`，开头五行一行都不能省，少了哪一行都是那一批类静默地编不出规则：
+
+{/* ref file="../plugins/baseui/src/client/styles.css" lines="6-10" hash="33bd996daefc" blob="58e7b2609682" */}
+
+- 第一行引入 Tailwind 的主题只为让类名解析得出来，一个变量声明都不输出；前缀写在这条拆开的导入上才生效
+- 第二行是外壳的令牌映射文件，不引它，颜色类整个是空的（为什么值与映射分两个文件，见[令牌与颜色](/docs/shell/tokens)）
+- 第三行只引工具类、不引 preflight（那是页面级的一份，在令牌表里），并关掉自动扫描；不关的话 `dist/` 里的产物也会被扫进来，
+  凭空多出一批没人用的类
+- 第四行是 `tw-animate-css`，shadcn 组件的 `animate-in` 一族出自它，不引就一条规则都不出，菜单没有过渡动画。它顺带输出的一批不带前缀的
+  `@keyframes` 与 `@property` 每张表各一份、内容相同，无害
+- 第五行指定扫描范围
+
+### 注入：等加载完成，永不移除
+
+外壳开一个窗格时，从注册表取插件注册时给的两个地址，先注入样式表并等它加载完成，再 import 脚本、调挂载函数；
+样式表加载不了就停在这一步，窗格里显示「加载失败」和那张表的地址，不带着没样式的界面继续挂载：
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="122-128" hash="9d961ccf9950" blob="056b20dadf53" */}
+
+注入样式表的函数只做两件事：等 `load` 事件，因为 `<link>` 是异步取的，插件的第一帧可能发生在样式表到之前；注入过的地址不再注入，
+也不移除，因为移除要引用计数，计错了的症状是关掉一个窗格、另一个窗格的样式跟着没了，要两个窗格同时开才复现：
+
+{/* ref file="../plugins/shell/src/client/asset.ts" hash="a516d6664273" blob="875b98ab0c68" */}
+
+从页面加载到窗格挂载完成的完整顺序，见[页面上的 React](/docs/shell/react-runtime)里的分步演示。
+
+### 窗格是容器查询的根
+
+窗格容器上跟样式沾边的只有两样东西。`@container` 让这个窗格成为容器查询的根，插件里写的 `@sm:`、`@md:` 这类变体问的是这个窗格现在有多宽，
+跟整个窗口多大无关：窗格可能被拖成 300px 的一条，也可能占满一千多像素，而窗口始终没变。`data-gwb-plugin` 只是身份标记，
+给人在开发者工具里认出这个窗格是谁的；前缀隔离下有没有它样式都一样，别把它当成样式生效的前提：
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="194-196" hash="630170c3e816" blob="056b20dadf53" */}
+
+### devkit 的样式检查
+
+前缀隔离唯一的坏法是忘写前缀，拦它的是 devkit 的样式检查：`devkit.dev` 构建之后、`devkit.release` 发版之前，对构建后有 `dist/style.css`
+的插件都查，没过的不装进 home、不发版。检查只在 devkit 里有一份（生命周期插件仓 `gwb-lifecycle-plugins` 的
+`plugins/devkit/src/style-check.ts`），本仓不留副本。它查两层：
+
+- **源码层**：样式入口所在目录下 `.tsx` 里的全部字符串字面量，按空白切开，拿去掉前缀的样式入口逐个编译，编得出规则的就是漏了前缀的类名；
+  前缀排在变体后面的写法（`hover:baseui:…`，Tailwind 不报错、一条规则都不出）也报
+- **产物层**：`dist/style.css` 里的类选择器都带本插件的前缀，只放行页面级的 `.dark`；出现 `data-gwb-plugin` 就算没过，那说明构建改回了按位置限定；
+  `var()` 不写死默认值；颜色类只用令牌（见[令牌与颜色](/docs/shell/tokens)）。没法加前缀的第三方 css 放进根选择器带本插件前缀类的 `@scope` 块，
+  块里不查前缀，根仍然靠名字
+
+它查不出的有两类。`.ts` 文件与模板串 `${…}` 里拼出来的类名不查。标记类也查不出：`group`、`peer` 这类类自己不出规则，
+只给 `group-hover:` 这类变体当祖先用；带前缀之后变体编出的选择器认的是带前缀的标记类，所以两边必须一起带前缀：
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="325-328" hash="5b044d463983" blob="a70e8f4051de" */}
+
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="340-342" hash="58da358955c3" blob="a70e8f4051de" */}
+
+上面一行加的是 `baseui:group`，下面用 `baseui:group-hover:` 引用它。标记类写成裸的 `group`，DOM 上就没有 `.baseui\:group`，
+选择器永远匹配不上，而且不报错：类名在、规则也在，只是对不上。裸的 `group` 在不带前缀的编译下也编不出规则，
+「编得出规则的就是漏了前缀」这条判据对它不起作用。
+
+## 依赖方向
+
+- 插件依赖令牌（构建期引用映射文件，运行期读页面上的变量值）和外壳（注册窗格时交出脚本与样式表两个地址）
+- 令牌表不知道有哪些插件：加一个、删一个插件，它一个字都不用改
+- 外壳不知道任何插件的类名：插件改自己的样式，外壳不用重新构建
+
+## 不做的事
+
+- **不用 Shadow DOM**：`@property` 声明在 shadow root 里被忽略，而 Tailwind 4 大量用它；弹层「点外面关掉」这类判断在 shadow 边界上问题很多；
+  而且值本来就该穿透，shadow 把值也挡在外面
+- **不共享组件库**：所有插件从一个包里 import 按钮，CSS 一点都省不下（每个插件仍要为自己用到的类编一张表），换来一条必需依赖，那个包升一次版所有插件跟着升
+- **不让每个插件自带令牌**：几个插件几份颜色值，换主题要所有插件一起重新构建、一起发版
+
+还剩一处耦合：Tailwind 内部那批 `@property` 不随前缀走，每张表各注册一遍同名的那批，以后注册的为准，所以全生态得用同一个 Tailwind 主版本。
+前缀改写 Tailwind 出厂变量名带来的字面默认值，已由令牌表接管出厂刻度解决，见[令牌国有化](/trajectory/2026-09-12-token-nationalization)。
+另一个一直要付的代价是源码里每个类多一个前缀。

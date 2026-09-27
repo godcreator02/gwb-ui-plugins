@@ -1,0 +1,45 @@
+/*
+ * SubsetSheets 自己的画面：元素的内边距示意、层里的规则列表。
+ * 卡片、胶囊与颜色变量（--dx-*）来自 @godcreator/explainer-player，画在它的 .dx 根元素里，深浅主题跟着它切换。
+ */
+.ss-scene { display: grid; gap: 10px; }
+@container (min-width: 640px) {
+  .ss-scene { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
+}
+
+.ss-tag, .ss-rule { font-family: var(--dx-mono); font-size: 12px; overflow-wrap: anywhere; }
+.ss-note { margin: 0; color: var(--dx-dim); font-size: 13px; }
+
+/* 元素：两侧的色块是左右内边距，宽度随内边距变 */
+.ss-box {
+  --dx-c: var(--dx-blue);
+  display: flex; align-items: stretch; height: 56px; border-radius: 8px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dx-c) 45%, transparent);
+  transition: border-color .3s;
+}
+.ss-box[data-ok='false'] { --dx-c: var(--dx-rose); }
+.ss-pad {
+  flex: none; transition: width .5s ease, background-color .3s;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--dx-c) 28%, transparent) 0 4px, transparent 4px 8px);
+}
+.ss-content {
+  flex: 1; display: grid; place-items: center; font-size: 12px; color: var(--dx-dim);
+  background: color-mix(in srgb, var(--dx-c) 8%, var(--dx-surface));
+}
+.ss-verdict { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+
+.ss-compiled { display: grid; gap: 10px; }
+
+/* 层里的规则：命中的一行实线边框，决定结果的那一行填淡色；不命中的调淡 */
+.ss-layer { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ss-row {
+  display: grid; grid-template-columns: 20px auto 1fr; gap: 4px 8px; align-items: center;
+  padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--dx-line);
+  transition: opacity .3s, background-color .3s, border-color .3s;
+}
+.ss-row[data-matches='true'] { border-style: solid; border-color: color-mix(in srgb, var(--dx-c) 40%, transparent); }
+.ss-row[data-matches='false'] { opacity: .5; }
+.ss-row[data-winner='true'] { background: color-mix(in srgb, var(--dx-c) 12%, transparent); }
+.ss-order { font-family: var(--dx-mono); font-size: 11px; color: var(--dx-dim); text-align: right; }
+.ss-hit { grid-column: 3; font-size: 12px; color: var(--dx-dim); }
+.ss-row[data-winner='true'] .ss-hit { color: var(--dx-c); font-weight: 600; }

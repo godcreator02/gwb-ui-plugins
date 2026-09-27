@@ -1,0 +1,33 @@
+/*
+ * 泳道图（lanes.tsx）。参与者的颜色经 data-role 给出 --dx-c，框与底色从它调淡；
+ * 这一步亮着的参与者边框加粗、底色加深，其余淡下去；箭头一律用强调色。
+ */
+.sl-scroll { min-width: 0; overflow-x: auto; }
+.sl-svg { display: block; width: 100%; height: auto; font-size: 12px; user-select: none; }
+
+.sl-band rect { fill: color-mix(in srgb, var(--dx-dim) 4%, transparent); stroke: var(--dx-line); stroke-dasharray: 4 4; }
+.sl-band text { fill: var(--dx-dim); font-size: 11px; font-weight: 600; }
+
+.sl-actor { transition: opacity .3s; }
+.sl-actor rect {
+  fill: color-mix(in srgb, var(--dx-c) 6%, var(--dx-surface));
+  stroke: color-mix(in srgb, var(--dx-c) 45%, transparent);
+  stroke-width: 1;
+  transition: fill .3s, stroke .3s, stroke-width .3s;
+}
+.sl-actor[data-lit='true'] rect { fill: color-mix(in srgb, var(--dx-c) 16%, var(--dx-surface)); stroke: var(--dx-c); stroke-width: 1.8; }
+.sl-actor[data-lit='false'] { opacity: .42; }
+.sl-name { fill: var(--dx-fg); font-weight: 600; font-size: 12.5px; }
+.sl-sub { fill: var(--dx-dim); font-family: var(--dx-mono); font-size: 10.5px; }
+.sl-actor[data-lit='true'] .sl-sub { fill: var(--dx-c); }
+
+.sl-flow { animation: sl-in .35s ease-out both; }
+.sl-flow path { fill: none; stroke: var(--dx-accent); stroke-width: 1.6; }
+.sl-flow polygon { fill: var(--dx-accent); }
+.sl-flow text { fill: var(--dx-accent); font-family: var(--dx-mono); font-size: 10.5px; paint-order: stroke; stroke: var(--dx-surface); stroke-width: 4px; }
+
+@keyframes sl-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sl-flow { animation: none; }
+  .sl-actor, .sl-actor rect { transition: none; }
+}

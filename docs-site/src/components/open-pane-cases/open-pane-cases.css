@@ -1,0 +1,81 @@
+/*
+ * 开窗格的几种情况（open-pane-cases.tsx）。组是细边框卡片，目标组用蓝色描边；标签上这次发生了什么用颜色区分：
+ * 新开绿色、激活与转正蓝色、软换琥珀色；来源标签是虚线框。颜色都取讲解播放器的角色色，深浅主题自动切换。
+ */
+.open-pane-cases .op-call { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.open-pane-cases .op-call code { font-family: var(--dx-mono); font-size: 12px; overflow-wrap: anywhere; }
+
+.open-pane-cases .op-desks { display: grid; gap: 12px; }
+@container (min-width: 720px) { .open-pane-cases .op-desks { grid-template-columns: 1fr 1fr; } }
+.open-pane-cases .op-desk-wrap { display: grid; gap: 6px; min-width: 0; }
+.open-pane-cases .op-desk-title { font-size: 12px; font-weight: 600; color: var(--dx-dim); }
+.open-pane-cases .op-desk-row { display: flex; gap: 8px; min-width: 0; }
+.open-pane-cases .op-desk {
+  position: relative; flex: 1 1 auto; min-width: 0; height: 132px; border-radius: 10px;
+  border: 1px solid var(--dx-line); background: color-mix(in srgb, var(--dx-dim) 8%, transparent);
+}
+.open-pane-cases .op-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--dx-dim); }
+.open-pane-cases .op-group {
+  position: absolute; top: 6px; bottom: 6px; padding: 5px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--dx-slate) 40%, transparent); background: var(--dx-surface);
+  box-sizing: border-box; transition: border-color .3s, background-color .3s;
+}
+.open-pane-cases .op-group[data-target='true'] {
+  border-color: var(--dx-blue); border-width: 1.5px;
+  background: color-mix(in srgb, var(--dx-blue) 6%, var(--dx-surface));
+}
+.open-pane-cases .op-group[data-born='true'] { border-style: dashed; }
+.open-pane-cases .op-group-id { position: absolute; right: 7px; bottom: 4px; font-family: var(--dx-mono); font-size: 10.5px; color: var(--dx-dim); }
+.open-pane-cases .op-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.open-pane-cases .op-tab {
+  --dx-c: var(--dx-slate);
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 6px;
+  font-size: 12px; line-height: 18px; white-space: nowrap; color: var(--dx-dim);
+  border: 1px solid color-mix(in srgb, var(--dx-c) 30%, transparent);
+}
+.open-pane-cases .op-tab[data-active='true'] { color: var(--dx-fg); background: color-mix(in srgb, var(--dx-fg) 7%, transparent); font-weight: 600; }
+.open-pane-cases .op-tab[data-source='true'] { border-style: dashed; border-color: var(--dx-dim); }
+.open-pane-cases .op-tab[data-result='new'] { --dx-c: var(--dx-emerald); }
+.open-pane-cases .op-tab[data-result='focus'], .open-pane-cases .op-tab[data-result='kept'] { --dx-c: var(--dx-blue); }
+.open-pane-cases .op-tab[data-result='retarget'] { --dx-c: var(--dx-amber); }
+.open-pane-cases .op-tab[data-result] {
+  border-color: var(--dx-c); border-width: 1.5px; color: var(--dx-c);
+  background: color-mix(in srgb, var(--dx-c) 12%, transparent); animation: dx-pop .35s ease-out both;
+}
+.open-pane-cases .op-key { font-family: var(--dx-mono); font-weight: 400; }
+.open-pane-cases .op-preview { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.open-pane-cases .op-badge {
+  font-size: 10px; font-weight: 600; padding: 0 4px; border-radius: 4px;
+  background: color-mix(in srgb, var(--dx-c) 18%, transparent); color: var(--dx-c);
+}
+.open-pane-cases .op-badge-source { --dx-c: var(--dx-slate); }
+
+.open-pane-cases .op-other {
+  flex: 0 0 30%; min-width: 0; height: 132px; border-radius: 10px; padding: 6px; display: grid; align-content: start; gap: 6px;
+  border: 1px dashed var(--dx-line); background: color-mix(in srgb, var(--dx-dim) 5%, transparent);
+}
+.open-pane-cases .op-other-name { font-size: 11px; font-weight: 600; color: var(--dx-dim); }
+.open-pane-cases .op-notice { font-size: 12px; color: var(--dx-amber); }
+
+.open-pane-cases .op-ladders { display: grid; gap: 12px; }
+@container (min-width: 720px) { .open-pane-cases .op-ladders { grid-template-columns: 1fr 1fr; } }
+.open-pane-cases .op-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.open-pane-cases .op-row {
+  display: grid; grid-template-columns: 2.6em 1fr auto; gap: 8px; align-items: baseline;
+  padding: 3px 6px; border-radius: 6px; font-size: 12.5px; transition: background-color .3s, color .3s, opacity .3s;
+}
+.open-pane-cases .op-row-label { font-family: var(--dx-mono); font-size: 11px; color: var(--dx-dim); }
+.open-pane-cases .op-row-state { font-size: 11px; white-space: nowrap; }
+.open-pane-cases .op-row[data-state='hit'] { background: color-mix(in srgb, var(--dx-accent) 12%, transparent); color: var(--dx-accent); font-weight: 600; }
+.open-pane-cases .op-row[data-state='miss'] { color: var(--dx-dim); }
+.open-pane-cases .op-row[data-state='miss'] .op-row-text { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--dx-dim) 60%, transparent); }
+.open-pane-cases .op-row[data-state='skip'], .open-pane-cases .op-row[data-state='na'] { opacity: .45; }
+.open-pane-cases .op-plan {
+  display: block; margin-top: 4px; padding: 6px 8px; border-radius: 8px; font-family: var(--dx-mono); font-size: 12px;
+  background: color-mix(in srgb, var(--dx-emerald) 8%, transparent); overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .open-pane-cases .op-tab[data-result] { animation: none; }
+}
