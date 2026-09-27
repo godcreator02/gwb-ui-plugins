@@ -1,0 +1,30 @@
+---
+title: 'md 路由的 Content-Type 补上 charset=utf-8，浏览器里看 md 才不是乱码'
+description: '来源：god-live-doc（D:\unitfolders\evew5-gwbapps\god-live-doc），2026-09-27。官方脚手架生成的 md 路由只写了 text/markdown，浏览器按 Latin-1 解码，中文全成乱码'
+docfirst: none
+---
+
+本站每页的 md（网址后加 `.md`、带 `Accept: text/markdown` 请求头、页面上的 Copy Markdown 与 Open 按钮）由下面的路由返回，
+它的响应头只写了 `'Content-Type': 'text/markdown'`，没声明字符集：
+
+- `src/app/llms.mdx/docs/[[...slug]]/route.ts`
+
+浏览器（包括 VS Code 的内置浏览器）遇到没声明字符集的文本，按 Latin-1 解码 UTF-8 字节，中文全成乱码；
+curl 与 agent 按字节读，不受影响，所以平时看不出来。`/llms.txt` 与 `/llms-full.txt` 返回的是 `text/plain; charset=UTF-8`，没有这个问题。
+
+改法：上面每个文件里把
+
+```ts
+'Content-Type': 'text/markdown',
+```
+
+改成
+
+```ts
+'Content-Type': 'text/markdown; charset=utf-8',
+```
+
+再 `pnpm build`。页面里钉了这个路由的，`docfirst check` 会报黄，复核后 `--accept`。
+
+这个路由来自官方脚手架 `create-fumadocs-app`，docfirst 插件的建站命令从 0.9.8 起在脚手架的输出上补上这一处，新建的站不再有这个问题。
+机制讲在 docfirst 仓文档站的「机读版：agent 怎么拿到一页的 md」（`/docs/fumadocs/markdown`）。
