@@ -1,91 +1,79 @@
 import { describe, expect, it } from 'vitest'
-import { acceptEntries, clockOf, isLogEntry, mergeEntries, type LogEntry } from '../../src/client/panes/logger/entries'
+import { acceptEntries, appendRows, clockOf, type LogEntry } from '../../src/client/panes/logger/entries'
 
-const at = (seq: number, patch: Partial<LogEntry> = {}): LogEntry => ({
-  seq,
-  ts: 1000 + seq,
-  source: 'plugin',
+const entry = (index: number, patch: Partial<LogEntry> = {}): LogEntry => ({
+  ts: new Date(Date.UTC(2026, 8, 27, 1, 2, 3, index)).toISOString(),
   level: 'info',
+  source: 'plugin',
   name: 'gwb-cli',
-  msg: `第 ${String(seq)} 条`,
+  msg: `第 ${String(index)} 条`,
   ...patch,
 })
 
-describe('判形', () => {
-  it('认得出一条正经条目', () => {
-    expect(isLogEntry(at(1))).toBe(true)
+describe('acceptEntries：logger.query 回执里的 entries', () => {
+  it('每条都对就原样收下，顺序不变', () => {
+    const got = acceptEntries([entry(1), entry(2, { source: 'kernel', level: 'error' })])
+    expect(got).toEqual([entry(1), entry(2, { source: 'kernel', level: 'error' })])
   })
 
-  it('少一样就不认', () => {
-    for (const key of ['seq', 'ts', 'source', 'level', 'name', 'msg']) {
-      const partial: Record<string, unknown> = { ...at(1) }
-      delete partial[key]
-      expect(isLogEntry(partial)).toBe(false)
-    }
-  })
-
-  it('source 与 level 只认那两张表里的', () => {
-    expect(isLogEntry({ ...at(1), source: 'host' })).toBe(false)
-    expect(isLogEntry({ ...at(1), level: 'trace' })).toBe(false)
-  })
-
-  it('不是对象一律不认', () => {
-    for (const v of [null, undefined, 7, 'x', []]) expect(isLogEntry(v)).toBe(false)
-  })
-
-  it('空串名字与 0 时刻是合法的', () => {
-    expect(isLogEntry(at(1, { name: '', msg: '', ts: 0 }))).toBe(true)
-  })
-})
-
-describe('收一批', () => {
-  it('挑出认得出的，坏的丢掉不崩', () => {
-    const got = acceptEntries([at(1), { 不是: '条目' }, at(2), null])
-    expect(got.map((e) => e.seq)).toEqual([1, 2])
+  it('空串名字与空消息是合法的', () => {
+    expect(acceptEntries([entry(1, { name: '', msg: '' })])).toHaveLength(1)
   })
 
   it('整份不是数组就抛错——当成空数组，界面会把「取失败」说成「还没有日志」', () => {
     expect(() => acceptEntries(undefined)).toThrow(/要是数组/)
-    expect(() => acceptEntries({ seq: 1 })).toThrow(/要是数组/)
+    expect(() => acceptEntries({ ts: 'x' })).toThrow(/要是数组/)
     expect(() => acceptEntries(null)).toThrow(/null/)
+  })
+
+  it('有一条形状不对就整批抛错，写明第几条、哪一项', () => {
+    expect(() => acceptEntries([entry(1), null])).toThrow(/第 2 条/)
+    for (const key of ['ts', 'level', 'source', 'name', 'msg']) {
+      const partial: Record<string, unknown> = { ...entry(1) }
+      delete partial[key]
+      expect(() => acceptEntries([partial])).toThrow(new RegExp(key))
+    }
+  })
+
+  it('level 与 source 只认那两张表里的', () => {
+    expect(() => acceptEntries([{ ...entry(1), level: 'trace' }])).toThrow(/level/)
+    expect(() => acceptEntries([{ ...entry(1), source: 'host' }])).toThrow(/source/)
+  })
+
+  it('ts 要是能解析的时间字符串，数字时间戳也不收', () => {
+    expect(() => acceptEntries([{ ...entry(1), ts: '不是时间' }])).toThrow(/ts/)
+    expect(() => acceptEntries([{ ...entry(1), ts: 1000 }])).toThrow(/ts/)
   })
 })
 
-describe('两段归并', () => {
-  it('接在后面', () => {
-    expect(mergeEntries([at(1)], [at(2), at(3)], 10).map((e) => e.seq)).toEqual([1, 2, 3])
+describe('appendRows：新条目接到列表后面', () => {
+  it('接在后面，行键从上一行往后数', () => {
+    const first = appendRows([], [entry(1), entry(2)], 10)
+    expect(first.map((row) => row.rowKey)).toEqual([0, 1])
+    const second = appendRows(first, [entry(3)], 10)
+    expect(second.map((row) => row.rowKey)).toEqual([0, 1, 2])
+    expect(second[2]).toMatchObject(entry(3))
   })
 
-  it('交叠那一截靠 seq 挡住——历史段与实时必然重一小段', () => {
-    const live = [at(3), at(4)]
-    const history = [at(1), at(2), at(3)]
-    expect(mergeEntries(live, history, 10).map((e) => e.seq)).toEqual([1, 2, 3, 4])
+  it('**内容一样的两条都留着**——同一毫秒两句一样的话是常事，不按内容去重', () => {
+    const same = entry(1, { msg: '同一句' })
+    expect(appendRows([], [same, same], 10)).toHaveLength(2)
   })
 
-  it('**内容一样但 seq 不同的是两条**——拿 ts|name|msg 当键会吃掉一句', () => {
-    const a = at(1, { ts: 500, msg: '同一句' })
-    const b = at(2, { ts: 500, msg: '同一句' })
-    expect(mergeEntries([a], [b], 10)).toHaveLength(2)
-  })
-
-  it('乱序进来按 seq 排好', () => {
-    expect(mergeEntries([], [at(3), at(1), at(2)], 10).map((e) => e.seq)).toEqual([1, 2, 3])
-  })
-
-  it('超了从头切，留最新那些', () => {
-    const got = mergeEntries([], [at(1), at(2), at(3), at(4)], 2)
-    expect(got.map((e) => e.seq)).toEqual([3, 4])
+  it('超过上限从头丢，留最新那些，行键不重复使用', () => {
+    const got = appendRows(appendRows([], [entry(1), entry(2)], 3), [entry(3), entry(4)], 3)
+    expect(got.map((row) => row.msg)).toEqual(['第 2 条', '第 3 条', '第 4 条'])
+    expect(got.map((row) => row.rowKey)).toEqual([1, 2, 3])
   })
 
   it('没有新的就原样返回，不白造一个数组', () => {
-    const prev = [at(1)]
-    expect(mergeEntries(prev, [], 10)).toBe(prev)
-    expect(mergeEntries(prev, [at(1)], 10)).toBe(prev)
+    const prev = appendRows([], [entry(1)], 10)
+    expect(appendRows(prev, [], 10)).toBe(prev)
   })
 })
 
-describe('时刻', () => {
-  it('到毫秒，补零', () => {
-    expect(clockOf(new Date(2026, 8, 7, 9, 5, 3, 7).getTime())).toBe('09:05:03.007')
+describe('clockOf：行首时刻', () => {
+  it('按本地时区显示到毫秒，补零', () => {
+    expect(clockOf(new Date(2026, 8, 7, 9, 5, 3, 7).toISOString())).toBe('09:05:03.007')
   })
 })

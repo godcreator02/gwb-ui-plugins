@@ -1,5 +1,7 @@
 /** 命令回执按形状收窄。插件管理窗格的 `rows.ts` 有同样的一份：窗格之间不互相 import */
 
+import { acceptEntries, type LogEntry } from './entries'
+
 export type CallResult = { ok: true; data: unknown } | { ok: false; error: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -19,16 +21,30 @@ export function asResult(value: unknown): CallResult {
   return { ok: false, error: typeof error === 'string' && error !== '' ? error : '命令失败，没有给出原因' }
 }
 
-export interface LogWhere {
-  home: string
-  logFile: string
+/** `logger.query` 的一次回执 */
+export interface LogPage {
+  /** `gwb.log` 的绝对路径 */
+  file: string
+  /** 读完时 `gwb.log` 的字节长度，下一次作为 `after` 传回去 */
+  cursor: number
+  /** 从旧到新 */
+  entries: LogEntry[]
 }
 
-/** `logger.where` 的 data：两项都是字符串，缺一项就抛错 */
-export function acceptWhere(data: unknown): LogWhere {
-  if (!isRecord(data)) throw new Error(`logger.where 的回执要是对象，收到的是 ${kindOf(data)}`)
-  const { home, logFile } = data
-  if (typeof home !== 'string') throw new Error(`logger.where 回执里的 home 要是字符串，收到的是 ${kindOf(home)}`)
-  if (typeof logFile !== 'string') throw new Error(`logger.where 回执里的 logFile 要是字符串，收到的是 ${kindOf(logFile)}`)
-  return { home, logFile }
+/** `logger.query` 的 data：三项缺一项、类型不对、entries 里有一条不对都抛错 */
+export function acceptQueryPage(data: unknown): LogPage {
+  if (!isRecord(data)) throw new Error(`logger.query 的回执要是对象，收到的是 ${kindOf(data)}`)
+  const { file, cursor, entries } = data
+  if (typeof file !== 'string') throw new Error(`logger.query 回执里的 file 要是字符串，收到的是 ${kindOf(file)}`)
+  if (typeof cursor !== 'number' || !Number.isSafeInteger(cursor) || cursor < 0) {
+    throw new Error(`logger.query 回执里的 cursor 要是非负整数，收到的是 ${typeof cursor === 'number' ? String(cursor) : kindOf(cursor)}`)
+  }
+  return { file, cursor, entries: acceptEntries(entries) }
+}
+
+/** 整份命令回执到一页日志；命令失败就把原因作为错误抛出 */
+export function readQueryReply(reply: unknown): LogPage {
+  const result = asResult(reply)
+  if (!result.ok) throw new Error(result.error)
+  return acceptQueryPage(result.data)
 }

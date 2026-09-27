@@ -11,8 +11,7 @@ import {
 } from '../../src/client/panes/logger/filter'
 
 const at = (patch: Partial<LogEntry> = {}): LogEntry => ({
-  seq: 1,
-  ts: 0,
+  ts: '2026-09-27T00:00:00.000Z',
   source: 'plugin',
   level: 'info',
   name: 'gwb-cli',

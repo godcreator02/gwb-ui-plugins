@@ -4,7 +4,7 @@ import * as baseui from '../src/index.js'
 
 /**
  * 基础界面插件的 apply：真实的 cordis 根上下文，外壳用替身；按现在的行为检查
- * 报名字、装了哪个 core 服务就注册哪个窗格、服务卸载时窗格跟着注销。
+ * 报名字、日志窗格总是注册、装了插件管理才注册插件管理窗格、服务卸载时窗格跟着注销。
  */
 
 function fakeShell() {
@@ -26,11 +26,10 @@ function fakeShell() {
   }
 }
 
-async function bootBaseui(services: { logger: boolean; pluginManager: boolean }) {
+async function bootBaseui(services: { pluginManager: boolean }) {
   const root = new Context()
   const shell = fakeShell()
   root.provide('gwbShell', shell)
-  if (services.logger) root.provide('gwbLogger', {})
   if (services.pluginManager) root.provide('gwbPluginManager', {})
   await root.plugin(baseui)
   return { root, shell }
@@ -38,17 +37,12 @@ async function bootBaseui(services: { logger: boolean; pluginManager: boolean })
 
 describe('基础界面插件 apply', () => {
   it('报一次自己的名字', async () => {
-    const { shell } = await bootBaseui({ logger: false, pluginManager: false })
+    const { shell } = await bootBaseui({ pluginManager: false })
     expect(shell.described).toEqual([{ title: '基础界面', icon: 'layout-grid' }])
   })
 
-  it('两个 core 服务都没有：一个窗格都不注册', async () => {
-    const { shell } = await bootBaseui({ logger: false, pluginManager: false })
-    expect([...shell.panes.keys()]).toEqual([])
-  })
-
-  it('只有日志服务：只注册日志窗格，地址指向同目录的 client.js 与 style.css', async () => {
-    const { shell } = await bootBaseui({ logger: true, pluginManager: false })
+  it('没有插件管理服务：只注册日志窗格，地址指向同目录的 client.js 与 style.css', async () => {
+    const { shell } = await bootBaseui({ pluginManager: false })
     expect([...shell.panes.keys()]).toEqual(['logger'])
     const logger = shell.panes.get('logger')!
     expect(logger).toMatchObject({ id: 'logger', title: '日志', icon: 'scroll-text' })
@@ -56,23 +50,34 @@ describe('基础界面插件 apply', () => {
     expect(String(logger['style'])).toMatch(/\/style\.css$/)
   })
 
-  it('两个都有：两个窗格都注册', async () => {
-    const { shell } = await bootBaseui({ logger: true, pluginManager: true })
+  it('有插件管理服务：两个窗格都注册', async () => {
+    const { shell } = await bootBaseui({ pluginManager: true })
     expect([...shell.panes.keys()].sort()).toEqual(['logger', 'plugin-manager'])
     expect(shell.panes.get('plugin-manager')).toMatchObject({ title: '插件管理', icon: 'puzzle' })
   })
 
-  it('服务后装上时补注册，服务卸载时对应窗格注销', async () => {
-    const { root, shell } = await bootBaseui({ logger: false, pluginManager: false })
-    const loggerFiber = root.plugin({
-      name: 'fake-logger',
+  it('插件管理后装上时补注册，卸载时插件管理窗格注销、日志窗格留着', async () => {
+    const { root, shell } = await bootBaseui({ pluginManager: false })
+    const pluginManagerFiber = root.plugin({
+      name: 'fake-plugin-manager',
       apply: (ctx: Context) => {
-        ctx.provide('gwbLogger', {})
+        ctx.provide('gwbPluginManager', {})
       },
     })
-    await loggerFiber
+    await pluginManagerFiber
+    expect([...shell.panes.keys()].sort()).toEqual(['logger', 'plugin-manager'])
+    await pluginManagerFiber.dispose()
     expect([...shell.panes.keys()]).toEqual(['logger'])
-    await loggerFiber.dispose()
+  })
+
+  it('插件卸载时日志窗格跟着注销', async () => {
+    const root = new Context()
+    const shell = fakeShell()
+    root.provide('gwbShell', shell)
+    const baseuiFiber = root.plugin(baseui)
+    await baseuiFiber
+    expect([...shell.panes.keys()]).toEqual(['logger'])
+    await baseuiFiber.dispose()
     expect([...shell.panes.keys()]).toEqual([])
   })
 })

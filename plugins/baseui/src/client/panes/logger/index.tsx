@@ -1,20 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
-// 页面上 `window.gwb` 的类型：内核包包根的全局声明，import 它就生效。实时日志经 `window.gwb.on` 订阅
-import type {} from '@godcreator/gwb-kernel-desktop'
-import {
-  acceptEntries,
-  clockOf,
-  LEVELS,
-  mergeEntries,
-  SOURCES,
-  type LogEntry,
-  type LogLevel,
-  type LogSource,
-} from './entries'
+import { appendRows, clockOf, LEVELS, SOURCES, type LogLevel, type LogRow, type LogSource } from './entries'
 import { countBySource, groupNames, matches, SHOW_EVERYTHING, type FilterState } from './filter'
-import { acceptWhere, asResult, type LogWhere } from './receipts'
+import { startLogPoller } from './poller'
+import { readQueryReply } from './receipts'
 import { ScrollText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,13 +18,16 @@ import {
 } from '@/components/ui/select'
 
 /**
- * 实时日志订阅页面的 `window.gwb.on`（node 侧 `gwbKernel.emit` 推送、带本插件的标记 `t`），外壳不转发、不认识日志；
- * 历史段与脚注里的路径走 `args.host` 的命令。类名一律带 `baseui:` 前缀，漏加不报错，由 `tests/prefix.test.ts` 检查。
- * 本窗格不许调用 `console`：渲染层 console 是日志来源之一，接收路径上打一条会被推回来再打，条数成倍增长、界面卡死
+ * 日志全部经 `args.host` 调 `logger.query` 拉取，只在所在桌面可见时拉。类名一律带 `baseui:` 前缀，漏加不报错，
+ * 由 `tests/prefix.test.ts` 检查。本窗格不许调用 `console`：渲染层 console 是日志来源之一，接收路径上打一条
+ * 会被写进日志文件、下一次拉取时读回来再打，条数成倍增长、界面卡死
  */
 
-/** 由渲染成本决定，不是缓冲大小；更早的去日志文件查 */
+/** 由渲染成本决定；`logger.query` 不给 `limit` 时也回最近 2000 条。更早的去日志文件查 */
 const CAP = 2000
+
+/** 可见时两次拉取的间隔 */
+const POLL_INTERVAL_MS = 1000
 
 /** 离底部多少像素以内算作吸附（跟随最新行） */
 const STICK_SLACK = 24
@@ -51,12 +44,7 @@ const SOURCE_DOT: Record<LogSource, string> = {
   renderer: 'baseui:bg-src-renderer',
 }
 
-/** 内核事件里本插件事件的标记，与 node 侧的 EVENT 是同一个字符串 */
-const EVENT = 'gwb-logger'
-const BACKLOG_COMMAND = 'logger.backlog'
-const WHERE_COMMAND = 'logger.where'
-
-const REFETCH_FAILED = '切回这个桌面时补取历史日志失败，切走期间的日志没有显示：'
+const QUERY_COMMAND = 'logger.query'
 
 const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I', debug: 'D' }
 
@@ -80,108 +68,33 @@ const ROW_TONE: Record<LogLevel, string> = {
 }
 
 function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
-  const [entries, setEntries] = useState<LogEntry[]>([])
-  /** 取历史段失败的原因。有日志时显示在列表上方，一条都没有时显示在空态里；之后补取成功就清掉 */
+  const [entries, setEntries] = useState<LogRow[]>([])
+  /** 最近一次拉取失败的原因。有日志时显示在列表上方，一条都没有时显示在空态里；下一次拉取成功就清掉 */
   const [failed, setFailed] = useState('')
-  const [where, setWhere] = useState<LogWhere | null>(null)
-  /** 取不到日志文件位置时脚注少显示路径，改显示原因 */
-  const [whereFailed, setWhereFailed] = useState('')
+  /** 回执里的 `gwb.log` 路径，第一次拉取成功之前是空串 */
+  const [logFile, setLogFile] = useState('')
   const [filter, setFilter] = useState<FilterState>(SHOW_EVERYTHING)
   const [stick, setStick] = useState(true)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    let alive = true
-    const take = (batch: unknown): void => {
-      if (!alive) return
-      // 在更新函数外面收窄：acceptEntries 会抛错，更新函数在渲染时才执行，在那里抛会让整个窗格崩掉
-      const accepted = acceptEntries(batch)
-      setEntries((prev) => mergeEntries(prev, accepted, CAP))
-    }
-    // 先订阅、后取历史：反过来会漏掉两者之间推来的条目；交叠部分靠 seq 去重
-    const off = window.gwb.on((payload) => {
-      if (payload === null || typeof payload !== 'object') return
-      const p = payload as { t?: unknown; line?: unknown }
-      // 桌面切走时收到的直接丢弃，切回时重取历史段补上
-      if (p.t === EVENT && visibleRef.current) take([p.line])
+    const poller = startLogPoller({
+      fetchPage: async (after) =>
+        readQueryReply(await args.host.call(QUERY_COMMAND, after === undefined ? {} : { after })),
+      onPage: (page) => {
+        setEntries((prev) => appendRows(prev, page.entries, CAP))
+        setLogFile(page.file)
+        setFailed('')
+      },
+      onFailure: (reason) => setFailed(`读取日志失败：${reason}`),
+      intervalMs: POLL_INTERVAL_MS,
     })
-    args.host.call(BACKLOG_COMMAND).then(
-      (res) => {
-        if (!alive) return
-        const r = asResult(res)
-        if (!r.ok) {
-          setFailed(`读取历史日志失败：${r.error}`)
-          return
-        }
-        try {
-          take(r.data)
-          setFailed('')
-        } catch (err: unknown) {
-          setFailed(`读取历史日志失败：${String(err)}`)
-        }
-      },
-      (err: unknown) => {
-        if (alive) setFailed(`读取历史日志失败：${String(err)}`)
-      },
-    )
+    const offVisibility = args.shell.onVisibility((visible) => poller.setVisible(visible))
     return () => {
-      alive = false
-      off()
+      offVisibility()
+      poller.stop()
     }
-  }, [])
-
-  const visibleRef = useRef(true)
-  useEffect(() => {
-    const off = args.shell.onVisibility((visible) => {
-      const wasVisible = visibleRef.current
-      visibleRef.current = visible
-      // 注册时外壳先回调一次当前值；只有从切走变成切回才补取，挂载时的历史段由上一个 effect 取
-      if (!visible || wasVisible) return
-      args.host.call(BACKLOG_COMMAND).then(
-        (res) => {
-          const r = asResult(res)
-          if (!r.ok) {
-            setFailed(`${REFETCH_FAILED}${r.error}`)
-            return
-          }
-          try {
-            const accepted = acceptEntries(r.data)
-            setEntries((prev) => mergeEntries(prev, accepted, CAP))
-            setFailed('')
-          } catch (err: unknown) {
-            setFailed(`${REFETCH_FAILED}${String(err)}`)
-          }
-        },
-        (err: unknown) => setFailed(`${REFETCH_FAILED}${String(err)}`),
-      )
-    })
-    return off
   }, [args.host, args.shell])
-
-  useEffect(() => {
-    let alive = true
-    args.host.call(WHERE_COMMAND).then(
-      (res) => {
-        if (!alive) return
-        const r = asResult(res)
-        if (!r.ok) {
-          setWhereFailed(`取不到日志文件位置：${r.error}`)
-          return
-        }
-        try {
-          setWhere(acceptWhere(r.data))
-        } catch (err: unknown) {
-          setWhereFailed(`取不到日志文件位置：${String(err)}`)
-        }
-      },
-      (err: unknown) => {
-        if (alive) setWhereFailed(`取不到日志文件位置：${String(err)}`)
-      },
-    )
-    return () => {
-      alive = false
-    }
-  }, [args.host])
 
   const shown = useMemo(() => entries.filter((e) => matches(e, filter)), [entries, filter])
   const counts = useMemo(() => countBySource(entries), [entries])
@@ -300,7 +213,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             size="sm"
             variant="ghost"
             className="baseui:shrink-0 baseui:text-muted-foreground"
-            title="只清空这个窗格里显示的日志，内核的日志缓冲和日志文件都不动。清掉的不会自动回来，重新打开这个窗格才会重新显示"
+            title="只清空这个窗格里显示的日志，日志文件不动。清掉的不会自动回来，重新打开这个窗格才会重新显示"
             onClick={() => setEntries([])}
           >
             清屏
@@ -324,7 +237,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       >
         {shown.map((e) => (
           <div
-            key={e.seq}
+            key={e.rowKey}
             className={`baseui:group baseui:grid baseui:grid-cols-[84px_16px_38px_minmax(72px,118px)_1fr] baseui:items-baseline baseui:gap-x-2.5 baseui:px-2.5 baseui:py-px baseui:font-mono baseui:text-[11.5px] baseui:leading-[1.5] ${ROW_TONE[e.level]}`}
           >
             <span className="baseui:tabular-nums baseui:text-muted-foreground baseui:opacity-75">{clockOf(e.ts)}</span>
@@ -379,17 +292,9 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
           {filtering ? `${shown.length} / ${entries.length} 条` : `${entries.length} 条`}
           {entries.length >= CAP ? `（已达上限 ${CAP} 条，更早的请查看日志文件）` : ''}
         </span>
-        {where !== null && (
-          <span
-            className="baseui:truncate baseui:font-mono baseui:text-[10.5px] baseui:opacity-85"
-            title={`home：${where.home}`}
-          >
-            {where.logFile}
-          </span>
-        )}
-        {whereFailed !== '' && (
-          <span className="baseui:truncate baseui:text-destructive" title={whereFailed}>
-            {whereFailed}
+        {logFile !== '' && (
+          <span className="baseui:truncate baseui:font-mono baseui:text-[10.5px] baseui:opacity-85" title={logFile}>
+            {logFile}
           </span>
         )}
       </div>
