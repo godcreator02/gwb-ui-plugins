@@ -112,7 +112,7 @@ export const shellGraph = defineSeamGraph({
       role: 'emerald',
       outside: false,
       blurb:
-        '纯函数：输入一张桌面的快照，输出这次打开该做什么（激活、到别的桌面激活、软换、开新的一份、什么都不做）。面板参数的拼法与保留键、窗格清单的整理也在这里。只有浏览器侧用，全部有单测。',
+        '纯函数：输入一张桌面的快照，输出这次打开该做什么（激活、到别的桌面激活、原地换内容、开新的一份、什么都不做）。面板参数的拼法与保留键、窗格清单的整理也在这里。只有浏览器侧用，全部有单测。',
       caps: [
         { id: 'plan-open', name: '目标组与查重', ident: 'targetGroup · planOpen' },
         { id: 'plan-send', name: '启动器与送到', ident: 'planLaunch · planSend' },
@@ -214,7 +214,7 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '插件只给 id、title、icon、client、style、kind 几样，身份（条目 id 与包名）由服务从调用方的 fiber 上取，插件报不出别人的名字。登记挂在调用方的 ctx.effect 上，插件卸载时自动注销；返回的注销函数给要提前注销的场景。',
+        '插件只给 id、title、icon、client、style、kind 几样，身份（条目 id 与包名）由服务从调用方的 fiber 上取，插件报不出别人的名字。登记放在调用方的 ctx.effect 里，插件卸载时自动注销；返回的注销函数给要提前注销的场景。',
     },
     /* ref file="../plugins/shell/src/pane-registry.ts" lines="38-43" hash="c70ded27b39a" blob="22e4ca8931ac" */
     /* ref file="../plugins/shell/src/plugin-registry.ts" lines="15-20" hash="71f696f43767" blob="ca4b3d2b73d5" */
@@ -342,7 +342,7 @@ export const shellGraph = defineSeamGraph({
         '同一个纯模块分别打包进 dist/index.js 与 dist/client.js：命令名、布局文件的形状、node 侧转给页面的动作形状都只写一份。node 侧用它校验参数、拼事件，页面用它认事件、校验读回来的布局文件。',
     },
     /* ref file="../plugins/shell/src/openable.ts" lines="89-97" hash="b783e6ec744e" blob="bb642a6dd7b3" */
-    /* ref file="../plugins/shell/src/openable.ts" lines="284-323" hash="e8d00ab74725" blob="bb642a6dd7b3" */
+    /* ref file="../plugins/shell/src/openable.ts" lines="284-323" hash="3bc017d2c454" blob="bfaa6b1a34ed" */
     {
       n: 12,
       name: '开窗格的判断',
@@ -378,7 +378,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'entryId 由 plugin-panel 从面板参数里取出来闭包绑定，插件只开得了自己条目的窗格；来源固定是调它的这一份，新窗格开在它那张桌面上、不切桌面。跨插件开窗格走命令 shell.openPane，页面上执行的是同一个函数。',
     },
-    /* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="4bd34a61e07d" blob="2d06a12a5550" */
+    /* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */
     /* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */
     {
       n: 15,
@@ -389,7 +389,7 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        'PluginPane 当场取注册表里这一条的 client 与 style，先注入样式表并等它加载完，再 prepareImports、动态 import client，调 mountPane。句柄上没有 dispose 就在窗格里报契约不符；有 retarget 就软换，没有就卸载后重新挂载。插件从子路径 @godcreator/gwb-shell/pane 用 import type 取这些类型，子路径只有类型。',
+        'PluginPane 当场取注册表里这一条的 client 与 style，先注入样式表并等它加载完，再 prepareImports、动态 import client，调 mountPane。句柄上没有 dispose 就在窗格里报契约不符；有 retarget 就调它原地换内容，没有就卸载后重新挂载。插件从子路径 @godcreator/gwb-shell/pane 用 import type 取这些类型，子路径只有类型。',
     },
     /* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
     {

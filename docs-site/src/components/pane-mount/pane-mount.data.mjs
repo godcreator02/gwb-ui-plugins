@@ -27,7 +27,7 @@ export const steps = [
     title: '注册：身份由外壳填',
     text:
       '插件在 apply 里调 registerPane，只给 id、title、icon、client、style、kind。外壳从调用方的 fiber 上取条目 id 与包名，交给窗格表检查、登记；' +
-      '登记挂在插件自己的 ctx.effect 上，插件卸载时自动注销。这一步只有主进程里的一张表变了，页面上什么都没发生。',
+      '登记放在插件自己的 ctx.effect 里，插件卸载时自动注销。这一步只有主进程里的一张表变了，页面上什么都没发生。',
     lit: ['plugin', 'svc'],
     shown: ['register'],
     marks: {},
@@ -132,7 +132,7 @@ export const steps = [
       highlight: [19, 20],
     },
   },
-  /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="131-150" hash="9c45ad554067" blob="056b20dadf53" */
+  /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="131-150" hash="fecd8be7ef65" blob="9c02be810c3b" */
   {
     title: 'mountPane：插件接手容器',
     text:
@@ -154,7 +154,7 @@ export const steps = [
         '        }',
         '        const handle = mountPane({ host, shell, pane }, container)',
         '        dispose = pickDispose(handle)',
-        '        // retarget 可选：取不到就走硬换，不是契约不符',
+        '        // retarget 可选：取不到就卸载后重新挂载，不是契约不符',
         '        retargetRef.current = pickRetarget(handle)',
         '        heldRef.current = paramsKeyOf(openParams)',
         '        mountedRef.current = true',
@@ -169,9 +169,9 @@ export const steps = [
       highlight: [138, 141],
     },
   },
-  /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="168-187" hash="ca9a4ae33899" blob="056b20dadf53" */
+  /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="168-187" hash="5a46fcf7469f" blob="9c02be810c3b" */
   {
-    title: '换内容：软换或硬换',
+    title: '换内容：原地换内容或卸载后重新挂载',
     text:
       '外壳换了这个面板的参数（预览窗格被下一次预览打开替换时）：插件给了 retarget 就调它，窗格不重新挂载；没给就卸载后重新挂载。' +
       '比较的是参数的稳定序列化（键排序后 JSON），不是对象引用——面板参数每轮渲染都是新对象。插件还没挂载完、或参数就是插件自己上报的那份时什么都不做。',
@@ -182,7 +182,7 @@ export const steps = [
       file: 'plugins/shell/src/client/PluginPane.tsx',
       start: 168,
       lines: [
-        '  /** 外壳换了面板 params：插件给了 `retarget` 就软换，没给就硬换；比稳定序列化，不比引用；没挂载完成时什么都不做 */',
+        '  /** 外壳换了面板 params：插件给了 `retarget` 就调它原地换内容，没给就卸载后重新挂载；比稳定序列化，不比引用；没挂载完成时什么都不做 */',
         '  const paramsKey = paramsKeyOf(paneParams)',
         '  useEffect(() => {',
         '    if (!mountedRef.current) return',

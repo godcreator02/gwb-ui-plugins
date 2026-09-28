@@ -12,7 +12,7 @@ type OpenCase = (typeof cases)[number];
 type Desk = OpenCase['before'];
 type Tab = Desk['groups'][number]['tabs'][number];
 
-const RESULT_TEXT: Record<string, string> = { new: '新开', focus: '激活', retarget: '软换', kept: '转正' };
+const RESULT_TEXT: Record<string, string> = { new: '新开', focus: '激活', retarget: '原地换内容', kept: '转成正式' };
 
 function TabChip({ tab }: { tab: Tab }): JSX.Element {
   const pane = panes[tab.pane];

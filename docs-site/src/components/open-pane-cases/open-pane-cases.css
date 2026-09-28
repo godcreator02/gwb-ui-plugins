@@ -1,6 +1,6 @@
 /*
  * 开窗格的几种情况（open-pane-cases.tsx）。组是细边框卡片，目标组用蓝色描边；标签上这次发生了什么用颜色区分：
- * 新开绿色、激活与转正蓝色、软换琥珀色；来源标签是虚线框。颜色都取讲解组件包的角色色，深浅主题自动切换。
+ * 新开绿色、激活与转成正式窗格蓝色、原地换内容琥珀色；来源标签是虚线框。颜色都取讲解组件包的角色色，深浅主题自动切换。
  */
 .open-pane-cases .op-call { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .open-pane-cases .op-call code { font-family: var(--dx-mono); font-size: 12px; overflow-wrap: anywhere; }
