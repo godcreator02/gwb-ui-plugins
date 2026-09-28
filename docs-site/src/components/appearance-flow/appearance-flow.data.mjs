@@ -1,6 +1,6 @@
 /**
  * 「外观设置怎么进页面」的全部讲解数据：画面（appearance-flow.tsx）与机读规则（appearance-flow.ai.mjs）都只读这一份。
- * 一个例子贯穿八步：home 里存着等宽字体与一段自定义 CSS，开机时经外壳注入页面；打开外观窗格改等宽字体、保存；
+ * 一个例子贯穿八步：home 里存着等宽字体与一段自定义 CSS，启动时经外壳注入页面；打开外观窗格改等宽字体、保存；
  * 再改正文字体、不保存就关掉窗格。每一步给出设置、这一步的调用、页面 <head> 里的样式元素与启动样式的内容。
  */
 
@@ -33,7 +33,7 @@ export const headElements = {
 };
 
 /**
- * 八步。actor 是这一步在动的那一方：settings 设置、shell 外壳、page 页面、pane 外观窗格。
+ * 八步。actor 是执行这一步的那一方：settings 设置、shell 外壳、page 页面、pane 外观窗格。
  * head 是这一步结束时 <head> 里的元素，mark 标出这一步新加（new）或内容变了（changed）的那个。
  * css 是 #gwb-theme-style 此刻的内容，null 表示页面上还没有它。
  * @typedef {'settings' | 'shell' | 'page' | 'pane'} Actor
@@ -44,7 +44,7 @@ export const headElements = {
  * @type {FlowStep[]}
  */
 /* ref file="../plugins/theme/src/index.ts" lines="112-141" hash="2429fca1d8a1" blob="8a696cae264c" */
-/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="20430d1445f0" blob="f4110e1b6678" */
+/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="c49f50da741d" blob="86c08b9d31cd" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="32-95" hash="15576f315894" blob="d52b9b51d84a" */
 export const steps = [
   {
@@ -64,10 +64,10 @@ export const steps = [
   },
   {
     id: 'ask',
-    title: '开机：外壳在 node 侧先问命令在不在',
+    title: '启动：外壳在 node 侧先问命令在不在',
     text:
-      '页面问外壳要开机环境（shell.env）。外壳 node 侧先看命令表里有没有 theme.startupCss：没装外观插件就没有这条，外壳不调，环境里就没有 startupCss 这一项。' +
-      '有才调，外观插件用 buildStartupCss 把三项现值拼成一段 CSS 回给外壳；回空白当没设置，回失败或不是字符串就记一条 error、这次开机不带启动样式。',
+      '页面问外壳要启动时的环境（shell.env）。外壳 node 侧先看命令表里有没有 theme.startupCss：没装外观插件就没有这条，外壳不调，环境里就没有 startupCss 这一项。' +
+      '有才调，外观插件用 buildStartupCss 把三项现值拼成一段 CSS 回给外壳；回空白当没设置，回失败或不是字符串就记一条 error、这次启动不带启动样式。',
     actor: 'shell',
     calls: [
       "外壳 → 命令总线：list() 里有 'theme.startupCss'",
@@ -151,7 +151,7 @@ export const steps = [
     title: '保存：theme.save 一次写齐三项',
     text:
       '点保存，窗格调 theme.save，三个键都给。外观插件先校验参数（缺键、多键、值不是字符串都回 ok:false、一项都不写），再逐项 set。' +
-      '成功后窗格把「已保存的样子」换成这一份；下次开机，外壳取到的启动样式就是它。',
+      '成功后窗格把「已保存的样子」换成这一份；下次启动，外壳取到的启动样式就是它。',
     actor: 'pane',
     calls: ["host.call('theme.save', { 'font-sans': '', 'font-mono': 'Cascadia Mono', 'custom-css': … })", 'gwbSettings.set × 3 → { ok: true }'],
     settings: savedSettings,

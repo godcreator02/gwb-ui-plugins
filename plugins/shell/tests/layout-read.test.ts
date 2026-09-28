@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { LAYOUT_VERSION, defaultDoc, initialLayoutOf } from '../src/layout.js'
 
 /**
- * 开机读布局文件：只有「文件不存在」（shell.layout.get 回 ok 且 data 是 undefined）才从默认布局开始并照常保存。
+ * 启动时读布局文件：只有「文件不存在」（shell.layout.get 回 ok 且 data 是 undefined）才从默认布局开始并照常保存。
  * 调不通、回失败、认不出都得停止保存——按默认布局打开之后排的那次防抖保存会把磁盘上真正的布局覆盖掉。
  */
 

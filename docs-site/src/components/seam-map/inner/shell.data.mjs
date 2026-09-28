@@ -301,9 +301,9 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '内核页面拿到外壳地址后先等 importmap 注入，再 import client.js，把 #root 交给默认导出 mountShell，留下它回的 dispose；换外壳时先调旧的 dispose、紧接着清空 #root。浏览器侧调命令用命令插件随外壳打包的页面客户端 command，它经内核的 commands.run 请求通道走到命令总线；node 侧转来的动作经 window.gwb.on 收。',
+        '内核页面拿到外壳地址后先等 importmap 注入，再 import client.js，把 #root 交给默认导出 mountShell，留下它回的 dispose；换外壳时先调旧的 dispose、紧接着清空 #root。浏览器侧调命令用命令插件随外壳打包的页面客户端 command，它经内核的 commands.run 请求通道到达命令总线；node 侧转来的动作经 window.gwb.on 收。',
     },
-    /* ref file="../plugins/shell/src/startup-style.ts" lines="3-22" hash="19d3ce69dbb1" blob="f4110e1b6678" */
+    /* ref file="../plugins/shell/src/startup-style.ts" lines="3-22" hash="e9946544c710" blob="86c08b9d31cd" */
     /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
     {
       n: 9,
@@ -314,7 +314,7 @@ export const shellGraph = defineSeamGraph({
       convention: true,
       via: 'code',
       text:
-        '处理 shell.env 时，命令表里有 theme.startupCss 才调它，没装外观插件不是错误；回失败或回的不是字符串就记一条 error、这次开机不带用户外观样式。页面在三张样式表之后把它写进 id 为 gwb-theme-style 的样式元素，外观窗格预览时直接改这个元素。命令名与元素 id 两边各写一份字符串，不互相 import。',
+        '处理 shell.env 时，命令表里有 theme.startupCss 才调它，没装外观插件不是错误；回失败或回的不是字符串就记一条 error、这次启动不带用户外观样式。页面在三张样式表之后把它写进 id 为 gwb-theme-style 的样式元素，外观窗格预览时直接改这个元素。命令名与元素 id 两边各写一份字符串，不互相 import。',
     },
     /* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */
     {
@@ -328,7 +328,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '服务把 browserImports() 的四个名字与地址交给内核登记，内核写进页面的 importmap。外壳自己的 client.js 与每个窗格插件都按裸名 import react，构建时外置这四个名字，运行时由 importmap 指到外壳 dist/react/ 下的同一份，所以整页只有一个 React 实例。',
     },
-    /* ref file="../plugins/shell/src/protocol.ts" hash="1329b73d1f65" blob="31064d3d17ac" */
+    /* ref file="../plugins/shell/src/protocol.ts" hash="03a2f49ea050" blob="263714d9667b" */
     /* ref file="../plugins/shell/src/layout.ts" lines="85-97" hash="75f023bdd6a8" blob="51963d44d83e" */
     {
       n: 11,
@@ -376,7 +376,7 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        'entryId 由 plugin-panel 从面板参数里取出来闭包绑定，插件只开得了自己条目的窗格；来源固定是调它的这一份，新窗格开在它那张桌面上、不切桌面。跨插件开窗格走命令 shell.openPane，页面上执行的是同一个函数。',
+        'entryId 由 plugin-panel 从面板参数里取出来闭包绑定，插件只开得了自己条目的窗格；来源固定是调它的这一份，新窗格开在它那张桌面上、不切桌面。跨插件开窗格用命令 shell.openPane，页面上执行的是同一个函数。',
     },
     /* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */
     /* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */

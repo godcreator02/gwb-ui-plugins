@@ -65,7 +65,7 @@ export function DesktopPanel({
   const [over, setOver] = useState<string | null>(null)
   const spring = useRef<number | undefined>(undefined)
   const active = desktops.find((d) => d.id === activeId)
-  // 切桌面只切到清单里的，删桌面先切走再删，开机时 active 已校验在 desktops 里
+  // 切桌面只切到清单里的，删桌面先切走再删，启动时 active 已校验在 desktops 里
   if (active === undefined) throw new Error(`[shell] 活动桌面 ${activeId} 不在桌面清单里`)
 
   /** 送到是异步的（可能要先在后台挂载容器），桌面清单不一定变，送完自己重新读取 */
@@ -141,7 +141,7 @@ export function DesktopPanel({
       autoFocus
       data-gwb-desk-rename={id}
       placeholder="桌面名（Enter 确定，Esc 取消）"
-      // 输入框在桌面那一行里，点它不冒泡成切过去
+      // 输入框在桌面那一行里，点它时不让点击冒泡到那一行、触发切桌面
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setRenaming({ id, value: e.target.value })}
       onKeyDown={(e) => {

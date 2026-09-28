@@ -23,7 +23,7 @@ export const steps = [
     title: '映射文件只说「类名查哪个变量」',
     text:
       '外壳包里的 theme.reference.css 用 @theme inline 把颜色名映射到令牌变量：--color-primary 对应 var(--primary)。' +
-      '它不输出任何变量值，只让 Tailwind 知道 bg-primary 这类类名存在、编出来引用哪个变量。',
+      '它不输出任何变量值，只让 Tailwind 知道 bg-primary 这类类名存在、编译出来引用哪个变量。',
     when: '构建时',
     cards: [
       {
@@ -36,9 +36,9 @@ export const steps = [
   },
   {
     id: 'compile',
-    title: 'baseui 编自己的表：规则里只有 var()',
+    title: 'baseui 编译自己的样式表：规则里只有 var()',
     text:
-      'baseui 的样式入口以 theme(reference) 引用这个映射文件，并在 Tailwind 主题那一行写 prefix(baseui)。编出的规则是 .baseui\\:bg-primary，' +
+      'baseui 的样式入口以 theme(reference) 引用这个映射文件，并在 Tailwind 主题那一行写 prefix(baseui)。编译出的规则是 .baseui\\:bg-primary，' +
       '值是 var(--primary)：产物里没有 :root，也没有任何一个颜色值。',
     when: '构建时',
     cards: [
@@ -64,7 +64,7 @@ export const steps = [
     id: 'inject',
     title: '页面最先加载令牌表 theme.css',
     text:
-      '外壳开机时第一个注入的是自己包里的 theme.css：先声明层顺序，再把 preflight 包进 base 层，然后是令牌的值——亮色写在 :root，暗色写在 .dark。' +
+      '外壳启动时第一个注入的是自己包里的 theme.css：先声明层顺序，再把 preflight 包进 base 层，然后是令牌的值——亮色写在 :root，暗色写在 .dark。' +
       '全页只有这一份值。',
     when: '运行时',
     cards: [
@@ -90,7 +90,7 @@ export const steps = [
     id: 'read-dark',
     title: '元素读值：<html> 上有 dark',
     text:
-      '外壳开机时给 <html> 加上 dark 类，深色是默认。baseui 元素上的 baseui:bg-primary 读 var(--primary)，沿 DOM 继承读到 .dark 那一份值。' +
+      '外壳启动时给 <html> 加上 dark 类，深色是默认。baseui 元素上的 baseui:bg-primary 读 var(--primary)，沿 DOM 继承读到 .dark 那一份值。' +
       '值不在 baseui 的产物里，所以 baseui 不知道、也不用知道它此刻是多少。',
     when: '运行时',
     cards: [

@@ -1,5 +1,5 @@
 /*
- * 布局开机的几种情况（layout-boot.tsx）：四个环节在宽屏排成一行、中间是箭头，窄屏竖排、箭头转向下。
+ * 桌面挂载时从哪份布局开始的几种情况（layout-boot.tsx）：四个环节在宽屏排成一行、中间是箭头，窄屏竖排、箭头转向下。
  */
 .layout-boot .lb-flow { display: grid; gap: 8px; }
 @container (min-width: 760px) {

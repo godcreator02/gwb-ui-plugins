@@ -1,8 +1,8 @@
 'use client';
 /**
- * 「外观设置怎么进页面」：分步讲一个例子从 home 里的设置、经外壳开机注入页面，到外观窗格预览、保存、不保存就关掉。
+ * 「外观设置怎么进页面」：分步讲一个例子从 home 里的设置、经外壳在启动时注入页面，到外观窗格预览、保存、不保存就关掉。
  * 四块画面各管一方：设置（amber）、这一步的调用、页面 <head> 里的样式（cyan）、#gwb-theme-style 的内容（emerald），
- * 外观窗格（violet）在最下面。这一步在动的那一方标上「这一步」。讲解文字与数据都在 appearance-flow.data.mjs。
+ * 外观窗格（violet）在最下面。执行这一步的那一方标上「这一步」。讲解文字与数据都在 appearance-flow.data.mjs。
  */
 import type { JSX, ReactNode } from 'react';
 import { CodeLines, Diff, Pane, Pill, Stepper } from '@godcreator/docfirst-explainer';

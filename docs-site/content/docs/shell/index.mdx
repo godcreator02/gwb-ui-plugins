@@ -52,7 +52,7 @@ full: true
 | --- | --- | --- |
 | `shell.panes` | 此刻的窗格注册表 `[{ id, title, icon?, client?, style?, kind, entryId, pkg }]`，按注册先后 | 外壳的页面；跨插件开窗格前查 `entryId` 的插件 |
 | `shell.plugins` | 报过名字的插件 `[{ title, icon?, entryId, pkg }]` | 状态栏「新建」的分组名；基础界面的插件管理窗格 |
-| `shell.env` | 页面开机要的环境 `{ home, styles, startupCss?, versions }` | 外壳的页面 |
+| `shell.env` | 页面每次启动时要的环境 `{ home, styles, startupCss?, versions }` | 外壳的页面 |
 | `shell.layout.get`、`shell.layout.save` | 读布局文件；整份替换，写之前校验形状 | 外壳的页面 |
 | `shell.reload` | 整页重载全部窗口 | 插件管理窗格升级之后；agent |
 | `shell.desktop.list`、`switch`、`new`、`rename`、`delete` | 桌面，见[多桌面](/docs/shell/desktops#命令shelldesktop) | agent、别的插件 |
@@ -65,7 +65,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/index.ts" lines="66-80" hash="d96b8db56c97" blob="d8029385df74" */}
 
-{/* ref file="../plugins/shell/src/protocol.ts" lines="3-11" hash="97be36846ef2" blob="31064d3d17ac" */}
+{/* ref file="../plugins/shell/src/protocol.ts" lines="3-11" hash="41e7a219853b" blob="263714d9667b" */}
 
 {/* ref file="../plugins/shell/src/layout.ts" lines="3-5" hash="97d3d72076c8" blob="51963d44d83e" */}
 
@@ -117,7 +117,7 @@ full: true
 | 出口 | 是什么 |
 | --- | --- |
 | `.` | node 侧服务与三个类型 |
-| `./theme.css` | 令牌表，页面开机加载的第一张样式表，见[令牌](/docs/shell/tokens) |
+| `./theme.css` | 令牌表，页面启动时加载的第一张样式表，见[令牌](/docs/shell/tokens) |
 | `./theme.reference.css` | 类名映射，插件的样式入口构建时引它，见[令牌](/docs/shell/tokens) |
 | `./pane` | 只有类型：窗格插件 `mountPane` 用到的那几个 |
 | `./browser-imports` | 四个 React 入口的名字到地址，见[React 运行时](/docs/shell/react-runtime) |
@@ -134,7 +134,7 @@ full: true
 | 内核服务 `gwbKernel`（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，构造时经 `requireKernel` 取；peer 只为 `import type` | `setShell` 接管页面根、`registerImports` 登记 React、`emit` 把动作推给页面；`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
 | `cordis` | peer，按值 import `Service` 基类 | 外壳服务的基类，用宿主那一份 | — |
 | 命令插件的页面客户端 `@godcreator/gwb-commands/client` | 打包进 `client.js` | 浏览器侧调命令：经内核的 `commands.run` 请求通道走到命令总线；交给窗格插件的 `host.call` 就是它 | — |
-| 外观插件的 `theme.startupCss` | 按名字调，不写 peer | 开机时取用户外观样式 | 没装外观插件照常启动，只是不带用户外观样式 |
+| 外观插件的 `theme.startupCss` | 按名字调，不写 peer | 启动时取用户外观样式 | 没装外观插件照常启动，只是不带用户外观样式 |
 
 注册发生在主进程里，摆放窗格在页面上，注册表只能经命令传过去：内核自己一条命令都没有，也不认识任何插件的命令名。
 所以命令总线是必需依赖——没有它，外壳就是一个打不开任何窗格的空容器，不如不加载。
@@ -145,7 +145,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/vocab.ts" lines="3-10" hash="9ad006ba233b" blob="1f37046cda5d" */}
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-12" hash="e3416c5d582f" blob="f4110e1b6678" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-12" hash="7131cd7aca9a" blob="86c08b9d31cd" */}
 
 打包进产物的库（dockview、lucide 图标全集、radix 与 shadcn 的组件、React）写在 dev 里，不是运行时依赖。
 

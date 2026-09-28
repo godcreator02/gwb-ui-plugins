@@ -214,7 +214,7 @@ export default class GwbShell extends Service implements GwbShellApi {
       commandBus,
       {
         name: ENV_COMMAND,
-        description: '外壳浏览器侧开机要的环境（home、样式表的地址、用户外观样式、版本）',
+        description: '外壳浏览器侧每次启动时要的环境（home、样式表的地址、用户外观样式、版本）',
         usage:
           '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
       },
@@ -408,7 +408,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
   }
 
-  /** @internal 窗格不在注册表里当场回错，不转发一个注定没动静的动作；在表里也只是转发 */
+  /** @internal 窗格不在注册表里当场回错，不转发一个注定不会生效的动作；在表里也只是转发 */
   private registerOpenPaneCommand(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,

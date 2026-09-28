@@ -22,7 +22,7 @@ export const steps = [
   {
     title: '切之前',
     text:
-      '一张桌面一个 dockview 容器，容器挂载后常驻。开机只挂载活动那张（d1）；d2 从没去过，它的容器还没挂载，开着什么只记在布局文件里。' +
+      '一张桌面一个 dockview 容器，容器挂载后常驻。启动时只挂载活动那张（d1）；d2 从没去过，它的容器还没挂载，开着什么只记在布局文件里。' +
       '点状态栏「桌面」面板里的「桌面 2」，外壳调 switchTo(\'d2\')。',
     active: 'd1',
     wrote: false,
@@ -34,7 +34,7 @@ export const steps = [
   {
     title: '先改 active，立刻整份写一次',
     text:
-      '先把活动桌面改成 d2（wellHub 里的那份当场生效，这之后开的窗格落在新桌面上），把 d2 加进要挂载的清单，再立刻整份保存布局：此刻 d1 的容器还活着，' +
+      '先把活动桌面改成 d2（wellHub 里的那份当场生效，这之后开的窗格落在新桌面上），把 d2 加进要挂载的清单，再立刻整份保存布局：此刻 d1 的容器还在，' +
       'toJSON 读到的是它当下的样子；d2 还没挂载，照抄文件里存的那份。shell.desktop.list 读的是磁盘上的文件，先写它才不会回上一轮的旧数据。',
     active: 'd2',
     wrote: true,
@@ -58,7 +58,7 @@ export const steps = [
   {
     title: 'React 提交：切显隐，d2 第一次挂载',
     text:
-      'd1 的 section 加上 visibility:hidden、pointer-events:none 与 inert：只是看不见、点不到，DOM、定时器、订阅都还活着。' +
+      'd1 的 section 加上 visibility:hidden、pointer-events:none 与 inert：只是看不见、点不到，DOM、定时器、订阅都还在运行。' +
       'd2 的 section 显示出来，它的容器第一次挂载，用文件里存的那份布局恢复，查询窗格这时才加载插件；插件在 mountPane 里订阅 onVisibility，订阅那一刻先收到一次当下的值 true。',
     active: 'd2',
     wrote: false,

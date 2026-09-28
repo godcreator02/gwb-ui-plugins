@@ -55,7 +55,7 @@ export interface WellHub {
   deskOps(): DeskOps | undefined
   /**
    * 所有桌面上开着的窗格，按桌面顺序：已挂载的从容器读，没挂载过的从保存的布局读。
-   * 桌面清单缺省问注入的桌面操作，还没注入时抛错；开机时容器的 onReady 比注入早，由调用方传入
+   * 桌面清单缺省问注入的桌面操作，还没注入时抛错；启动时容器的 onReady 比注入早，由调用方传入
    */
   entries(rows?: readonly DesktopRow[]): PaneEntry[]
 }
@@ -106,7 +106,7 @@ function groupsOf(api: DockviewApi): readonly GroupLike[] {
   return api.groups as unknown as readonly GroupLike[]
 }
 
-/** 换行符不会出现在条目 id 与窗格 id 里，拿它拼键不会重 */
+/** 换行符不会出现在条目 id 与窗格 id 里，用它拼键不会重复 */
 function paneKindKey(entryId: string, paneId: string): string {
   return `${entryId}\n${paneId}`
 }
@@ -179,7 +179,7 @@ export function createWellHub(): WellHub {
       // 订阅在 addWell 之后才建、在 removeWell / clearWells 之前注销
       if (api === undefined) throw new Error(`[shell] 给桌面 ${desktopId} 记组的激活顺序时它的容器不在——订阅没跟着容器一起注销`)
       const existingGroupIds = new Set(groupsOf(api).map((group) => group.id))
-      // 顺手去掉已经不在的组，顺序表不会越记越长
+      // 同时去掉已经不在的组，顺序表不会越记越长
       const olderGroupIds = (recentGroupsByDesktop.get(desktopId) ?? []).filter((id) => id !== groupId && existingGroupIds.has(id))
       recentGroupsByDesktop.set(desktopId, [groupId, ...olderGroupIds])
     },

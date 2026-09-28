@@ -101,7 +101,7 @@ Tailwind 按需编译：用到哪个类才输出哪条规则，所以每个插�
 主题必须经 dockview 的 `theme` 选项传入。dockview 把主题类写在它自己的 `.dv-shell` 上，不传就是缺省的 `dockview-theme-abyss`，
 离元素比 `<html>` 近，会覆盖写在 `<html>` 上的值，容器整片变成深色：
 
-{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="20-34" hash="456e185668e2" blob="20e3479e96b1" */}
+{/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="20-34" hash="60e126ef8663" blob="b9c17458b839" */}
 
 dockview 自带的主题一套都不用：构建时凡是选择器带 `.dockview-` 的规则整条删掉（一条规则有几个选择器时只删属于它的那几个），
 用 postcss 解析，不按行猜：

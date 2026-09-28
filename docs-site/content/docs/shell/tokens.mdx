@@ -7,10 +7,10 @@ description: 外壳包里的令牌表：值与映射为什么是两个文件、�
 
 | 文件 | 谁用、什么时候用 | 里面是什么 |
 | --- | --- | --- |
-| `@godcreator/gwb-shell/theme.css` | 外壳开机时第一个注入页面 | 层顺序声明、preflight、令牌的值（亮色 `:root`、暗色 `.dark`）、两条全页默认规则 |
+| `@godcreator/gwb-shell/theme.css` | 外壳启动时第一个注入页面 | 层顺序声明、preflight、令牌的值（亮色 `:root`、暗色 `.dark`）、两条全页默认规则 |
 | `@godcreator/gwb-shell/theme.reference.css` | 每个带界面的插件构建时引用 | 类名到令牌变量的映射，一个值都不输出 |
 
-跟着 baseui 元素上的一个 `baseui:bg-primary` 走一遍，看它在构建时与运行时各经过哪几处：
+以 baseui 元素上的一个 `baseui:bg-primary` 为例，看它在构建时与运行时各经过哪几处：
 
 <TokenFlow />
 
@@ -34,7 +34,7 @@ description: 外壳包里的令牌表：值与映射为什么是两个文件、�
 {/* ref file="../plugins/shell/src/tokens/theme.reference.css" lines="55-77" hash="e68be57f7dd5" blob="f5bcf4c3f472" */}
 
 映射键名以 Tailwind 某个版本的出厂 `theme.css` 为准，升 Tailwind 大版本时先照文件头那行核一遍键名。
-为什么把出厂刻度收进令牌表，见[令牌国有化](/trajectory/2026-09-12-token-nationalization)。
+为什么把出厂刻度收进令牌表，见[出厂刻度收进令牌表](/trajectory/2026-09-12-token-nationalization)。
 
 ## 层顺序与 preflight 为什么由令牌表管
 

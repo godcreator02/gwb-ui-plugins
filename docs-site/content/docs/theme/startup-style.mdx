@@ -1,10 +1,10 @@
 ---
 title: 外观设置怎么进页面
-description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 #gwb-theme-style 走哪几步、为什么排在外壳三张表之后；外观窗格怎么预览与退回；用户自定义 CSS 为什么能压过令牌与插件工具类；亮暗开关走哪条路
+description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 #gwb-theme-style 经过哪几步、为什么排在外壳三张表之后；外观窗格怎么预览与退回；用户自定义 CSS 为什么能压过令牌与插件工具类；亮暗开关怎么生效
 ---
 
-外观设置跨了三处：设置存在 node 侧，启动样式由外壳在开机时取、在页面上注入，外观窗格又在页面上直接改它。
-下面用同一个例子走一遍：这个 home 存着等宽字体 `Consolas, monospace` 与一段把底色换掉的自定义 CSS，打开外观窗格把等宽字体改成
+外观设置跨了三处：设置存在 node 侧，启动样式由外壳在启动时取、在页面上注入，外观窗格又在页面上直接改它。
+下面用同一个例子从头看一遍：这个 home 存着等宽字体 `Consolas, monospace` 与一段把底色换掉的自定义 CSS，打开外观窗格把等宽字体改成
 `Cascadia Mono` 并保存，再填一个正文字体、不保存就关掉窗格。
 
 <AppearanceFlow />
@@ -18,10 +18,10 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="b956510a4aab" blob="8d8ecbfb40b8" */}
 
-外壳 node 侧取启动样式时先问命令在不在：没装外观插件时不调，因为调一条不在的命令，命令总线会记一条 warn，没装可选插件却每次开机都留一条；
+外壳 node 侧取启动样式时先问命令在不在：没装外观插件时不调，因为调一条不在的命令，命令总线会记一条 warn，没装可选插件却每次启动都留一条；
 回空白当用户没设置；命令在却回失败或回的不是字符串，也当没有，外壳照常启动、只记一条 error：
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-22" hash="832189c40baa" blob="f4110e1b6678" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-22" hash="f9112e54b6b6" blob="86c08b9d31cd" */}
 
 外壳的测试检查两种情况：命令表里没有这条就不调；有而且回了非空字符串，`shell.env` 带上它：
 
@@ -29,17 +29,17 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 
 {/* ref file="../plugins/shell/tests/service.test.ts" lines="248-252" hash="33751f4d10e3" blob="daecac5bbe93" */}
 
-外观插件比外壳晚加载、开机那一刻命令表里还没有这条命令时，这一次开机不带启动样式，下一次整页重新加载就有了。
+外观插件比外壳晚加载、启动那一刻命令表里还没有这条命令时，这一次启动不带启动样式，下一次整页重新加载就有了。
 为什么查在外壳的 node 侧、不在页面上查，见[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
 
-窗格的预览与开机注入用的是同一个 `buildStartupCss`，所以预览看到的就是重启后的样子。预览只改页面，点保存才写回设置：
+窗格的预览与启动时的注入用的是同一个 `buildStartupCss`，所以预览看到的就是重启后的样子。预览只改页面，点保存才写回设置：
 
 {/* ref file="../plugins/theme/src/client/index.tsx" lines="70-95" hash="a8cd03f87127" blob="d52b9b51d84a" */}
 
 ## 自定义 CSS 跟谁比
 
-启动样式整段不分层，排在外壳三张表之后。两条规则抢同一个属性时，浏览器先比在不在 `@layer` 里，再比选择器特异性，最后比文档顺序。
-选一条跟它抢同一个属性的规则，看它怎么比：
+启动样式整段不分层，排在外壳三张表之后。两条规则设置同一个属性时，浏览器先比在不在 `@layer` 里，再比选择器特异性，最后比文档顺序。
+选一条跟它设置同一个属性的规则，看它怎么比：
 
 <CustomCssCases />
 
@@ -53,6 +53,6 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 {/* ref file="../plugins/theme/src/index.ts" lines="79-85" hash="3ee4e3ede971" blob="8a696cae264c" */}
 
 **亮暗开关不经过外观插件。** 状态栏的按钮只给 `<html>` 加上或去掉 `dark` 类，令牌表里 `.dark` 那套值随之生效，不重新构建、不存进设置；
-每次开机外壳先加上 `dark`，深色是默认。想让自定义 CSS 只改暗色，就写在 `.dark` 上。
+每次启动外壳先加上 `dark`，深色是默认。想让自定义 CSS 只改暗色，就写在 `.dark` 上。
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="625-627" hash="9c4d32f6722d" blob="9b2b1fdf837c" */}

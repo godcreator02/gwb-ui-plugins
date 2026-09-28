@@ -255,7 +255,7 @@ const seams = [
     via: 'disk',
     text: '插件的样式入口在构建期引用外壳的映射文件，bg-primary 这类类名编成 var(--primary)、不输出变量值；值在运行时读外壳最先注入的令牌表。',
   },
-  /* ref file="../plugins/shell/src/startup-style.ts" lines="3-11" hash="c260ba1c5533" blob="f4110e1b6678" */
+  /* ref file="../plugins/shell/src/startup-style.ts" lines="3-11" hash="0320654d56d7" blob="86c08b9d31cd" */
   /* ref file="../plugins/theme/src/client/index.tsx" lines="15-16" hash="cad6e1e036ba" blob="d52b9b51d84a" */
   /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-4" hash="a668bd572a85" blob="20e3479e96b1" */
   {

@@ -51,7 +51,7 @@ React 没有浏览器能直接加载的 ESM 入口。外壳的 `scripts/build-re
 
 {/* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */}
 
-外壳的测试用一个假内核守住这个顺序：`setShell` 被调用时，四个名字必须已经登记过：
+外壳的测试用一个假内核检查这个顺序：`setShell` 被调用时，四个名字必须已经登记过：
 
 {/* ref file="../plugins/shell/tests/service.test.ts" lines="82-90" hash="78182bc2ab49" blob="daecac5bbe93" */}
 
@@ -93,9 +93,9 @@ React 没有浏览器能直接加载的 ESM 入口。外壳的 `scripts/build-re
 {/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="17-24" hash="a5a81f216f2b" blob="056b20dadf53" */}
 
 每次准备，preload 都向主进程要一份登记表快照，把还没注入过的名字写成一段新的 `<script type="importmap">` 追加进 `<head>`。
-所以外壳开机之后才登记的名字，在下一次开窗格时也能用上。同一个页面里注入过的映射不能撤销也不能改：已注入的名字在登记表里变了地址
+所以外壳启动之后才登记的名字，在下一次开窗格时也能用上。同一个页面里注入过的映射不能撤销也不能改：已注入的名字在登记表里变了地址
 或被撤销（提供方卸载），准备时以 `GWB_IMPORTS_RELOAD_REQUIRED` 开头的错误拒绝，页面要整页重载（`shell.reload`）后按新的登记表重来，
-不会在旧的 React 模块还活着时悄悄换一份。
+不会在旧的 React 模块还在使用时悄悄换一份。
 
 ## 全页一份 React 换来什么
 

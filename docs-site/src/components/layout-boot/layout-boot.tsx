@@ -1,6 +1,6 @@
 'use client';
 /**
- * 「一张桌面挂载时从哪份布局开始、要不要写盘」：选一种情况，四个环节排成一行（窄屏竖排），
+ * 「一张桌面挂载时从哪份布局开始、要不要写入磁盘」：选一种情况，四个环节排成一行（窄屏竖排），
  * 每个环节写这种情况下它得到什么，最后一行是状态栏上看得到什么。内容全在 layout-boot.data.mjs。
  */
 import type { JSX } from 'react';
@@ -19,7 +19,7 @@ function valueOf(item: BootCase, stageId: string): string {
   if (stageId === 'initial') return item.initial;
   if (stageId === 'boot') return item.boot;
   if (stageId === 'disk') return item.disk;
-  throw new Error(`布局开机图没有环节「${stageId}」`);
+  throw new Error(`「桌面挂载时从哪份布局开始」图没有环节「${stageId}」`);
 }
 
 function Picture({ item }: { item: BootCase }): JSX.Element {

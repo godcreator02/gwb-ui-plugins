@@ -9,7 +9,7 @@ import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 /* ref file="../plugins/theme/src/startup-css.ts" lines="16-26" hash="0403e4a4a171" blob="694ae7e05e50" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="12-27" hash="9c62cc1f0537" blob="d52b9b51d84a" */
 /* ref file="../plugins/theme/src/client/values.ts" hash="5310c8bb18ce" blob="855b1447cb2e" */
-/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="20430d1445f0" blob="f4110e1b6678" */
+/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="c49f50da741d" blob="86c08b9d31cd" */
 /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
 export const themeGraph = defineSeamGraph({
   id: 'theme',
@@ -31,7 +31,7 @@ export const themeGraph = defineSeamGraph({
         '启动样式从 node 侧到页面侧是外壳自己经 shell.env 的回执传过去的，本包不经手。',
       caps: [
         { id: 'shell-register', name: '窗格注册', ident: 'registerPane · describeSelf' },
-        { id: 'shell-env', name: '开机取启动样式', ident: 'shell.env → startupCss()' },
+        { id: 'shell-env', name: '启动时取启动样式', ident: 'shell.env → startupCss()' },
         { id: 'shell-pane', name: '打开窗格', ident: 'PluginPane → mountPane' },
         { id: 'shell-apply', name: '写进页面', ident: 'applyStartupCss' },
       ],
@@ -135,7 +135,7 @@ export const themeGraph = defineSeamGraph({
     },
     {
       n: 3,
-      name: '开机取启动样式',
+      name: '启动时取启动样式',
       a: ['shell-env'],
       b: ['startup'],
       iface: "list() 里有 theme.startupCss 才 run('theme.startupCss') → { ok, data: string }",
@@ -143,7 +143,7 @@ export const themeGraph = defineSeamGraph({
       via: 'code',
       text:
         '外壳不 import 本包（本包把外壳写在 peer 里，反过来会成环），命令名两边各写一份字符串。外壳先问命令表里有没有这条，没有就不调；' +
-        '回空白当没设置，回失败或回的不是字符串就这次开机不带启动样式、记一条 error。',
+        '回空白当没设置，回失败或回的不是字符串就这次启动不带启动样式、记一条 error。',
     },
     {
       n: 4,
@@ -209,7 +209,7 @@ export const themeGraph = defineSeamGraph({
       convention: true,
       via: 'code',
       text:
-        '外壳开机时把启动样式写进这个元素，外观窗格预览时按同一个 id 找到它改内容，没有就新建一个追加到 head 末尾。' +
+        '外壳启动时把启动样式写进这个元素，外观窗格预览时按同一个 id 找到它改内容，没有就新建一个追加到 head 末尾。' +
         'id 两边各写一份、不互相 import；页面上始终只有一个。',
     },
   ],

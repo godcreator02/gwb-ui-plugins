@@ -4,7 +4,7 @@
 export const PANES_COMMAND = 'shell.panes'
 export const PLUGINS_COMMAND = 'shell.plugins'
 
-/** 浏览器侧开机问一次的环境 */
+/** 浏览器侧每次启动时取一次的环境 */
 export const ENV_COMMAND = 'shell.env'
 
 /** 页面专用：页面把所有桌面上开着的窗格推给 node 侧缓存，`shell.pane.list` 读这份缓存；别的调用方推进来就改写了 list 的回执 */

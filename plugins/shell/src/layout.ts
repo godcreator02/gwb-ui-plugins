@@ -96,12 +96,12 @@ export function parseLayoutDoc(raw: unknown): LayoutDoc | null {
   return { v: LAYOUT_VERSION, active, desktops, saved }
 }
 
-/** 第一次开机、读不回布局文件时用：一张「桌面 1」，layout 为 null */
+/** 第一次启动、读不回布局文件时用：一张「桌面 1」，layout 为 null */
 export function defaultDoc(): LayoutDoc {
   return { v: LAYOUT_VERSION, active: 'd1', desktops: [{ id: 'd1', name: '桌面 1', layout: null }], saved: [] }
 }
 
-/** 开机从哪份布局开始；`saveBlockedBy` 有值时 doc 是默认布局，这一轮不能保存，否则会覆盖磁盘上那份读不回来的 */
+/** 启动时从哪份布局开始；`saveBlockedBy` 有值时 doc 是默认布局，这一轮不能保存，否则会覆盖磁盘上那份读不回来的 */
 export interface InitialLayout {
   doc: LayoutDoc
   saveBlockedBy?: string
@@ -113,8 +113,8 @@ function versionLabelOf(data: unknown): string {
 }
 
 /**
- * `shell.layout.get` 的结果（`Promise.allSettled` 的一项）→ 开机用的布局。只有回 ok、`data` 是 undefined
- * （gwbData 对不存在的文档回 undefined）才算第一次开机；调不通、回失败、认不出都停止保存
+ * `shell.layout.get` 的结果（`Promise.allSettled` 的一项）→ 启动时用的布局。只有回 ok、`data` 是 undefined
+ * （gwbData 对不存在的文档回 undefined）才算第一次启动；调不通、回失败、认不出都停止保存
  */
 export function initialLayoutOf(settled: PromiseSettledResult<unknown>): InitialLayout {
   if (settled.status === 'rejected') {

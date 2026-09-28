@@ -230,7 +230,7 @@ describe('entries：切换器与 shell.pane.list 的清单', () => {
     expect(() => createWellHub().entries()).toThrow('桌面清单')
   })
 
-  it('传入桌面清单就照它读，不等注入（开机时容器的 onReady 比注入早）', () => {
+  it('传入桌面清单就照它读，不等注入（启动时容器的 onReady 比注入早）', () => {
     const hub = createWellHub()
     hub.addWell('d1', oneGroup([pane('plugin:e1:main')]))
     expect(hub.entries([{ id: 'd1', name: '桌面 1', layout: null }]).map((e) => [e.desktop, e.instance])).toEqual([

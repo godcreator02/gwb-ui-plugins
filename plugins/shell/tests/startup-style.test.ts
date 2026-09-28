@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { startupCss, THEME_STARTUP_COMMAND } from '../src/startup-style.js'
 
 /**
- * 开机外观样式：主题插件是可选的。要检查的是「总线上没这条命令就不调」——调了，总线就记一条
- * 「调用了不存在的命令」，没装主题插件的每个 home 每次开机都多这一条。
+ * 启动时的用户外观样式：主题插件是可选的。要检查的是「总线上没这条命令就不调」——调了，总线就记一条
+ * 「调用了不存在的命令」，没装主题插件的每个 home 每次启动都多这一条。
  */
 
 type Reply = { ok: boolean; data?: unknown; error?: string }

@@ -50,7 +50,7 @@ export function apply(ctx: GwbContext) {
 实际运行时带着 `home:` 前缀（`home:hello`）——loader 把插件的条目嵌在内核那条 include 下面。**这个前缀不能去掉**：注册表按它登记、
 开窗格按它判断「哪几个窗格属于这条条目」，改短了就跟注册表对不上，症状是不报错地匹配到错的窗格。
 
-外壳的测试守着这两点：注册表带上调用方的条目 id 与包名；调用方卸载时它登记的窗格与名字自动注销：
+外壳的测试检查这两点：注册表带上调用方的条目 id 与包名；调用方卸载时它登记的窗格与名字自动注销：
 
 {/* ref file="../plugins/shell/tests/service.test.ts" lines="177-183" hash="59ee590789a8" blob="daecac5bbe93" */}
 
@@ -132,7 +132,7 @@ dockview 的 `components` 表是「组件名 → React 组件」，外壳的全�
 
 {/* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */}
 
-**插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格走命令，
+**插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格用命令，
 见[跨插件开窗格](#跨插件开窗格shellopenpane)。
 
 {/* ref file="../plugins/shell/src/client/plugin-panel.tsx" lines="27-32" hash="27aa25925692" blob="009542d6cc55" */}
@@ -154,12 +154,12 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 
 {/* ref file="../plugins/shell/src/client/tsconfig.pane-types.json" hash="c7f305108782" blob="9af4ced4f1d4" */}
 
-这几点由产物测试的「子路径 ./pane」一组守着：
+这几点由产物测试的「子路径 ./pane」一组检查：
 
 {/* ref file="../plugins/shell/tests/artifact.test.ts" lines="132-181" hash="8ac2fe309ca9" blob="9c8cce9a0c60" */}
 
 不从主入口 `@godcreator/gwb-shell` 导出：主入口的声明是 node 侧的，引着 cordis、内核包、命令插件与数据插件的类型，浏览器侧引它就得把这些都列进 dev；
-而 `ShellBridge.portal` 是 `HTMLElement`，node 侧的类型检查没有 DOM。选型经过见轨迹卡[窗格入口类型走子路径](/trajectory/2026-09-24-pane-types-subpath)。
+而 `ShellBridge.portal` 是 `HTMLElement`，node 侧的类型检查没有 DOM。选型经过见轨迹卡[窗格入口的类型从子路径导出](/trajectory/2026-09-24-pane-types-subpath)。
 
 ## 开一个窗格：落在哪、做什么
 
@@ -172,15 +172,15 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 - **本桌优先**：开窗格只看一张桌面——有来源开在来源那张，否则开在当前那张。文档窗格在别的组、别的桌面开着同一内容都不算命中；
   跨桌面的只有工具窗格的查重与实例 id 的查重。插件与命令开窗格从不切桌面。判据见轨迹卡[本桌优先](/trajectory/2026-09-19-desk-first)与
   [目标组取代按份数分档](/trajectory/2026-09-19-target-group)
-- **最近激活顺序只在运行时记**：组被激活、标签被拖进某一组都算，恢复布局之后才开始记，不存盘，整页重载后从空开始
-- **新标签插在目标组活动标签的右边**：dockview 不给位置就追加到组末尾，所以位置由判断算好。摆放永远带参照组：只给方向的放法会放到整个容器的边上、所有组重新分宽度，外壳不走那条
+- **最近激活顺序只在运行时记**：组被激活、标签被拖进某一组都算，恢复布局之后才开始记，不写入磁盘，整页重载后从空开始
+- **新标签插在目标组活动标签的右边**：dockview 不给位置就追加到组末尾，所以位置由判断算好。摆放永远带参照组：只给方向的放法会放到整个容器的边上、所有组重新分宽度，外壳不用这种放法
 
 「右边紧挨着」按组的矩形判，所以组嵌套成什么样都一样判：
 
 {/* ref file="../plugins/shell/src/openable.ts" lines="171-195" hash="2bbf1ba46c0b" blob="bb642a6dd7b3" */}
 
 **要新建组时只把基准组对半分，别的组不动**。dockview 的 `addPanel` 带参照组新建组，不给尺寸时同一排全部均分，给了宽度又从这一排最右那组扣。
-外壳走 dockview 拖放那条路：先把新窗格当不激活的标签开进基准组，再 `moveTo` 到它右边，只切基准组一半。基准组在一列里（上下叠放）时，
+外壳照 dockview 拖放时的做法：先把新窗格当不激活的标签开进基准组，再 `moveTo` 到它右边，只切基准组一半。基准组在一列里（上下叠放）时，
 dockview 把它包进新的横向分支，会少算一份组间缝的高度，切完按「2×原高−现高」把高度补回去：
 
 {/* ref file="../plugins/shell/src/client/open.ts" lines="285-297" hash="fd5aaed4e3cb" blob="c3574996f7de" */}
@@ -289,11 +289,11 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 
 ## 跨插件开窗格：`shell.openPane`
 
-插件手里的 `args.shell` 只开得了自己那几个窗格；要打开别人的窗格走命令，比如块笔记的查询与日记插件在自己的窗格里点一块，
+插件手里的 `args.shell` 只开得了自己那几个窗格；要打开别人的窗格用命令，比如块笔记的查询与日记插件在自己的窗格里点一块，
 打开块笔记核心插件的阅读窗格：先经 `shell.panes` 找到那个窗格的条目 id，再调 `shell.openPane`，带上自己的 `pane.instance` 作 `from`。
 
 「插件报不出别人的窗格」防的是冒充（注册时身份不由自己报、开窗格时条目 id 闭包绑定），不防经命令总线请别人打开窗格：
-命令总线本来就是插件之间的接口，开窗格不比卸载插件这类命令更敏感。决策经过见轨迹卡[跨插件开窗格走命令](/trajectory/2026-09-13-open-pane-command)。
+命令总线本来就是插件之间的接口，开窗格不比卸载插件这类命令更敏感。决策经过见轨迹卡[跨插件开窗格用命令](/trajectory/2026-09-13-open-pane-command)。
 
 {/* ref file="../plugins/shell/src/open-pane.ts" lines="46-89" hash="cf81344d96f9" blob="4b59d533f10f" */}
 
@@ -302,7 +302,7 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 - 页面执行的是插件开自己窗格的同一个函数：注册表当场取、判断照旧，`key`、`preview`、`params`、`placement` 的语义没有另写一份
 - `from` 是来源窗格的实例 id：新窗格开在它那张桌面上、以它为来源选组；不带 `from`，或页面上哪张桌面都找不到它，就当没有来源、开在当前桌面（后一种 console 里一条 warn）
 
-{/* ref file="../plugins/shell/src/index.ts" lines="411-437" hash="e8cc57dd508c" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="411-437" hash="09d4a436a2bb" blob="b690758191bd" */}
 
 ## 窗格命令：`shell.pane.*`
 
@@ -315,7 +315,7 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 
 {/* ref file="../plugins/shell/src/pane-actions.ts" lines="7-13" hash="9fb2651eeda4" blob="fb1659d884db" */}
 
-**node 侧没有窗格清单**：页面每次保存布局时（外加容器挂载完成时与开机时）把所有桌面上开着的窗格连同桌面表推给 node 侧缓存（`shell.pane.sync`，页面专用，
+**node 侧没有窗格清单**：页面每次保存布局时（外加容器挂载完成时与启动时）把所有桌面上开着的窗格连同桌面表推给 node 侧缓存（`shell.pane.sync`，页面专用，
 别的调用方推进来就是改写了 `list` 的回执）。已挂载的桌面从容器当场读，没挂载过的从已保存的布局读。`list` 读这份缓存，最多慢一个防抖窗口（400ms），
 页面还没推过就回空表；`kind` 在 node 侧按注册表补，插件卸载了就是 `tool`。focus、send、close 转发之前拿缓存检查实例与目标桌面在不在，认不出当场回错；
 回执 ok 只代表转发了。

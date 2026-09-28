@@ -24,10 +24,10 @@ export const THEME_CLASSES = ['dockview-theme-gwb']
 export const GWB_THEME: DockviewTheme = {
   name: 'gwb',
   className: THEME_CLASSES.join(' '),
-  // 与开机时给 <html> 加的 dark 类一致
+  // 与启动时给 <html> 加的 dark 类一致
   colorScheme: 'dark',
-  // 组间缝只用 gap；外圈留白走 .dv-shell 自身的 padding。别在 .dv-shell 与 .dv-grid-view 之间加内衬：
-  // 网格根被写成 .dv-shell 的 contentRect 尺寸，多出的 padding 会溢出裁边
+  // 组间缝只用 gap；外圈留白走 .dv-shell 自身的 padding。别在 .dv-shell 与 .dv-grid-view 之间加内边距：
+  // 网格根被写成 .dv-shell 的 contentRect 尺寸，多出的 padding 会溢出、边缘被裁掉
   gap: 8,
   // 拖放落点整块高亮：标签是填色的，细线看不清
   dndTabIndicator: 'fill',

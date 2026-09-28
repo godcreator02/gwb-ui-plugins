@@ -171,7 +171,7 @@ export const steps = [
     title: '开一个 baseui 的窗格',
     text:
       '外壳从注册表取 baseui 注册时给的两个地址，先写上身份标记，再注入它的样式表并等 load，然后再准备一次 importmap——' +
-      '外壳开机之后才登记的名字这时追加成新的一段——最后 import 它的 client.js 并调 mountPane。baseui 的 react 同样解析到外壳包里那一份。' +
+      '外壳启动之后才登记的名字这时追加成新的一段——最后 import 它的 client.js 并调 mountPane。baseui 的 react 同样解析到外壳包里那一份。' +
       '样式表加载不了就停在这一步，窗格里显示「加载失败」和那张表的地址。',
     lane: 'page',
     code: {
@@ -201,7 +201,7 @@ export const steps = [
     title: '已注入的名字变了：整页重载',
     text:
       '提供方卸载（登记被撤销）或以别的文件地址重新登记之后，登记表里某个已注入的名字跟页面上注入时的地址对不上。' +
-      '下一次 prepareImports 以 GWB_IMPORTS_RELOAD_REQUIRED 开头的错误拒绝：页面上已经加载的 React 模块还活着，不能悄悄改指向。' +
+      '下一次 prepareImports 以 GWB_IMPORTS_RELOAD_REQUIRED 开头的错误拒绝：页面上已经加载的 React 模块还在使用，不能悄悄改指向。' +
       '这时外壳加载失败、或窗格显示加载失败，要整页重载（shell.reload）后按新的登记表重新来。',
     lane: 'preload',
     registry: [['react', 'gwb-shell/dist/react/react.js（已撤销或换了地址）'], ...REACT_NAMES.slice(1)],
