@@ -74,6 +74,7 @@ export interface ShellBridge {
    *
    * `options.params` 用来**让开出来的几份彼此不同**：它原样传给那一份的
    * `mountPane`（`pane.params`），并且随布局保存、重启后还在，所以必须可 JSON 序列化。
+   * 这张桌面上命中已开的那一份时，这次的 params 整份换上、经 `retarget` 交给它（跟它手上的一样就不调）。
    * 与外壳保留键（`pluginKey`、`entryId`、`paneId`、`icon`、`key`、`preview`）重名的键打开时摘掉，
    * console 里 warn 一句。
    */

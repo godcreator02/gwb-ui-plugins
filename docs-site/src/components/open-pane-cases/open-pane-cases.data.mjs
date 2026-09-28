@@ -27,11 +27,11 @@ export const sideRule = {
  * 查重与结论，按 planOpen 的顺序；kinds 是这一条对哪类窗格适用
  * @type {{ id: string, kinds: ('tool' | 'document')[], text: string }[]}
  */
-/* ref file="../plugins/shell/src/openable.ts" lines="284-323" hash="3bc017d2c454" blob="bfaa6b1a34ed" */
+/* ref file="../plugins/shell/src/openable.ts" lines="308-347" hash="08bfda374334" blob="66ecfea342ee" */
 export const checks = [
-  { id: 'tool-desk', kinds: ['tool'], text: '这张桌面任何一组里有同一窗格、同一 key → 激活它，在哪组就在哪组（是预览、这次正式打开 → 顺带转成正式窗格）' },
-  { id: 'tool-else', kinds: ['tool'], text: '本桌没有、别的桌面上有 → 到那张桌面激活它（reveal）' },
-  { id: 'doc-group', kinds: ['document'], text: '只在目标组里找同一 key → 激活它（是预览、这次正式打开 → 顺带转成正式窗格）' },
+  { id: 'tool-desk', kinds: ['tool'], text: '这张桌面任何一组里有同一窗格、同一 key → 激活它，在哪组就在哪组；这次带了 params 就整份交给它（是预览、这次正式打开 → 顺带转成正式窗格）' },
+  { id: 'tool-else', kinds: ['tool'], text: '本桌没有、别的桌面上有 → 到那张桌面激活它（reveal），params 不交' },
+  { id: 'doc-group', kinds: ['document'], text: '只在目标组里找同一 key → 激活它；这次带了 params 就整份交给它（是预览、这次正式打开 → 顺带转成正式窗格）' },
   { id: 'retarget', kinds: ['tool', 'document'], text: '没找到、要 preview、目标组里有这个窗格的预览窗格 → 原地换内容' },
   { id: 'new', kinds: ['tool', 'document'], text: '都没有 → 在目标组开新的一份，插在活动标签右边；要 preview 就标成预览' },
 ];

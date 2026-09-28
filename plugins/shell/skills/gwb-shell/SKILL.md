@@ -80,7 +80,7 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 
    `placement: 'side'` 跳过前两条，直接按第三条开到调用方右边。`key` 是这份内容的身份，目标组里已开着同一 `key`
    的就激活那一份，别的组、别的桌面开着的不算；`params` 原样交给那一份的 `mountPane`（`args.pane.params`），
-   并随布局保存；`preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容。
+   并随布局保存；激活已开的那一份时，这次的 `params` 跟它手上的不一样就经第 3 步交给它（同一篇文档这次要定位到别处就这样传）；`preview: true` 开成预览窗格，同一组里下一次预览打开会原地换掉它的内容。
    `key` 取内容本身的身份（文件路径、记录 id），不要用插件里的计数器：整页重载后插件模块重新加载、计数器归零，
    新开的一份会和布局里恢复出来的旧份用上同一个 `key`，目标组里有那一份时打开的就是旧的那份、不开新的。
    打开别的插件的窗格用命令 `shell.openPane`，带上 `from`（自己的 `args.pane.instance`）才按上面的规则算；
@@ -93,7 +93,7 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    - 在同类文档窗格里单击：本窗格原地换内容，换完调 `setPaneContent`
    - 在别的窗格里单击：`openPane(…, { preview: true })`
    - Ctrl / ⌘ + 单击或中键：`openPane(…)`，不要预览，开一个新标签并激活它
-   - Ctrl / ⌘ + Alt / ⌥ + 单击：`openPane(…, { placement: 'side' })`
+   - Ctrl / ⌘ + Alt / ⌥ + 单击，或 Shift + 单击：`openPane(…, { placement: 'side' })`
    - 悬停或点记号弹出的浮动卡片预览由插件自己画，不开窗格
 
 **完成**：两个不同 `key` 开出两份，各自拿到自己的 `params`；从同一个窗格再打开同一 `key` 是激活已开的那份；

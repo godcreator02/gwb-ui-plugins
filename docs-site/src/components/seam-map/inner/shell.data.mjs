@@ -342,7 +342,7 @@ export const shellGraph = defineSeamGraph({
         '同一个纯模块分别打包进 dist/index.js 与 dist/client.js：命令名、布局文件的形状、node 侧转给页面的动作形状都只写一份。node 侧用它校验参数、拼事件，页面用它认事件、校验读回来的布局文件。',
     },
     /* ref file="../plugins/shell/src/openable.ts" lines="89-97" hash="b783e6ec744e" blob="bb642a6dd7b3" */
-    /* ref file="../plugins/shell/src/openable.ts" lines="284-323" hash="3bc017d2c454" blob="bfaa6b1a34ed" */
+    /* ref file="../plugins/shell/src/openable.ts" lines="308-347" hash="08bfda374334" blob="66ecfea342ee" */
     {
       n: 12,
       name: '开窗格的判断',
@@ -378,7 +378,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'entryId 由 plugin-panel 从面板参数里取出来闭包绑定，插件只开得了自己条目的窗格；来源固定是调它的这一份，新窗格开在它那张桌面上、不切桌面。跨插件开窗格用命令 shell.openPane，页面上执行的是同一个函数。',
     },
-    /* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */
+    /* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */
     /* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */
     {
       n: 15,

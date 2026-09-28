@@ -23,7 +23,7 @@ export type Placement = 'auto' | 'side'
 export interface OpenPaneOptions {
   /** 这一份装的内容，外壳不解释；已开的几份里找得到就激活那一份（文档窗格只找目标组，工具窗格找这张桌面）。不给等于空串 */
   key?: string
-  /** 必须可 JSON 序列化：它随布局保存、重启后原样交给 `mountPane`。聚焦时不生效，原地换内容时整份换上 */
+  /** 必须可 JSON 序列化：它随布局保存、重启后原样交给 `mountPane`。命中已开的那一份、原地换内容时都整份换上；别的桌面上的工具窗格只激活、不换 */
   params?: Record<string, unknown>
   /** 找不到时放进目标组的预览窗格：已有就原地换内容，没有就新开一份标成预览。每组每个窗格至多一份 */
   preview?: boolean
@@ -243,6 +243,18 @@ function focusPlanFor(tab: DeskTab, wantsPreview: boolean): OpenPlan {
   return tab.preview && !wantsPreview ? { kind: 'focus', id: tab.id, keep: true } : { kind: 'focus', id: tab.id }
 }
 
+/**
+ * 这张桌面上已经开着同一 key 的那一份，这次又带了 params：把这次的 params 整份交给它（原地换内容），插件才知道这一次要落在哪
+ * （同一篇文档、定位到另一处）。跟插件手上的一样时换内容那一步认得出来、不调插件。预览窗格被正式打开同样顺带转正
+ */
+function alreadyOpenPlanFor(tab: DeskTab, spec: OpenableSpec, options: OpenPaneOptions | undefined, who: PaneDef): OpenPlan {
+  const wantsPreview = options?.preview === true
+  if (options?.params === undefined) return focusPlanFor(tab, wantsPreview)
+  const notice = reservedKeysNotice(options, who)
+  const specWithParams = withPluginParamsAndIdentity(spec, options.params, tab.key, tab.preview && wantsPreview)
+  return { kind: 'retarget', id: tab.id, params: panelParamsOf(specWithParams), ...(notice === undefined ? {} : { notice }) }
+}
+
 function revealPlanFor(openElsewhere: OtherInstance, wantsPreview: boolean): OpenPlan {
   return {
     kind: 'reveal',
@@ -282,8 +294,8 @@ function reservedKeysNotice(options: OpenPaneOptions | undefined, who: PaneDef):
 }
 
 /**
- * 先算目标组，再按窗格类别查重：同一 key 已经开着（工具窗格查整张桌面，文档窗格只查目标组）就激活它，正式打开时找到的是
- * 预览窗格就顺带转成正式窗格；工具窗格开在别的桌面上就到那张桌面激活它；要预览、目标组里已有这个窗格的预览窗格就原地换内容；
+ * 先算目标组，再按窗格类别查重：同一 key 已经开着（工具窗格查整张桌面，文档窗格只查目标组）就激活它、这次带了 params 就交给它，
+ * 正式打开时找到的是预览窗格就顺带转成正式窗格；工具窗格开在别的桌面上就到那张桌面激活它；要预览、目标组里已有这个窗格的预览窗格就原地换内容；
  * 都不是才开新的一份
  */
 export function planOpen(
@@ -302,7 +314,7 @@ export function planOpen(
   const target = targetGroup(desk, def, options?.placement === 'side' ? 'side' : 'auto', context.from)
   const groupInDesk = groupOfTarget(desk, target)
   const alreadyOpen = alreadyOpenTab(spec, desk, groupInDesk, wantedKey)
-  if (alreadyOpen !== undefined) return focusPlanFor(alreadyOpen, wantsPreview)
+  if (alreadyOpen !== undefined) return alreadyOpenPlanFor(alreadyOpen, spec, options, who)
   const openElsewhere = spec.kind === 'tool' ? context.elsewhere?.(def, wantedKey) : undefined
   if (openElsewhere !== undefined) return revealPlanFor(openElsewhere, wantsPreview)
   const notice = reservedKeysNotice(options, who)

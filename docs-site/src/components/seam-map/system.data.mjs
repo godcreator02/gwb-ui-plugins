@@ -221,7 +221,7 @@ const seams = [
     via: 'code',
     text: '带界面的插件在 node 侧登记窗格、报自己的名字；条目 id 与包名由外壳从调用方的上下文里取，插件卸载时自动注销。基础界面把外壳写进 inject，外观局部注入外壳。',
   },
-  /* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */
+  /* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */
   {
     n: 11,
     name: '窗格挂载',

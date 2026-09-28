@@ -126,11 +126,11 @@ dockview 的 `components` 表是「组件名 → React 组件」，外壳的全�
 | `pane.instance` | 这一份的实例 id，全页唯一，可以当全局键 |
 | `pane.params` | 挂载这一刻这一份的参数；开的时候没传就没有这一项 |
 
-{/* ref file="../plugins/shell/src/client/types.ts" lines="63-113" hash="8dd323daf0bd" blob="bc396d6362c9" */}
+{/* ref file="../plugins/shell/src/client/types.ts" lines="63-114" hash="b5b683c6a08f" blob="652a917f98da" */}
 
 外壳同步调用 `mountPane`、收下它回的句柄；句柄与参数的类型：
 
-{/* ref file="../plugins/shell/src/client/types.ts" lines="115-151" hash="24553ab6e550" blob="bc396d6362c9" */}
+{/* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */}
 
 **插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格用命令，
 见[跨插件开窗格](#跨插件开窗格shellopenpane)。
@@ -173,6 +173,8 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
   跨桌面的只有工具窗格的查重与实例 id 的查重。插件与命令开窗格从不切桌面。判据见轨迹卡[本桌优先](/trajectory/2026-09-19-desk-first)与
   [目标组取代按份数分档](/trajectory/2026-09-19-target-group)
 - **最近激活顺序只在运行时记**：组被激活、标签被拖进某一组都算，恢复布局之后才开始记，不写入磁盘，整页重载后从空开始
+- **命中已开的那一份时，这次的 `params` 整份交给它**：走下面「换内容」那一节同一条路，插件给了 `retarget` 就原地换。同一 key 的参数一样时换内容那一步认得出来、不调插件；
+  参数不一样通常是「同一篇文档、这次要定位到另一处」，不交过去，插件就不知道这一次要落在哪。别的桌面上的工具窗格只激活、不交参数
 - **新标签插在目标组活动标签的右边**：dockview 不给位置就追加到组末尾，所以位置由判断算好。摆放永远带参照组：只给方向的放法会放到整个容器的边上、所有组重新分宽度，外壳不用这种放法
 
 「右边紧挨着」按组的矩形判，所以组嵌套成什么样都一样判：
@@ -185,7 +187,7 @@ dockview 把它包进新的横向分支，会少算一份组间缝的高度，�
 
 {/* ref file="../plugins/shell/src/client/open.ts" lines="285-297" hash="fd5aaed4e3cb" blob="c3574996f7de" */}
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="387-393" hash="a44bbc4c5196" blob="bb642a6dd7b3" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="399-405" hash="a44bbc4c5196" blob="66ecfea342ee" */}
 
 判断在 `planOpen` 里，执行侧（`open.ts`）只按判断的种类分派成 dockview 调用。读快照、算实例 id、`addPanel` 必须在同一段同步代码里，中间不能插 `await`，
 否则两次并发打开会算出同一个 id。
@@ -211,7 +213,7 @@ dockview 把它包进新的横向分支，会少算一份组间缝的高度，�
 
 ## 换内容：原地换内容或卸载后重新挂载
 
-外壳换掉一个窗格的面板参数（预览窗格被替换）之后，**插件给了 `retarget` 就调它、原地换内容，没给就卸载后重新挂载**。
+外壳换掉一个窗格的面板参数（预览窗格被替换、已开的那一份被带着参数再打开一次）之后，**插件给了 `retarget` 就调它、原地换内容，没给就卸载后重新挂载**。
 判的是句柄上有没有这个函数：
 
 ```ts
@@ -268,10 +270,10 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 | 单击（在同类文档窗格里） | 这个窗格原地换内容 | 自己换，换完调 `setPaneContent` |
 | 单击（在别的窗格里） | 预览 | `openPane(…, { preview: true })` |
 | Ctrl / ⌘ + 单击，或中键 | 开一个新标签并激活它 | `openPane(…)`，不要预览、`placement` 缺省 |
-| Ctrl / ⌘ + Alt / ⌥ + 单击 | 开到旁边 | `openPane(…, { placement: 'side' })` |
+| Ctrl / ⌘ + Alt / ⌥ + 单击，或 Shift + 单击 | 开到旁边 | `openPane(…, { placement: 'side' })` |
 | 悬停或点记号 | 浮动卡片预览，不开窗格 | 插件自己画 |
 
-参考的是 Obsidian、Chrome、VS Code 与 Notion 的同类手势。Shift+单击暂不分配含义（那两个产品里是新窗口，外壳还没有独立窗口），见[路线](/future/roadmap)。
+参考的是 Obsidian、Chrome、VS Code 与 Notion 的同类手势。Shift+单击在 Chrome 与 Obsidian 里是新窗口，外壳没有独立窗口，就给了更常用的「开到旁边」，一只手按得到。
 
 ## 参数与保留键
 
@@ -285,7 +287,8 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 插件传了这几个键会被**移除**并出一条 console 警告——不是用外壳的值悄悄覆盖，那种现象从插件那头查不回来。反过来，插件拿到的 `pane.params` 也不含它们。
 代价是插件不能拿 `key`、`preview` 当自己的参数名；换来的是身份跟着面板参数一起保存，整页重载之后外壳照旧认得出哪一份装着什么、哪一份是预览窗格。
 
-打开命中已开的那一份（聚焦）时 `params` 不生效：那一份装的本来就是这个内容，改参数只会让磁盘上的文件跟界面上正在运行的那份对不上。
+打开命中已开的那一份时，这次的 `params` 整份换上、经「换内容」交给插件，所以磁盘上的布局跟界面上正在运行的那份仍然一致；
+一次性的东西（这次定位到哪）放进参数里的，插件落完之后用 `setPaneContent` 报回不带它的那份，下一次同样的定位才又是一次变化。
 
 ## 跨插件开窗格：`shell.openPane`
 

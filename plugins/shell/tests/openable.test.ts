@@ -595,11 +595,11 @@ describe('planOpen 的 params：插件说这一份装的是什么', () => {
     expect(paramsOf(planOpen(docCounter, undefined, ctx(empty), who))).toEqual({ ...counter.params, key: '' })
   })
 
-  it('不给 key 等于空串：「没给 key」不是特例，第二次点同一个窗格照样是聚焦', () => {
+  it('不给 key 等于空串：「没给 key」不是特例，第二次点同一个窗格照样命中那一份', () => {
     const d = desk([group('g1', [tab(BASE, '')], col(0))])
     expect(planOpen(docCounter, undefined, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
     // 默认布局打开的那一份身上也没有 key，所以它跟「插件不给 key 开的那一份」是同一个窗格
-    expect(planOpen(docCounter, { params: { file: 'a.md' } }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { params: { file: 'a.md' } }, ctx(d), who)).toMatchObject({ kind: 'retarget', id: BASE })
   })
 
   it('保留键改不动这个窗格的身份：摘掉，而且要告警', () => {
@@ -627,9 +627,30 @@ describe('planOpen 的 params：插件说这一份装的是什么', () => {
     expect(plan.kind === 'open' ? plan.notice : '').toMatch(/保留键/)
   })
 
-  it('聚焦已开的那份时参数不作数——那个窗格装的本来就是这份内容，改 params 只会让保存的布局跟界面对不上', () => {
+  it('命中已开的那一份、这次带了参数：整份交给它（原地换内容）——同一篇文档这次要定位到另一处，插件才收得到', () => {
     const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
-    expect(planOpen(docCounter, { key: 'a', params: { file: 'a.md' } }, ctx(d), who)).toEqual({ kind: 'focus', id: BASE })
+    expect(planOpen(docCounter, { key: 'a', params: { file: 'a.md', at: 'h2' } }, ctx(d), who)).toEqual({
+      kind: 'retarget',
+      id: BASE,
+      params: { ...counter.params, key: 'a', file: 'a.md', at: 'h2', icon: 'hash' },
+    })
+  })
+
+  it('命中的是预览窗格：这次也要预览就还是预览，正式打开就顺带转正（参数里去掉 preview）', () => {
+    const d = desk([group('g1', [tab(BASE, 'a', true)], col(0))])
+    expect(paramsOf(planOpen(docCounter, { key: 'a', preview: true, params: { file: 'a.md' } }, ctx(d), who))).toMatchObject({ preview: true })
+    expect(paramsOf(planOpen(docCounter, { key: 'a', params: { file: 'a.md' } }, ctx(d), who))).not.toHaveProperty('preview')
+  })
+
+  it('命中的正式窗格不会因为这次要预览而变回预览窗格', () => {
+    const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
+    expect(paramsOf(planOpen(docCounter, { key: 'a', preview: true, params: { file: 'a.md' } }, ctx(d), who))).not.toHaveProperty('preview')
+  })
+
+  it('命中已开的那一份也要摘保留键、也要告警', () => {
+    const d = desk([group('g1', [tab(BASE, 'a')], col(0))])
+    const plan = planOpen(docCounter, { key: 'a', params: { icon: 'skull', file: 'a.md' } }, ctx(d), who)
+    expect(plan.kind === 'retarget' ? plan.notice : '').toMatch(/保留键/)
   })
 
   it('原地换内容那条也要摘保留键、也要告警', () => {
