@@ -33,7 +33,7 @@ const SHELL_STYLES = ['gwb-shell/dist/theme.css', 'gwb-shell/dist/dockview.css',
 /* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
 /* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */
 /* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="9b37781495f0" blob="9b2b1fdf837c" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="b956510a4aab" blob="8d8ecbfb40b8" */
 /* ref file="../plugins/shell/src/client/index.tsx" lines="623-630" hash="5e6aad4b09ad" blob="9b2b1fdf837c" */
 /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="18-24" hash="3c918590d21e" blob="056b20dadf53" */
 /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="119-128" hash="81a0964ad84e" blob="056b20dadf53" */
@@ -120,7 +120,7 @@ export const steps = [
     title: '外壳问 shell.env，注入三张样式表并等它们加载完',
     text:
       '外壳经命令 shell.env 拿到 home、三张样式表的地址和用户的外观样式。三张表的顺序由 node 侧写死：令牌表 theme.css、dockview.css、外壳自己的 style.css。' +
-      '全部注入并等到 load 才往下走；有一张加载不了，#root 里写一句「外壳起不来」和那张表的地址。接着把外观插件给的启动样式写进 <style id="gwb-theme-style">，排在三张表之后。',
+      '全部注入并等到 load 才往下走；有一张加载不了，#root 里写一句「外壳启动失败」和那张表的地址。接着把外观插件给的启动样式写进 <style id="gwb-theme-style">，排在三张表之后。',
     lane: 'page',
     code: {
       file: 'plugins/shell/src/client/index.tsx',

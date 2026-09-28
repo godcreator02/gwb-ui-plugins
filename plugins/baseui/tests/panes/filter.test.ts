@@ -37,21 +37,21 @@ describe('级别是门限，不是等值', () => {
   })
 })
 
-describe('路是多选', () => {
-  it('关掉一路，那一路就不显示', () => {
+describe('来源是多选', () => {
+  it('关掉一个来源，那个来源的条目就不显示', () => {
     const f = { ...base, sources: new Set(['plugin', 'kernel'] as const) }
     expect(matches(at({ source: 'plugin' }), f)).toBe(true)
     expect(matches(at({ source: 'renderer' }), f)).toBe(false)
   })
 
-  it('一路都不留就是空表', () => {
+  it('一个来源都不留就是空表', () => {
     const f = { ...base, sources: new Set([]) }
     expect(matches(at(), f)).toBe(false)
   })
 })
 
 describe('来源名用复合键', () => {
-  it('不同路的同名不撞在一起', () => {
+  it('不同来源下的同名不混在一起', () => {
     const kernelInstall = at({ source: 'kernel', name: 'install' })
     const pluginInstall = at({ source: 'plugin', name: 'install' })
     expect(keyOf(kernelInstall)).not.toBe(keyOf(pluginInstall))
@@ -91,8 +91,8 @@ describe('SHOW_EVERYTHING', () => {
 
 describe('四个维度是「与」', () => {
   it('全都得满足', () => {
-    const e = at({ source: 'kernel', level: 'error', name: 'kernel', msg: '起不来' })
-    expect(matches(e, { level: 'error', sources: new Set(['kernel'] as const), key: 'kernel|kernel', search: '起' })).toBe(
+    const e = at({ source: 'kernel', level: 'error', name: 'kernel', msg: '启动失败' })
+    expect(matches(e, { level: 'error', sources: new Set(['kernel'] as const), key: 'kernel|kernel', search: '启动' })).toBe(
       true,
     )
     expect(matches(e, { level: 'error', sources: new Set(['kernel'] as const), key: 'kernel|kernel', search: '别的' })).toBe(
@@ -102,12 +102,12 @@ describe('四个维度是「与」', () => {
 })
 
 describe('给界面的两份汇总', () => {
-  it('数每一路各多少条', () => {
+  it('数每个来源各多少条', () => {
     const got = countBySource([at({ source: 'plugin' }), at({ source: 'plugin' }), at({ source: 'renderer' })])
     expect(got).toEqual({ plugin: 2, kernel: 0, renderer: 1 })
   })
 
-  it('来源名按路分组、组内排序、去重', () => {
+  it('来源名按来源分组、组内排序、去重', () => {
     const got = groupNames([
       at({ source: 'kernel', name: 'stdin' }),
       at({ source: 'plugin', name: 'gwb-shell' }),
@@ -120,7 +120,7 @@ describe('给界面的两份汇总', () => {
     ])
   })
 
-  it('没有的路不出现在分组里', () => {
+  it('没有条目的来源不出现在分组里', () => {
     expect(groupNames([at({ source: 'renderer', name: 'gwb' })])).toEqual([{ source: 'renderer', names: ['gwb'] }])
   })
 })

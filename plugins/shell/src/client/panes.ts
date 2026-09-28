@@ -21,7 +21,7 @@ export function paneTargetIn(rows: PaneRow[], entryId: string, paneId: string): 
 
 /**
  * 取不到就抛错：空表是「一个插件都没注册」，取失败当成空表的话启动器会说「还没有插件注册窗格」。
- * 取到的顺手记进 wellHub，标签菜单要同步地问窗格是哪一类
+ * 取到的表同时记进 wellHub：标签菜单要同步地查窗格是哪一类
  */
 export async function fetchPanes(host: HostBridge): Promise<PaneRow[]> {
   let reply: { ok?: boolean; data?: unknown; error?: string }

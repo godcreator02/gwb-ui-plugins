@@ -96,14 +96,14 @@ node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的�
 
 | 操作 | 发生什么 |
 | --- | --- |
-| 改名（「桌面」面板里右键桌面名，键盘上是 F2；`shell.desktop.rename`） | 那一行变成输入框，Enter 确认，Esc 或失焦放弃；名字去掉两头空白，空名不改。改完整份保存一次。用右键不用双击：单击是切过去，双击会跟它冲突 |
+| 改名（「桌面」面板里右键桌面名，键盘上是 F2；`shell.desktop.rename`） | 那一行变成输入框，Enter 确认，Esc 或失焦放弃；名字去掉两端空白，空名不改。改完整份保存一次。用右键不用双击：单击是切过去，双击会跟它冲突 |
 | 删除（「桌面」面板里那一行的删除钮） | 只剩一张时没有删除钮。一律先确认：「删除『X』？」，上面有窗格就写「上面 N 个窗格会一起关掉」，空桌面写「这张桌面是空的」 |
 | 删除（`shell.desktop.delete`） | 同上但不弹确认（调用方已经决定了），只剩一张时回错；回执 `{ ok, relayed, closed }`，`closed` 是转发那一刻缓存里那张桌面上的窗格数 |
 
 删掉时上面的窗格逐个关掉，插件照常 `dispose`；没挂载过的桌面上的窗格从没加载过插件，连同已保存的布局一起丢弃。删的是当前桌面，就先切到左边相邻那张（最左边那张就切到右边那张）。
 删除而不合并是用户定的：窗格里的东西存在各插件自己那里，关掉丢的只是摆放位置，确认框挡住误删；要留下哪个，删之前先送到别的桌面。
 
-{/* ref file="../plugins/shell/src/desktops.ts" lines="39-67" hash="f7c8ef4384fc" blob="8d8779b5e92e" */}
+{/* ref file="../plugins/shell/src/desktops.ts" lines="39-67" hash="6c76e86ad132" blob="9c00b3d8e19d" */}
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="344-377" hash="73d485c387ba" blob="9b2b1fdf837c" */}
 
@@ -137,7 +137,7 @@ dockview 没有在两个容器之间搬面板的接口，所以**送到是一次
 | `shell.desktop.list` | 无 | 回 `{ desktops: [{ id, name }], active }`，读磁盘上的布局文件，认不出回一张缺省桌面 |
 | `shell.desktop.switch` | `{ id?, name? }` | 切过去；给一个，两个都给按 id，名字重名取第一张 |
 | `shell.desktop.new` | `{ name? }` | 新建一张空桌面并切过去，缺省叫「桌面 N」 |
-| `shell.desktop.rename` | `{ id, name }` | 改名，`name` 去两头空白后非空 |
+| `shell.desktop.rename` | `{ id, name }` | 改名，`name` 去掉两端空白后非空 |
 | `shell.desktop.delete` | `{ id }` | 删除，上面的窗格一起关掉，不弹确认 |
 
 `list` 在 node 侧直接读文件；其余几条经内核事件转给页面执行，**回执 ok 只代表转发了**，要确认结果稍等再 `list`。

@@ -25,7 +25,7 @@ function desktop(over: Partial<DesktopRow> = {}): DesktopRow {
 const rows = [desktop(), desktop({ id: 'd2', name: '摸鱼' }), desktop({ id: 'd3', name: '摸鱼' })]
 
 describe('isDesktopAction', () => {
-  it('记号对得上才认，null / 原始值 / 别件的事件都不认', () => {
+  it('记号对得上才认，null / 原始值 / 别的插件的事件都不认', () => {
     expect(isDesktopAction({ t: DESKTOP_EVENT, action: 'switch', id: 'd2' })).toBe(true)
     expect(isDesktopAction({ t: DESKTOP_EVENT, action: 'new', name: '写笔记' })).toBe(true)
     expect(isDesktopAction(null)).toBe(false)
@@ -40,12 +40,12 @@ describe('resolveDesktop：id 优先于名字', () => {
     expect(resolveDesktop(rows, { id: 'd2' })?.id).toBe('d2')
   })
 
-  it('id 空串 / 不是字符串不当 id 用，落到名字那条', () => {
+  it('id 空串 / 不是字符串不当 id 用，改按名字找', () => {
     expect(resolveDesktop(rows, { id: '', name: '摸鱼' })?.id).toBe('d2')
     expect(resolveDesktop(rows, { id: 3, name: '摸鱼' })?.id).toBe('d2')
   })
 
-  it('名字撞了多口取第一口——名字本来就不唯一，id 才是身份', () => {
+  it('名字重复时取第一张——名字本来就不唯一，id 才是身份', () => {
     expect(resolveDesktop(rows, { name: '摸鱼' })?.id).toBe('d2')
   })
 
@@ -62,7 +62,7 @@ describe('resolveDesktop：id 优先于名字', () => {
 })
 
 describe('renameDesktop：改名', () => {
-  it('按 id 改名，名字两头的空白去掉；别的桌面不动', () => {
+  it('按 id 改名，名字两端的空白去掉；别的桌面不动', () => {
     expect(renameDesktop(rows, 'd2', '  写作 ')).toEqual([rows[0], { ...rows[1], name: '写作' }, rows[2]])
   })
   it('空名（含纯空白）不改：回 undefined，调用方什么都不做', () => {
@@ -123,7 +123,7 @@ describe('命令参数：switch / rename / delete', () => {
 })
 
 describe('defaultDesktopName', () => {
-  it('跟 id 的号走', () => {
+  it('取 id 里的编号', () => {
     expect(defaultDesktopName('d1')).toBe('桌面 1')
     expect(defaultDesktopName('d12')).toBe('桌面 12')
   })

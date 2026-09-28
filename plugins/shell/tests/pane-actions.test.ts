@@ -3,8 +3,8 @@ import { PANE_EVENT, isPaneAction, listRowsOf, parsePaneArgs, parsePaneSync } fr
 import type { PaneEntry } from '../src/pane-list.js'
 
 /**
- * 窗格命令那半的纯判断：`shell.pane.focus / send / close` 的参数门与转给页面的动作、
- * 页面推给 node 半缓存的清单、`shell.pane.list` 回的那几行。
+ * 窗格命令在 node 侧的纯判断：`shell.pane.focus / send / close` 的参数校验与转给页面的动作、
+ * 页面推给 node 侧缓存的清单、`shell.pane.list` 回的那几行。
  */
 
 describe('isPaneAction', () => {
@@ -59,7 +59,7 @@ const entry = (over: Partial<PaneEntry> = {}): PaneEntry => ({
   ...over,
 })
 
-describe('parsePaneSync：页面推来的清单先过一道门', () => {
+describe('parsePaneSync：页面推来的清单先校验形状', () => {
   it('认得出的原样收下', () => {
     const payload = { entries: [entry()], desktops: [{ id: 'd1', name: '桌面 1' }], active: 'd1' }
     expect(parsePaneSync(payload)).toEqual(payload)

@@ -41,7 +41,7 @@ export function defaultDesktopName(id: string): string {
   return `桌面 ${id.replace(/^d/, '')}`
 }
 
-/** 名字去两头空白；空名或认不出的 id 回 undefined，什么都不改 */
+/** 名字去掉两端空白；空名或认不出的 id 回 undefined，什么都不改 */
 export function renameDesktop(desktops: readonly DesktopRow[], id: string, name: string): DesktopRow[] | undefined {
   const trimmedName = name.trim()
   if (trimmedName === '' || !desktops.some((desktop) => desktop.id === id)) return undefined

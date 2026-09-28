@@ -3,7 +3,7 @@ import type { Message, Plugin } from 'cordis'
 import type { GwbCommandContext, RegisteredCommandDef, GwbCommandHandler, GwbCommands } from '@godcreator/gwb-commands'
 import { describe, expect, it, vi } from 'vitest'
 import GwbShell, { type GwbShellApi } from '../src/index.js'
-// 仓根的 tsc 顺着上一行把 src/index.ts 拉进来，它读 ctx.gwbData 要靠这份只在外壳自己编译时生效的声明
+// 仓根的 tsc 顺着上一行把 src/index.ts 也纳入编译，它读 ctx.gwbData 要靠这份只在外壳自己编译时生效的声明
 import type {} from '../src/own-context.js'
 import { LAYOUT_VERSION, type LayoutDoc } from '../src/layout.js'
 
@@ -129,7 +129,7 @@ function layoutDoc(desktops: { id: string; name: string }[], active = desktops[0
 }
 
 describe('外壳服务就绪', () => {
-  it('把页面根要过来：setShell 收到本包 client.js 的地址，外壳卸载时撤销', async () => {
+  it('接管页面根：setShell 收到本包 client.js 的地址，外壳卸载时撤销', async () => {
     const { shellEntries, shellFiber, revokeImports } = await bootShell()
     expect(shellEntries).toHaveLength(1)
     expect(shellEntries[0]).toMatch(/\/client\.js$/)
@@ -302,7 +302,7 @@ describe('桌面命令', () => {
     expect(emitted).toEqual([])
   })
 
-  it('shell.desktop.new：名字去两头空白，空名不带', async () => {
+  it('shell.desktop.new：名字去掉两端空白，空名不带', async () => {
     const { call, emitted } = await bootShell()
     await call('shell.desktop.new', { name: '  工作  ' })
     await call('shell.desktop.new', { name: '   ' })

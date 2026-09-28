@@ -64,7 +64,7 @@ const NOTICE_MS = 10_000
 /** 切完桌面隔多久检查 body：等状态栏浮层走完退场动画 */
 const SWEEP_DELAY_MS = 500
 
-/** 推给 node 侧缓存（`shell.pane.sync`）；推不上只记一条 warn */
+/** 推给 node 侧缓存（`shell.pane.sync`）；推送失败只记一条 warn */
 function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string): void {
   const sync = { entries: wellHub.entries(rows), desktops: rows.map(({ id, name }) => ({ id, name })), active }
   void host.call(PANE_SYNC_COMMAND, sync).then(
@@ -105,7 +105,7 @@ function sweepBodyPortals(activeName: string): void {
   }
 }
 
-/** 一张桌面一个 section，非活动的只是不显示；开机只挂载活动那张，其余第一次切到时挂载、之后常驻 */
+/** 一张桌面一个 section，非活动的只是不显示；启动时只挂载活动那张，其余第一次切到时挂载、之后常驻 */
 function App({
   specs,
   home,
@@ -116,9 +116,9 @@ function App({
   specs: OpenableSpec[]
   home: string
   versions: Versions
-  /** 磁盘上的布局文件；第一次开机或读不回来时是 defaultDoc() */
+  /** 磁盘上的布局文件；第一次启动或读取失败时是 defaultDoc() */
   initialDoc: LayoutDoc
-  /** 开机读不回布局文件的原因；有值时这一轮不保存布局，免得覆盖磁盘上那份 */
+  /** 启动时读取布局文件失败的原因；有值时这一轮不保存布局，免得覆盖磁盘上那份 */
   initialSaveBlockedBy: string | undefined
 }): ReactElement {
   /** 已挂载的各容器的 api，挂载后常驻 */
@@ -129,7 +129,7 @@ function App({
   const [activeId, setActiveId] = useState(initialDoc.active)
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
-  /** 布局文件读不回来（开机时）或某张桌面的布局恢复不了（挂载时）的原因：有值就不写磁盘，直到人在状态栏确认覆盖 */
+  /** 布局文件读取失败（启动时）或某张桌面的布局恢复不了（挂载时）的原因：有值就不写磁盘，直到人在状态栏确认覆盖 */
   const [saveBlockedBy, setSaveBlockedBy] = useState(initialSaveBlockedBy)
   const saveBlockedRef = useRef(initialSaveBlockedBy)
   /** 每保存一次加一；「桌面」面板开着时据此重新读取清单 */
@@ -215,15 +215,15 @@ function App({
   }, [])
 
   /**
-   * 经 addInstance 先算唯一 id 再开：同 id 的 addPanel 会同步抛错，冲出 onReady 整个容器起不来。
-   * 桌面清单直接传给 wellHub：开机时 onReady 比桌面操作的注入早
+   * 经 addInstance 先算唯一 id 再开：同 id 的 addPanel 会同步抛错，异常抛出 onReady 回调，整个容器启动失败。
+   * 桌面清单直接传给 wellHub：启动时 onReady 比桌面操作的注入早
    */
   const openDefaults = (target: DockviewApi, desktop: string): void => {
     const open = wellHub.entries(rowsRef.current).filter((e) => e.desktop !== desktop)
     for (const spec of specsForDefaults(specs, open)) addInstance(target, spec)
   }
 
-  /** 挂载容器不等于切过去：没挂载过的在后台挂载，onWellReady 之后才 resolve；桌面不存在回 undefined */
+  /** 挂载容器不等于切换到它：没挂载过的在后台挂载，onWellReady 之后才 resolve；桌面不存在回 undefined */
   const ensureMounted = useCallback((id: string): Promise<DockviewApi | undefined> => {
     const api = apisRef.current[id]
     if (api !== undefined) return Promise.resolve(api)
@@ -282,7 +282,7 @@ function App({
     const waiters = readyWaitersRef.current.get(id) ?? []
     readyWaitersRef.current.delete(id)
     for (const wake of waiters) wake(event.api)
-    // 开机那个容器由注入桌面操作的 effect 推送
+    // 启动时挂载的那个容器由注入桌面操作的 effect 推送
     const host = wellHub.host()
     if (host !== undefined && wellHub.deskOps() !== undefined) pushPanes(host, rowsRef.current, activeIdRef.current)
   }
@@ -394,7 +394,7 @@ function App({
       createDesktop: (name) => createDesktop(name, false),
       notify,
     })
-    // 开机时容器的 onReady 比这个 effect 早，那时还推不出清单
+    // 启动时容器的 onReady 比这个 effect 早，那时还推不出清单
     const host = wellHub.host()
     if (host !== undefined) pushPanes(host, rowsRef.current, activeIdRef.current)
     return () => {
@@ -468,7 +468,7 @@ function App({
       if (payload.action === 'focus') void focusInstance(row.desktop, instance)
       else if (payload.action === 'close') void closeInstance(row.desktop, instance)
       else if (payload.action === 'send') {
-        // node 侧的 parsePaneArgs 只转发二者给一的；两个都不是字符串就不猜，免得新建一张桌面
+        // node 侧的 parsePaneArgs 只转发两者恰好给了一个的；两个都不是字符串就不猜，免得新建一张桌面
         let to: SendTarget
         if (typeof payload.desktop === 'string') to = { desktop: payload.desktop }
         else if (typeof payload.newDesktop === 'string') to = { newDesktop: payload.newDesktop }
@@ -607,7 +607,7 @@ function App({
   )
 }
 
-/** 异步准备完回同步的挂载那段；页面上的副作用都放在挂载那段里，准备途中被 dispose 就一样都不发生 */
+/** 异步准备完成后返回同步执行的挂载函数；页面上的副作用都放在挂载函数里，准备途中被 dispose 就一样都不发生 */
 async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => MountedTree> {
   const styleLoaded = await Promise.all(args.styles.map((href) => loadStyle(href)))
   const failedStyles = args.styles.filter((_href, index) => !styleLoaded[index])
@@ -650,7 +650,7 @@ async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => M
 /** 启动失败在根节点上写一句，dispose 时连那句一起清掉 */
 function shellHandle(root: HTMLElement, prepare: Prepare): { dispose(): void } {
   const handle = mountWhenReady(prepare, (err) => {
-    root.textContent = `外壳起不来：${String(err)}`
+    root.textContent = `外壳启动失败：${String(err)}`
   })
   return {
     dispose() {

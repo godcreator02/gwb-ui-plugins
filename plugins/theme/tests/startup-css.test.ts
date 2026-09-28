@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildStartupCss, type ThemeValues } from '../src/startup-css.js'
 
 /**
- * 纯逻辑单测：不碰 ctx 也不碰 DOM。node 半的启动样式与浏览器半的实时预览吃的是
- * 同一个函数，这里的断言同时钉住两头的形状。
+ * 纯逻辑单测：不碰 ctx 也不碰 DOM。node 侧生成的启动样式与浏览器侧的实时预览用的是
+ * 同一个函数，这里的断言同时固定两边的输出格式。
  */
 
 const values = (patch: Partial<ThemeValues> = {}): ThemeValues => ({ fontSans: '', fontMono: '', customCss: '', ...patch })
@@ -14,7 +14,7 @@ describe('buildStartupCss', () => {
     expect(buildStartupCss(values({ fontMono: '  ', customCss: '\n' }))).toBe('')
   })
 
-  it('字体覆盖落进 :root，用的就是令牌表里那两个变量名', () => {
+  it('字体覆盖写进 :root，用的就是令牌表里那两个变量名', () => {
     const css = buildStartupCss(values({ fontSans: 'Consolas, monospace' }))
     expect(css).toBe(':root {\n  --gwb-font-sans: Consolas, monospace;\n}\n')
   })

@@ -8,7 +8,7 @@ import {
 } from '../src/client/mount-handle.js'
 
 /**
- * 外壳接窗格契约的那两步收窄。要钉住的是：句柄按契约是 `{ dispose() }` 这个**对象**，
+ * 外壳按窗格契约取导出的那两步类型收窄。要固定下来的是：句柄按契约是 `{ dispose() }` 这个**对象**，
  * 卸载得从它身上取 dispose 来调——把句柄当函数调是 TypeError，而卸载路径上的异常
  * 通常被吞掉，清理于是一次都没跑过、还没有任何现象。
  */
@@ -27,7 +27,7 @@ describe('pickMountPane：按契约取 mountPane 导出', () => {
     expect(pickMountPane(42)).toBeUndefined()
   })
 
-  it('导出成 mount 的不认——那是改名之前的写法,也是外壳那半用的动词', () => {
+  it('导出成 mount 的不认——那是改名之前的写法,也是外壳入口用的动词', () => {
     expect(pickMountPane({ mount: () => ({ dispose() {} }) })).toBeUndefined()
     expect(pickMountPane({ bootShell: () => ({ dispose() {} }) })).toBeUndefined()
   })
@@ -53,10 +53,10 @@ describe('pickDispose：卸载时调的是句柄上的 dispose', () => {
     expect(handle.seen).toBe(handle)
   })
 
-  it('函数句柄一律不收，挂没挂 dispose 都一样——契约里的句柄是对象', () => {
+  it('函数句柄一律不收，带不带 dispose 属性都一样——契约里的句柄是对象', () => {
     let viaCall = 0
     let viaDispose = 0
-    // 「可直接调、同时挂着 dispose」那种两头兼容的形态也在此列
+    // 「可以直接调用、同时带 dispose 属性」那种两种写法都兼容的形态也在此列
     const both = Object.assign(() => void (viaCall += 1), { dispose: () => void (viaDispose += 1) })
     expect(pickDispose(both)).toBeUndefined()
     expect(pickDispose(() => void (viaCall += 1))).toBeUndefined()

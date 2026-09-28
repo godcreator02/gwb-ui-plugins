@@ -88,8 +88,8 @@ describe('listOpenable：注册表里一条对应一个能开的窗格', () => {
   })
 
   it('不过滤：禁用的插件根本没跑 apply、注册不进来,在表里就等于该开得出来', () => {
-    // 母仓那份要 `!disabled && !shell` 两条判断,是因为它用的是条目表；
-    // 运行时注册下那两条连同它们会出的错一起消失了
+    // 已退役的旧插件仓 gwb-plugins 里外壳插件那份 openable 要 `!disabled && !shell` 两条判断,是因为它用的是条目表；
+    // 改成运行时注册之后，那两条判断连同它们会出的错一起去掉了
     expect(panes([echo])).toHaveLength(1)
   })
 })

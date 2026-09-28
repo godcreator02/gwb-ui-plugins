@@ -103,7 +103,7 @@ export const themeGraph = defineSeamGraph({
       role: 'amber',
       outside: false,
       blurb:
-        '命令用的键名是 font-sans / font-mono / custom-css，窗格里是 fontSans 这类字段名，这里两头换。' +
+        '命令用的键名是 font-sans / font-mono / custom-css，窗格里是 fontSans 这类字段名，这里在两种写法之间互相换算。' +
         '单放在 .ts 里：这几个键名跟 Tailwind 工具类同名，写在 .tsx 里会被 devkit 的样式检查当成漏了前缀的类名。',
       caps: [{ id: 'convert', name: '键名换算', ident: 'fieldValuesOf · saveArgsOf' }],
     },
