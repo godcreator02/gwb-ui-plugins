@@ -11,7 +11,7 @@
  * SKILL.md 要保留 frontmatter 的 `name` 与 `description`（gwb-skills 登记说明书时读它们），所以目标写成对象。
  * 生成正本按原文渲染，里面不能用 JSX 组件。
  *
- * components 是组件名册，fumadocsRoster 给 fumadocs 自带文件树 Files / Folder / File 与 Note 的压平规则，
+ * components 是组件名册，fumadocsRoster 给出 fumadocs 自带文件树 Files / Folder / File 与 Note 的机读规则，
  * 站里自己加的组件在它后面追加。
  */
 import { fumadocsRoster } from '@godcreator/docfirst-workflow/fumadocs/roster'
