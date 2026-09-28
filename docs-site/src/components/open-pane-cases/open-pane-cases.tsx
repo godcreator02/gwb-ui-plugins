@@ -4,7 +4,7 @@
  * 下面两张卡是 targetGroup 走到了哪一条、planOpen 的查重走到了哪一条与它回的判断。内容全在 open-pane-cases.data.mjs。
  */
 import type { JSX } from 'react';
-import { CasePicker, Pane, Pill } from '@godcreator/explainer-player';
+import { CasePicker, Pane, Pill } from '@godcreator/docfirst-explainer';
 import { autoRules, cases, checks, panes, sideRule } from './open-pane-cases.data.mjs';
 import './open-pane-cases.css';
 

@@ -2,7 +2,7 @@
  * CustomCssCases 在机读版里变成什么：跟画面读同一份数据（custom-css-cases.data.mjs），先一段比较规则，
  * 再每种情况一段说明，后面跟着另一条规则、自定义 CSS 与三样各比出什么。这个文件不 import React。
  */
-import { casesText } from '@godcreator/explainer-player/text';
+import { casesText } from '@godcreator/docfirst-explainer/text';
 import { cases, criteria } from './custom-css-cases.data.mjs';
 
 const OUTCOME_TEXT = { mine: '自定义 CSS 赢', rival: '另一条规则赢', tie: '相同', skip: '不用比' };

@@ -5,7 +5,7 @@
 
 /**
  * 参与者：外壳 node 侧蓝色，外壳浏览器侧琥珀色，窗格插件绿色，样式表青色
- * @type {{ id: string, name: string, sub: string, role: import('@godcreator/explainer-player').Role }[]}
+ * @type {{ id: string, name: string, sub: string, role: import('@godcreator/docfirst-explainer').Role }[]}
  */
 export const actors = [
   { id: 'plugin', name: '插件的 apply', sub: 'ctx.gwbShell', role: 'emerald' },

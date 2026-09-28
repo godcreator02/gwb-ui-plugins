@@ -2,7 +2,7 @@
  * NameIsolation 在机读版里变成什么：跟画面读同一份数据（name-isolation.data.mjs）。
  * 先列出两种写法下的简化 DOM 树，再每种情况一段说明，加上那条规则命中、漏掉、错命中的节点。不 import React。
  */
-import { casesText } from '@godcreator/explainer-player/text';
+import { casesText } from '@godcreator/docfirst-explainer/text';
 import { cases, nodes } from './name-isolation.data.mjs';
 
 const describe = (id, mode) => {

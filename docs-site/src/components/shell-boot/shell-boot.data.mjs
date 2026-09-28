@@ -6,7 +6,7 @@
 
 /**
  * 参与者：外壳 node 侧是蓝色，外壳浏览器侧是琥珀色，包外的内核与命令总线是灰色
- * @type {{ id: string, name: string, sub: string, role: import('@godcreator/explainer-player').Role }[]}
+ * @type {{ id: string, name: string, sub: string, role: import('@godcreator/docfirst-explainer').Role }[]}
  */
 export const actors = [
   { id: 'svc', name: '外壳服务', sub: 'src/index.ts', role: 'blue' },

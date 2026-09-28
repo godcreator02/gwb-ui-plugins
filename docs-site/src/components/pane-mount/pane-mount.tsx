@@ -5,7 +5,7 @@
  * 讲解文字与源码在 pane-mount.data.mjs。
  */
 import type { JSX } from 'react';
-import { Stepper } from '@godcreator/explainer-player';
+import { Stepper } from '@godcreator/docfirst-explainer';
 import { CodeBlock, Lanes } from '../shell-lanes/lanes';
 import type { LaneActor, LaneBand, LaneFlow } from '../shell-lanes/lanes';
 import { actors, steps } from './pane-mount.data.mjs';

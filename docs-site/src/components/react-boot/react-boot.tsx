@@ -5,8 +5,8 @@
  * 讲解文字与状态都在 react-boot.data.mjs，机读版由 react-boot.ai.mjs 读同一份数据生成。
  */
 import type { JSX } from 'react';
-import { CodeLines, Pane, Pill, Stepper } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CodeLines, Pane, Pill, Stepper } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { lanes, steps } from './react-boot.data.mjs';
 import './react-boot.css';
 

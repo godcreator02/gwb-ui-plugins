@@ -4,8 +4,8 @@
  * 右边是页面上 @layer utilities 里的规则、按加载先后排列。讲解文字与规则都在 subset-sheets.data.mjs，机读版由 subset-sheets.ai.mjs 读同一份数据生成。
  */
 import type { JSX } from 'react';
-import { Pane, Pill, Stepper } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { Pane, Pill, Stepper } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { sheets, steps } from './subset-sheets.data.mjs';
 import './subset-sheets.css';
 

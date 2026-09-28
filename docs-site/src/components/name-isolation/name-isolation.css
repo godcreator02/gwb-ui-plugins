@@ -1,6 +1,6 @@
 /*
  * NameIsolation 自己的画面：一条规则、一棵简化的 DOM 树，每个节点标出命中、漏掉、错命中。
- * 节点左边的竖线是画出它的插件的颜色（外壳蓝、baseui 绿）；颜色变量来自 @godcreator/explainer-player 的 .dx 根元素。
+ * 节点左边的竖线是画出它的插件的颜色（外壳蓝、baseui 绿）；颜色变量来自 @godcreator/docfirst-explainer 的 .dx 根元素。
  */
 .ni-scene { display: grid; gap: 10px; }
 

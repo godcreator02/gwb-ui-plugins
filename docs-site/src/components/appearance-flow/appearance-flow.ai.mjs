@@ -2,7 +2,7 @@
  * AppearanceFlow 在机读版里变成什么：跟画面读同一份数据（appearance-flow.data.mjs），每一步一段话，
  * 再列出开机时页面 <head> 里的样式元素顺序与例子里拼出来的启动样式。这个文件不 import React。
  */
-import { stepsText } from '@godcreator/explainer-player/text';
+import { stepsText } from '@godcreator/docfirst-explainer/text';
 import { headElements, steps } from './appearance-flow.data.mjs';
 
 /** 逐行列出，每行前面带行号与「│」：行首不会是会被当成 markdown 结构的字符 */

@@ -2,7 +2,7 @@
  * SubsetSheets 在机读版里变成什么：跟画面读同一份数据（subset-sheets.data.mjs），每一步一段说明，
  * 再把那一步页面上 @layer utilities 里的规则按加载先后列出来、写明元素最终的左右内边距。不 import React。
  */
-import { stepsText } from '@godcreator/explainer-player/text';
+import { stepsText } from '@godcreator/docfirst-explainer/text';
 import { sheets, steps } from './subset-sheets.data.mjs';
 
 function stateOf(step) {

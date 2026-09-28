@@ -4,8 +4,8 @@
  * 每个环节写这种情况下它得到什么，最后一行是状态栏上看得到什么。内容全在 layout-boot.data.mjs。
  */
 import type { JSX } from 'react';
-import { CasePicker, Pane, Pill } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CasePicker, Pane, Pill } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { cases, stages } from './layout-boot.data.mjs';
 import './layout-boot.css';
 

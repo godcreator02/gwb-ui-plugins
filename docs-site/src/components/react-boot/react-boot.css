@@ -1,6 +1,6 @@
 /*
  * ReactBoot 自己的画面：三处运行的地方一排、四块状态一格一块。
- * 卡片、代码行、胶囊与颜色变量（--dx-*）来自 @godcreator/explainer-player 的 .dx 根元素，深浅主题跟着它切换。
+ * 卡片、代码行、胶囊与颜色变量（--dx-*）来自 @godcreator/docfirst-explainer 的 .dx 根元素，深浅主题跟着它切换。
  */
 .rb-scene { display: grid; gap: 10px; }
 

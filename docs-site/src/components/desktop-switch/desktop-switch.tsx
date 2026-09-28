@@ -4,8 +4,8 @@
  * 下面是到这一步为止页面控制台与插件那头留下的记录。讲解文字与例子在 desktop-switch.data.mjs。
  */
 import type { JSX } from 'react';
-import { CodeLines, Pane, Pill, Stepper, Terminal } from '@godcreator/explainer-player';
-import type { Role, TerminalLine } from '@godcreator/explainer-player';
+import { CodeLines, Pane, Pill, Stepper, Terminal } from '@godcreator/docfirst-explainer';
+import type { Role, TerminalLine } from '@godcreator/docfirst-explainer';
 import { desks, steps } from './desktop-switch.data.mjs';
 import './desktop-switch.css';
 

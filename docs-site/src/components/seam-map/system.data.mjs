@@ -5,9 +5,9 @@
  * 最后是只靠命令名与字符串对上的两条（14、15）。每条接缝在首页有同名的一节，这里的 text 是那一节的概括。
  * 坐标不在这里，在 system.layout.ts。
  */
-import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
+import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 
-/** @type {import('@godcreator/explainer-player/seam-graph').SeamModule[]} */
+/** @type {import('@godcreator/docfirst-explainer/seam-graph').SeamModule[]} */
 const modules = [
   {
     id: 'theme',
@@ -93,10 +93,10 @@ const modules = [
   },
 ];
 
-/** @type {import('@godcreator/explainer-player/seam-graph').SeamEntry[]} */
+/** @type {import('@godcreator/docfirst-explainer/seam-graph').SeamEntry[]} */
 const entries = [{ id: 'human', name: '人（界面）', to: 'page' }];
 
-/** @type {import('@godcreator/explainer-player/seam-graph').SeamInput[]} */
+/** @type {import('@godcreator/docfirst-explainer/seam-graph').SeamInput[]} */
 const seams = [
   /* ref file="../plugins/shell/src/index.ts" lines="5-5" hash="e625505ae75a" blob="d8029385df74" */
   /* ref file="../plugins/shell/src/vocab.ts" lines="3-10" hash="9ad006ba233b" blob="1f37046cda5d" */

@@ -4,9 +4,9 @@
  * 带 module 属性画那个包内部的接缝图：包里的文件、文件之间的接缝、包外谁调用它、它要谁实现（包首页用）。
  * 每张图的内容在 *.data.mjs，坐标与图标在 *.layout.ts；机读版由 seam-map.ai.mjs 读同一份内容生成。
  */
-import { SeamDiagram } from '@godcreator/explainer-player';
-import type { SeamLayout } from '@godcreator/explainer-player';
-import type { SeamGraph } from '@godcreator/explainer-player/seam-graph';
+import { SeamDiagram } from '@godcreator/docfirst-explainer';
+import type { SeamLayout } from '@godcreator/docfirst-explainer';
+import type { SeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 import { systemGraph } from './system.data.mjs';
 import { systemLayout } from './system.layout';
 import { shellGraph } from './inner/shell.data.mjs';

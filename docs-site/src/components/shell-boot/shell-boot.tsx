@@ -4,7 +4,7 @@
  * 每一步亮起这一步参与的方块、画出这一步走过的箭头，下面给出这一步对应的源码。讲解文字与源码在 shell-boot.data.mjs。
  */
 import type { JSX } from 'react';
-import { Stepper } from '@godcreator/explainer-player';
+import { Stepper } from '@godcreator/docfirst-explainer';
 import { CodeBlock, Lanes } from '../shell-lanes/lanes';
 import type { LaneActor, LaneBand, LaneFlow } from '../shell-lanes/lanes';
 import { actors, steps } from './shell-boot.data.mjs';

@@ -1,6 +1,6 @@
 /*
  * SubsetSheets 自己的画面：元素的内边距示意、层里的规则列表。
- * 卡片、胶囊与颜色变量（--dx-*）来自 @godcreator/explainer-player，画在它的 .dx 根元素里，深浅主题跟着它切换。
+ * 卡片、胶囊与颜色变量（--dx-*）来自 @godcreator/docfirst-explainer，画在它的 .dx 根元素里，深浅主题跟着它切换。
  */
 .ss-scene { display: grid; gap: 10px; }
 @container (min-width: 640px) {

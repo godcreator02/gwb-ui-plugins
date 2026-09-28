@@ -5,8 +5,8 @@
  * 讲解文字与代码行都在 token-flow.data.mjs，机读版由 token-flow.ai.mjs 读同一份数据生成。
  */
 import type { JSX } from 'react';
-import { CodeLines, Pane, Pill, Stepper } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CodeLines, Pane, Pill, Stepper } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { steps } from './token-flow.data.mjs';
 import './token-flow.css';
 

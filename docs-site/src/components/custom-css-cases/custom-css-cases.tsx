@@ -4,8 +4,8 @@
  * 下面三格依次比在不在 @layer 里、特异性、文档顺序，分出胜负的那一格着色，后面的变淡。讲解文字与数据都在 custom-css-cases.data.mjs。
  */
 import type { JSX } from 'react';
-import { CasePicker, CodeLines, Pane, Pill } from '@godcreator/explainer-player';
-import type { Tone } from '@godcreator/explainer-player';
+import { CasePicker, CodeLines, Pane, Pill } from '@godcreator/docfirst-explainer';
+import type { Tone } from '@godcreator/docfirst-explainer';
 import { cases, criteria } from './custom-css-cases.data.mjs';
 
 type CssCase = (typeof cases)[number];

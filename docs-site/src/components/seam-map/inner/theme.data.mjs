@@ -2,7 +2,7 @@
  * 外观插件 @godcreator/gwb-theme 的内部接缝图：包首页 <SeamMap module="theme" /> 画的就是它。
  * 虚线框是包里的文件，方块是文件对外给的东西；灰色实线框是包外的外壳、设置插件与命令总线。坐标在 theme.layout.ts。
  */
-import { defineSeamGraph } from '@godcreator/explainer-player/seam-graph';
+import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 
 /* ref file="../plugins/theme/src/index.ts" lines="19-31" hash="1b69520c5ca3" blob="8a696cae264c" */
 /* ref file="../plugins/theme/src/index.ts" lines="143-162" hash="b839760d8494" blob="8a696cae264c" */

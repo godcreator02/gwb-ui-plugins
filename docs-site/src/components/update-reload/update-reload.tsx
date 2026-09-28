@@ -4,8 +4,8 @@
  * 下面左边是回执的要点、右边是窗格上显示的几行话，失败的那几行标红。讲解文字与数据都在 update-reload.data.mjs。
  */
 import type { JSX } from 'react';
-import { CasePicker, CodeLines, Pane, Pill } from '@godcreator/explainer-player';
-import type { Tone } from '@godcreator/explainer-player';
+import { CasePicker, CodeLines, Pane, Pill } from '@godcreator/docfirst-explainer';
+import type { Tone } from '@godcreator/docfirst-explainer';
 import { cases, stations } from './update-reload.data.mjs';
 
 type UpdateCase = (typeof cases)[number];

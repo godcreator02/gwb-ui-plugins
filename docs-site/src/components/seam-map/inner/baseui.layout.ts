@@ -4,8 +4,8 @@
  * 窗格、被调的一方、登记三者在同一行上；登记 logger.query 在右列最下面，线折回中列的 src/log-query/。
  */
 import { Cog, Component, FileSearch, Package, PanelsTopLeft, Puzzle, ScrollText, Settings, Split } from 'lucide-react';
-import { cap } from '@godcreator/explainer-player';
-import type { SeamLayout } from '@godcreator/explainer-player';
+import { cap } from '@godcreator/docfirst-explainer';
+import type { SeamLayout } from '@godcreator/docfirst-explainer';
 
 export const baseuiLayout: SeamLayout = {
   view: { w: 1200, h: 730 },

@@ -3,7 +3,7 @@
  * 先两段写规则（目标组的几条、查重的几条），再每种情况一段：调用、打开前后两张桌面、走到的规则与 planOpen 回的判断。
  * 这个文件不 import React，docfirst.config.mjs 引它，命令行也能运行。
  */
-import { casesText } from '@godcreator/explainer-player/text';
+import { casesText } from '@godcreator/docfirst-explainer/text';
 import { autoRules, cases, checks, panes, sideRule } from './open-pane-cases.data.mjs';
 
 const tabText = (tab) =>

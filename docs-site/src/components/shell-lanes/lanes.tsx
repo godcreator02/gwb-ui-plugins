@@ -4,8 +4,8 @@
  * 下面的代码卡片（CodeBlock）也放在这里：分步讲解在画面下方给出这一步对应的源码。
  */
 import type { JSX } from 'react';
-import { CodeLines, Pane } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CodeLines, Pane } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import './lanes.css';
 
 export type Point = [number, number];

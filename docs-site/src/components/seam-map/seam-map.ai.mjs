@@ -2,7 +2,7 @@
  * SeamMap 在机读版里变成什么：跟画面读同一份内容，先一段图的说明与入口，再每个模块一段，最后每条接缝一段。
  * 带 module 属性时写的是那个包的内部图。这个文件不 import React，docfirst.config.mjs 引它，命令行也能运行。
  */
-import { seamGraphText } from '@godcreator/explainer-player/seam-graph';
+import { seamGraphText } from '@godcreator/docfirst-explainer/seam-graph';
 import { systemGraph } from './system.data.mjs';
 import { shellGraph } from './inner/shell.data.mjs';
 import { themeGraph } from './inner/theme.data.mjs';

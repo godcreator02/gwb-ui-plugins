@@ -5,8 +5,8 @@
  * 外观窗格（violet）在最下面。这一步在动的那一方标上「这一步」。讲解文字与数据都在 appearance-flow.data.mjs。
  */
 import type { JSX, ReactNode } from 'react';
-import { CodeLines, Diff, Pane, Pill, Stepper } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CodeLines, Diff, Pane, Pill, Stepper } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { headElements, revertedPreview, settingKeys, steps } from './appearance-flow.data.mjs';
 
 type FlowStep = (typeof steps)[number];

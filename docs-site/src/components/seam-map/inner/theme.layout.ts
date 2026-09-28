@@ -3,8 +3,8 @@
  * 最下一行是设置插件、命令总线、启动样式的拼法与键名换算，各自在连着它的方块下面。
  */
 import { ArrowLeftRight, Blocks, Cog, Palette, PanelsTopLeft, Radio, Settings } from 'lucide-react';
-import { cap } from '@godcreator/explainer-player';
-import type { SeamLayout } from '@godcreator/explainer-player';
+import { cap } from '@godcreator/docfirst-explainer';
+import type { SeamLayout } from '@godcreator/docfirst-explainer';
 
 export const themeLayout: SeamLayout = {
   view: { w: 1200, h: 430 },

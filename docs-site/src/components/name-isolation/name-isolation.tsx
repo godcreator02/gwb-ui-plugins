@@ -4,8 +4,8 @@
  * 讲解文字与 DOM 树都在 name-isolation.data.mjs，机读版由 name-isolation.ai.mjs 读同一份数据生成。
  */
 import type { JSX } from 'react';
-import { CasePicker, Pane, Pill } from '@godcreator/explainer-player';
-import type { Role } from '@godcreator/explainer-player';
+import { CasePicker, Pane, Pill } from '@godcreator/docfirst-explainer';
+import type { Role } from '@godcreator/docfirst-explainer';
 import { cases, nodes } from './name-isolation.data.mjs';
 import './name-isolation.css';
 
