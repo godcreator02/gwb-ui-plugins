@@ -298,7 +298,7 @@ export default class GwbShell extends Service implements GwbShellApi {
       {
         name: DESKTOP_RENAME_COMMAND,
         description: '给一张桌面改名',
-        usage: '参数 { id, name }——id 是桌面 id（用 shell.desktop.list 查），name 非空（两头空白去掉）。转发给页面执行，回执 ok 代表转发了',
+        usage: '参数 { id, name }——id 是桌面 id（用 shell.desktop.list 查），name 非空（去掉两端空白后）。转发给页面执行，回执 ok 代表转发了',
       },
       async (args) => {
         const parsed = parseRenameArgs(args)
