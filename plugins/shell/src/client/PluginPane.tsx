@@ -50,13 +50,13 @@ export function PluginPane({
   openPane: ShellBridge['openPane']
   /** 绑的是这一份自己的 panel api */
   setTitle: ShellBridge['setPaneTitle']
-  /** 转正；同样绑这一份自己的 panel api */
+  /** 转成正式窗格；同样绑这一份自己的 panel api */
   keepPane: ShellBridge['keepPane']
   /** 合并进这一份的面板 params（dockview 的 updateParameters），上报内容用它 */
   updateParams: (update: Record<string, unknown>) => void
 }): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null)
-  // 经 ref 读、不进依赖数组：这几个函数每轮渲染都是新闭包，进依赖会让插件被反复卸载重挂
+  // 经 ref 读、不进依赖数组：这几个函数每轮渲染都是新闭包，进依赖会让插件被反复卸载后重新挂载
   const openPaneRef = useRef(openPane)
   openPaneRef.current = openPane
   const setTitleRef = useRef(setTitle)
@@ -68,13 +68,13 @@ export function PluginPane({
   // 同样经 ref：每轮渲染都是新对象；换内容由下面那个 effect 按稳定序列化比对
   const paneParamsRef = useRef(paneParams)
   paneParamsRef.current = paneParams
-  /** 插件给的软换函数；没给（走硬换）就一直是 undefined */
+  /** 插件给的 `retarget`（原地换内容）；没给（卸载后重新挂载）就一直是 undefined */
   const retargetRef = useRef<((params: Record<string, unknown>) => void) | undefined>(undefined)
   /** 没挂载完成时换 params 什么都不做：挂载流程读的就是最新那份 */
   const mountedRef = useRef(false)
-  /** 插件手上此刻是哪份参数（稳定序列化）；面板 params 换成插件自己上报的那份时，软换 effect 据此什么都不做 */
+  /** 插件手上此刻是哪份参数（稳定序列化）；面板 params 换成插件自己上报的那份时，换内容的 effect 据此什么都不做 */
   const heldRef = useRef<string | undefined>(undefined)
-  /** 加一就让挂载 effect 重跑，即硬换 */
+  /** 加一就让挂载 effect 重跑，即卸载后重新挂载 */
   const [remounts, setRemounts] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
@@ -99,7 +99,7 @@ export function PluginPane({
         const { update, notice } = contentUpdateOf(paneParamsRef.current, content)
         if (notice !== undefined) console.warn(`[shell] ${pluginKey} 的窗格 ${paneId}：${notice}`)
         if (content.params !== undefined) {
-          // 先记下插件手上已是这份，再改面板：params 一变软换 effect 就会运行
+          // 先记下插件手上已是这份，再改面板：params 一变换内容的 effect 就会运行
           const mine = pluginParamsIn(content.params)
           heldRef.current = paramsKeyOf(mine)
           // 连着上报两次、中间没重渲染时，第二次要按第一次之后的参数算删哪些键
@@ -137,7 +137,7 @@ export function PluginPane({
         }
         const handle = mountPane({ host, shell, pane }, container)
         dispose = pickDispose(handle)
-        // retarget 可选：取不到就走硬换，不是契约不符
+        // retarget 可选：取不到就卸载后重新挂载，不是契约不符
         retargetRef.current = pickRetarget(handle)
         heldRef.current = paramsKeyOf(openParams)
         mountedRef.current = true
@@ -162,10 +162,10 @@ export function PluginPane({
         console.error(`[shell] ${pluginKey} 的 dispose 抛了：`, err)
       })
     }
-    // paneParams 故意不在依赖里：每轮渲染都是新对象；换内容走下面的 effect，硬换靠 remounts
+    // paneParams 故意不在依赖里：每轮渲染都是新对象；换内容走下面的 effect，卸载后重新挂载靠 remounts
   }, [pluginKey, entryId, paneId, panelId, host, remounts])
 
-  /** 外壳换了面板 params：插件给了 `retarget` 就软换，没给就硬换；比稳定序列化，不比引用；没挂载完成时什么都不做 */
+  /** 外壳换了面板 params：插件给了 `retarget` 就调它原地换内容，没给就卸载后重新挂载；比稳定序列化，不比引用；没挂载完成时什么都不做 */
   const paramsKey = paramsKeyOf(paneParams)
   useEffect(() => {
     if (!mountedRef.current) return

@@ -30,7 +30,7 @@ export function PluginPanel(props: IDockviewPanelProps): ReactElement {
       console.error(`[shell] 开 ${target} 失败：${String(err)}`)
     })
   }
-  /** 转正：写 `undefined` 删掉 preview；已是正式窗格就什么都不做，免得白白触发一轮参数变更与保存 */
+  /** 转成正式窗格：写 `undefined` 删掉 preview；已是正式窗格就什么都不做，免得白白触发一轮参数变更与保存 */
   const keepPane: ShellBridge['keepPane'] = () => {
     if (params?.preview !== true) return
     props.api.updateParameters({ preview: undefined })

@@ -20,7 +20,7 @@ export function pickDispose(handle: unknown): (() => void) | undefined {
   }
 }
 
-/** 可选：取不到是正常路径，外壳改走硬换 */
+/** 可选：取不到是正常路径，外壳改为卸载后重新挂载 */
 export function pickRetarget(handle: unknown): ((params: Record<string, unknown>) => void) | undefined {
   if (handle === null || typeof handle !== 'object') return undefined
   const retarget = (handle as { retarget?: unknown }).retarget

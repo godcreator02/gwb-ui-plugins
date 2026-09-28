@@ -33,7 +33,7 @@ describe('pickMountPane：按契约取 mountPane 导出', () => {
   })
 })
 
-describe('pickDispose：句柄上的 dispose 才是卸载口', () => {
+describe('pickDispose：卸载时调的是句柄上的 dispose', () => {
   it('契约形态 { dispose() }：取出来调一次，清理真跑', () => {
     let cleaned = 0
     const off = pickDispose({ dispose: () => void (cleaned += 1) })
@@ -78,11 +78,11 @@ describe('pickDispose：句柄上的 dispose 才是卸载口', () => {
 })
 
 /**
- * 换内容分两条路，由这个函数决定：取得到就是**软换**（插件自己换内容、保住该保的状态），
- * 取不到就是**硬换**（外壳卸载后重新挂载）。所以「取不到」是一条正常路径，不是契约不符。
+ * 换内容分两条路，由这个函数决定：取得到就**原地换内容**（插件自己换内容、保住该保的状态），
+ * 取不到就**卸载后重新挂载**（外壳做）。所以「取不到」是一条正常路径，不是契约不符。
  */
-describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
-  it('给了就回一支能调的，参数原样送到', () => {
+describe('pickRetarget：可选的那个函数，取不到就卸载后重新挂载', () => {
+  it('给了就回一个能调的函数，参数原样送到', () => {
     const seen: unknown[] = []
     const retarget = pickRetarget({ dispose() {}, retarget: (params: unknown) => void seen.push(params) })
     expect(retarget).toBeTypeOf('function')
@@ -102,7 +102,7 @@ describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
     expect(handle.seen).toBe(handle)
   })
 
-  it('没给、不是函数、句柄不是对象 → undefined，那是硬换那条路，不是错', () => {
+  it('没给、不是函数、句柄不是对象 → undefined，那是卸载后重新挂载那条路，不是错', () => {
     expect(pickRetarget({ dispose() {} })).toBeUndefined()
     expect(pickRetarget({ dispose() {}, retarget: true })).toBeUndefined()
     expect(pickRetarget(undefined)).toBeUndefined()

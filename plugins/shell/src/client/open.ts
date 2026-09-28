@@ -239,7 +239,7 @@ function panelInSnapshot(api: DockviewApi, id: string): IDockviewPanel {
 
 function focusPanel(api: DockviewApi, plan: Extract<OpenPlan, { kind: 'focus' }>): void {
   const panel = panelInSnapshot(api, plan.id)
-  // 转正就是删掉 preview：写 undefined 即删除
+  // 转成正式窗格就是删掉 preview：写 undefined 即删除
   if (plan.keep === true) panel.api.updateParameters({ preview: undefined })
   panel.api.setActive()
 }

@@ -122,7 +122,7 @@ export function parsePaneContent(raw: unknown): { ok: true; content: PaneContent
 
 /**
  * 上报内容 → 交给 `updateParameters` 的那份：换 key；给了 params 就整份替换插件那部分、移除保留键并告警。
- * 外壳的身份字段与 preview 不动：上报内容不转正，转正归插件自己调 `keepPane`
+ * 外壳的身份字段与 preview 不动：上报内容不会让预览窗格转成正式窗格，要转由插件自己调 `keepPane`
  */
 export function contentUpdateOf(
   prev: Record<string, unknown> | undefined,

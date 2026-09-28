@@ -262,7 +262,7 @@ describe('启动器：launchGoesTo / launchSpec', () => {
     expect(group.panels.map((panel) => panel.id)).toEqual(['a', 'plugin:home:hello:tool', 'b'])
   })
 
-  it('工具窗格开在别的桌面上：切过去、激活它；是预览就顺带转正', async () => {
+  it('工具窗格开在别的桌面上：切过去、激活它；是预览就顺带转成正式窗格', async () => {
     const { dock, log, notices } = setup({ desktops: ['d1', 'd2'], active: 'd1' })
     dock('d1').newGroup('d1-g1')
     const otherGroup = dock('d2').newGroup('d2-g1')
@@ -293,7 +293,7 @@ describe('openRegisteredPane', () => {
     expect(log).toEqual(['d1 setActive plugin:home:hello:doc'])
   })
 
-  it('preview 打开、目标组已有这个窗格的预览：软换，旧参数里多出来的键写成 undefined', async () => {
+  it('preview 打开、目标组已有这个窗格的预览：原地换内容，旧参数里多出来的键写成 undefined', async () => {
     const { dock, log } = setup({ desktops: ['d1'], active: 'd1' })
     const group = dock('d1').newGroup('d1-g1')
     const previewPanel = dock('d1').seed(group, 'plugin:home:hello:doc', pluginParams('doc', { key: 'a.md', preview: true, file: 'a.md', old: 1 }), '文档', true)

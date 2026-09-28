@@ -87,7 +87,7 @@ export interface ShellBridge {
    * **上报这个窗格此刻装的内容**：插件在窗格里原地换了内容（点链接跳转、后退前进）之后调它。
    * 外壳把这一份的 key 换成新的；给了 `params` 就整份替换插件那部分参数（去掉保留键）；给了
    * `title` 等于同时 `setPaneTitle`。**不调 `retarget`、不重新挂载**——内容已经由插件换好了。
-   * 之后布局照常保存，整页重载回到上报的内容。预览窗格上报之后仍是预览窗格，转正由 `keepPane` 做。
+   * 之后布局照常保存，整页重载回到上报的内容。预览窗格上报之后仍是预览窗格，转成正式窗格由 `keepPane` 做。
    */
   setPaneContent(content: PaneContent): void
   /**
@@ -115,9 +115,9 @@ export interface ShellBridge {
 /**
  * 插件的 `mountPane` 返回的句柄。**`dispose` 必须有，`retarget` 可选**：
  *
- * - 给了 `retarget`：外壳换了这个窗格的 params 之后调它（**软换**），插件自己决定怎么换
+ * - 给了 `retarget`：外壳换了这个窗格的 params 之后调它（**原地换内容**），插件自己决定怎么换
  *   内容、保留哪些状态（滚动位置、前进后退、正在输入的文字）
- * - 没给：外壳**卸载后重新挂载**（硬换）。简单的插件不必为此写代码，代价是这个窗格的
+ * - 没给：外壳**卸载后重新挂载**。简单的插件不必为此写代码，代价是这个窗格的
  *   内部状态重新开始
  */
 export interface PaneHandle {

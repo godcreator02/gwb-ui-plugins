@@ -10,7 +10,7 @@ export interface PanelParams {
   paneId: string
   /** 这一份装的内容：插件给的不透明字符串，外壳只拿它查重；没给等于空串 */
   key?: string
-  /** 只写 `true`，转正就是删掉这个键，不写成 false——两种判法并存迟早有一处只判了一种 */
+  /** 只写 `true`，转成正式窗格就是删掉这个键，不写成 false——两种判法并存迟早有一处只判了一种 */
   preview?: boolean
   /** 插件传的那部分，与保留键重名的在入口已移除 */
   [key: string]: unknown
@@ -23,7 +23,7 @@ export type Placement = 'auto' | 'side'
 export interface OpenPaneOptions {
   /** 这一份装的内容，外壳不解释；已开的几份里找得到就激活那一份（文档窗格只找目标组，工具窗格找这张桌面）。不给等于空串 */
   key?: string
-  /** 必须可 JSON 序列化：它随布局保存、重启后原样交给 `mountPane`。聚焦时不生效，软换时整份换上 */
+  /** 必须可 JSON 序列化：它随布局保存、重启后原样交给 `mountPane`。聚焦时不生效，原地换内容时整份换上 */
   params?: Record<string, unknown>
   /** 找不到时放进目标组的预览窗格：已有就原地换内容，没有就新开一份标成预览。每组每个窗格至多一份 */
   preview?: boolean
@@ -129,11 +129,11 @@ export type OpenAt = { group: string; index: number } | { split: string } | { em
 
 /** 打开一个窗格该做什么；副作用归调用方（`open.ts`） */
 export type OpenPlan =
-  /** `keep`：顺带转正 */
+  /** `keep`：顺带转成正式窗格 */
   | { kind: 'focus'; id: string; keep?: true; notice?: string }
   /** 工具窗格开在别的桌面上：到那张桌面激活它；切不切过去归调用方 */
   | { kind: 'reveal'; desktop: string; id: string; keep?: true; notice?: string }
-  /** 软换：`params` 是整份新的面板 params */
+  /** 原地换内容：`params` 是整份新的面板 params */
   | { kind: 'retarget'; id: string; params: PanelParams; notice?: string }
   | { kind: 'open'; id: string; title: string; spec: OpenableSpec; at: OpenAt; notice?: string }
   | { kind: 'none'; notice: string }
@@ -149,7 +149,7 @@ function withPluginParamsAndIdentity(
   return { ...spec, params: { ...pluginParams, ...spec.params, key, ...(preview ? { preview: true } : {}) } }
 }
 
-/** 开窗格与软换都用这一处拼，分开拼的话软换会漏掉 `icon` */
+/** 开窗格与原地换内容都用这一处拼，分开拼的话原地换内容会漏掉 `icon` */
 export function panelParamsOf(spec: OpenableSpec): PanelParams {
   return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
 }
@@ -238,7 +238,7 @@ export function targetGroup(desk: Desk, def: PaneDef, placement: Placement, from
   return activeGroup === undefined ? { empty: true } : { group: activeGroup.id }
 }
 
-/** 找到的是预览窗格、这次是正式打开就顺带转正 */
+/** 找到的是预览窗格、这次是正式打开就顺带转成正式窗格 */
 function focusPlanFor(tab: DeskTab, wantsPreview: boolean): OpenPlan {
   return tab.preview && !wantsPreview ? { kind: 'focus', id: tab.id, keep: true } : { kind: 'focus', id: tab.id }
 }
@@ -283,7 +283,7 @@ function reservedKeysNotice(options: OpenPaneOptions | undefined, who: PaneDef):
 
 /**
  * 先算目标组，再按窗格类别查重：同一 key 已经开着（工具窗格查整张桌面，文档窗格只查目标组）就激活它，正式打开时找到的是
- * 预览窗格就顺带转正；工具窗格开在别的桌面上就到那张桌面激活它；要预览、目标组里已有这个窗格的预览窗格就原地换内容；
+ * 预览窗格就顺带转成正式窗格；工具窗格开在别的桌面上就到那张桌面激活它；要预览、目标组里已有这个窗格的预览窗格就原地换内容；
  * 都不是才开新的一份
  */
 export function planOpen(
