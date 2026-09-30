@@ -256,7 +256,7 @@ const seams = [
     text: '插件的样式入口在构建期引用外壳的映射文件，bg-primary 这类类名编成 var(--primary)、不输出变量值；值在运行时读外壳最先注入的令牌表。',
   },
   /* ref file="../plugins/shell/src/startup-style.ts" lines="3-11" hash="0320654d56d7" blob="86c08b9d31cd" */
-  /* ref file="../plugins/theme/src/client/index.tsx" lines="15-16" hash="cad6e1e036ba" blob="d52b9b51d84a" */
+  /* ref file="../plugins/theme/src/client/index.tsx" lines="18-19" hash="cad6e1e036ba" blob="82cc4b455dbb" */
   /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-4" hash="a668bd572a85" blob="20e3479e96b1" */
   {
     n: 14,
@@ -268,7 +268,7 @@ const seams = [
     via: 'code',
     text: '外壳处理 shell.env 时命令表里有 theme.startupCss 才调它，页面入口把回来的样式写进 id 为 gwb-theme-style 的样式元素、排在三张样式表之后；外观窗格预览时改的也是这张。命令名与 id 两边各写一份，不互相 import。',
   },
-  /* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="105-106" hash="4d3a00459fe8" blob="156ed4e1bb07" */
+  /* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="107-108" hash="4d3a00459fe8" blob="cfd6a423ce07" */
   {
     n: 15,
     name: '外壳的命令',

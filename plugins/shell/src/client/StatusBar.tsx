@@ -1,5 +1,7 @@
 import { Fragment, useRef, useState, type ReactElement } from 'react'
-import { FolderOpen, LayoutGrid, Moon, Plus, RefreshCw, Send, Sun, TriangleAlert } from 'lucide-react'
+import { FolderOpen, LayoutGrid, Moon, Plus, RefreshCw, Send, Sun, TriangleAlert, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +36,9 @@ export interface LaunchGroup {
   rows: { spec: OpenableSpec; goesTo?: string }[]
 }
 
-/** 状态栏各项共用的外观 */
+/** 状态栏里不可点的那一格（home 与版本） */
 const CELL =
   'shell:flex shell:h-6 shell:items-center shell:gap-1.5 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-muted-foreground'
-const BUTTON = `${CELL} shell:cursor-default shell:select-none shell:hover:bg-accent shell:hover:text-accent-foreground`
 
 /** 「布局」菜单：已存布局、存当前为布局（该项变内联输入框）、重置 */
 function LayoutBar({
@@ -65,8 +66,8 @@ function LayoutBar({
 
   if (naming !== null) {
     return (
-      <input
-        className="shell:bg-background shell:h-6 shell:w-36 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-foreground shell:outline-none"
+      <Input
+        className="shell:h-6 shell:w-56"
         value={naming}
         autoFocus
         placeholder="布局名（Enter 保存，Esc 取消）"
@@ -82,9 +83,11 @@ function LayoutBar({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={BUTTON} title="布局：保存当前布局 / 打开已保存的布局 / 重置">
-        <LayoutGrid className="shell:size-3.5" />
-        布局
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="xs" title="布局：保存当前布局 / 打开已保存的布局 / 重置">
+          <LayoutGrid />
+          布局
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top">
         <DropdownMenuLabel>已保存的布局</DropdownMenuLabel>
@@ -95,11 +98,13 @@ function LayoutBar({
           saved.map((row) => (
             <DropdownMenuItem key={row.id} onSelect={() => onApply(row)}>
               <span className="shell:flex-1">{row.name}</span>
-              <span
-                role="button"
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 tabIndex={-1}
-                className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
+                className="shell:ml-2"
                 title="删除这个布局"
+                aria-label={`删除布局${row.name}`}
                 onClick={(e) => {
                   // 不冒泡成选中这一项，否则会应用这套布局
                   e.preventDefault()
@@ -107,8 +112,8 @@ function LayoutBar({
                   onDelete(row.id)
                 }}
               >
-                ✕
-              </span>
+                <X />
+              </Button>
             </DropdownMenuItem>
           ))
         )}
@@ -154,14 +159,16 @@ function Launcher({
   }
   return (
     <DropdownMenu onOpenChange={(open) => open && load()}>
-      <DropdownMenuTrigger className={BUTTON} title="新建：打开一个窗格（每次打开菜单都重新读取注册表）">
-        <Plus className="shell:size-3.5" />
-        新建
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="xs" title="新建：打开一个窗格（每次打开菜单都重新读取注册表）">
+          <Plus />
+          新建
+        </Button>
       </DropdownMenuTrigger>
       {/* 点了开在别的桌面上的工具会切桌面，那时菜单还开着，body 检查要跳过它 */}
       <DropdownMenuContent align="start" side="top" data-gwb-launcher="" data-gwb-status-layer="">
         {loadError !== null ? (
-          <DropdownMenuItem disabled className="shell:text-destructive">
+          <DropdownMenuItem disabled variant="destructive">
             读不出注册表：{loadError}
           </DropdownMenuItem>
         ) : groups === null ? (
@@ -291,7 +298,6 @@ export function StatusBar({
     // z 高过桌面上的模态遮罩，状态栏永远可点；pointer-events 显式给 auto，radix 模态对 body 加的锁不跟桌面走
     <footer className="shell:relative shell:z-[60] shell:pointer-events-auto shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
       <DesktopPanel
-        triggerClassName={BUTTON}
         desktops={desktops}
         activeId={activeDesktopId}
         onSections={onSections}
@@ -316,37 +322,32 @@ export function StatusBar({
 
       {/* 当前桌面不变，点它才切过去 */}
       {notice !== null && (
-        <button type="button" className={BUTTON} data-gwb-notice={notice.desktop} onClick={() => onFollowNotice(notice.desktop)}>
-          <Send className="shell:size-3.5" />
+        <Button variant="ghost" size="xs" data-gwb-notice={notice.desktop} onClick={() => onFollowNotice(notice.desktop)}>
+          <Send />
           {notice.text}· 切过去
-        </button>
+        </Button>
       )}
 
       <span className="shell:flex-1" />
 
       {saveFailed && (
-        <button
-          type="button"
-          className={`${BUTTON} shell:text-destructive`}
-          title="布局保存失败——单击立即重试"
-          onClick={onRetrySave}
-        >
-          <TriangleAlert className="shell:size-3.5" />
+        <Button variant="destructive" size="xs" title="布局保存失败——单击立即重试" onClick={onRetrySave}>
+          <TriangleAlert />
           布局保存失败
-        </button>
+        </Button>
       )}
 
       {saveBlockedBy !== undefined && (
-        <button
-          type="button"
-          className={`${BUTTON} shell:text-destructive`}
+        <Button
+          variant="destructive"
+          size="xs"
           data-gwb-layout-blocked=""
           title={`${saveBlockedBy}\n这一轮不保存布局，免得覆盖磁盘上的布局文件——单击可改为用当前布局覆盖它`}
           onClick={() => setConfirmingOverwrite(true)}
         >
-          <TriangleAlert className="shell:size-3.5" />
+          <TriangleAlert />
           布局没读回来，不保存
-        </button>
+        </Button>
       )}
       <AlertDialog open={confirmingOverwrite} onOpenChange={(next) => !next && setConfirmingOverwrite(false)}>
         <AlertDialogContent data-gwb-status-layer="">
@@ -377,20 +378,20 @@ export function StatusBar({
       </div>
 
       {/* 整页 reload，不是外壳内部重建 */}
-      <button
-        type="button"
-        className={BUTTON}
+      <Button
+        variant="ghost"
+        size="xs"
         title="刷新界面：重新加载整个页面——重新读取注册表、按布局文件恢复布局（主进程不重启）"
         onClick={() => location.reload()}
       >
-        <RefreshCw className="shell:size-3.5" />
+        <RefreshCw />
         刷新
-      </button>
+      </Button>
 
-      <button type="button" className={BUTTON} onClick={toggleDark} title={dark ? '切到亮色' : '切到暗色'}>
-        {dark ? <Sun className="shell:size-3.5" /> : <Moon className="shell:size-3.5" />}
+      <Button variant="ghost" size="xs" onClick={toggleDark} title={dark ? '切到亮色' : '切到暗色'}>
+        {dark ? <Sun /> : <Moon />}
         {dark ? '亮色' : '暗色'}
-      </button>
+      </Button>
     </footer>
   )
 }

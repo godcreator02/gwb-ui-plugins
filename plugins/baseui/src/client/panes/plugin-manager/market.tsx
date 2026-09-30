@@ -226,24 +226,27 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
         {(markets ?? []).map((scope) => {
           const status = statuses.find((one) => one.scope === scope)
           return (
-            <Badge
-              key={scope}
-              variant="outline"
-              className={`baseui:gap-1 baseui:font-mono ${status !== undefined && !status.ok ? 'baseui:border-destructive baseui:text-destructive' : ''}`}
-              title={status?.registry ?? status?.error ?? '这次检索还没查它'}
-            >
-              {scope}
-              <span className="baseui:text-muted-foreground">{marketStatusText(status)}</span>
-              <button
-                type="button"
-                className="baseui:ml-0.5 baseui:rounded-sm baseui:opacity-60 baseui:hover:opacity-100 baseui:disabled:opacity-30"
+            // 去掉按钮放在徽标外面：按钮的最小尺寸比徽标高，塞进去会把徽标撑高
+            <span key={scope} className="baseui:inline-flex baseui:items-center">
+              <Badge
+                variant="outline"
+                className={`baseui:gap-1 baseui:font-mono ${status !== undefined && !status.ok ? 'baseui:border-destructive baseui:text-destructive' : ''}`}
+                title={status?.registry ?? status?.error ?? '这次检索还没查它'}
+              >
+                {scope}
+                <span className="baseui:text-muted-foreground">{marketStatusText(status)}</span>
+              </Badge>
+              <Button
+                size="icon-xs"
+                variant="ghost"
                 title={`从名单里去掉 ${scope}（~/.npmrc 里它的源不动）`}
+                aria-label={`从名单里去掉 ${scope}`}
                 disabled={working}
                 onClick={() => void saveMarkets(withoutMarket(markets ?? [], scope))}
               >
-                <X className="baseui:size-3" />
-              </button>
-            </Badge>
+                <X />
+              </Button>
+            </span>
           )
         })}
         {markets !== null && (
@@ -255,7 +258,7 @@ export function MarketTab({ host, installed, busy, onChanged, portal }: MarketTa
             }}
           >
             <Input
-              className="baseui:h-6 baseui:w-28 baseui:font-mono baseui:text-xs"
+              className="baseui:h-6 baseui:w-28 baseui:font-mono"
               placeholder="@scope"
               value={newMarket}
               onChange={(event) => setNewMarket(event.target.value)}

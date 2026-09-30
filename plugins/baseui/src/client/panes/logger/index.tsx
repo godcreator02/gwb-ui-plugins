@@ -7,6 +7,7 @@ import { startLogPoller } from './poller'
 import { readQueryReply } from './receipts'
 import { ScrollText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -19,7 +20,7 @@ import {
 
 /**
  * 日志全部经 `args.host` 调 `logger.query` 拉取，只在所在桌面可见时拉。类名一律带 `baseui:` 前缀，漏加不报错，
- * 由 `tests/prefix.test.ts` 检查。本窗格不许调用 `console`：渲染层 console 是日志来源之一，接收路径上打一条
+ * 由 devkit 的样式检查查出来。本窗格不许调用 `console`：渲染层 console 是日志来源之一，接收路径上打一条
  * 会被写进日志文件、下一次拉取时读回来再打，条数成倍增长、界面卡死
  */
 
@@ -120,11 +121,9 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   }
 
   // 选中的级别实心，更严重的几级浅色高亮，表示显示这一级及以上
-  const segTone = (l: LogLevel): string => {
-    if (filter.level === l) return 'baseui:bg-primary baseui:text-primary-foreground baseui:font-medium'
-    return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level)
-      ? 'baseui:bg-accent baseui:text-muted-foreground'
-      : 'baseui:text-muted-foreground baseui:hover:text-foreground'
+  const levelVariant = (l: LogLevel): 'default' | 'secondary' | 'ghost' => {
+    if (filter.level === l) return 'default'
+    return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level) ? 'secondary' : 'ghost'
   }
 
   const filtering =
@@ -140,15 +139,16 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       <div className="baseui:flex baseui:flex-wrap baseui:items-center baseui:gap-1.5 baseui:border-b baseui:border-border baseui:bg-card baseui:px-2.5 baseui:py-1.5">
         <div className="baseui:flex baseui:items-center baseui:gap-0.5 baseui:rounded-lg baseui:bg-muted/60 baseui:p-0.5">
           {LEVELS.map((l) => (
-            <button
+            <Button
               key={l}
-              type="button"
+              size="xs"
+              variant={levelVariant(l)}
+              aria-pressed={filter.level === l}
               title={`显示 ${LEVEL_TEXT[l]} 及以上`}
               onClick={() => setFilter((f) => ({ ...f, level: l }))}
-              className={`baseui:rounded-md baseui:px-2.5 baseui:py-0.5 baseui:text-[11.5px] baseui:leading-5 ${segTone(l)}`}
             >
               {LEVEL_TEXT[l]}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -156,21 +156,18 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
           {SOURCES.map((s) => {
             const on = filter.sources.has(s)
             return (
-              <button
+              <Button
                 key={s}
-                type="button"
+                size="xs"
+                variant={on ? 'secondary' : 'ghost'}
+                aria-pressed={on}
                 title={`显示或隐藏来自${SOURCE_LABEL[s]}的日志`}
                 onClick={() => toggleSource(s)}
-                className={`baseui:inline-flex baseui:items-center baseui:gap-1.5 baseui:rounded-full baseui:px-2.5 baseui:py-0.5 baseui:text-[11.5px] baseui:leading-5 ${
-                  on
-                    ? 'baseui:bg-secondary baseui:text-secondary-foreground baseui:hover:bg-accent'
-                    : 'baseui:text-muted-foreground baseui:opacity-55 baseui:hover:bg-accent baseui:hover:opacity-80'
-                }`}
               >
                 <span className={`baseui:h-1.5 baseui:w-1.5 baseui:rounded-full ${SOURCE_DOT[s]}`} />
-                {SOURCE_LABEL[s]}{' '}
-                <span className="baseui:text-[10.5px] baseui:tabular-nums baseui:opacity-60">{counts[s]}</span>
-              </button>
+                {SOURCE_LABEL[s]}
+                <span className="baseui:tabular-nums baseui:opacity-60">{counts[s]}</span>
+              </Button>
             )
           })}
         </div>
@@ -198,12 +195,15 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             </SelectContent>
           </Select>
 
-          <div className="baseui:flex baseui:h-8 baseui:min-w-32 baseui:flex-1 baseui:items-center baseui:gap-1.5 baseui:rounded-md baseui:border baseui:border-input baseui:px-2 baseui:focus-within:border-ring">
-            <Search size={12} className="baseui:shrink-0 baseui:opacity-50" aria-hidden />
-            <input
+          <div className="baseui:relative baseui:min-w-32 baseui:flex-1">
+            <Search
+              className="baseui:pointer-events-none baseui:absolute baseui:top-1/2 baseui:left-2 baseui:size-3.5 baseui:-translate-y-1/2 baseui:text-muted-foreground"
+              aria-hidden
+            />
+            <Input
               type="text"
               placeholder="搜索 name 或消息"
-              className="baseui:w-full baseui:bg-transparent baseui:text-xs baseui:outline-none baseui:placeholder:text-muted-foreground"
+              className="baseui:h-8 baseui:pl-7"
               value={filter.search}
               onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
             />
@@ -212,7 +212,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
           <Button
             size="sm"
             variant="ghost"
-            className="baseui:shrink-0 baseui:text-muted-foreground"
+            className="baseui:shrink-0"
             title="只清空这个窗格里显示的日志，日志文件不动。清掉的不会自动回来，重新打开这个窗格才会重新显示"
             onClick={() => setEntries([])}
           >
@@ -278,13 +278,14 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       </div>
 
       {!stick && (
-        <button
-          type="button"
+        <Button
+          size="xs"
+          variant="outline"
           onClick={() => setStick(true)}
-          className="baseui:absolute baseui:bottom-9 baseui:right-3.5 baseui:z-10 baseui:rounded-full baseui:border baseui:border-border baseui:bg-popover baseui:px-3 baseui:py-1 baseui:text-[11.5px] baseui:text-popover-foreground baseui:shadow-lg baseui:hover:bg-accent"
+          className="baseui:absolute baseui:right-3.5 baseui:bottom-9 baseui:z-10"
         >
           已暂停自动滚动 · 回到底部
-        </button>
+        </Button>
       )}
 
       <div className="baseui:flex baseui:items-center baseui:justify-between baseui:gap-3 baseui:border-t baseui:border-border baseui:bg-card baseui:px-2.5 baseui:py-1 baseui:text-[11px] baseui:text-muted-foreground">

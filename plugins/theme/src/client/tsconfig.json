@@ -5,7 +5,11 @@
     "lib": ["ES2023", "DOM"],
     // 浏览器侧没有 node 全局：不给空表的话 @types/node 会自动收进来
     "types": [],
-    "noEmit": true
+    "noEmit": true,
+    // shadcn 添加的组件写的是 @/… 这种，typecheck 要解析得了。不写 baseUrl：TS 7 移除了它
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": ["."]
 }

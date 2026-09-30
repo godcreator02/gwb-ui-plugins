@@ -62,7 +62,9 @@ import { installedIndex, type InstalledIndex } from './market-rows'
 import { describeUpdateReceipt, waitForOwnRemount, type UpdateView } from './update-receipt'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -258,7 +260,7 @@ function SettingField({
         <div className="baseui:flex baseui:items-center baseui:gap-1">
           <Input
             type={revealed ? 'text' : 'password'}
-            className="baseui:h-8 baseui:w-56 baseui:font-mono baseui:text-xs"
+            className="baseui:h-8 baseui:w-56 baseui:font-mono"
             placeholder={shown === '' ? hint : undefined}
             title={why}
             value={shown}
@@ -354,9 +356,9 @@ function SettingLine({
     return (
       <div className="baseui:px-3 baseui:py-2">
         {label}
-        <textarea
+        <Textarea
           spellCheck={false}
-          className="baseui:mt-1 baseui:h-28 baseui:w-full baseui:resize-y baseui:rounded-md baseui:border baseui:border-border baseui:bg-background baseui:px-2 baseui:py-1.5 baseui:font-mono baseui:text-xs baseui:outline-none baseui:focus:border-primary"
+          className="baseui:mt-1 baseui:h-28 baseui:resize-y baseui:font-mono"
           placeholder={row.default !== undefined ? formatDefault(row.default) : '一行一项'}
           value={listText(value)}
           onChange={(e) => onChange(e.target.value.split('\n'))}
@@ -1024,7 +1026,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       <div className="baseui:border-b baseui:border-border baseui:px-3 baseui:py-2">
         <div className="baseui:flex baseui:items-center baseui:gap-2">
           <Input
-            className="baseui:h-8 baseui:flex-1 baseui:font-mono baseui:text-xs"
+            className="baseui:h-8 baseui:flex-1 baseui:font-mono"
             placeholder="按包名直接安装，如 @godcreator/gwb-hello（安装最新版）"
             value={installInput}
             onChange={(e) => setInstallInput(e.target.value)}
@@ -1106,15 +1108,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             </div>
             <div className="baseui:flex baseui:items-center baseui:gap-1">
               {(['all', 'on', 'off', 'bad'] as Filter[]).map((f) => (
-                <Button
-                  key={f}
-                  size="sm"
-                  variant={filter === f ? 'secondary' : 'ghost'}
-                  className={cn(f === 'bad' && badCount > 0 && filter !== f && 'baseui:text-destructive')}
-                  onClick={() => setFilter(f)}
-                >
+                <Button key={f} size="sm" variant={filter === f ? 'secondary' : 'ghost'} onClick={() => setFilter(f)}>
                   {FILTER_LABEL[f]}
-                  {f === 'bad' && badCount > 0 ? ` ${badCount}` : ''}
+                  {f === 'bad' && badCount > 0 && <Badge variant="destructive">{badCount}</Badge>}
                 </Button>
               ))}
             </div>
@@ -1271,8 +1267,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         </div>
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="baseui:shrink-0 baseui:text-destructive"
+                          variant="destructive"
+                          className="baseui:shrink-0"
                           title="把这一项从磁盘上删除"
                           onClick={() =>
                             void run(
@@ -1339,8 +1335,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         {/* 没有条目的包也能卸载——卸载是包级动作，不经过条目那一层 */}
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="baseui:shrink-0 baseui:text-destructive"
+                          variant="destructive"
+                          className="baseui:shrink-0"
                           disabled={busy}
                           title={`pnpm remove ${row.pkg}。设置与数据留在磁盘上`}
                           onClick={() => askUninstall(row.pkg)}
@@ -1385,12 +1381,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           </AlertDialogHeader>
           {/* 设置值删不删要问：不问就静默留下一批没有插件声明的值，它们会出现在列表末尾「没有插件声明的设置」里 */}
           <label className="baseui:flex baseui:items-center baseui:gap-2 baseui:rounded-md baseui:border baseui:border-border baseui:px-3 baseui:py-2 baseui:text-sm">
-            <input
-              type="checkbox"
-              className="baseui:size-4 baseui:accent-primary"
-              checked={alsoDrop}
-              onChange={(e) => setAlsoDrop(e.target.checked)}
-            />
+            <Checkbox checked={alsoDrop} onCheckedChange={(next) => setAlsoDrop(next === true)} />
             <span>
               一并删除它的设置值
               <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
@@ -1400,10 +1391,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           </label>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              className="baseui:bg-destructive baseui:text-white baseui:hover:bg-destructive/90"
-              disabled={busy}
-              onClick={() => void removeEntry()}
+            <AlertDialogAction variant="destructive" disabled={busy} onClick={() => void removeEntry()}
             >
               删除条目
             </AlertDialogAction>
@@ -1473,12 +1461,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           </AlertDialogHeader>
           {askingUninstall !== null && askingUninstall.settings.length > 0 && (
             <label className="baseui:flex baseui:items-center baseui:gap-2 baseui:rounded-md baseui:border baseui:border-border baseui:px-3 baseui:py-2 baseui:text-sm">
-              <input
-                type="checkbox"
-                className="baseui:size-4 baseui:accent-primary"
-                checked={uninstallDrop}
-                onChange={(e) => setUninstallDrop(e.target.checked)}
-              />
+              <Checkbox checked={uninstallDrop} onCheckedChange={(next) => setUninstallDrop(next === true)} />
               <span>
                 一并删除这 {askingUninstall.settings.length} 项设置值
                 <span className="baseui:block baseui:text-xs baseui:text-muted-foreground">
@@ -1489,10 +1472,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              className="baseui:bg-destructive baseui:text-white baseui:hover:bg-destructive/90"
-              disabled={busy}
-              onClick={() => void uninstallPkg()}
+            <AlertDialogAction variant="destructive" disabled={busy} onClick={() => void uninstallPkg()}
             >
               卸载
             </AlertDialogAction>

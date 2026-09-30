@@ -1,0 +1,43 @@
+---
+born-at: 2026-09-30T17:10
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 可点控件换成 shadcn 默认组件
+domain: 仓库
+---
+
+## 背景
+
+外壳的状态栏、「桌面」面板、标签关闭钮，基础界面的日志窗格与插件管理窗格，外观窗格，里面还有一批手写的可点控件：
+原生 `<button>`、`<input>`、`<textarea>`、原生 checkbox，`role="button"` 的 div，各自带一串颜色、边框、圆角、字号类名。
+已经用上 shadcn 组件的地方，也常在使用处用 `className` 盖掉组件自带的颜色和字号。外观插件还没接 shadcn。
+
+用户定的口径：所有可点控件都换成 shadcn 官方组件；组件文件由 `shadcn add` 在插件包目录生成、不手改样式，唯一的本地改动是浮层组件加
+`container` 参数；使用处 `className` 只写布局（间距、宽度、flex、对齐），不覆盖颜色、边框、圆角、字号；行、标签页、图标按钮用 Button 的
+`ghost` / `link` 变体，尺寸从已有 variant 里选。功能、键盘交互、`data-*` 属性不变。
+
+## 结论与边界
+
+三个插件都按这个口径改完。外壳新增 `input`，基础界面新增 `textarea`、`checkbox`，外观从头接入（`components.json`、`@/` 别名三处、
+`button`、`input`、`textarea`，组件依赖写在 dev）。原来靠颜色类表达的状态改由 variant 表达：告警与删除用 `destructive`，
+日志级别的「选中 / 更严重的几级 / 其余」用 `default` / `secondary` / `ghost`，来源开关与筛选用 `secondary` / `ghost` 并带 `aria-pressed`，
+插件管理「异常」的数量改成一个 `destructive` 徽标。
+
+几处没法一对一换，处理办法：
+
+- 「桌面」面板的桌面行里嵌着删除钮，按钮里不能再放按钮：拆成并排的两个按钮，改名输入框也放在按钮外面
+- 窗格行的缩进写成按钮的左内边距压不过 `xs` 变体里带 `has-[>svg]` 的内边距（选择器更具体），缩进改放在外层 div
+- 拖放悬停的底色、市场名单的去掉钮这类会盖掉按钮颜色或把徽标撑高的，挪到按钮外层或徽标外面
+- Input、Textarea 没有尺寸 variant，使用处保留高度类（`h-6`、`h-8`）跟同一行的按钮对齐，字号类一律去掉
+- 可折叠区的触发器本来就是官方的 `CollapsibleTrigger`，这次没改
+
+测试直接渲染外观窗格，组件里的 `@/…` 要能解析，仓根 vitest 配置开了 `resolve.tsconfigPaths`。外观窗格测试原来用
+`/<button[^>]*disabled[^>]*>保存/` 认禁用：Button 的类名里有 `disabled:` 变体，这个写法按钮不禁用也会匹配，改成认 `disabled=""` 属性，断言含义不变。
+
+按补丁版本发：只改内部实现，窗格 id、命令、`data-*` 都没动。外观的 dev 依赖 `cn` 是 CLI 装的 `^0.4.0`，另两个插件仍是 `^0.2.5`，没有一起升。
+
+## 依据
+
+`plugins/shell/src/client/{StatusBar,DesktopPanel,GwbTab}.tsx`、`plugins/baseui/src/client/panes/{logger/index,plugin-manager/index,plugin-manager/market}.tsx`、
+`plugins/theme/src/client/index.tsx`；缩进压不过变体内边距一条用 `cn` 当场合并试过，`shell:pl-7` 与 `shell:has-[>svg]:px-1.5` 两个类都留下、后者更具体。
+没有在隔离 home 里截图，实机验收由主会话统一做。

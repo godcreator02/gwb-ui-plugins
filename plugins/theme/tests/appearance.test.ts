@@ -18,7 +18,8 @@ describe('外观窗格：取到当前值之前不许保存', () => {
   it('首次渲染（还没取到 theme.values）时保存按钮是禁用的', () => {
     const neverAnswers: HostBridge = { call: () => new Promise<unknown>(() => undefined) }
     const html = renderToStaticMarkup(createElement(Appearance, { host: neverAnswers }))
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>保存<\/button>/)
+    // 认 disabled 属性本身：按钮的类名里也有 `disabled:` 变体，只找 disabled 这个词会误中
+    expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>保存<\/button>/)
   })
 })
 

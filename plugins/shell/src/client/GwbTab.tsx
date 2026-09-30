@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import { X } from 'lucide-react'
 import { cn } from 'cn'
+import { Button } from '@/components/ui/button'
 import { iconFor } from './icon.js'
 import { TabMenu } from './TabMenu.js'
 
@@ -59,22 +60,20 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
         />
       )}
       <span className="shell:min-w-0 shell:truncate">{title}</span>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon-xs"
         aria-label="关闭"
         // 只在悬停时显示；切 opacity 不切 display，否则标签宽度会随鼠标进出跳动
-        className={cn(
-          'shell:hover:bg-accent shell:flex shell:size-5 shell:shrink-0 shell:cursor-pointer shell:items-center shell:justify-center shell:rounded-md shell:transition-opacity',
-          'shell:opacity-0 shell:group-hover/tab:opacity-70 shell:hover:opacity-100',
-        )}
+        className="shell:opacity-0 shell:group-hover/tab:opacity-70 shell:hover:opacity-100"
         onClick={(e) => {
           // 不冒泡成激活这个窗格
           e.stopPropagation()
           props.api.close()
         }}
       >
-        <X className="shell:size-3" />
-      </button>
+        <X />
+      </Button>
     </div>
     </TabMenu>
   )

@@ -28,6 +28,11 @@ pnpm check   # typecheck + lint + test
 
 另外三份产物测试（每个插件一份）在 `dist/` 不存在时整组跳过，所以没构建过时它们不报错，也什么都没查。
 
+测试直接渲染窗格组件时（外观窗格的测试），组件里 shadcn 组件的 `@/…` 由 vitest 按各插件 `src/client/tsconfig.json` 的 `paths` 解析；
+去掉这一项，这类测试在 import 时就失败：
+
+{/* ref file="../vitest.config.ts" lines="4-5" hash="86d7187f9dad" blob="903f14a2937d" */}
+
 ### 三个插件怎么打包
 
 三个插件的 `build` 脚本都先运行 `build.ts`，再用 Tailwind 命令行把 `src/client/styles.css` 编成 `dist/style.css`：

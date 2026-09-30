@@ -52,6 +52,7 @@ await build({
   minify: false,
   legalComments: 'none',
   jsx: 'automatic',
+  alias: { '@': path.join(here, 'src', 'client') },
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'warning',
   absWorkingDir: here,

@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // 只给 shadcn CLI 看：它读包根的 tsconfig 解析 components.json 里的 @/ 别名，决定组件放在哪；node 侧不用 @/。
+    // 不写 baseUrl：TS 7 把它移除了，paths 相对本文件所在目录解析
+    "paths": {
+      "@/*": ["./src/client/*"]
+    }
   },
   // 浏览器侧另有一份 tsconfig（jsx + DOM + 无 node 全局）。两个入口逐个列出，别写 src/**/*.ts——
   // 那样 src/client 会被这一份误收。tests 与 build.ts 由仓根 tsconfig.json 收

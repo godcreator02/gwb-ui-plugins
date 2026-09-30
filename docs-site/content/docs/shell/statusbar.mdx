@@ -10,7 +10,7 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="535-540" hash="a89a85628180" blob="9b2b1fdf837c" */}
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="291-292" hash="e2ed814f4dfa" blob="a14c05f4f333" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="298-299" hash="e2ed814f4dfa" blob="f053d474aeaf" */}
 
 桌面区必须带 `min-h-0`：flex 子项缺省 `min-height: auto`，窗格里的内容一高就把状态栏挤出屏幕。
 
@@ -49,9 +49,9 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 **选了之后菜单不关**（用户定的：常用它连续打开好几个窗格），开完静默重新读取一次清单，点外面或 Esc 才关。点了开在别的桌面上的工具会切桌面，那时菜单还开着，
 所以它标了 `data-gwb-status-layer`，切桌面后的 body 检查认得它。
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="161-162" hash="ab6edd0a1954" blob="a14c05f4f333" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="168-169" hash="ab6edd0a1954" blob="f053d474aeaf" */}
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="183-187" hash="b837a70b7a9f" blob="a14c05f4f333" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="190-194" hash="b837a70b7a9f" blob="f053d474aeaf" */}
 
 ## 「桌面」面板：所有桌面与上面的窗格
 
@@ -73,7 +73,7 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 「焦点移出去就关」：切桌面时外壳把焦点交给新桌面、激活窗格时 dockview 也会挪焦点，所以这一条被拦掉。改名或起名时 Esc 只放弃输入：
 radix 的 Esc 监听在 document 的捕获阶段，比输入框先收到，所以面板在这两种时候拦下它。
 
-{/* ref file="../plugins/shell/src/client/DesktopPanel.tsx" lines="177-190" hash="1372e9d3357f" blob="e7cfab83fd6a" */}
+{/* ref file="../plugins/shell/src/client/DesktopPanel.tsx" lines="178-191" hash="1372e9d3357f" blob="fa9f0e0eba91" */}
 
 **拖的是哪个窗格**：HTML5 拖拽在 dragover 里读不到数据的内容，而「这张桌面接不接」在 dragover 里就得答，所以面板里的行在拖起时把自己记在模块里；
 桌面上的标签是 dockview 自己的拖拽，它把正在拖的面板放在页内单例里（外壳的 `client.js` 里只有一份 dockview），放下时还读得到。整组拖不算。
@@ -139,4 +139,4 @@ agent 经 MCP 升级完也调它。经页面调它时，页面在回执送回之
 | 组里最后一个标签关了 | 这一组消失 |
 | 桌面上最后一个窗格关了 | 桌面变空，外壳不自动开任何窗格；状态栏「新建」随时可用 |
 
-{/* ref file="../plugins/shell/src/client/GwbTab.tsx" lines="62-77" hash="0bb8bd6d8ecd" blob="15efa31f9ef7" */}
+{/* ref file="../plugins/shell/src/client/GwbTab.tsx" lines="63-76" hash="e0a613fad121" blob="0a7233170e66" */}

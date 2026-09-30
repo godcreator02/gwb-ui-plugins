@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-theme",
-  "version": "0.3.16",
+  "version": "0.3.17",
   "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格，没有外壳也照常加载",
   "type": "module",
   "exports": {
@@ -32,8 +32,11 @@
     "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
     "cordis": "4.0.0-rc.10",
     "esbuild": "^0.28.2",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwindcss": "^4.3.0",

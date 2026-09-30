@@ -10,6 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { deleteConfirmText } from '../desktops.js'
 import type { DesktopRow } from '../layout.js'
@@ -21,10 +23,10 @@ import { draggedPane, endRowDrag, startRowDrag } from './pane-drag.js'
 /** 拖着标签在状态栏「桌面」项上停多久，面板自己弹开 */
 const SPRING_MS = 500
 
-const ROW = 'shell:flex shell:h-7 shell:items-center shell:gap-1.5 shell:rounded shell:px-2 shell:text-xs shell:select-none'
+/** 面板里不可点的行（改名时的那一行、「空桌面」），内边距与间距跟 xs 按钮对齐 */
+const ROW = 'shell:flex shell:h-6 shell:items-center shell:gap-1 shell:px-1.5 shell:text-xs shell:select-none'
 
 export function DesktopPanel({
-  triggerClassName,
   desktops,
   activeId,
   onSections,
@@ -36,8 +38,6 @@ export function DesktopPanel({
   onRename,
   onDelete,
 }: {
-  /** 状态栏各项共用的外观 */
-  triggerClassName: string
   desktops: readonly DesktopRow[]
   activeId: string
   /** 所有桌面与各自开着的窗格，照桌面顺序；每次点开、每次拖放完当场读取 */
@@ -135,14 +135,12 @@ export function DesktopPanel({
   const confirmText = confirming === null ? undefined : deleteConfirmText(confirming.name, confirming.panes)
 
   const renameInput = (id: string, value: string): ReactElement => (
-    <input
-      className="shell:bg-background shell:h-6 shell:min-w-0 shell:flex-1 shell:rounded shell:px-1.5 shell:text-xs shell:text-foreground shell:outline-none"
+    <Input
+      className="shell:h-6 shell:min-w-0 shell:flex-1"
       value={value}
       autoFocus
       data-gwb-desk-rename={id}
       placeholder="桌面名（Enter 确定，Esc 取消）"
-      // 输入框在桌面那一行里，点它时不让点击冒泡到那一行、触发切桌面
-      onClick={(e) => e.stopPropagation()}
       onChange={(e) => setRenaming({ id, value: e.target.value })}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -164,15 +162,18 @@ export function DesktopPanel({
   return (
     <>
       <Popover open={open} onOpenChange={changeOpen}>
-        <PopoverTrigger
-          className={triggerClassName}
-          data-gwb-desktop-panel=""
-          title="桌面：所有桌面与上面的窗格。把标签拖到这里停一下，面板会自动打开"
-          onDragOver={springOver}
-          onDragLeave={springLeave}
-        >
-          <Monitor className="shell:size-3.5" />
-          {active.name}
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="xs"
+            data-gwb-desktop-panel=""
+            title="桌面：所有桌面与上面的窗格。把标签拖到这里停一下，面板会自动打开"
+            onDragOver={springOver}
+            onDragLeave={springLeave}
+          >
+            <Monitor />
+            {active.name}
+          </Button>
         </PopoverTrigger>
         <PopoverContent
           side="top"
@@ -196,79 +197,78 @@ export function DesktopPanel({
                 className={`shell:rounded ${over === section.desktop ? 'shell:bg-accent' : ''}`}
                 {...dropZone(section.desktop, { desktop: section.desktop })}
               >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  data-gwb-desk={section.desktop}
-                  title="单击切到这张桌面；右键改名"
-                  className={`${ROW} shell:hover:bg-accent`}
-                  onClick={() => onSwitch(section.desktop)}
-                  onKeyDown={(e) => {
-                    if (e.target !== e.currentTarget) return
-                    if (e.key === 'Enter') onSwitch(section.desktop)
-                    if (e.key === 'F2') setRenaming({ id: section.desktop, value: section.name })
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRenaming({ id: section.desktop, value: section.name })
-                  }}
-                >
-                  <Monitor className="shell:size-3.5 shell:shrink-0" />
+                <div className="shell:flex shell:items-center shell:gap-1">
                   {renaming?.id === section.desktop ? (
-                    renameInput(section.desktop, renaming.value)
+                    <div className={`${ROW} shell:min-w-0 shell:flex-1`}>
+                      <Monitor className="shell:size-3 shell:shrink-0" />
+                      {renameInput(section.desktop, renaming.value)}
+                    </div>
                   ) : (
-                    <span className="shell:flex-1 shell:truncate shell:font-medium">{section.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      data-gwb-desk={section.desktop}
+                      title="单击切到这张桌面；右键改名"
+                      className="shell:min-w-0 shell:flex-1 shell:justify-start"
+                      onClick={() => onSwitch(section.desktop)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'F2') setRenaming({ id: section.desktop, value: section.name })
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setRenaming({ id: section.desktop, value: section.name })
+                      }}
+                    >
+                      <Monitor />
+                      <span className="shell:min-w-0 shell:flex-1 shell:truncate shell:text-left">{section.name}</span>
+                    </Button>
                   )}
                   {section.current && <span className="shell:text-muted-foreground shell:text-[10px]">当前</span>}
                   {sections.length > 1 && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
                       data-gwb-desk-delete={section.desktop}
                       title="删除这张桌面（先确认）"
                       aria-label={`删除${section.name}`}
-                      className="shell:text-muted-foreground shell:hover:text-foreground shell:rounded shell:p-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        askDelete(section)
-                      }}
+                      onClick={() => askDelete(section)}
                     >
-                      <Trash2 className="shell:size-3" />
-                    </button>
+                      <Trash2 />
+                    </Button>
                   )}
                 </div>
                 {section.rows.length === 0 ? (
-                  <div className={`${ROW} shell:pl-7 shell:text-muted-foreground`}>空桌面</div>
+                  <div className={`${ROW} shell:pl-[22px] shell:text-muted-foreground`}>空桌面</div>
                 ) : (
                   section.rows.map((pane) => {
                     const Icon = iconFor(pane.icon)
                     return (
-                      <div
-                        key={pane.instance}
-                        role="button"
-                        tabIndex={0}
-                        draggable
-                        data-gwb-pane={pane.instance}
-                        title="单击激活；拖到别的桌面上就送过去（按住 Shift 放下，同时切到那张桌面）"
-                        className={`${ROW} shell:pl-7 shell:hover:bg-accent`}
-                        onDragStart={(e) => startRowDrag(e, pane.instance, pane.desktop)}
-                        onDragEnd={() => {
-                          endRowDrag()
-                          setOver(null)
-                        }}
-                        onClick={() => onFocusPane(pane.desktop, pane.instance)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') onFocusPane(pane.desktop, pane.instance)
-                        }}
-                      >
-                        <Icon className="shell:size-3.5 shell:shrink-0" />
-                        {pane.preview && (
-                          <span
-                            role="img"
-                            aria-label="预览窗格"
-                            className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
-                          />
-                        )}
-                        <span className="shell:flex-1 shell:truncate">{pane.title}</span>
+                      // 缩进放在外层：按钮自带的内边距按有没有图标变，直接在按钮上写左内边距压不过它
+                      <div key={pane.instance} className="shell:pl-4">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          draggable
+                          data-gwb-pane={pane.instance}
+                          title="单击激活；拖到别的桌面上就送过去（按住 Shift 放下，同时切到那张桌面）"
+                          className="shell:w-full shell:justify-start"
+                          onDragStart={(e) => startRowDrag(e, pane.instance, pane.desktop)}
+                          onDragEnd={() => {
+                            endRowDrag()
+                            setOver(null)
+                          }}
+                          onClick={() => onFocusPane(pane.desktop, pane.instance)}
+                        >
+                          <Icon />
+                          {pane.preview && (
+                            <span
+                              role="img"
+                              aria-label="预览窗格"
+                              className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
+                            />
+                          )}
+                          <span className="shell:min-w-0 shell:flex-1 shell:truncate shell:text-left">{pane.title}</span>
+                        </Button>
                       </div>
                     )
                   })
@@ -278,8 +278,8 @@ export function DesktopPanel({
           </div>
           <div className="shell:bg-border shell:-mx-1 shell:my-1 shell:h-px" />
           {naming !== null ? (
-            <input
-              className="shell:bg-background shell:h-7 shell:w-full shell:rounded shell:px-2 shell:text-xs shell:text-foreground shell:outline-none"
+            <Input
+              className="shell:h-6"
               value={naming}
               autoFocus
               placeholder="桌面名（Enter 新建，Esc 取消）"
@@ -291,20 +291,19 @@ export function DesktopPanel({
               onBlur={commitNew}
             />
           ) : (
-            <div
-              role="button"
-              tabIndex={0}
-              data-gwb-desk-new=""
-              title="新建一张空桌面并切到它；把窗格拖到这里就送到一张新桌面"
-              className={`${ROW} shell:hover:bg-accent ${over === '' ? 'shell:bg-accent' : ''}`}
-              onClick={() => setNaming('')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setNaming('')
-              }}
-              {...dropZone('', { newDesktop: '' })}
-            >
-              <Plus className="shell:size-3.5" />
-              新建桌面…
+            // 拖放悬停的底色画在外层，按钮只用自己的 variant
+            <div className={`shell:rounded-md ${over === '' ? 'shell:bg-accent' : ''}`} {...dropZone('', { newDesktop: '' })}>
+              <Button
+                variant="ghost"
+                size="xs"
+                data-gwb-desk-new=""
+                title="新建一张空桌面并切到它；把窗格拖到这里就送到一张新桌面"
+                className="shell:w-full shell:justify-start"
+                onClick={() => setNaming('')}
+              >
+                <Plus />
+                新建桌面…
+              </Button>
             </div>
           )}
         </PopoverContent>

@@ -3,10 +3,13 @@ import { createRoot, type Root } from 'react-dom/client'
 import type { HostBridge, PaneArgs, PaneHandle } from '@godcreator/gwb-shell/pane'
 import { buildStartupCss } from '../startup-css.js'
 import { fieldValuesOf, saveArgsOf } from './values.js'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 /**
  * 「外观」窗格：输入后直接改页面上的启动样式表预览，点保存才写入（`theme.save`）；关窗格时退回已保存的样子，
- * 否则没保存的预览重启后就没了却没有提示。类名一律带 `theme:` 前缀，漏加不报错，由 `tests/prefix.test.ts` 检查
+ * 否则没保存的预览重启后就没了却没有提示。类名一律带 `theme:` 前缀，漏加不报错，由 devkit 的样式检查查出来
  */
 
 const VALUES_COMMAND = 'theme.values'
@@ -25,9 +28,6 @@ function applyToPage(css: string): void {
   }
   el.textContent = css
 }
-
-const FIELD =
-  'theme:w-full theme:rounded-md theme:border theme:border-input theme:bg-transparent theme:px-2 theme:py-1 theme:text-sm theme:outline-none theme:focus-visible:border-ring'
 
 export function Appearance({ host }: { host: HostBridge }): ReactElement {
   const [fontSans, setFontSans] = useState('')
@@ -102,26 +102,16 @@ export function Appearance({ host }: { host: HostBridge }): ReactElement {
       </p>
       <label className="theme:flex theme:flex-col theme:gap-1">
         <span className="theme:text-muted-foreground">正文字体</span>
-        <input
-          className={FIELD}
-          value={fontSans}
-          onChange={(e) => setFontSans(e.target.value)}
-          placeholder="留空 = 默认"
-        />
+        <Input value={fontSans} onChange={(e) => setFontSans(e.target.value)} placeholder="留空 = 默认" />
       </label>
       <label className="theme:flex theme:flex-col theme:gap-1">
         <span className="theme:text-muted-foreground">等宽字体</span>
-        <input
-          className={FIELD}
-          value={fontMono}
-          onChange={(e) => setFontMono(e.target.value)}
-          placeholder="留空 = 默认"
-        />
+        <Input value={fontMono} onChange={(e) => setFontMono(e.target.value)} placeholder="留空 = 默认" />
       </label>
       <label className="theme:flex theme:min-h-40 theme:flex-1 theme:flex-col theme:gap-1">
         <span className="theme:text-muted-foreground">自定义样式表（整段 CSS，排在令牌之后，可覆盖令牌）</span>
-        <textarea
-          className={`${FIELD} theme:min-h-40 theme:flex-1 theme:resize-none theme:font-mono`}
+        <Textarea
+          className="theme:min-h-40 theme:flex-1 theme:resize-none theme:font-mono"
           value={customCss}
           onChange={(e) => setCustomCss(e.target.value)}
           spellCheck={false}
@@ -129,14 +119,9 @@ export function Appearance({ host }: { host: HostBridge }): ReactElement {
         />
       </label>
       <div className="theme:flex theme:items-center theme:gap-3">
-        <button
-          type="button"
-          className="theme:rounded-md theme:border theme:border-input theme:bg-primary theme:px-3 theme:py-1 theme:text-primary-foreground theme:disabled:opacity-50"
-          disabled={!loaded}
-          onClick={() => void save()}
-        >
+        <Button size="sm" disabled={!loaded} onClick={() => void save()}>
           保存
-        </button>
+        </Button>
         {notice === '' ? undefined : <span className="theme:text-muted-foreground">{notice}</span>}
       </div>
     </div>

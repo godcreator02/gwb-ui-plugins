@@ -22,7 +22,7 @@ export const stations = [
  */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/update-receipt.ts" lines="31-100" hash="8de31aec8e1f" blob="3cde760c6c6f" */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/update-receipt.ts" lines="102-149" hash="51ac0956c072" blob="3cde760c6c6f" */
-/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="904-940" hash="62ec5f74a429" blob="156ed4e1bb07" */
+/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="906-942" hash="62ec5f74a429" blob="cfd6a423ce07" */
 /* ref file="../plugins/shell/src/client/panes.ts" lines="14-20" hash="0d94da49505d" blob="2530ca0a34f6" */
 /* ref file="../plugins/baseui/tests/panes/update-receipt.test.ts" lines="8-37" hash="313e2181d4c0" blob="894159a7987a" */
 /* ref file="../plugins/baseui/tests/panes/update-receipt.test.ts" lines="39-60" hash="70cfe602724a" blob="894159a7987a" */

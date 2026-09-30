@@ -26,7 +26,7 @@ full: true
 **「外观」窗格：输入即预览，点保存才写回，没保存就关掉会退回。** 取到当前值之前保存按钮禁用：保存一次写齐三项，这时输入框里还是空串，
 一点就把三项设置全部清空：
 
-{/* ref file="../plugins/theme/tests/appearance.test.ts" lines="17-23" hash="5380aca7da64" blob="9557d94269ca" */}
+{/* ref file="../plugins/theme/tests/appearance.test.ts" lines="17-24" hash="2115f734d4de" blob="c1db4ac3e5ea" */}
 
 关窗格时把页面上的启动样式写回已保存的那一份，否则没保存的预览重启后就没了、当时却看不出来：
 
@@ -72,7 +72,7 @@ full: true
 
 **页面上的约定**：启动样式放在 `<style id="gwb-theme-style">` 里，外壳启动时写它，外观窗格预览时改它。这个 id 两边各写一份字符串、不互相 import：
 
-{/* ref file="../plugins/theme/src/client/index.tsx" lines="15-27" hash="ee0a3cb91ce3" blob="d52b9b51d84a" */}
+{/* ref file="../plugins/theme/src/client/index.tsx" lines="18-30" hash="ee0a3cb91ce3" blob="82cc4b455dbb" */}
 
 {/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-4" hash="a668bd572a85" blob="20e3479e96b1" */}
 
@@ -97,7 +97,15 @@ full: true
 
 浏览器侧构建时从外壳包的 `@godcreator/gwb-shell/browser-imports` 取外置名单：React 由外壳提供，窗格代码里不打包自己的一份：
 
-{/* ref file="../plugins/theme/build.ts" lines="44-58" hash="a7745afdffad" blob="0abda5a1aaeb" */}
+{/* ref file="../plugins/theme/build.ts" lines="44-59" hash="06730852b1f2" blob="40270b4ba5cb" */}
+
+窗格里的输入框、多行输入框与「保存」按钮是 shadcn 官方组件，由 CLI 按 `components.json` 生成在 `src/client/components/ui/`，前缀 `theme`。
+组件用到的 `radix-ui`、`cn`、`class-variance-authority` 写在 dev、打包进 `client.js`，不是运行时依赖；
+组件里的 `@/…` 在包根 `tsconfig.json`、`src/client/tsconfig.json` 与 `build.ts` 的 `alias` 三处都指向 `src/client`：
+
+{/* ref file="../plugins/theme/components.json" lines="6-12" hash="bdc3a2ae4e51" blob="a16fa34244be" */}
+
+{/* ref file="../plugins/theme/package.json" lines="30-44" hash="8b73ff357759" blob="b8bd609123c0" */}
 
 ## 不做的事
 
@@ -110,6 +118,6 @@ full: true
 
 **不管亮暗。** 亮暗开关在外壳的状态栏里，只切换 `<html>` 上的 `dark` 类，不经过本插件，也不存进设置：
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="282-288" hash="f167fad29959" blob="a14c05f4f333" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="289-295" hash="f167fad29959" blob="f053d474aeaf" */}
 
 **不提供 gwb 服务、不发事件。** 对外只有三条命令、三项设置与一个窗格。

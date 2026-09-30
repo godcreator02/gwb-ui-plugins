@@ -7,9 +7,9 @@ import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 /* ref file="../plugins/baseui/src/index.ts" lines="19-63" hash="2583acd32ff7" blob="7b7e30b1a7cd" */
 /* ref file="../plugins/baseui/src/log-query/query.ts" lines="13-18" hash="51db280a3f1c" blob="279374238193" */
 /* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */
-/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="80-97" hash="daecad3c3be5" blob="2dff8422ae22" */
+/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="81-98" hash="daecad3c3be5" blob="96aeb9f838ff" */
 /* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="24-43" hash="1891a30ecae2" blob="c3df10ff09fd" */
-/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="94-112" hash="ee56bdf714a4" blob="156ed4e1bb07" */
+/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="96-114" hash="ee56bdf714a4" blob="cfd6a423ce07" */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="20-48" hash="48f444e7d3a8" blob="f838b9d7d2ea" */
 export const baseuiGraph = defineSeamGraph({
   id: 'baseui',

@@ -17,7 +17,7 @@ description: 插件管理窗格点「更新」后，plugin-manager.update 的回
 
 窗格拿到结论后，插件管理自己也升了就先等它回来，再调 `shell.reload`；刷新没成，把原因接在回执后面显示：
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="904-928" hash="f1b64136a733" blob="156ed4e1bb07" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="906-930" hash="f1b64136a733" blob="cfd6a423ce07" */}
 
 等插件管理回来是每 0.5 秒问一次 `plugin-manager.list`，最多 30 秒。每轮先等再问：回执发出时插件管理还没开始重新加载，马上问会问到旧的那份、以为已经好了：
 

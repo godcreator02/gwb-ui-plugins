@@ -57,7 +57,7 @@ full: true
 切走不调，切回立刻取一次；同一时刻最多一个请求。为什么不用推送，见[日志窗格可见时拉取](/trajectory/2026-09-27-logger-pane-polls-when-visible)。
 它不许调用 `console`：页面的 console 也是日志来源，打一条会写进日志文件、下一次拉取时读回来再打：
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="20-24" hash="6f54a872c94c" blob="2dff8422ae22" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="21-25" hash="9e7aae5905cf" blob="96aeb9f838ff" */}
 
 {/* ref file="../plugins/baseui/tests/panes/poller.test.ts" lines="64-78" hash="d3d4feb902dc" blob="17505637b738" */}
 
@@ -126,9 +126,9 @@ full: true
 | 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删；「可安装」一栏按位置读写市场名单（公共区 `*` 的 `plugin-markets`，插件管理声明的） | 按形状收窄；设置插件不写 peer |
 | 外壳 | `shell.plugins`、`shell.reload` | 插件管理窗格：条目标题与图标、升级后整页重新加载 | 按形状收窄 |
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="85-112" hash="0233382bc57d" blob="156ed4e1bb07" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="87-114" hash="0233382bc57d" blob="cfd6a423ce07" */}
 
-{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="47-47" hash="6dd062062693" blob="2dff8422ae22" */}
+{/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="48-48" hash="6dd062062693" blob="96aeb9f838ff" */}
 
 `logger.query` 的回执是 `{ file, cursor, entries }`，条目从旧到新，没有序号；两次拉取之间不交叠，所以不去重。
 回执或其中一条形状不对就整批报错、显示在窗格里，不悄悄丢掉认不出的条目：
