@@ -9,7 +9,8 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 **本页回答**：带界面的插件怎样接进外壳的窗格、组件、令牌与浮层，做完怎样验收。
 
 建仓、改完装进测试 home 查看（`devkit.dev`）、测试 home 与发版读 `skill.read {"name":"gwb-devkit"}`。下面各节从
-`devkit.scaffold` 生成的插件出发：它已带一个窗格和样式入口 `src/client/styles.css`。模板里的 `registerPane` 只写了
+`devkit.scaffold` 生成的插件出发：它已带一个窗格、样式入口 `src/client/styles.css`，devkit 0.25.4 起还带着
+`components.json`、`@/` 别名和官方 `Button`（示例窗格就用它）。模板里的 `registerPane` 只写了
 `id`、`title`、`client`、`style`，也没有调 `describeSelf`：下一节第 1 步的 `icon`、`kind` 和第 2 步照这里补上。
 
 ## 浏览器依赖
@@ -132,6 +133,9 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 
 ## 接入 shadcn 组件
 
+devkit 0.25.4 起生成的插件，第 1、2 步已经做好、`button` 已经加上，从第 3 步加别的组件开始；更早生成的、
+不是 devkit 生成的插件从第 1 步做。
+
 1. 包根写 `components.json`（形状见下文「参考」），`tailwind.prefix` 填本插件的 CSS 前缀，即样式入口第一行
    `prefix(…)` 里那个。
 2. 配 `@/` 别名，三处都指向 `src/client`：
@@ -146,8 +150,16 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    挪到 `devDependencies`：它们打包进 `client.js`。组件里的 `import { cn } from 'cn'` 保持原样。
    CLI 不一定把组件用到的包都装上（实测 `select`、`dropdown-menu` 用了 `lucide-react`，CLI 没装）：逐个看生成的组件文件顶部的 import，
    `package.json` 里没有的自己 `pnpm add -D <包名>`。
-5. 按钮、输入、选择、菜单、弹窗用添加进来的官方组件，保留它们的默认状态与键盘交互，尺寸从已有的
-   variant 里选。业务特有的界面可以自己写，工具栏、设置表单、提示这些公共部分照常用语义类。
+5. 所有可点控件都用添加进来的官方组件：按钮、输入、选择、勾选、菜单、浮层、弹窗，也包括行、标签页、图标键这类
+   业务特有的可点元素（用 `Button` 的 `ghost` / `link` 变体）。保留它们的默认样式、状态与键盘交互，尺寸从已有的
+   variant 里选，不用类名改成别的尺寸；使用处的 `className` 只写布局（间距、宽度、flex、对齐、截断），不覆盖颜色、
+   边框、圆角、字号。
+6. 组件文件保持 CLI 生成的原样，只允许两处本地改动：浮层组件加 `container` 参数（见「写浮层」），以及 `card.tsx`
+   删掉 `[.border-b]:pb-6` 与 `[.border-t]:pt-6` 两个类——CLI 给任意变体加前缀时漏了里面的选择器，编出不带前缀的
+   `.border-b` / `.border-t`，样式检查会拦；插件自己的类都带前缀，这两条规则本来就不生效，删掉不改变显示。
+7. 两处照默认用、别改写法：`Select` 不写 `position="popper"`，用默认的对齐方式——popper 定位的长列表高度卡在
+   可用高度边界时，滚动箭头来回出现消失，每帧报一条 ResizeObserver 错；官方 `Button` 自带 `font-medium`，
+   外壳只映射了 medium 与 semibold 两档字重，里面的文字不要补 `font-normal`（编出写死 fallback 的 `var()`，样式检查拦）。
 
 **完成**：组件文件在 `src/client/components/ui/` 下（包根下没有一个名字就叫 `@` 的目录）；`pnpm check` 全绿；
 `devkit.dev` 回执 `ok: true`。
@@ -221,6 +233,9 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
    ```tsx
    <SelectContent container={args.shell.portal}>…</SelectContent>
    ```
+4. 从菜单里的一项接着开另一个浮层（如「⋯ → 编辑」弹出编辑框）：菜单照常关，在 `DropdownMenuContent` 的
+   `onCloseAutoFocus` 里 `event.preventDefault()` 再把状态换成下一个浮层。不要在同一次点击里就开：菜单关闭动画期间
+   焦点锁还在，会把焦点抢回菜单，新开的浮层当成焦点到了外面、跟着关。jsdom 没有动画，单元测试测不出来，要真实点击验。
 
 **完成**：打开每一种浮层后切到另一张桌面，浮层随原桌面一起隐藏，切回来还在；`gwb.log` 里没有
 「切到『…』时 body 上还挂着 N 个节点」这条 warn。
@@ -304,6 +319,8 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
   换不了的（`type`、`role`）把值写成 `.ts` 文件里的常量，在 `.tsx` 里引用常量
 - 反过来，`.ts` 文件、样式入口目录以外的文件、模板串 `${…}` 插值里拼出来的类名都不查，漏了前缀不报错，只是页面上那一处没样式；
   带前缀的 `group` / `peer` 标记类不编规则，也不在检查范围内，标记类和用它的变体要自己核对
+- 拼类名用 `cn("demo:a demo:b", className)`，不写 `` `demo:a${x ? ` ${x}` : ''}` `` 这种模板串里套模板串：检查器会把前缀类
+  和插值读成一个类名，报「带前缀却编不出规则」
 - 插件的 `tailwindcss` 与外壳同一个大版本；升大版本时对照 `theme.reference.css` 的文件头注释重新核对键名
 - 包根 tsconfig 缺 `paths` 时，shadcn CLI 把组件建进包根下一个名字就叫 `@` 的目录，只有 CLI 输出的文件路径看得出来
 - 外部网页链接要在系统浏览器里打开，写 `<a href="https://…" target="_blank">` 或调 `window.open`（内核 0.6.2 起
