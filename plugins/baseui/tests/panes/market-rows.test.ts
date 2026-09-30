@@ -5,7 +5,7 @@ import { installedIndex, matchesQuery, NO_INDEX, scopeOf, scopeOptions, summariz
 /**
  * 「可装」那一栏的纯逻辑。筛选的是 **registry 检索结果**——`plugin-manager.search`
  * 一次取回全部结果，搜索框只在本地筛选。
- * 检索**合并多条源**（@godcreator 加上 ~/.npmrc 里配的第三方源），每行的来源标签（scopeOf）也在这一组测。
+ * 检索**合并市场名单里的多个市场**（默认只有 @godcreator），每行的来源标签（scopeOf）也在这一组测。
  */
 
 const row = (pkg: string, patch: Partial<PluginRow> = {}): PluginRow => ({

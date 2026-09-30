@@ -18,7 +18,7 @@ full: true
 | 窗格 | id | 什么时候有 | 做什么 |
 | --- | --- | --- | --- |
 | 日志 | `logger` | 总是有；`logger.query` 不在时窗格里显示命令调用失败的原因 | 看 `gwb.log` 里最近的日志，可见时每秒取新写的；按来源与级别筛选、日志文件在哪 |
-| 插件管理 | `plugin-manager` | 装了插件管理 | 装、卸、升级、启停插件与条目，改各插件的设置 |
+| 插件管理 | `plugin-manager` | 装了插件管理 | 装、卸、升级、启停插件与条目，改各插件的设置；「可安装」一栏在市场名单里的市场上找插件，顶上一行加删市场 |
 
 **查日志文件的命令 `logger.query` 也由本插件登记。** 日志由内核写进 `<home>/gwb.log`（一行一个 JSON，轮转出的旧文件是 `gwb.log.1`），
 日志窗格和经 MCP 入口的 agent 都调这条命令读它。本插件默认全装，所以这条命令一直调得到。为什么不单独成一个插件，
@@ -111,7 +111,7 @@ full: true
 | `gwbPluginManager`（`@godcreator/gwb-plugin-manager`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记插件管理窗格；回执类型从它的 `./receipts` 子路径引 | 照常加载，只是没有插件管理窗格 |
 | 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 的类型；登记 `logger.query` 时取 `ctx.gwbKernel.dataDir` 定位 `gwb.log` | 类型检查不过；不在 gwb 内核里登记命令时当场抛错 |
 
-{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="64480f7a467c" blob="35016d662a2a" */}
+{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="6260be016877" blob="b0106c8e234f" */}
 
 命令总线和插件管理都是可选的，node 侧源码里对它们只有 `import type`；写成运行时 import，没装它们的 home 里就多一句 `ERR_MODULE_NOT_FOUND`：
 
@@ -123,7 +123,7 @@ full: true
 | --- | --- | --- | --- |
 | 本插件的 node 侧 | `logger.query` | 日志窗格：挂载时取最近一批，可见时每秒带 `after` 取新写的；底栏显示回执里的 `file` | 按形状逐项收窄，有一条不对就整批报错；窗格与 `src/log-query/` 互不 import |
 | 插件管理 | `plugin-manager.*` | 插件管理窗格：列表、查新版本、搜索、装卸、升级、启停、增删条目 | `import type` 插件管理的回执类型，只按外层 `ok` 分开成功与失败 |
-| 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删 | 按形状收窄；设置插件不写 peer |
+| 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删；「可安装」一栏按位置读写市场名单（公共区 `*` 的 `plugin-markets`，插件管理声明的） | 按形状收窄；设置插件不写 peer |
 | 外壳 | `shell.plugins`、`shell.reload` | 插件管理窗格：条目标题与图标、升级后整页重新加载 | 按形状收窄 |
 
 {/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="85-112" hash="0233382bc57d" blob="156ed4e1bb07" */}
@@ -142,7 +142,7 @@ full: true
 
 {/* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="14-48" hash="57475325e785" blob="f838b9d7d2ea" */}
 
-插件管理的下限写 `^0.14.3`：这里用到的回执类型（包括启停与删条目那种不带 `data` 的 `Acknowledged`）要这一版起才全。
+插件管理的下限写 `^0.14.7`：「可安装」一栏读的 `search` 回执字段 `markets`（每个市场查得怎样）要这一版起才有。
 `./receipts` 只有类型、没有任何 import，浏览器侧的 tsconfig（只有 DOM 类型）能直接引。为什么用到的插件都写 peer，见[用到的插件写进 peer](/trajectory/2026-09-25-plugins-as-peers)。
 
 ## 不做的事
