@@ -32,7 +32,7 @@ React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动�
 
 准备段抛错，`#root` 上只写一句「外壳启动失败：原因」，`dispose` 时连这句一起清掉：
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="650-661" hash="f6b71e7938c0" blob="8d8ecbfb40b8" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="654-665" hash="f6b71e7938c0" blob="144339d9b11c" */}
 
 会走到这里的是：`shell.env` 没回环境（命令调不通、回执不是 ok）、三张样式表有一张加载不了、注册表取不回来。注册表取失败不当成空表——
 空表的意思是「一个插件都没注册窗格」，两件事混在一起，人看到的就是一个空桌面、查不到原因。

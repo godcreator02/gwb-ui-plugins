@@ -290,7 +290,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '窗格容器在页面上，node 侧没有。shell.desktop.switch / new / rename / delete、shell.pane.focus / send / close、shell.openPane 先在 node 侧检查参数与目标在不在（查布局文件、注册表或页面推来的窗格清单），再经内核事件推给页面，页面用 window.gwb.on 收。回执 ok 只代表转发了。',
     },
-    /* ref file="../plugins/shell/src/client/index.tsx" lines="668-689" hash="fe3cf968ae4b" blob="9b2b1fdf837c" */
+    /* ref file="../plugins/shell/src/client/index.tsx" lines="672-693" hash="fe3cf968ae4b" blob="144339d9b11c" */
     {
       n: 8,
       name: '页面入口',

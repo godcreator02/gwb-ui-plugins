@@ -16,7 +16,7 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 
 {/* ref file="../plugins/shell/src/client/theme-boot.ts" lines="6-18" hash="1826a6969b08" blob="20e3479e96b1" */}
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="b956510a4aab" blob="8d8ecbfb40b8" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="614-618" hash="b956510a4aab" blob="144339d9b11c" */}
 
 外壳 node 侧取启动样式时先问命令在不在：没装外观插件时不调，因为调一条不在的命令，命令总线会记一条 warn，没装可选插件却每次启动都留一条；
 回空白当用户没设置；命令在却回失败或回的不是字符串，也当没有，外壳照常启动、只记一条 error：
@@ -55,4 +55,4 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 **亮暗开关不经过外观插件。** 状态栏的按钮只给 `<html>` 加上或去掉 `dark` 类，令牌表里 `.dark` 那套值随之生效，不重新构建、不存进设置；
 每次启动外壳先加上 `dark`，深色是默认。想让自定义 CSS 只改暗色，就写在 `.dark` 上。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="625-627" hash="9c4d32f6722d" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="629-631" hash="9c4d32f6722d" blob="144339d9b11c" */}

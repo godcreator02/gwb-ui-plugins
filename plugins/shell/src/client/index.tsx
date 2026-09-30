@@ -561,8 +561,12 @@ function App({
                   onReady={(event: DockviewReadyEvent) => onWellReady(id, event)}
                 />
               </div>
-              {/* 这张桌面的浮层挂载点（args.shell.portal）。不设 z-index：radix 内容的 z-50 直接参与根层叠，状态栏才压得住模态遮罩 */}
-              <div className={`gwb-portal-host shell:pointer-events-none shell:absolute shell:inset-0`} />
+              {/* 这张桌面的浮层挂载点（args.shell.portal）。本身不设 z-index，挂进来的浮层直接和状态栏（z-60）比层级：
+                  遮罩留在 radix 的 z-50、被状态栏压住，开着模态框也能切桌面；对话框本体与 popper 浮层抬到 z-70，窗口矮时不被状态栏盖住。
+                  popper 包装层的 z-index 是 radix 写的内联样式，只有 ! 盖得过 */}
+              <div
+                className={`gwb-portal-host shell:pointer-events-none shell:absolute shell:inset-0 shell:[&>[role=dialog]]:z-70 shell:[&>[role=alertdialog]]:z-70 shell:[&>[data-radix-popper-content-wrapper]]:z-70!`}
+              />
             </section>
           )
         })}

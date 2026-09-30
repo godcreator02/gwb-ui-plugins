@@ -22,7 +22,7 @@ const unsavedCss = [':root {', '  --gwb-font-sans: Inter;', '  --gwb-font-mono: 
  * 外壳的三张表地址与顺序由外壳 node 侧写死，启动样式排在它们之后。
  */
 /* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="610-614" hash="b956510a4aab" blob="8d8ecbfb40b8" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="614-618" hash="b956510a4aab" blob="144339d9b11c" */
 /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
 export const headElements = {
   tokens: { tag: '<link>', name: '@godcreator/gwb-shell/theme.css', note: '层顺序声明、preflight（在 base 层）、令牌 :root 与 .dark', layered: false },

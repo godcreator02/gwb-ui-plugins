@@ -111,7 +111,7 @@ const seams = [
     text: '三个插件的 node 侧从内核包的包根只 import type（包根一加载就启动 Electron 应用），peer 里写内核包。外壳在构造时取 ctx.gwbKernel，不写进 inject，不在 gwb 内核里就当场抛错。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="667-688" hash="300e176c4eac" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="671-692" hash="300e176c4eac" blob="144339d9b11c" */
   {
     n: 2,
     name: '外壳接管',

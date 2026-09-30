@@ -82,7 +82,7 @@ full: true
 - **窗格插件**：插件的浏览器侧模块导出 `mountPane({ host, shell, pane }, container)`，回 `{ dispose(); retarget?(params) }`。
   这些类型从子路径 `@godcreator/gwb-shell/pane` 用 `import type` 取，见[插件拿到的 args](/docs/shell/panes#插件拿到的-args)
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="668-672" hash="ef6825436662" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="672-676" hash="ef6825436662" blob="144339d9b11c" */}
 
 {/* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */}
 
@@ -93,7 +93,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="1-1" hash="047a416dccea" blob="9b2b1fdf837c" */}
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="685-685" hash="4772f55e3292" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="689-689" hash="4772f55e3292" blob="144339d9b11c" */}
 
 命令本身的失败（命令不在、处理函数抛错）都 resolve 成 `ok: false` 的回执，不 reject；规则写在 `host.call` 的类型注释里：
 

@@ -48,7 +48,7 @@ export const steps = [
       highlight: [147, 149],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="668-673" hash="241ed54e80f8" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="672-677" hash="241ed54e80f8" blob="144339d9b11c" */
   {
     title: '内核把地址推给页面，页面 import 外壳',
     text:
@@ -71,7 +71,7 @@ export const steps = [
       highlight: [672, 672],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="672-689" hash="800476b8f2f2" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="676-693" hash="800476b8f2f2" blob="144339d9b11c" */
   {
     title: 'mountShell 问环境',
     text:
@@ -106,7 +106,7 @@ export const steps = [
       highlight: [674, 682],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="611-622" hash="b8e3841fab22" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="615-626" hash="b8e3841fab22" blob="144339d9b11c" */
   {
     title: '准备：样式表、注册表、布局文件',
     text:
@@ -137,7 +137,7 @@ export const steps = [
       highlight: [617, 621],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="624-634" hash="cef6911699ea" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="628-638" hash="cef6911699ea" blob="144339d9b11c" */
   {
     title: '挂载：同步的一小段',
     text:
@@ -165,7 +165,7 @@ export const steps = [
       highlight: [631, 633],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="635-646" hash="33f4a45599d4" blob="9b2b1fdf837c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="639-650" hash="33f4a45599d4" blob="144339d9b11c" */
   {
     title: '换外壳或卸载：dispose 返回时树已卸载',
     text:
