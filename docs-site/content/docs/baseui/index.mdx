@@ -111,7 +111,7 @@ full: true
 | `gwbPluginManager`（`@godcreator/gwb-plugin-manager`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记插件管理窗格；回执类型从它的 `./receipts` 子路径引 | 照常加载，只是没有插件管理窗格 |
 | 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 的类型；登记 `logger.query` 时取 `ctx.gwbKernel.dataDir` 定位 `gwb.log` | 类型检查不过；不在 gwb 内核里登记命令时当场抛错 |
 
-{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="6260be016877" blob="b0106c8e234f" */}
+{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="fabb6dde70b2" blob="99c0edd9bf0d" */}
 
 命令总线和插件管理都是可选的，node 侧源码里对它们只有 `import type`；写成运行时 import，没装它们的 home 里就多一句 `ERR_MODULE_NOT_FOUND`：
 
