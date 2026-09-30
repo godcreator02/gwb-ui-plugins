@@ -148,18 +148,18 @@ const seams = [
     via: 'code',
     text: '页面入口用命令插件的页面客户端 command 调命令（经内核的请求通道到命令总线）、收回执，交给窗格的 host.call 就是它；外壳 node 侧经 gwbKernel.emit 把桌面、窗格、开窗格三类动作推给页面，页面按 t 区分是哪一类。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */
-  /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="bf14907298f5" blob="8a696cae264c" */
+  /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */
+  /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="54e9db88bc57" blob="ea4588cf8ead" */
   /* ref file="../plugins/baseui/src/index.ts" lines="27-45" hash="28cd476cc2fc" blob="7b7e30b1a7cd" */
   {
     n: 5,
     name: '命令登记',
     a: ['commands', 'theme-core', 'baseui-apply'],
     b: ['b-commands'],
-    iface: 'gwbCommands.register({ name, description, usage, plugin?, effect? }, handler)',
+    iface: 'gwbCommands.register({ name, description, usage, effect, plugin? }, handler)',
     convention: false,
     via: 'code',
-    text: '外壳、外观与基础界面把各自的命令登记到命令总线，插件卸载时自动注销。外壳与外观的 plugin 写自己的包名，是它们的必需依赖：外壳的窗格注册表只能经命令传到页面。基础界面局部注入命令总线，有它才登记 logger.query，plugin 不写、由命令总线取。',
+    text: '外壳、外观与基础界面把各自的命令登记到命令总线，每条都标 effect（read / write），插件卸载时自动注销。外壳与外观的 plugin 写自己的包名，是它们的必需依赖：外壳的窗格注册表只能经命令传到页面。基础界面局部注入命令总线，有它才登记 logger.query，plugin 不写、由命令总线取。',
   },
   /* ref file="../plugins/shell/src/layout.ts" lines="1-8" hash="36d49f61bf66" blob="51963d44d83e" */
   /* ref file="../plugins/shell/src/layout.ts" lines="29-36" hash="50ac701e1f73" blob="51963d44d83e" */

@@ -44,7 +44,7 @@ export function apply(ctx: GwbContext) {
 插件只给上面那几样，条目 id 与包名由服务从**调用方的 fiber** 上取：cordis 的服务方法里，`this.ctx` 是调用方的上下文，不是外壳自己的。
 插件报不出别的名字，也就冒充不了别人的窗格；登记放在调用方的 `ctx.effect` 里、插件卸载时自动注销，靠的也是这一点。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="439-449" hash="668c08b012bc" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="448-458" hash="668c08b012bc" blob="ea7cdacc4957" */}
 
 两样都要：同一个包配两条条目，就是两份独立配置的实例，只有条目 id 分得开它们。条目 id 是 cordis.yml 里那条条目从根算起的完整 id，
 实际运行时带着 `home:` 前缀（`home:hello`）——loader 把插件的条目嵌在内核那条 include 下面。**这个前缀不能去掉**：注册表按它登记、
@@ -52,9 +52,9 @@ export function apply(ctx: GwbContext) {
 
 外壳的测试检查这两点：注册表带上调用方的条目 id 与包名；调用方卸载时它登记的窗格与名字自动注销：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="177-183" hash="59ee590789a8" blob="daecac5bbe93" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="186-192" hash="59ee590789a8" blob="5b52504fc8f1" */}
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="192-200" hash="f42e7d169a12" blob="daecac5bbe93" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="201-209" hash="f42e7d169a12" blob="5b52504fc8f1" */}
 
 ### 注册时检查什么
 
@@ -305,7 +305,7 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 - 页面执行的是插件开自己窗格的同一个函数：注册表当场取、判断照旧，`key`、`preview`、`params`、`placement` 的语义没有另写一份
 - `from` 是来源窗格的实例 id：新窗格开在它那张桌面上、以它为来源选组；不带 `from`，或页面上哪张桌面都找不到它，就当没有来源、开在当前桌面（后一种 console 里一条 warn）
 
-{/* ref file="../plugins/shell/src/index.ts" lines="411-437" hash="09d4a436a2bb" blob="b690758191bd" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="419-446" hash="0e9bf6d8f3f1" blob="ea7cdacc4957" */}
 
 ## 窗格命令：`shell.pane.*`
 
@@ -325,4 +325,4 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="67-79" hash="54f0d1922e08" blob="8d8ecbfb40b8" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="333-356" hash="28195632f211" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="339-362" hash="9fa5fc55fa0d" blob="ea7cdacc4957" */}

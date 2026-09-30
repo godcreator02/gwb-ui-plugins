@@ -195,7 +195,7 @@ export const shellGraph = defineSeamGraph({
       role: null,
       outside: true,
       blurb:
-        '注册时给的 client 地址指向它的浏览器侧模块，模块导出 mountPane；样式入口构建时引令牌的类名映射，类名带自己的前缀。它按裸名 import react，由 importmap 指到外壳那一份。',
+        '注册时给的 client 地址指向它的浏览器侧模块，模块导出 mountPane；样式入口构建时引用令牌的类名映射，类名带自己的前缀。它按裸名 import react，由 importmap 指到外壳那一份。',
       caps: [
         { id: 'plugin-client', name: 'mountPane', ident: 'mountPane(args, container)' },
         { id: 'plugin-style', name: '样式入口', ident: '@import theme.reference.css' },
@@ -229,19 +229,19 @@ export const shellGraph = defineSeamGraph({
       text:
         '服务把取到的身份与插件给的几样交给表。窗格表在这一步检查：空 id、id 带冒号、空标题、client / style 给了却不是对应后缀的 file:// 地址、kind 不是 tool / document，都当场抛错，抛在插件自己的 apply 里；同一个键重复注册，后来者生效并告警；图标名认不出只告警，标签上画 #。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */
     {
       n: 3,
       name: '命令总线',
       a: ['commands'],
       b: ['bus'],
-      iface: "commandBus.register({ name, description, usage, plugin: '@godcreator/gwb-shell' }, handler)",
+      iface: "commandBus.register({ name, description, usage, effect, plugin: '@godcreator/gwb-shell' }, handler)",
       convention: false,
       via: 'code',
       text:
         '外壳的对外能力都登记成 shell.* 命令：取两张表、页面环境、读写布局文件、整页重载、桌面、跨插件开窗格、窗格。页面、agent、别的插件都按名字经命令总线调它们，包根不导出命令名。命令登记在外壳自己的上下文上，外壳卸载时一起注销。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="187-205" hash="9857ba5e75dc" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="188-206" hash="e95de764a076" blob="ea7cdacc4957" */
     {
       n: 4,
       name: '布局文件',
@@ -413,7 +413,7 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '插件的样式入口在构建时引这张映射，Tailwind 才认得 bg-primary 这类类名；映射只给出类名到 var(--primary) 的对应，不输出变量的值，值在运行时取页面上令牌表那一份。',
+        '插件的样式入口在构建时引用这张映射，Tailwind 才认得 bg-primary 这类类名；映射只给出类名到 var(--primary) 的对应，不输出变量的值，值在运行时取页面上令牌表那一份。',
     },
   ],
 });

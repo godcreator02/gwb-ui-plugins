@@ -35,7 +35,7 @@ function fakeCommandBus(): GwbCommands & { handlers: Map<string, GwbCommandHandl
     handlers,
     register(def, handler) {
       handlers.set(def.name, handler)
-      defs.set(def.name, { name: def.name, description: def.description, usage: def.usage, plugin: def.plugin ?? '@godcreator/gwb-shell' })
+      defs.set(def.name, { ...def, plugin: def.plugin ?? '@godcreator/gwb-shell' })
       return () => {
         handlers.delete(def.name)
         defs.delete(def.name)
@@ -164,6 +164,15 @@ describe('外壳服务就绪', () => {
     expect(new Set(bus.list().map((c) => c.plugin))).toEqual(new Set(['@godcreator/gwb-shell']))
   })
 
+  it('查表、读布局、读环境的六条是 read，其余改布局文件、页面或缓存的都是 write', async () => {
+    const { bus } = await bootShell()
+    const namesByEffect = (effect: string) => bus.list().filter((c) => c.effect === effect).map((c) => c.name).sort()
+    expect(namesByEffect('read')).toEqual(
+      ['shell.panes', 'shell.plugins', 'shell.layout.get', 'shell.env', 'shell.desktop.list', 'shell.pane.list'].sort(),
+    )
+    expect(namesByEffect('write')).toHaveLength(11)
+  })
+
   it('没有图标名单时写一条 error，登记时不再核对图标名', async () => {
     const { root, logs } = await bootShell()
     expect(textsOf(logs, 'error').some((t) => t.includes('pane-icons.json') && t.includes('不再核对图标名'))).toBe(true)
@@ -247,7 +256,7 @@ describe('shell.env', () => {
 
   it('theme.startupCss 回非空字符串时带上 startupCss', async () => {
     const { bus, call } = await bootShell()
-    bus.register({ name: 'theme.startupCss', description: '测试用的主题启动样式', usage: '无参数', plugin: '@t/theme' }, () => 'body{}')
+    bus.register({ name: 'theme.startupCss', description: '测试用的主题启动样式', usage: '无参数', effect: 'read', plugin: '@t/theme' }, () => 'body{}')
     expect(await call('shell.env')).toMatchObject({ startupCss: 'body{}' })
   })
 })

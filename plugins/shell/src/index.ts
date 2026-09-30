@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
 import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
-import type { GwbCommandDef, GwbCommands } from '@godcreator/gwb-commands'
+import type { GwbCommandDef, GwbCommandEffect, GwbCommands } from '@godcreator/gwb-commands'
 import type { GwbSkillsApi } from '@godcreator/gwb-skills'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry } from './plugin-registry.js'
@@ -166,7 +166,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   }
 
   /** @internal 命令总线把注销登记在调用方（本插件）的上下文上，本插件卸载时自动注销 */
-  private registerCommand(commandBus: GwbCommands, def: Omit<GwbCommandDef, 'plugin'>, handler: (args?: unknown) => unknown): void {
+  private registerCommand(commandBus: GwbCommands, def: Omit<GwbCommandDef, 'plugin' | 'effect'> & { effect: GwbCommandEffect }, handler: (args?: unknown) => unknown): void {
     commandBus.register({ ...def, plugin: PACKAGE_NAME }, handler)
   }
 
@@ -178,22 +178,23 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: PANES_COMMAND,
         description: '此刻注册了哪些窗格',
         usage: "无参数。回 [{ id, title, icon?, client?, style?, kind, entryId, pkg }]，按注册先后；kind 是 'tool'（工具窗格，注册时不说就是它）或 'document'（文档窗格）",
+        effect: 'read',
       },
       () => this.paneTable.list(),
     )
-    this.registerCommand(commandBus, { name: PLUGINS_COMMAND, description: '此刻有哪些插件报过名字', usage: '无参数' }, () => this.pluginTable.list())
+    this.registerCommand(commandBus, { name: PLUGINS_COMMAND, description: '此刻有哪些插件报过名字', usage: '无参数', effect: 'read' }, () => this.pluginTable.list())
   }
 
   /** @internal */
   private registerLayoutCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
-      { name: LAYOUT_GET_COMMAND, description: '外壳的布局文件（各桌面的布局、当前桌面、已存布局）', usage: '没存过回 undefined。无参数' },
+      { name: LAYOUT_GET_COMMAND, description: '外壳的布局文件（各桌面的布局、当前桌面、已存布局）', usage: '没存过回 undefined。无参数', effect: 'read' },
       () => this.ctx.gwbData.readDoc(LAYOUT_DOC),
     )
     this.registerCommand(
       commandBus,
-      { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局文件', usage: '参数是整份布局文件 { v, active, desktops, saved }（shell.layout.get 回的那个形状）' },
+      { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局文件', usage: '参数是整份布局文件 { v, active, desktops, saved }（shell.layout.get 回的那个形状）', effect: 'write' },
       (args) => {
         // 保存时也校验形状：浏览器侧的 bug 拼出的坏文件不能覆盖磁盘上好的那份
         const doc = parseLayoutDoc(args)
@@ -217,6 +218,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         description: '外壳浏览器侧每次启动时要的环境（home、样式表的地址、用户外观样式、版本）',
         usage:
           '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
+        effect: 'read',
       },
       async (): Promise<ShellEnv> => {
         const userStartupCss = await startupCss(commandBus, this.logError)
@@ -233,6 +235,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: RELOAD_COMMAND,
         description: '整页重载全部窗口',
         usage: 'BrowserWindow.webContents.reload：装了新插件、热升级之后让页面重取注册表、重新 import 新版本的浏览器端代码。没有窗口回 ok:false。无参数',
+        effect: 'write',
       },
       async () => {
         let deps: ReloadDeps
@@ -257,7 +260,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   private registerDesktopCommands(commandBus: GwbCommands): void {
     this.registerCommand(
       commandBus,
-      { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面', usage: '回 { desktops: [{id,name}], active }（读磁盘上的布局文件，认不出回一张缺省桌面）。无参数' },
+      { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面', usage: '回 { desktops: [{id,name}], active }（读磁盘上的布局文件，认不出回一张缺省桌面）。无参数', effect: 'read' },
       async () => {
         const doc = await this.readLayoutDocOrDefault()
         return { desktops: doc.desktops.map(({ id, name }) => ({ id, name })), active: doc.active }
@@ -270,6 +273,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         description: '切到某张桌面',
         usage:
           '参数 { id?, name? }——id 是桌面 id、name 是桌面名（重名取第一张），都用 shell.desktop.list 查；给一个，两个都给按 id。给了的那项不是非空字符串、或磁盘上的布局文件里没有这张桌面，回错。窗格容器在页面上，这条只把动作转发过去，回执 ok 代表转发了不是切完了',
+        effect: 'write',
       },
       async (args) => {
         const parsed = parseSwitchArgs(args)
@@ -285,7 +289,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     this.registerCommand(
       commandBus,
-      { name: DESKTOP_NEW_COMMAND, description: '新建一张桌面并切过去，新建时为空（不按默认布局打开）', usage: '参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了' },
+      { name: DESKTOP_NEW_COMMAND, description: '新建一张桌面并切过去，新建时为空（不按默认布局打开）', usage: '参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', effect: 'write' },
       (args) => {
         const newArgs = args as { name?: unknown } | undefined
         const name = typeof newArgs?.name === 'string' && newArgs.name.trim() !== '' ? newArgs.name.trim() : undefined
@@ -299,6 +303,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: DESKTOP_RENAME_COMMAND,
         description: '给一张桌面改名',
         usage: '参数 { id, name }——id 是桌面 id（用 shell.desktop.list 查），name 非空（去掉两端空白后）。转发给页面执行，回执 ok 代表转发了',
+        effect: 'write',
       },
       async (args) => {
         const parsed = parseRenameArgs(args)
@@ -316,6 +321,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         description: '删除一张桌面，上面的窗格一起关掉（不弹确认）',
         usage:
           '参数 { id }。上面的窗格逐个关掉（插件照常 dispose）再删桌面；删的是当前桌面就切到左边相邻那张（最左边那张就切到右边）。只剩一张时回错。回 { ok, relayed, closed }——closed 是转发那一刻页面清单里那张桌面上的窗格数。转发给页面执行',
+        effect: 'write',
       },
       async (args) => {
         const parsed = parseDeleteArgs(args)
@@ -345,7 +351,7 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   /** @internal */
   private registerRelayedPaneCommand(commandBus: GwbCommands, name: string, action: 'focus' | 'close' | 'send', description: string, usage: string): void {
-    this.registerCommand(commandBus, { name, description, usage }, (args) => {
+    this.registerCommand(commandBus, { name, description, usage, effect: 'write' }, (args) => {
       const parsed = parsePaneArgs(action, args)
       if (!parsed.ok) return { ok: false, error: parsed.error }
       const targetError = this.paneActionTargetError(parsed.action)
@@ -363,6 +369,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: PANE_SYNC_COMMAND,
         description: '页面专用：把所有桌面上开着的窗格推给 node 侧缓存（shell.pane.list 读它）。别调',
         usage: '参数 { entries, desktops, active }——页面每次保存布局时推一份。别的调用方推进来就是改写了 shell.pane.list 的回执',
+        effect: 'write',
       },
       (args) => {
         const pushedPaneSync = parsePaneSync(args)
@@ -378,6 +385,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         description: '所有桌面上开着的窗格',
         usage:
           "无参数。回 [{ instance, desktop, group, pkg, entryId, paneId, kind, key, title, preview, active }]，按桌面顺序——instance 是窗格的实例 id（pane.instance），kind 是 'tool' / 'document'，key 是此刻装的内容（插件上报过就是上报的那个），active 是它是不是那一组的活动标签。读页面每次保存布局时推来的清单，最多慢 400ms；页面还没推过回空表",
+        effect: 'read',
       },
       () => {
         const registeredKindOf = (entryId: string, paneId: string) =>
@@ -417,6 +425,7 @@ export default class GwbShell extends Service implements GwbShellApi {
         description: '打开一个窗格（任何插件的）',
         usage:
           "参数 { entryId, paneId, key?, params?, preview?, from?, placement? }——entryId+paneId 是注册表的键（用 shell.panes 查），选项与插件开自己窗格时相同：key 命中当前桌面已开的那份就激活、preview 放进目标组的预览窗格、params 随这一份保存；from 是来源窗格的实例 id（插件手上的 pane.instance），新窗格开在它旁边、它那张桌面上，页面上找不到就当没给；placement 'auto'（缺省，按目标组规则）或 'side'（开到来源旁边，没有来源就是活动组旁边）。从不切桌面。窗格容器在页面上，回执 ok 代表转发了不是开完了",
+        effect: 'write',
       },
       (args) => {
         const parsed = parseOpenPaneArgs(args)

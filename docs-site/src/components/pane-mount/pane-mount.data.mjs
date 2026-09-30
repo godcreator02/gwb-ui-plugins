@@ -22,7 +22,7 @@ export const actors = [
  * @type {MountStep[]}
  */
 export const steps = [
-  /* ref file="../plugins/shell/src/index.ts" lines="451-457" hash="764e0d5bea40" blob="d8029385df74" */
+  /* ref file="../plugins/shell/src/index.ts" lines="460-466" hash="764e0d5bea40" blob="ea7cdacc4957" */
   {
     title: '注册：身份由外壳填',
     text:

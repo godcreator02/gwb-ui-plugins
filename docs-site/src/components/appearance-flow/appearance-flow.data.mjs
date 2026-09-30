@@ -43,7 +43,7 @@ export const headElements = {
  *   settingsChanged: string[], head: HeadItem[], css: string[] | null, cssChanged: number[], pane: PaneState | null }} FlowStep
  * @type {FlowStep[]}
  */
-/* ref file="../plugins/theme/src/index.ts" lines="112-141" hash="2429fca1d8a1" blob="8a696cae264c" */
+/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="a9d84efd2304" blob="ea4588cf8ead" */
 /* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="c49f50da741d" blob="86c08b9d31cd" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="32-95" hash="15576f315894" blob="d52b9b51d84a" */
 export const steps = [

@@ -46,11 +46,11 @@ full: true
 | `theme.values` | 无 | `{ "font-sans", "font-mono", "custom-css" }` 三项现值，不是字符串的值当空串 | 外观窗格 |
 | `theme.save` | `{ "font-sans", "font-mono", "custom-css" }` 三个键都必给、值都是字符串，空串是恢复默认 | `{ ok: true }`；参数不对回 `ok: false` 与原因，一项都不写 | 外观窗格 |
 
-{/* ref file="../plugins/theme/src/index.ts" lines="112-141" hash="2429fca1d8a1" blob="8a696cae264c" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="a9d84efd2304" blob="ea4588cf8ead" */}
 
 登记时 `plugin` 写本插件的包名：
 
-{/* ref file="../plugins/theme/tests/apply.test.ts" lines="97-104" hash="3cd8d723fba9" blob="3c7ae394ce8d" */}
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="97-104" hash="120a9dacf426" blob="9815a0d6747e" */}
 
 `theme.save` 的参数是外部输入，在这里校验：不是对象、缺键、多了别的键、值不是字符串，都当场拒绝并说清错在哪，不替调用方修正：
 
@@ -68,7 +68,7 @@ full: true
 
 **「外观」窗格**：id 是 `appearance`，注册时报上 `dist/client.js` 与 `dist/style.css` 的 `file://` 地址，另报名字「外观」、图标 `palette`：
 
-{/* ref file="../plugins/theme/src/index.ts" lines="143-155" hash="823e99256e18" blob="8a696cae264c" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="144-156" hash="823e99256e18" blob="ea4588cf8ead" */}
 
 **页面上的约定**：启动样式放在 `<style id="gwb-theme-style">` 里，外壳启动时写它，外观窗格预览时改它。这个 id 两边各写一份字符串、不互相 import：
 

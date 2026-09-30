@@ -34,11 +34,11 @@ function fakeSettings() {
 
 function fakeCommands() {
   const handlers = new Map<string, Handler>()
-  const defs: { name: string; plugin: string }[] = []
+  const defs: { name: string; plugin: string; effect: string }[] = []
   return {
     handlers,
     defs,
-    register(def: { name: string; plugin: string }, handler: Handler) {
+    register(def: { name: string; plugin: string; effect: string }, handler: Handler) {
       handlers.set(def.name, handler)
       defs.push(def)
       return () => {
@@ -94,12 +94,12 @@ describe('主题插件 apply', () => {
     ])
   })
 
-  it('登记三条命令，plugin 写包名', async () => {
+  it('登记三条命令，plugin 写包名，只有 theme.save 是 write', async () => {
     const { commands } = await bootTheme({ withShell: false })
-    expect(commands.defs.map((def) => [def.name, def.plugin])).toEqual([
-      ['theme.startupCss', '@godcreator/gwb-theme'],
-      ['theme.values', '@godcreator/gwb-theme'],
-      ['theme.save', '@godcreator/gwb-theme'],
+    expect(commands.defs.map((def) => [def.name, def.plugin, def.effect])).toEqual([
+      ['theme.startupCss', '@godcreator/gwb-theme', 'read'],
+      ['theme.values', '@godcreator/gwb-theme', 'read'],
+      ['theme.save', '@godcreator/gwb-theme', 'write'],
     ])
   })
 

@@ -113,11 +113,11 @@ function parseSaveArgs(args: unknown): { ok: true; values: ThemeSettingValues } 
 function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
   const settings = ctx.gwbSettings
   commandBus.register(
-    { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', plugin: PACKAGE_NAME },
+    { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', effect: 'read', plugin: PACKAGE_NAME },
     () => buildStartupCss(readThemeSettingValues(ctx)),
   )
   commandBus.register(
-    { name: VALUES_COMMAND, description: '本插件三项设置的当前值', usage: '无参数', plugin: PACKAGE_NAME },
+    { name: VALUES_COMMAND, description: '本插件三项设置的当前值', usage: '无参数', effect: 'read', plugin: PACKAGE_NAME },
     () => toKebabValues(readThemeSettingValues(ctx)),
   )
   commandBus.register(
@@ -126,6 +126,7 @@ function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
       description: '一次写齐三项外观设置',
       usage:
         '参数 { "font-sans", "font-mono", "custom-css" }：三个键都必给、值都是字符串（空串 = 恢复默认）。参数不是对象、缺键、多了别的键、值不是字符串都回 ok:false，一项都不写',
+      effect: 'write',
       plugin: PACKAGE_NAME,
     },
     async (args) => {

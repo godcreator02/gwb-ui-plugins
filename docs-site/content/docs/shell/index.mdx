@@ -38,7 +38,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/index.ts" lines="23-24" hash="2f61ea755107" blob="d8029385df74" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="468-472" hash="a711dfb6a01f" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="477-481" hash="a711dfb6a01f" blob="ea7cdacc4957" */}
 
 发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有两个方法。
 
@@ -71,7 +71,7 @@ full: true
 
 命令登记在外壳自己的上下文上，`plugin` 一律写外壳的包名，外壳卸载时命令总线把它们一起注销；参数由各条命令的处理函数校验，不合格回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b3ebb9af8569" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */}
 
 {/* ref file="../plugins/shell/tests/service.test.ts" lines="141-165" hash="877c8b62785b" blob="daecac5bbe93" */}
 
@@ -110,7 +110,7 @@ full: true
 
 转发类命令 node 侧先校验参数，不对当场回错，对了才推事件；比如 `shell.desktop.switch` 推一条 `t` 为 `gwb-shell-desktop` 的事件：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="273-282" hash="fea1a639c194" blob="daecac5bbe93" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="282-291" hash="fea1a639c194" blob="5b52504fc8f1" */}
 
 ### 包的出口
 

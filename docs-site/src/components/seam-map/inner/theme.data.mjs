@@ -5,7 +5,7 @@
 import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 
 /* ref file="../plugins/theme/src/index.ts" lines="19-31" hash="1b69520c5ca3" blob="8a696cae264c" */
-/* ref file="../plugins/theme/src/index.ts" lines="143-162" hash="b839760d8494" blob="8a696cae264c" */
+/* ref file="../plugins/theme/src/index.ts" lines="144-163" hash="b839760d8494" blob="ea4588cf8ead" */
 /* ref file="../plugins/theme/src/startup-css.ts" lines="16-26" hash="0403e4a4a171" blob="694ae7e05e50" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="15-30" hash="9c62cc1f0537" blob="82cc4b455dbb" */
 /* ref file="../plugins/theme/src/client/values.ts" hash="5310c8bb18ce" blob="855b1447cb2e" */
