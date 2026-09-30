@@ -1,0 +1,11 @@
+---
+title: '页面专用的命令标 hiddenFromAgents，大返回补筛选参数'
+description: '来源：gwb-base-plugins（D:\unitfolders\igldu-gwbkernel\gwb-base-plugins），2026-09-26；总控台会话投递。原反馈里「给命令标 effect」一项已在 b55e8b4 做完，这里只留没做的'
+docfirst: none
+---
+
+* **现状**：命令定义收 `hiddenFromAgents: true`：只给页面调用，MCP 入口不列这条命令，agent 经 `run` 调会被拒；页面与别的插件照常调。`run` 的返回超过 40000 字符时不交回原文，改回 isError 请 agent 带上筛选参数重调
+* **期望**：
+  1. 只给页面调用的命令写 `hiddenFromAgents: true`。建议：`shell.pane.sync`（usage 里已经写着「页面专用，别调」）；`shell.env`、`theme.startupCss`（外壳开机取的）；`shell.layout.save`（整份替换布局文件）
+  2. 返回可能很大的列表类命令，补上筛选或条数参数，并写进 usage。`shell.panes`、`shell.plugins` 现在是「无参数」，表都不大，要不要加由本仓定
+* **另外看到的**（default home 的运行数据，不在仓里）：`shell.pane.list` 里有一个窗格的 `pkg` 是旧包名 `@godcreator02/gwb-unit-folder`（布局文件里窗格参数 `pluginKey` 存的旧名，没随改名更新）；`shell.layout.get` 的 `saved` 里那份布局「88」引用的全是已删除的插件（`@godcreator02/gwb-plugins`、`gwb-hello`、`gwb-status`、`gwb-logger`）
