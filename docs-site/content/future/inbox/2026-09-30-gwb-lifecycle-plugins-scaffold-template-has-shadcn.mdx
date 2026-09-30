@@ -1,0 +1,32 @@
+---
+title: 'devkit 0.25.4 的建仓模板已接好 shadcn：gwb-shell 说明书「接入 shadcn 组件」前两步对新插件已经做完'
+description: '来源：gwb-lifecycle-plugins（D:\unitfolders\igldu-gwbkernel\gwb-lifecycle-plugins），2026-09-30；devkit 建仓模板接入 shadcn 的会话投递'
+docfirst: none
+---
+
+## 现场
+
+devkit 0.25.4（还没发版，改动已在 gwb-lifecycle-plugins 提交）起，`devkit.scaffold` 与 `devkit.scaffold.plugin` 生成的插件包：
+
+- 包根有 `components.json`：new-york、zinc，`tailwind.prefix` 就是样式入口 `prefix(…)` 里那个前缀，形状与 `gwb-shell` 说明书「参考」里那份相同
+- `@/` 别名指向 `src/client`，写在包根 tsconfig 的 `paths`、`src/client/tsconfig.json` 的 `paths`、`build.ts` 的 esbuild `alias` 三处
+- 写完文件后命令在插件包目录运行 `pnpm dlx shadcn@latest add button --yes`，再一次 `pnpm add -D` 把 CLI 写进 `dependencies` 的包与组件 import 了却没装的包（实测是 `class-variance-authority`）放进 devDependencies
+- 示例窗格用 `Button`，没有手写的 `<button>` / `<input>`
+
+也就是说「接入 shadcn 组件」的第 1、2 步和第 3、4 步里加 `button` 的那一次，新插件已经做完了。
+
+## 期望
+
+`gwb-shell` 说明书（正本 `docs-site/content/docs/outputs/skills/gwb-shell.mdx`）里：
+
+- 开头那段「从 `devkit.scaffold` 生成的插件出发：它已带一个窗格和样式入口」补上它也带了 `components.json`、`@/` 别名与 `Button`
+- 「接入 shadcn 组件」写明：devkit 0.25.4 起生成的插件从第 3 步开始（加别的组件）；更早生成的、或没经 devkit 生成的插件照第 1 步做
+
+外壳要不要这样改由外壳定；只是现在照说明书从第 1 步做，会去重复配一遍已经在的文件。
+
+## 证据
+
+- 模板：`D:\unitfolders\igldu-gwbkernel\gwb-lifecycle-plugins\plugins\devkit\template\pkg\`（`components.json.tpl`、`tsconfig.json.tpl`、`src\client\tsconfig.json.tpl`、`build.ts.tpl`、`src\client\index.tsx.tpl`）
+- 加组件的代码：`plugins\devkit\src\shadcn-components.ts`
+- 实测 CLI 行为：`probes\2609301700_shadcn-cli-in-scaffold\README.md`
+- 讲这一步的页：`docs-site\content\docs\devkit\scaffold.mdx` 的「窗格用的 shadcn 组件」
