@@ -1184,9 +1184,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <Collapsible open={sharedOpen} onOpenChange={setSharedOpen} className="baseui:border-t baseui:border-border">
                 <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', sharedOpen && 'baseui:rotate-90')}
+                    className={cn('baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground baseui:transition-transform', sharedOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">公共设置</span>
+                  <span className="baseui:shrink-0 baseui:text-sm baseui:text-muted-foreground">公共设置</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {shared.length}
                   </Badge>
@@ -1195,7 +1195,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                       未保存
                     </Badge>
                   )}
-                  <span className="baseui:text-xs baseui:text-muted-foreground">设置插件公共区（*）里的项，不属于哪一个插件，别的插件不用声明也读得到</span>
+                  <span className="baseui:min-w-0 baseui:text-xs baseui:text-muted-foreground">设置插件公共区（*）里的项，不属于哪一个插件，别的插件不用声明也读得到</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="baseui:bg-muted/30">
@@ -1244,13 +1244,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <Collapsible open={orphansOpen} onOpenChange={setOrphansOpen} className="baseui:border-t baseui:border-border">
                 <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', orphansOpen && 'baseui:rotate-90')}
+                    className={cn('baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground baseui:transition-transform', orphansOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">没有插件声明的设置</span>
+                  <span className="baseui:shrink-0 baseui:text-sm baseui:text-muted-foreground">没有插件声明的设置</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {orphans.length}
                   </Badge>
-                  <span className="baseui:text-xs baseui:text-muted-foreground">磁盘上有值，此刻没有插件声明它</span>
+                  <span className="baseui:min-w-0 baseui:text-xs baseui:text-muted-foreground">磁盘上有值，此刻没有插件声明它</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="baseui:divide-y baseui:divide-border baseui:bg-muted/30">
@@ -1290,13 +1290,13 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <Collapsible open={noEntryOpen} onOpenChange={setNoEntryOpen} className="baseui:border-t baseui:border-border">
                 <CollapsibleTrigger className="baseui:flex baseui:w-full baseui:items-center baseui:gap-2 baseui:px-3 baseui:py-2 baseui:text-left baseui:outline-none baseui:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('baseui:size-4 baseui:text-muted-foreground baseui:transition-transform', noEntryOpen && 'baseui:rotate-90')}
+                    className={cn('baseui:size-4 baseui:shrink-0 baseui:text-muted-foreground baseui:transition-transform', noEntryOpen && 'baseui:rotate-90')}
                   />
-                  <span className="baseui:text-sm baseui:text-muted-foreground">已安装、没有条目的包</span>
+                  <span className="baseui:shrink-0 baseui:text-sm baseui:text-muted-foreground">已安装、没有条目的包</span>
                   <Badge variant="outline" className="baseui:px-1.5 baseui:py-0 baseui:text-[10px]">
                     {noEntryRows.length}
                   </Badge>
-                  <span className="baseui:text-xs baseui:text-muted-foreground">在 home 里、cordis.yml 里没有指向它的条目，所以没有加载</span>
+                  <span className="baseui:min-w-0 baseui:text-xs baseui:text-muted-foreground">在 home 里、cordis.yml 里没有指向它的条目，所以没有加载</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="baseui:divide-y baseui:divide-border baseui:bg-muted/30">
