@@ -471,10 +471,10 @@ function EntryCard({
               <UnmetPeerBadge mark={card.peerMark} />
             </div>
             <div className="baseui:flex baseui:items-baseline baseui:gap-2">
-              <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={entry.entryId}>
+              <span className="baseui:max-w-[50%] baseui:shrink-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={entry.entryId}>
                 {entry.id}
               </span>
-              <span className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-muted-foreground">
+              <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={`${card.pkg}${card.spec !== undefined ? `@${card.spec}` : ''}`}>
                 {card.pkg}
                 {card.spec !== undefined ? `@${card.spec}` : ''}
               </span>
@@ -1306,7 +1306,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           <div className="baseui:flex baseui:items-baseline baseui:gap-2">
                             <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs">{row.pkg}</span>
                             {row.spec !== undefined && (
-                              <span className="baseui:shrink-0 baseui:font-mono baseui:text-xs baseui:text-muted-foreground">{row.spec}</span>
+                              <span className="baseui:min-w-0 baseui:truncate baseui:font-mono baseui:text-xs baseui:text-muted-foreground" title={row.spec}>{row.spec}</span>
                             )}
                           </div>
                           <p className="baseui:mt-0.5 baseui:text-xs baseui:text-muted-foreground" title={row.noteHint}>
