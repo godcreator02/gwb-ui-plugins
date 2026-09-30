@@ -10,7 +10,7 @@ type Reply = { ok: boolean; data?: unknown; error?: string }
 
 function bus(commands: string[], reply: Reply) {
   return {
-    list: () => commands.map((name) => ({ name, description: '', usage: '', plugin: '@godcreator/gwb-theme' })),
+    list: () => commands.map((name) => ({ name, description: '', usage: '', plugin: '@godcreator/gwb-theme', effect: 'read' as const })),
     run: vi.fn(async (_name: string, _args?: unknown) => reply),
   }
 }

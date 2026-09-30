@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-theme",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格，没有外壳也照常加载",
   "type": "module",
   "exports": {
@@ -15,7 +15,7 @@
   },
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.10.0",
-    "@godcreator/gwb-commands": "^0.5.6",
+    "@godcreator/gwb-commands": "^0.6.0",
     "@godcreator/gwb-settings": "^0.3.3",
     "@godcreator/gwb-shell": "workspace:*"
   },
