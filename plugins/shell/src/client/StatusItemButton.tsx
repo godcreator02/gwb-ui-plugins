@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { loadStyle } from './asset.js'
@@ -10,16 +11,14 @@ import type { HostBridge, StatusItemArgs, StatusItemRow } from './types.js'
  * 浮层打开时挂载插件、关上时 dispose（radix 关上浮层就卸载内容）；挂载失败把原因写在浮层里。
  * 依赖只列按钮的身份与地址：按钮表重新取回来时行对象换了，浮层开着也不重新挂载
  */
-function StatusItemBody({ item, host }: { item: StatusItemRow; host: HostBridge }): ReactElement {
+function StatusItemBody({ item, host, portal }: { item: StatusItemRow; host: HostBridge; portal: HTMLElement | null }): ReactElement {
   const { pkg, id, client, style } = item
   const containerRef = useRef<HTMLDivElement>(null)
-  const portalRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     const container = containerRef.current
-    const portal = portalRef.current
     if (container === null || portal === null) return
     let disposed = false
     let dispose: (() => void) | undefined
@@ -51,21 +50,28 @@ function StatusItemBody({ item, host }: { item: StatusItemRow; host: HostBridge 
         console.error(`[shell] ${pkg} 的状态栏按钮 ${id} 的 dispose 抛了：`, err)
       })
     }
-  }, [pkg, id, client, style, host])
+  }, [pkg, id, client, style, host, portal])
 
   return (
     <>
       {error !== null && <p className="shell:text-destructive shell:m-0 shell:max-w-80 shell:text-sm">加载失败：{error}</p>}
       {error === null && !ready && <p className="shell:text-muted-foreground shell:m-0 shell:text-sm">加载中…</p>}
       <div ref={containerRef} />
-      <div ref={portalRef} />
     </>
   )
 }
 
-/** 状态栏上插件登记的一个按钮：点它在上方弹出浮层，内容由插件画 */
+/**
+ * 状态栏上插件登记的一个按钮：点它在上方弹出浮层，内容由插件画。
+ * 插件里的下拉、菜单挂到 body 上另放的一层（portal），不放进浮层：radix 浮层用 transform 定位，
+ * 放在它里面的 position: fixed 元素会改成相对它定位、整体偏开。这一层里的点击与焦点不算到了浮层外面
+ */
 export function StatusItemButton({ item, host }: { item: StatusItemRow; host: HostBridge }): ReactElement {
   const Icon = iconFor(item.icon)
+  const [portal, setPortal] = useState<HTMLDivElement | null>(null)
+  const keepOpenWhenInsidePortal = (event: { target: EventTarget | null; preventDefault(): void }): void => {
+    if (portal !== null && event.target instanceof Node && portal.contains(event.target)) event.preventDefault()
+  }
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -74,9 +80,18 @@ export function StatusItemButton({ item, host }: { item: StatusItemRow; host: Ho
           {item.title}
         </Button>
       </PopoverTrigger>
-      {/* 状态栏自己的浮层挂在 body 上，切桌面后的 body 检查（sweepBodyPortals）据此跳过它 */}
-      <PopoverContent side="top" align="start" className="shell:w-auto shell:p-2" data-gwb-status-layer="">
-        <StatusItemBody item={item} host={host} />
+      {/* 状态栏自己的浮层挂在 body 上，切桌面后的 body 检查（sweepBodyPortals）据此跳过它与 portal 那一层 */}
+      <PopoverContent
+        side="top"
+        align="start"
+        className="shell:w-auto shell:p-2"
+        data-gwb-status-layer=""
+        onPointerDownOutside={keepOpenWhenInsidePortal}
+        onFocusOutside={keepOpenWhenInsidePortal}
+      >
+        <StatusItemBody item={item} host={host} portal={portal} />
+        {/* z-70 高过状态栏（z-60），插件的下拉往下展开时不被状态栏压住 */}
+        {createPortal(<div ref={setPortal} data-gwb-status-layer="" className="shell:relative shell:z-70" />, document.body)}
       </PopoverContent>
     </Popover>
   )

@@ -415,7 +415,8 @@ export const shellGraph = defineSeamGraph({
       text:
         '插件的样式入口在构建时引用这张映射，Tailwind 才认得 bg-primary 这类类名；映射只给出类名到 var(--primary) 的对应，不输出变量的值，值在运行时取页面上令牌表那一份。',
     },
-    /* ref file="../plugins/shell/src/client/StatusItemButton.tsx" lines="20-54" hash="743fde37e14e" blob="53ce88e994c3" */
+    /* ref file="../plugins/shell/src/client/StatusItemButton.tsx" lines="20-53" hash="8ff3a611a5d5" blob="7d146f1283f8" */
+    /* ref file="../plugins/shell/src/client/StatusItemButton.tsx" lines="64-98" hash="07ceefd8a7f4" blob="7d146f1283f8" */
     {
       n: 18,
       name: '挂载状态栏按钮的浮层',
@@ -425,7 +426,7 @@ export const shellGraph = defineSeamGraph({
       convention: false,
       via: 'code',
       text:
-        '状态栏按 shell.statusItems 的表画按钮；点开浮层时注入样式表、prepareImports、import 插件的 client，调 mountStatusItem，浮层关上就 dispose，下次打开重新挂载。portal 是浮层里的一个元素，插件里的下拉、菜单挂到它上面，点它们不算点到浮层外面。',
+        '状态栏按 shell.statusItems 的表画按钮；点开浮层时注入样式表、prepareImports、import 插件的 client，调 mountStatusItem，浮层关上就 dispose，下次打开重新挂载。portal 是外壳在 body 上为这个浮层另放的一层，插件里的下拉、菜单挂到它上面；它不放进浮层（浮层靠 transform 定位，fixed 元素放进去会偏开），落在这一层里的点击与焦点不算到了浮层外面。',
     },
   ],
 });

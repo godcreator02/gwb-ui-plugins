@@ -1,0 +1,37 @@
+---
+born-at: 2026-10-03T14:15
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 浮层下拉另放一层
+domain: shell
+---
+
+## 背景
+
+外壳 0.15.9 给状态栏按钮的插件一个 `portal`，那时它是浮层内容里的一个元素，插件里的下拉挂到这里，图的是点下拉不会被当成点到浮层外面。
+在隔离 home 里装上日志插件的「快速记录」真实点击：点开「待办 / 记录」那个 Select，下拉整体往右上偏开一大截，跟触发按钮对不上。
+
+pivots-from:: [状态栏按钮弹浮层](2026-10-03-status-item-popover.md)
+
+## 结论与边界
+
+- 偏开的原因：radix 的浮层（Popper）用 `transform: translate(…)` 定位，Select 缺省的 item-aligned 方式用 `position: fixed` 加视口坐标；`transform` 的祖先会变成 fixed 元素的定位基准，坐标就加上了浮层自己的位移
+- 改成外壳在 body 上为这个浮层另放一层（`createPortal` 进 body，浮层开着时才在），把它交给插件当 `portal`
+- 这一层不在浮层的 DOM 里，又是另一个 React 根画进去的，radix 会把点在它里面、焦点移进它里面都当成到了浮层外面；外壳在 `onPointerDownOutside` 与 `onFocusOutside` 里看目标在不在这一层，在就 `preventDefault`
+- 这一层是 `z-70`，高过状态栏的 `z-60`，下拉往下展开时不被状态栏压住；它标 `data-gwb-status-layer`，切桌面后的 body 检查跳过它
+- `StatusItemArgs.portal` 的类型与名字都没变，只换了它指向哪个元素，外壳升 y（0.15.10）
+
+## 否掉的候选
+
+- **插件里不用 Select，改成两个按钮切换**：日志插件这一处躲得开，但 `portal` 本身对任何 fixed 定位的浮层都是错的，留给下一个插件踩
+- **让 Select 一律写 `position="popper"`**：popper 也是 transform 定位，放在 transform 祖先里能算对；但这是要求每个插件记住一条外壳的坑，不如让 `portal` 本身就对
+
+## 代价与遗留
+
+- 落在这一层里不算外面靠的是外壳自己的判断，换掉 radix 的浮层组件或它的事件名变了，这条判断会静默失效，现象是点下拉时浮层跟着关
+- 浮层贴着窗口底部，Select 按缺省对齐到选中项时下面几项会被挤到窗口底边；日志插件那两个下拉写了 `position="popper" side="top"` 向上弹出，说明书里写了这一条
+
+## 依据
+
+隔离 home `status-item-2610031402` 里用 `devkit.cdp` 真实点击：0.15.9 时下拉偏到浮层右上方（截图里下拉左边在 x≈550，触发按钮在 x≈280，差的正是浮层的横向位移）；
+改成另放一层之后下拉贴着触发按钮弹出，点「记录」后浮层还开着、触发按钮写着「记录」，回车记进了今天；Esc 关掉浮层；浮层与下拉开着时切桌面，`gwb.log` 里没有「body 上还挂着」的告警。截图随隔离 home 删除，未存探针。

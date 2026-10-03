@@ -171,8 +171,8 @@ export interface StatusItemArgs {
   /** 这次挂载的是本插件登记的哪个按钮（`registerStatusItem` 给的 id） */
   item: { id: string }
   /**
-   * 浮层里的浮层挂载点：插件里 radix Portal（下拉、菜单）的 `container` 指向它。它在状态栏浮层里面，
-   * 点下拉选项不算点到浮层外面，浮层不会跟着关
+   * 插件里 radix Portal（下拉、菜单）的 `container` 指向它：外壳在 body 上为这个浮层另放的一层，浮层开着时才在。
+   * 点在这一层里、焦点移进这一层，都不算到了浮层外面，浮层不会跟着关
    */
   portal: HTMLElement
 }

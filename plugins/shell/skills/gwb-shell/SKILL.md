@@ -102,7 +102,7 @@ description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令�
 
 ## 给状态栏加一个按钮
 
-点它在按钮上方弹出浮层、浮层里的内容由插件画，适合不想先开窗格的小操作（快速记一笔这类）。要外壳 0.15.9 起：peer 里外壳的下限写到这一版。
+点它在按钮上方弹出浮层、浮层里的内容由插件画，适合不想先开窗格的小操作（快速记一笔这类）。要外壳 0.15.10 起（0.15.9 给的 `portal` 放在浮层里，下拉会偏开）：peer 里外壳的下限写到这一版。
 
 1. node 侧在注入了 `gwbShell` 的上下文里调 `ctx.gwbShell.registerStatusItem({ id, title, icon, client, style })`：
    - `id`、`title`、`icon` 的要求与窗格相同；按钮上显示图标加 `title`
@@ -120,6 +120,8 @@ description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令�
    - 浮层宽度由插件内容定：根元素写一个固定宽度（如 `demo:w-96`），不写容器查询
    - 浮层里的下拉、菜单这类浮层，`container` 指向 `args.portal`（不是窗格的 `args.shell.portal`，这里没有 `shell`）：
      挂到别处的话，点它们会被当成点到浮层外面，浮层跟着关
+   - 浮层贴着窗口底部：`Select` 在这里写 `position="popper" side="top"` 向上弹出（「接入 shadcn 组件」第 7 步不用 popper 的规矩不适用于这里）；
+     按缺省对齐到选中项的话，下面几项被挤到窗口底边、要滚动才看得到
    - 打开就能输入的，给输入框写 `autoFocus`；Esc 与点外面关浮层由外壳处理，插件不用接
 
 **完成**：`devkit.cdp {"args":["<home 名>","cmd","shell.statusItems"]}` 的回执里有这个按钮，`entryId` 是本插件的条目；
