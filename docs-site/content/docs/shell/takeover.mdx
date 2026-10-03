@@ -32,7 +32,7 @@ React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动�
 
 准备段抛错，`#root` 上只写一句「外壳启动失败：原因」，`dispose` 时连这句一起清掉：
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="654-665" hash="f6b71e7938c0" blob="144339d9b11c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="692-703" hash="f6b71e7938c0" blob="d5ac26e76c09" */}
 
 会走到这里的是：`shell.env` 没回环境（命令调不通、回执不是 ok）、三张样式表有一张加载不了、注册表取不回来。注册表取失败不当成空表——
 空表的意思是「一个插件都没注册窗格」，两件事混在一起，人看到的就是一个空桌面、查不到原因。
@@ -63,11 +63,11 @@ React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动�
   `retarget` 可选；插件的 `dispose` 排进微任务、在 React 提交之外调用，抛的错交给调用方记下。`mountPane` 必须同步返回句柄：
   写成 `async` 返回的是 Promise，算契约不符，报错里点名它回的是 Promise、要同步返回
 
-{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="f75f847e317f" blob="3d2882a87314" */}
+{/* ref file="../plugins/shell/src/client/mount-handle.ts" hash="9bc651385060" blob="4a4d04d36de0" */}
 
-{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="16-20" hash="68e9135408c4" blob="a1b67caf3550" */}
+{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="27-31" hash="68e9135408c4" blob="52d8963fd8fe" */}
 
-{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="158-170" hash="72ed9c0991ff" blob="a1b67caf3550" */}
+{/* ref file="../plugins/shell/tests/mount-handle.test.ts" lines="169-181" hash="72ed9c0991ff" blob="52d8963fd8fe" */}
 
 - **挂载 effect 的依赖里故意没有插件参数**：面板参数每轮渲染都是新对象，放进依赖会让插件被反复卸载后重新挂载；换内容走另一个 effect，按稳定序列化比对，
   见[换内容：原地换内容或卸载后重新挂载](/docs/shell/panes#换内容原地换内容或卸载后重新挂载)

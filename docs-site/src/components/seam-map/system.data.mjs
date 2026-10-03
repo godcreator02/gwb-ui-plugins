@@ -110,8 +110,8 @@ const seams = [
     via: 'code',
     text: '三个插件的 node 侧从内核包的包根只 import type（包根一加载就启动 Electron 应用），peer 里写内核包。外壳在构造时取 ctx.gwbKernel，不写进 inject，不在 gwb 内核里就当场抛错。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="671-692" hash="300e176c4eac" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="709-730" hash="300e176c4eac" blob="d5ac26e76c09" */
   {
     n: 2,
     name: '外壳接管',
@@ -148,7 +148,7 @@ const seams = [
     via: 'code',
     text: '页面入口用命令插件的页面客户端 command 调命令（经内核的请求通道到命令总线）、收回执，交给窗格的 host.call 就是它；外壳 node 侧经 gwbKernel.emit 把桌面、窗格、开窗格三类动作推给页面，页面按 t 区分是哪一类。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */
+  /* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */
   /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="54e9db88bc57" blob="ea4588cf8ead" */
   /* ref file="../plugins/baseui/src/index.ts" lines="27-45" hash="28cd476cc2fc" blob="7b7e30b1a7cd" */
   {
@@ -184,8 +184,8 @@ const seams = [
     via: 'code',
     text: '外观经设置插件声明 font-sans、font-mono、custom-css 三项 home 级设置，缺省空串；theme.values 读、theme.save 一次写齐三项。设置插件是外观的必需依赖。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="49-50" hash="ad63ef54ee4f" blob="d8029385df74" */
-  /* ref file="../plugins/shell/src/index.ts" lines="153-159" hash="84067ee58a76" blob="d8029385df74" */
+  /* ref file="../plugins/shell/src/index.ts" lines="51-52" hash="ad63ef54ee4f" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */
   {
     n: 8,
     name: '说明书登记',
@@ -209,19 +209,19 @@ const seams = [
     via: 'code',
     text: '基础界面对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记，它调的 logger.query 是基础界面自己登记的。插件管理窗格里的操作经命令名调 plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */
+  /* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */
   /* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */
   {
     n: 10,
     name: '窗格注册',
     a: ['theme-pane', 'baseui-apply', 'o-node'],
     b: ['service'],
-    iface: 'ctx.gwbShell.registerPane({ id, title, icon?, client?, style?, kind? }) → 注销函数；describeSelf({ title, icon? })',
+    iface: 'ctx.gwbShell.registerPane({ id, title, icon?, client?, style?, kind? }) → 注销函数；describeSelf({ title, icon? })；registerStatusItem({ id, title, icon?, client, style? })',
     convention: false,
     via: 'code',
-    text: '带界面的插件在 node 侧登记窗格、报自己的名字；条目 id 与包名由外壳从调用方的上下文里取，插件卸载时自动注销。基础界面把外壳写进 inject，外观局部注入外壳。',
+    text: '带界面的插件在 node 侧登记窗格、报自己的名字，要在状态栏上放按钮的再登记状态栏按钮；条目 id 与包名由外壳从调用方的上下文里取，插件卸载时自动注销。基础界面把外壳写进 inject，外观局部注入外壳。',
   },
-  /* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */
+  /* ref file="../plugins/shell/src/client/types.ts" lines="127-163" hash="24553ab6e550" blob="74813412c114" */
   {
     n: 11,
     name: '窗格挂载',

@@ -3,6 +3,6 @@
  * 它引用到的文件里不许有包名 import——调用方的浏览器侧 tsconfig 只有 DOM 类型，引进来的每个包都得由调用方列进 dev。
  */
 
-export type { HostBridge, PaneArgs, PaneHandle, ShellBridge } from './types.js'
+export type { HostBridge, PaneArgs, PaneHandle, ShellBridge, StatusItemArgs, StatusItemHandle } from './types.js'
 export type { OpenPaneOptions, PaneKind, Placement } from '../openable.js'
 export type { PaneContent } from '../panels.js'

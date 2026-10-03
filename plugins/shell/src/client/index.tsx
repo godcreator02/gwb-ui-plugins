@@ -15,7 +15,7 @@ import { GwbTab } from './GwbTab.js'
 import { StatusBar, type LaunchGroup } from './StatusBar.js'
 import { PluginPanel } from './plugin-panel.js'
 import { loadStyle } from './asset.js'
-import { fetchPanes, fetchPlugins } from './panes.js'
+import { fetchPanes, fetchPlugins, fetchStatusItems } from './panes.js'
 import { wellHub } from './well-hub.js'
 import {
   addInstance,
@@ -47,11 +47,11 @@ import { afterDelete, defaultDesktopName, isDesktopAction, renameDesktop, resolv
 import { isOpenPaneAction, openPaneOptionsOf, openPaneSourceOf } from '../open-pane.js'
 import { isPaneAction } from '../pane-actions.js'
 import { desktopSections, entriesOfLayout } from '../pane-list.js'
-import { ENV_COMMAND, PANE_SYNC_COMMAND, type ShellEnv, type Versions } from '../protocol.js'
+import { ENV_COMMAND, PANE_SYNC_COMMAND, STATUS_ITEMS_EVENT, type ShellEnv, type Versions } from '../protocol.js'
 import { visibilityHub } from './visibility.js'
 import { mountWhenReady, type MountedTree, type Prepare } from './shell-mount.js'
 import { DESKTOP_ATTR } from './desktop-context.js'
-import type { HostBridge, ShellArgs } from './types.js'
+import type { HostBridge, ShellArgs, StatusItemRow } from './types.js'
 
 const SELF = '@godcreator/gwb-shell'
 
@@ -76,6 +76,11 @@ function pushPanes(host: HostBridge, rows: readonly DesktopRow[], active: string
       console.warn(`[shell] ${PANE_SYNC_COMMAND} 推不上：${String(err)}`)
     },
   )
+}
+
+/** 事件入口上什么插件的事件都有，只认按钮表变了的那一种 */
+function isStatusItemsChanged(payload: unknown): boolean {
+  return payload !== null && typeof payload === 'object' && (payload as { t?: unknown }).t === STATUS_ITEMS_EVENT
 }
 
 /** 面板组件表与标签组件表必须是模块级常量：dockview 按引用比对，换一个新对象会重建全部窗格 */
@@ -107,12 +112,14 @@ function sweepBodyPortals(activeName: string): void {
 
 /** 一张桌面一个 section，非活动的只是不显示；启动时只挂载活动那张，其余第一次切到时挂载、之后常驻 */
 function App({
+  host,
   specs,
   home,
   versions,
   initialDoc,
   initialSaveBlockedBy,
 }: {
+  host: HostBridge
   specs: OpenableSpec[]
   home: string
   versions: Versions
@@ -417,6 +424,33 @@ function App({
     }))
   }
 
+  const [statusItems, setStatusItems] = useState<StatusItemRow[]>([])
+  const [statusItemsError, setStatusItemsError] = useState<string | undefined>(undefined)
+  /** 连着取两次时只认最后一次取回的 */
+  const statusItemsRound = useRef(0)
+  const loadStatusItems = useCallback((): void => {
+    const mine = ++statusItemsRound.current
+    fetchStatusItems(host).then(
+      (rows) => {
+        if (statusItemsRound.current !== mine) return
+        setStatusItems(rows)
+        setStatusItemsError(undefined)
+      },
+      (err: unknown) => {
+        console.error(`[shell] 状态栏按钮读不出：${String(err)}`)
+        if (statusItemsRound.current === mine) setStatusItemsError(String(err))
+      },
+    )
+  }, [host])
+
+  // 启动时取一次；之后按钮表一变（插件比页面晚加载、装卸插件）node 侧发事件，再取一次
+  useEffect(() => {
+    loadStatusItems()
+    return window.gwb.on((payload) => {
+      if (isStatusItemsChanged(payload)) loadStatusItems()
+    })
+  }, [loadStatusItems])
+
   // node 侧转来的桌面动作（shell.desktop.*）
   useEffect(() => {
     const off = window.gwb.on((payload) => {
@@ -606,6 +640,10 @@ function App({
         onDeleteLayout={removeSaved}
         onResetLayout={resetLayout}
         onRetrySave={() => flushSave()}
+        host={host}
+        statusItems={statusItems}
+        statusItemsError={statusItemsError}
+        onRetryStatusItems={loadStatusItems}
       />
     </div>
   )
@@ -634,7 +672,7 @@ async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => M
     root.setAttribute('data-gwb-plugin', SELF)
     const reactRoot = createRoot(root)
     reactRoot.render(
-      <App specs={specs} home={args.home} versions={args.versions} initialDoc={initial.doc} initialSaveBlockedBy={initial.saveBlockedBy} />,
+      <App host={args.host} specs={specs} home={args.home} versions={args.versions} initialDoc={initial.doc} initialSaveBlockedBy={initial.saveBlockedBy} />,
     )
     return {
       unmount() {

@@ -21,8 +21,8 @@ const unsavedCss = [':root {', '  --gwb-font-sans: Inter;', '  --gwb-font-mono: 
  * 页面 <head> 里与外观有关的元素，按文档顺序。layered 为 true 的整张表的规则都在 @layer 里。
  * 外壳的三张表地址与顺序由外壳 node 侧写死，启动样式排在它们之后。
  */
-/* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="614-618" hash="b956510a4aab" blob="144339d9b11c" */
+/* ref file="../plugins/shell/src/index.ts" lines="33-43" hash="84186942fe7c" blob="bdace3d0a52a" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="652-656" hash="b956510a4aab" blob="d5ac26e76c09" */
 /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
 export const headElements = {
   tokens: { tag: '<link>', name: '@godcreator/gwb-shell/theme.css', note: '层顺序声明、preflight（在 base 层）、令牌 :root 与 .dark', layered: false },

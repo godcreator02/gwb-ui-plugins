@@ -1,6 +1,6 @@
 ---
 title: 状态栏
-description: 容器底部那条：「桌面」面板、布局菜单、「新建」启动器、环境与版本、刷新与 shell.reload、亮暗；标签右键菜单与关闭窗格
+description: 容器底部那条：「桌面」面板、布局菜单、「新建」启动器、插件登记的按钮、环境与版本、刷新与 shell.reload、亮暗；标签右键菜单与关闭窗格
 ---
 
 ## 它不在窗格系统里
@@ -8,9 +8,9 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 状态栏是容器底部那一条，也是页面上唯一不属于任何桌面的东西：所以窗格全关掉了它还在，桌面切换器也只能放在这里。它的层级高过桌面上的模态遮罩，
 开着模态框也点得到；对话框本体又高过它，窗口很矮时对话框压在状态栏上面（三层怎么分见[多桌面](/docs/shell/desktops#一张桌面一个容器常驻保活)）。页面是上下两块：桌面区占满剩下的高度，状态栏固定高度。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="535-540" hash="a89a85628180" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="569-574" hash="a89a85628180" blob="d5ac26e76c09" */}
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="298-299" hash="e2ed814f4dfa" blob="f053d474aeaf" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="311-312" hash="e2ed814f4dfa" blob="7627baabfdc5" */}
 
 桌面区必须带 `min-h-0`：flex 子项缺省 `min-height: auto`，窗格里的内容一高就把状态栏挤出屏幕。
 
@@ -21,6 +21,8 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 | **桌面** | 写着当前桌面的名字；点开是[「桌面」面板](#桌面面板所有桌面与上面的窗格) |
 | **布局** | 存下的布局清单：点哪条就恢复到活动容器上，行尾 ✕ 删那条；「把当前布局另存为…」（这一行变输入框，Enter 或失焦保存、Esc 取消，同名覆盖）；「重置布局（当前桌面回到默认布局）」。见[起名存下的布局](/docs/shell/desktops#起名存下的布局) |
 | **＋ 新建** | [启动器](#新建启动器)：按插件分组列出全部窗格 |
+| **插件的按钮** | 插件经 `registerStatusItem` 登记的，按登记先后排；点开在按钮上方弹出浮层，内容由插件画，见[插件的按钮](#插件的按钮) |
+| （告警）**状态栏按钮读不出** | 只在 `shell.statusItems` 取失败时出现，悬停写着原因，点一下重新读取 |
 | （提示）**… · 切过去** | 显示 10 秒，点了切到那张桌面：送到别的桌面没跟过去时写「已送到『X』」；插件或命令要开的工具窗格在别的桌面上时写「『X』在『桌面 N』」 |
 | （告警）**布局保存失败** | 只在保存失败时出现，点一下立刻重试 |
 | （告警）**布局没读回来，不保存** | 只在布局读不回来时出现，悬停写着原因；点了弹确认框，确认「覆盖」后用当前布局整份写一次、恢复自动保存 |
@@ -49,9 +51,38 @@ description: 容器底部那条：「桌面」面板、布局菜单、「新建�
 **选了之后菜单不关**（用户定的：常用它连续打开好几个窗格），开完静默重新读取一次清单，点外面或 Esc 才关。点了开在别的桌面上的工具会切桌面，那时菜单还开着，
 所以它标了 `data-gwb-status-layer`，切桌面后的 body 检查认得它。
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="168-169" hash="ab6edd0a1954" blob="f053d474aeaf" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="170-171" hash="ab6edd0a1954" blob="7627baabfdc5" */}
 
-{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="190-194" hash="b837a70b7a9f" blob="f053d474aeaf" */}
+{/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="192-196" hash="b837a70b7a9f" blob="7627baabfdc5" */}
+
+## 插件的按钮
+
+插件在 node 侧调 `ctx.gwbShell.registerStatusItem({ id, title, icon?, client, style? })`，状态栏上「新建」右边就多一个按钮。
+点开它，按钮上方弹出一个浮层，里面的内容由插件浏览器侧模块导出的 `mountStatusItem` 画；它不是窗格，不进任何桌面、不随布局保存。
+日志插件的「快速记录」是第一个用它的：打开就能往今天记一条。为什么做成浮层、不做成「点了开窗格」或「点了跑命令」，见轨迹卡
+[状态栏按钮弹出插件画的浮层](/trajectory/2026-10-03-status-item-popover)。
+
+**登记**：检查与窗格表同一套（id 不空、不带冒号，标题不空，`client` 必须是路径以 `.js` 结尾的 `file://` 地址，`style` 给了必须以 `.css` 结尾），
+不合格当场抛错；同一条条目的同一个 id 登记两次，后来者生效并告警。插件卸载时自动注销。
+
+{/* ref file="../plugins/shell/src/status-item-registry.ts" lines="27-41" hash="27b112562b65" blob="084fc49ff91e" */}
+
+**页面怎么知道有哪些按钮**：启动时调一次 `shell.statusItems`；之后按钮表每变一次（登记、注销、被替换），node 侧经内核发一条 `t` 为
+`gwb-shell-status-items` 的事件，页面收到就再取一次。插件比页面晚加载、运行中装卸插件，按钮都会跟着出现或消失，不用刷新页面。
+连着取两次时只认最后一次取回的；取失败时状态栏上出现告警项，旧的按钮留着。
+
+{/* ref file="../plugins/shell/src/status-item-registry.ts" lines="43-75" hash="65c832f9c579" blob="084fc49ff91e" */}
+
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="427-452" hash="3de317183fce" blob="d5ac26e76c09" */}
+
+**浮层的一生**：每打开一次挂载一次，关上就 `dispose`（radix 关上浮层时卸载内容），插件要跨两次打开留住的东西自己存。挂载的步骤与窗格相同：
+注入样式表并等它加载完、`prepareImports`、动态 import `client`、调 `mountStatusItem`；缺这个导出、句柄上没有 `dispose`，都把原因写在浮层里。
+插件拿到的 `portal` 是浮层里的一个元素：插件里的下拉、菜单挂到它上面，点它们不算点到浮层外面，浮层不会跟着关；浮层本身标了
+`data-gwb-status-layer`，切桌面后的 body 检查认得它。
+
+{/* ref file="../plugins/shell/src/client/StatusItemButton.tsx" lines="20-54" hash="743fde37e14e" blob="53ce88e994c3" */}
+
+{/* ref file="../plugins/shell/src/client/types.ts" lines="165-183" hash="6a0e1cde0d08" blob="74813412c114" */}
 
 ## 「桌面」面板：所有桌面与上面的窗格
 
@@ -106,7 +137,7 @@ agent 经 MCP 升级完也调它。经页面调它时，页面在回执送回之
 
 {/* ref file="../plugins/shell/src/reload.ts" hash="dd4f07b27b83" blob="a62b7924ba69" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="230-252" hash="466f049357f2" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="247-269" hash="466f049357f2" blob="bdace3d0a52a" */}
 
 - **没有窗口回 `ok: false`**，不回成功：回成功的话调用方以为界面刷新了，其实什么都没发生；拿不到 electron 也转成回执
 - **`BrowserWindow` 是一个类，`typeof` 是 `'function'`**：取 `getAllWindows` 之前，对象与函数都要接着往下取。只按「是对象」判断，就永远取不到它，

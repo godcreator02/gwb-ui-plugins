@@ -1,11 +1,11 @@
 ---
 name: gwb-shell
-description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件、用主题令牌配颜色、写弹窗与菜单等浮层、做界面视觉验收时读。
+description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令、接 shadcn 组件、用主题令牌配颜色、写弹窗与菜单等浮层、做界面视觉验收时读。
 ---
 
 # 写 gwb 插件的界面
 
-**本页回答**：带界面的插件怎样接进外壳的窗格、组件、令牌与浮层，做完怎样验收。
+**本页回答**：带界面的插件怎样接进外壳的窗格、状态栏、组件、令牌与浮层，做完怎样验收。
 
 建仓、改完装进测试 home 查看（`devkit.dev`）、测试 home 与发版读 `skill.read {"name":"gwb-devkit"}`。下面各节从
 `devkit.scaffold` 生成的插件出发：它已带一个窗格、样式入口 `src/client/styles.css`，devkit 0.25.4 起还带着
@@ -99,6 +99,31 @@ description: 写 gwb 插件的窗格、在窗格里调命令、接 shadcn 组件
 
 **完成**：两个不同 `key` 开出两份，各自拿到自己的 `params`；从同一个窗格再打开同一 `key` 是激活已开的那份；
 `shell.pane.list` 回执里每份的 `key` 是最后上报的那个；`shell.reload` 整页重载后每份的内容还在。
+
+## 给状态栏加一个按钮
+
+点它在按钮上方弹出浮层、浮层里的内容由插件画，适合不想先开窗格的小操作（快速记一笔这类）。要外壳 0.15.9 起：peer 里外壳的下限写到这一版。
+
+1. node 侧在注入了 `gwbShell` 的上下文里调 `ctx.gwbShell.registerStatusItem({ id, title, icon, client, style })`：
+   - `id`、`title`、`icon` 的要求与窗格相同；按钮上显示图标加 `title`
+   - `client` 必给，`style` 可选，地址的要求与窗格相同；可以与窗格用同一对地址
+   - 插件卸载时自动注销；登记、注销后状态栏自己重新取表，不用刷新页面
+2. 浏览器侧同一个模块再导出 `mountStatusItem`，类型同样从 `@godcreator/gwb-shell/pane` 引：
+
+   ```tsx
+   import type { StatusItemArgs, StatusItemHandle } from '@godcreator/gwb-shell/pane'
+
+   export function mountStatusItem(args: StatusItemArgs, container: HTMLElement): StatusItemHandle {
+   ```
+
+   - 浮层**每打开一次挂载一次、关上就 `dispose`**：要跨两次打开留住的东西（草稿、上次选的项）插件自己存
+   - 浮层宽度由插件内容定：根元素写一个固定宽度（如 `demo:w-96`），不写容器查询
+   - 浮层里的下拉、菜单这类浮层，`container` 指向 `args.portal`（不是窗格的 `args.shell.portal`，这里没有 `shell`）：
+     挂到别处的话，点它们会被当成点到浮层外面，浮层跟着关
+   - 打开就能输入的，给输入框写 `autoFocus`；Esc 与点外面关浮层由外壳处理，插件不用接
+
+**完成**：`devkit.cdp {"args":["<home 名>","cmd","shell.statusItems"]}` 的回执里有这个按钮，`entryId` 是本插件的条目；
+`gwb.log` 有一行「状态栏按钮 `<id>`（…）登记上了（`<包名>`）」；点状态栏上的按钮，浮层里显示出内容，关上再打开内容重新挂载。
 
 ## 在窗格里调命令
 

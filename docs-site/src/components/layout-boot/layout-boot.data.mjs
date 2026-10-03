@@ -17,8 +17,8 @@ export const stages = [
  * @type {BootCase[]}
  */
 /* ref file="../plugins/shell/src/layout.ts" lines="115-147" hash="1911485235cb" blob="33b2c920f2d3" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="243-261" hash="c272fbe5fd11" blob="74c61dd3418c" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="279-280" hash="00cdc6b523b0" blob="9b2b1fdf837c" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="250-268" hash="c272fbe5fd11" blob="d5ac26e76c09" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="286-287" hash="00cdc6b523b0" blob="d5ac26e76c09" */
 export const cases = [
   {
     id: 'first',

@@ -44,7 +44,7 @@ export function apply(ctx: GwbContext) {
 插件只给上面那几样，条目 id 与包名由服务从**调用方的 fiber** 上取：cordis 的服务方法里，`this.ctx` 是调用方的上下文，不是外壳自己的。
 插件报不出别的名字，也就冒充不了别人的窗格；登记放在调用方的 `ctx.effect` 里、插件卸载时自动注销，靠的也是这一点。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="448-458" hash="668c08b012bc" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="465-475" hash="668c08b012bc" blob="bdace3d0a52a" */}
 
 两样都要：同一个包配两条条目，就是两份独立配置的实例，只有条目 id 分得开它们。条目 id 是 cordis.yml 里那条条目从根算起的完整 id，
 实际运行时带着 `home:` 前缀（`home:hello`）——loader 把插件的条目嵌在内核那条 include 下面。**这个前缀不能去掉**：注册表按它登记、
@@ -52,9 +52,9 @@ export function apply(ctx: GwbContext) {
 
 外壳的测试检查这两点：注册表带上调用方的条目 id 与包名；调用方卸载时它登记的窗格与名字自动注销：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="186-192" hash="59ee590789a8" blob="5b52504fc8f1" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="187-193" hash="59ee590789a8" blob="afa7e7128cf4" */}
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="201-209" hash="f42e7d169a12" blob="5b52504fc8f1" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="202-210" hash="f42e7d169a12" blob="afa7e7128cf4" */}
 
 ### 注册时检查什么
 
@@ -67,7 +67,7 @@ export function apply(ctx: GwbContext) {
 5. **`kind` 给了就只认 `'tool'` 与 `'document'`**，别的值抛错：按 `tool` 登记的话，拼错了 `'documnet'` 的文档窗格会被当成整页至多一份，
    插件作者看到的是「第二份怎么开不出来」
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="50-82" hash="7f4c0b9335ea" blob="22e4ca8931ac" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="50-82" hash="12cc5b5cc2e2" blob="b3ec21c9b3de" */}
 
 {/* ref file="../plugins/shell/src/pane-registry.ts" lines="92-108" hash="3a2d978c0e3e" blob="22e4ca8931ac" */}
 
@@ -126,11 +126,11 @@ dockview 的 `components` 表是「组件名 → React 组件」，外壳的全�
 | `pane.instance` | 这一份的实例 id，全页唯一，可以当全局键 |
 | `pane.params` | 挂载这一刻这一份的参数；开的时候没传就没有这一项 |
 
-{/* ref file="../plugins/shell/src/client/types.ts" lines="63-114" hash="b5b683c6a08f" blob="652a917f98da" */}
+{/* ref file="../plugins/shell/src/client/types.ts" lines="74-125" hash="b5b683c6a08f" blob="1e3f568bd4b1" */}
 
 外壳同步调用 `mountPane`、收下它回的句柄；句柄与参数的类型：
 
-{/* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */}
+{/* ref file="../plugins/shell/src/client/types.ts" lines="127-163" hash="24553ab6e550" blob="74813412c114" */}
 
 **插件只开得了自己那几个窗格**：条目 id 由面板组件从面板参数里取出来闭包绑定，插件给不出别人的条目。要开别人的窗格用命令，
 见[跨插件开窗格](#跨插件开窗格shellopenpane)。
@@ -156,7 +156,7 @@ export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle { 
 
 这几点由产物测试的「子路径 ./pane」一组检查：
 
-{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="132-181" hash="8ac2fe309ca9" blob="9c8cce9a0c60" */}
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="131-180" hash="8ac2fe309ca9" blob="56b3f87b8bdf" */}
 
 不从主入口 `@godcreator/gwb-shell` 导出：主入口的声明是 node 侧的，引着 cordis、内核包、命令插件与数据插件的类型，浏览器侧引它就得把这些都列进 dev；
 而 `ShellBridge.portal` 是 `HTMLElement`，node 侧的类型检查没有 DOM。选型经过见轨迹卡[窗格入口的类型从子路径导出](/trajectory/2026-09-24-pane-types-subpath)。
@@ -305,7 +305,7 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 - 页面执行的是插件开自己窗格的同一个函数：注册表当场取、判断照旧，`key`、`preview`、`params`、`placement` 的语义没有另写一份
 - `from` 是来源窗格的实例 id：新窗格开在它那张桌面上、以它为来源选组；不带 `from`，或页面上哪张桌面都找不到它，就当没有来源、开在当前桌面（后一种 console 里一条 warn）
 
-{/* ref file="../plugins/shell/src/index.ts" lines="419-446" hash="0e9bf6d8f3f1" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="436-463" hash="0e9bf6d8f3f1" blob="bdace3d0a52a" */}
 
 ## 窗格命令：`shell.pane.*`
 
@@ -325,4 +325,4 @@ args.shell.setPaneContent({ key: 'b', params: { root: 'b' }, title: '第二块' 
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="67-79" hash="54f0d1922e08" blob="8d8ecbfb40b8" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="339-362" hash="9fa5fc55fa0d" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="356-379" hash="9fa5fc55fa0d" blob="bdace3d0a52a" */}

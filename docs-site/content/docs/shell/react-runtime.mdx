@@ -49,7 +49,7 @@ React 没有浏览器能直接加载的 ESM 入口。外壳的 `scripts/build-re
 **运行时登记**：外壳插件加载时交给内核，先登记、再交出页面根（顺序的理由见上面演示的第二步）。两次调用都包在 `ctx.effect` 里，
 外壳卸载时登记与页面根一起撤销：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */}
 
 外壳的测试用一个假内核检查这个顺序：`setShell` 被调用时，四个名字必须已经登记过：
 

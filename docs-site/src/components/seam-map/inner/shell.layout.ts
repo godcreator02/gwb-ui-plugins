@@ -1,7 +1,7 @@
 /**
  * 外壳内部接缝图（shell.data.mjs）的坐标与图标。左边从上往下：插件的 node 侧、外壳服务、注册表与 React 运行时、
  * 两侧共用的纯模块与开窗格的判断、页面入口与执行、窗格挂载与样式表、插件的浏览器侧；右边一列是外观插件与内核。
- * 跨很多行的线走两列之间的空隙（x≈864–874）、最左的空隙（x=10）与最右的空隙（x=1232），不压在方块上。
+ * 跨很多行的线走两列之间的空隙（x≈864–874、x=570）、最左的空隙（x=10）与最右的空隙（x=1232），不压在方块上。
  */
 import { AppWindow, Atom, Blocks, Bot, Cpu, MousePointerClick, Paintbrush, Palette, PanelTop, Puzzle, Route, Server, Share2, Table } from 'lucide-react';
 import { cap } from '@godcreator/docfirst-explainer';
@@ -17,8 +17,8 @@ export const shellLayout: SeamLayout = {
     'theme-startup': cap(894, 102, 156),
     'theme-pane': cap(1060, 102, 146),
 
-    api: cap(34, 252, 212),
-    commands: cap(256, 252, 250),
+    api: cap(34, 252, 330),
+    commands: cap(374, 252, 132),
     takeover: cap(516, 252, 178),
     skills: cap(704, 252, 142),
     'kernel-svc': cap(894, 252, 312),
@@ -76,7 +76,7 @@ export const shellLayout: SeamLayout = {
     '4': { d: 'M495,150 V252', badge: [495, 201] },
     '5': { d: 'M775,150 V252', badge: [775, 201] },
     '6': { d: 'M605,300 V330 H864 V266 H894', badge: [790, 330] },
-    '7': { d: 'M300,300 V346 H874 V286 H894', badge: [700, 346] },
+    '7': { d: 'M480,300 V346 H874 V286 H894', badge: [700, 346] },
     '8': { d: 'M1050,770 V820 H119 V770 M460,820 V770 M160,820 V932', badge: [980, 820] },
     '9': { d: 'M972,150 V190 H460 V252 M1133,150 V182 H1232 V858 H60 V770', badge: [700, 190] },
     '10': { d: 'M585,300 V402 M846,426 H870 V634 H530 V722 M530,634 H10 V1106 H34', badge: [585, 351] },
@@ -87,6 +87,7 @@ export const shellLayout: SeamLayout = {
     '15': { d: 'M119,980 V1082 M470,980 V1022 H250 V1082', badge: [119, 1031] },
     '16': { d: 'M80,770 V840 H884 V932 M1095,840 V932', badge: [700, 840] },
     '17': { d: 'M546,1106 H689 V980', badge: [620, 1106] },
+    '18': { d: 'M350,770 V800 H570 V1128 H560', badge: [570, 1040] },
   },
   entries: {
     callers: { box: { x: 294, y: 14, w: 180, h: 30 }, arrow: [384, 44, 384, 102] },

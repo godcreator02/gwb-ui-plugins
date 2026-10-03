@@ -8,7 +8,7 @@ description: 一张桌面一个窗格容器、挂载后常驻；切桌面按什�
 每张桌面是页面上的一个 `section`，里面一个 dockview 窗格容器，外加这张桌面的浮层挂载点。启动时只挂载活动那张，别的桌面第一次切过去才挂载，挂载之后常驻。
 不显示的那张加 `visibility:hidden`、`pointer-events:none` 与 `inert`：只是看不见、点不到，DOM、定时器、订阅都还在运行，切回来原样在。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="537-570" hash="3b1a2fdde738" blob="144339d9b11c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="571-604" hash="3b1a2fdde738" blob="d5ac26e76c09" */}
 
 桌面的 `section` 上**不许加** `transform`、`filter`、`perspective`、`will-change`：加了之后，里面 `position: fixed` 的浮层定位基准从视口变成这个 section，坐标全错。
 
@@ -30,7 +30,7 @@ description: 一张桌面一个窗格容器、挂载后常驻；切桌面按什�
 弹出浮层外面那层包装（`data-radix-popper-content-wrapper`）的 z-index 是 radix 写的内联样式，那一条只能带 `!important`。
 这么分的理由见[模态框只抬对话框本体](/trajectory/2026-09-30-modal-content-above-statusbar)。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="564-569" hash="b094f47f7b77" blob="144339d9b11c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="598-603" hash="b094f47f7b77" blob="d5ac26e76c09" */}
 
 ## 切桌面
 
@@ -55,11 +55,11 @@ node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的�
 
 {/* ref file="../plugins/shell/src/layout.ts" lines="1-8" hash="36d49f61bf66" blob="51963d44d83e" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="188-206" hash="e95de764a076" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="205-223" hash="e95de764a076" blob="bdace3d0a52a" */}
 
 形状对就整份写入，形状不对回错、磁盘上那份不变：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="234-241" hash="2463ce3f595b" blob="5b52504fc8f1" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="256-263" hash="2463ce3f595b" blob="afa7e7128cf4" */}
 
 ### 什么时候写
 
@@ -70,7 +70,7 @@ node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的�
 
 每次写的同时把窗格清单推给 node 侧缓存（`shell.pane.list` 读它），停止保存时也照推。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="161-195" hash="6f27a709c62e" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="168-202" hash="6f27a709c62e" blob="d5ac26e76c09" */}
 
 ### 启动与挂载时从哪份布局开始
 
@@ -94,9 +94,9 @@ node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的�
 点开一套存下的布局恢复不了，只报错、不回默认布局：人明确要的是这一套，悄悄换成默认的比失败更糟。「重置布局」逐个移除活动容器里的窗格再打开默认布局，
 不用 dockview 的 `api.clear()`——它内部状态对不上时会抛错。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="505-513" hash="eae5ff73f148" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="539-547" hash="eae5ff73f148" blob="d5ac26e76c09" */}
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="528-533" hash="2162b1149afa" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="562-567" hash="2162b1149afa" blob="d5ac26e76c09" */}
 
 ## 桌面改名与删除
 
@@ -111,7 +111,7 @@ node 侧两条命令读写它：`shell.layout.get` 原样回 gwbData 读到的�
 
 {/* ref file="../plugins/shell/src/desktops.ts" lines="39-67" hash="6c76e86ad132" blob="9c00b3d8e19d" */}
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="344-377" hash="73d485c387ba" blob="9b2b1fdf837c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="351-384" hash="73d485c387ba" blob="d5ac26e76c09" */}
 
 ## 送到别的桌面、拉到本桌
 
@@ -152,4 +152,4 @@ dockview 没有在两个容器之间搬面板的接口，所以**送到是一次
 
 {/* ref file="../plugins/shell/src/desktops.ts" lines="80-96" hash="511c4a4c1fe8" blob="8d8779b5e92e" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="259-337" hash="2ba6480fce62" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="276-354" hash="2ba6480fce62" blob="bdace3d0a52a" */}

@@ -3,6 +3,7 @@ import {
   describeHandle,
   disposeOutsideCommit,
   pickMountPane,
+  pickMountStatusItem,
   pickDispose,
   pickRetarget,
 } from '../src/client/mount-handle.js'
@@ -12,6 +13,16 @@ import {
  * 卸载得从它身上取 dispose 来调——把句柄当函数调是 TypeError，而卸载路径上的异常
  * 通常被吞掉，清理于是一次都没跑过、还没有任何现象。
  */
+
+describe('pickMountStatusItem：按契约取 mountStatusItem 导出', () => {
+  it('模块上有 mountStatusItem 函数就回它；只有 mountPane 不认', () => {
+    const mountStatusItem = () => ({ dispose() {} })
+    expect(pickMountStatusItem({ mountStatusItem })).toBe(mountStatusItem)
+    expect(pickMountStatusItem({ mountPane: mountStatusItem })).toBeUndefined()
+    expect(pickMountStatusItem({ mountStatusItem: 'nope' })).toBeUndefined()
+    expect(pickMountStatusItem(null)).toBeUndefined()
+  })
+})
 
 describe('pickMountPane：按契约取 mountPane 导出', () => {
   it('模块上有 mountPane 函数就回它', () => {

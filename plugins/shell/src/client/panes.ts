@@ -1,6 +1,6 @@
-import type { HostBridge, PaneRow, PluginRow } from './types.js'
+import type { HostBridge, PaneRow, PluginRow, StatusItemRow } from './types.js'
 import type { PaneKind } from '../openable.js'
-import { PANES_COMMAND, PLUGINS_COMMAND } from '../protocol.js'
+import { PANES_COMMAND, PLUGINS_COMMAND, STATUS_ITEMS_COMMAND } from '../protocol.js'
 import { wellHub } from './well-hub.js'
 
 /** 挂载一个窗格要的东西，全部取自当场的注册表；`pkg` 是此刻的包名，不是布局文件里保存的那份 */
@@ -36,6 +36,20 @@ export async function fetchPanes(host: HostBridge): Promise<PaneRow[]> {
   const rows = reply.data as PaneRow[]
   wellHub.notePanes(rows)
   return rows
+}
+
+/** 取不到就抛错：空表是「没有插件登记状态栏按钮」，调用方把原因显示在状态栏上 */
+export async function fetchStatusItems(host: HostBridge): Promise<StatusItemRow[]> {
+  let reply: { ok?: boolean; data?: unknown; error?: string }
+  try {
+    reply = (await host.call(STATUS_ITEMS_COMMAND)) as typeof reply
+  } catch (err) {
+    throw new Error(`${STATUS_ITEMS_COMMAND} 调不通：${String(err)}`, { cause: err })
+  }
+  if (reply.ok !== true || !Array.isArray(reply.data)) {
+    throw new Error(`${STATUS_ITEMS_COMMAND} 没回一张表：${reply.error ?? JSON.stringify(reply)}`)
+  }
+  return reply.data as StatusItemRow[]
 }
 
 /** 启动器的组名用它；取不到回空表、组名退回包名，并记一条 error */

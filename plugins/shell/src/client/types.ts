@@ -52,6 +52,17 @@ export interface PaneRow {
   kind: PaneKind
 }
 
+/** 状态栏按钮表里一条经 `shell.statusItems` 传到浏览器侧之后的样子。跟 node 侧的 `RegisteredStatusItem` 是同一个形状 */
+export interface StatusItemRow {
+  entryId: string
+  pkg: string
+  id: string
+  title: string
+  icon?: string
+  client: string
+  style?: string
+}
+
 /** 插件名表里一条（`shell.plugins`）。启动器按插件分组时拿它的名字当组名 */
 export interface PluginRow {
   entryId: string
@@ -149,4 +160,24 @@ export interface PaneArgs {
      */
     params?: Record<string, unknown>
   }
+}
+
+/**
+ * 外壳调插件的 `mountStatusItem` 时传入的参数。浮层每打开一次挂载一次、关上就 `dispose`，
+ * 插件要跨两次打开留住的东西自己存
+ */
+export interface StatusItemArgs {
+  host: HostBridge
+  /** 这次挂载的是本插件登记的哪个按钮（`registerStatusItem` 给的 id） */
+  item: { id: string }
+  /**
+   * 浮层里的浮层挂载点：插件里 radix Portal（下拉、菜单）的 `container` 指向它。它在状态栏浮层里面，
+   * 点下拉选项不算点到浮层外面，浮层不会跟着关
+   */
+  portal: HTMLElement
+}
+
+/** 插件的 `mountStatusItem` 返回的句柄，同步返回 */
+export interface StatusItemHandle {
+  dispose(): void
 }

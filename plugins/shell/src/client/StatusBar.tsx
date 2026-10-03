@@ -28,6 +28,8 @@ import type { Versions } from '../protocol.js'
 import { versionCell } from '../versions.js'
 import { DesktopPanel } from './DesktopPanel.js'
 import { iconFor } from './icon.js'
+import { StatusItemButton } from './StatusItemButton.js'
+import type { HostBridge, StatusItemRow } from './types.js'
 
 /** 启动器里一个插件的那几个窗格；`goesTo` 是点下去去哪（「当前桌面」或那张桌面的名字），没有就是开一份新的 */
 export interface LaunchGroup {
@@ -246,6 +248,10 @@ export function StatusBar({
   onDeleteLayout,
   onResetLayout,
   onRetrySave,
+  host,
+  statusItems,
+  statusItemsError,
+  onRetryStatusItems,
 }: {
   /** 每次点开当场取；行尾记号由上游问 `planLaunch` 得出 */
   onLaunchList: () => Promise<LaunchGroup[]>
@@ -283,6 +289,13 @@ export function StatusBar({
   onDeleteLayout: (id: string) => void
   onResetLayout: () => void
   onRetrySave: () => void
+  /** 交给插件的状态栏按钮调命令 */
+  host: HostBridge
+  /** 插件登记的按钮，排在「新建」右边 */
+  statusItems: readonly StatusItemRow[]
+  /** 最近一次读按钮表失败的原因；有值时显示告警项，点它重新读取 */
+  statusItemsError: string | undefined
+  onRetryStatusItems: () => void
 }): ReactElement {
   const version = versionCell(versions)
   const [confirmingOverwrite, setConfirmingOverwrite] = useState(false)
@@ -319,6 +332,22 @@ export function StatusBar({
       />
 
       <Launcher onList={onLaunchList} onLaunch={onLaunch} />
+
+      {statusItems.map((item) => (
+        <StatusItemButton key={`${item.entryId}:${item.id}`} item={item} host={host} />
+      ))}
+
+      {statusItemsError !== undefined && (
+        <Button
+          variant="destructive"
+          size="xs"
+          title={`${statusItemsError}\n单击重新读取`}
+          onClick={onRetryStatusItems}
+        >
+          <TriangleAlert />
+          状态栏按钮读不出
+        </Button>
+      )}
 
       {/* 当前桌面不变，点它才切过去 */}
       {notice !== null && (

@@ -9,7 +9,7 @@ import { LAYOUT_VERSION, type LayoutDoc } from '../src/layout.js'
 
 /**
  * 外壳 node 侧服务：真实的 cordis 根上下文，内核、命令总线、数据插件用替身；
- * 按现在的行为检查注册表、调用方身份、17 条命令与转发给页面的事件。
+ * 按现在的行为检查注册表、调用方身份、18 条命令与转发给页面的事件。
  * 令牌表地址经包名解析、要有构建产物，这里替换掉 createRequire 的 resolve，测试不依赖构建。
  */
 
@@ -138,12 +138,13 @@ describe('外壳服务就绪', () => {
     expect(revokeImports).toHaveBeenCalledTimes(1)
   })
 
-  it('登记全部 17 条命令，plugin 都写包名', async () => {
+  it('登记全部 18 条命令，plugin 都写包名', async () => {
     const { bus } = await bootShell()
     expect(bus.list().map((c) => c.name).sort()).toEqual(
       [
         'shell.panes',
         'shell.plugins',
+        'shell.statusItems',
         'shell.layout.get',
         'shell.layout.save',
         'shell.env',
@@ -164,11 +165,11 @@ describe('外壳服务就绪', () => {
     expect(new Set(bus.list().map((c) => c.plugin))).toEqual(new Set(['@godcreator/gwb-shell']))
   })
 
-  it('查表、读布局、读环境的六条是 read，其余改布局文件、页面或缓存的都是 write', async () => {
+  it('查表、读布局、读环境的七条是 read，其余改布局文件、页面或缓存的都是 write', async () => {
     const { bus } = await bootShell()
     const namesByEffect = (effect: string) => bus.list().filter((c) => c.effect === effect).map((c) => c.name).sort()
     expect(namesByEffect('read')).toEqual(
-      ['shell.panes', 'shell.plugins', 'shell.layout.get', 'shell.env', 'shell.desktop.list', 'shell.pane.list'].sort(),
+      ['shell.panes', 'shell.plugins', 'shell.statusItems', 'shell.layout.get', 'shell.env', 'shell.desktop.list', 'shell.pane.list'].sort(),
     )
     expect(namesByEffect('write')).toHaveLength(11)
   })
@@ -221,6 +222,27 @@ describe('registerPane / describeSelf：身份从调用方的 fiber 上取', () 
     const { shell } = await callerShell(root, null)
     expect(() => shell.registerPane({ id: 'main', title: '你好' })).toThrow('取不到调用方的身份')
     expect(() => shell.describeSelf({ title: '你好' })).toThrow('取不到调用方的身份')
+  })
+})
+
+describe('registerStatusItem：状态栏按钮', () => {
+  const quick = { id: 'quick', title: '快速记录', icon: 'pen-line', client: 'file:///D:/hello/dist/client.js' }
+
+  it('按钮表带上调用方的身份，shell.statusItems 回它；登记、注销各发一条事件让页面重新取', async () => {
+    const { root, call, emitted, logs } = await bootShell()
+    const { shell, fiber } = await callerShell(root, hello)
+    shell.registerStatusItem(quick)
+    expect(await call('shell.statusItems')).toEqual([{ ...quick, entryId: 'home:hello', pkg: '@t/gwb-hello' }])
+    expect(textsOf(logs, 'info').some((t) => t.includes('状态栏按钮 quick') && t.includes('@t/gwb-hello'))).toBe(true)
+    await fiber.dispose()
+    expect(await call('shell.statusItems')).toEqual([])
+    expect(emitted).toEqual([{ t: 'gwb-shell-status-items' }, { t: 'gwb-shell-status-items' }])
+  })
+
+  it('调用方的 fiber 上没有 entry 就抛错', async () => {
+    const { root } = await bootShell()
+    const { shell } = await callerShell(root, null)
+    expect(() => shell.registerStatusItem(quick)).toThrow('取不到调用方的身份')
   })
 })
 

@@ -17,7 +17,7 @@ full: true
 - **开窗格**：一个窗格开几份看它装着什么内容；开到哪一组、激活已开的还是开新的、预览窗格与换内容，都由纯函数判断。见[窗格](/docs/shell/panes)
 - **多桌面与布局保存**：一张桌面一个 dockview 窗格容器，挂载后常驻；布局自动保存、可以起名存，读不回来时停止保存。
   见[多桌面与布局保存](/docs/shell/desktops)
-- **状态栏**：桌面、布局、新建、环境与版本、刷新、亮暗，外加标签右键菜单。见[状态栏](/docs/shell/statusbar)
+- **状态栏**：桌面、布局、新建、插件登记的按钮、环境与版本、刷新、亮暗，外加标签右键菜单。见[状态栏](/docs/shell/statusbar)
 - **样式与令牌**：令牌表 `theme.css`、给插件构建用的类名映射 `theme.reference.css`、外壳自己的两张样式表。
   见[样式](/docs/shell/styles)与[令牌](/docs/shell/tokens)
 - **React 运行时**：页面上外壳与所有窗格插件共用的一份 React，经内核登记进 importmap。见[React 运行时](/docs/shell/react-runtime)
@@ -28,21 +28,21 @@ full: true
 
 ### 给插件的服务 `ctx.gwbShell`
 
-插件在 `inject` 里写 `gwbShell`，拿到的服务只有两个方法：注册窗格、报自己给人看的名字。两者都登记在调用方的上下文上，
+插件在 `inject` 里写 `gwbShell`，拿到的服务只有三个方法：注册窗格、报自己给人看的名字、在状态栏上登记按钮（见[插件的按钮](/docs/shell/statusbar#插件的按钮)）。三者都登记在调用方的上下文上，
 插件卸载时自动注销，不用自己包 `ctx.effect`；返回的注销函数给要提前注销的场景。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */}
 
-包根只导出这个接口和它用到的 `PaneSpec`、`PluginInfo` 两个类型，外加给 cordis `Context` 补的 `gwbShell` 一项。
+包根只导出这个接口和它用到的 `PaneSpec`、`PluginInfo`、`StatusItemSpec` 三个类型，外加给 cordis `Context` 补的 `gwbShell` 一项。
 命令名、布局文件与表里一行的形状都不导出：下游按名字调命令，回执形状看命令的 `usage`。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="23-24" hash="2f61ea755107" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="24-25" hash="2f61ea755107" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="477-481" hash="a711dfb6a01f" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="502-506" hash="a711dfb6a01f" blob="bdace3d0a52a" */}
 
-发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有两个方法。
+发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有这三个方法。
 
-{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="107-121" hash="d20dde197087" blob="9c8cce9a0c60" */}
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="107-120" hash="13460879210a" blob="56b3f87b8bdf" */}
 
 ### 命令
 
@@ -52,6 +52,7 @@ full: true
 | --- | --- | --- |
 | `shell.panes` | 此刻的窗格注册表 `[{ id, title, icon?, client?, style?, kind, entryId, pkg }]`，按注册先后 | 外壳的页面；跨插件开窗格前查 `entryId` 的插件 |
 | `shell.plugins` | 报过名字的插件 `[{ title, icon?, entryId, pkg }]` | 状态栏「新建」的分组名；基础界面的插件管理窗格 |
+| `shell.statusItems` | 状态栏上登记的按钮 `[{ id, title, icon?, client, style?, entryId, pkg }]`，按登记先后 | 外壳的页面 |
 | `shell.env` | 页面每次启动时要的环境 `{ home, styles, startupCss?, versions }` | 外壳的页面 |
 | `shell.layout.get`、`shell.layout.save` | 读布局文件；整份替换，写之前校验形状 | 外壳的页面 |
 | `shell.reload` | 整页重载全部窗口 | 插件管理窗格升级之后；agent |
@@ -63,28 +64,30 @@ full: true
 窗格容器在页面上，node 侧没有：桌面、窗格与跨插件开窗格这几条先在 node 侧检查参数与目标，再经内核事件转给页面执行，
 **回执 `ok` 只代表转发了**，要确认结果稍后再调对应的 `list`。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="66-80" hash="d96b8db56c97" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="68-82" hash="d96b8db56c97" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/src/protocol.ts" lines="3-11" hash="41e7a219853b" blob="263714d9667b" */}
+{/* ref file="../plugins/shell/src/protocol.ts" lines="3-15" hash="00900d249441" blob="06d7954e2fac" */}
 
 {/* ref file="../plugins/shell/src/layout.ts" lines="3-5" hash="97d3d72076c8" blob="51963d44d83e" */}
 
 命令登记在外壳自己的上下文上，`plugin` 一律写外壳的包名，外壳卸载时命令总线把它们一起注销；参数由各条命令的处理函数校验，不合格回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="141-165" hash="877c8b62785b" blob="daecac5bbe93" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="141-166" hash="09e6db0d0563" blob="afa7e7128cf4" */}
 
-### 页面上的两个契约
+### 页面上的三个契约
 
 - **内核页面根**：`client.js` 的默认导出 `mountShell(root)` 接收 `#root`，回 `{ dispose() }`。`dispose` 返回时 React 树必须已经卸载，
   见[外壳怎么接管页面](/docs/shell/takeover)
 - **窗格插件**：插件的浏览器侧模块导出 `mountPane({ host, shell, pane }, container)`，回 `{ dispose(); retarget?(params) }`。
   这些类型从子路径 `@godcreator/gwb-shell/pane` 用 `import type` 取，见[插件拿到的 args](/docs/shell/panes#插件拿到的-args)
+- **状态栏按钮**：登记了状态栏按钮的插件，浏览器侧模块再导出 `mountStatusItem({ host, item, portal }, container)`，回 `{ dispose() }`。
+  类型同样从子路径 `@godcreator/gwb-shell/pane` 取，见[插件的按钮](/docs/shell/statusbar#插件的按钮)
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="672-676" hash="ef6825436662" blob="144339d9b11c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="710-714" hash="ef6825436662" blob="d5ac26e76c09" */}
 
-{/* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */}
+{/* ref file="../plugins/shell/src/client/pane-api.ts" hash="93aac36c6230" blob="e836fd6da284" */}
 
 ### 页面与 node 侧怎么通信
 
@@ -93,14 +96,14 @@ full: true
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="1-1" hash="047a416dccea" blob="9b2b1fdf837c" */}
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="689-689" hash="4772f55e3292" blob="144339d9b11c" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="727-727" hash="4772f55e3292" blob="d5ac26e76c09" */}
 
 命令本身的失败（命令不在、处理函数抛错）都 resolve 成 `ok: false` 的回执，不 reject；规则写在 `host.call` 的类型注释里：
 
 {/* ref file="../plugins/shell/src/client/types.ts" lines="10-26" hash="d0b63df7ba34" blob="2d06a12a5550" */}
 
 **node 侧到页面**是 `gwbKernel.emit(载荷)`，页面用 `window.gwb.on(回调)` 收；内核只转交载荷、不解释，载荷里的 `t` 说明是谁的事件。
-外壳推给自己页面的是下面三种，页面上认不出的 `t` 一律忽略：
+外壳推给自己页面的是下面四种（前三种是转发的动作，最后一种是状态栏按钮表变了的通知），页面上认不出的 `t` 一律忽略：
 
 {/* ref file="../plugins/shell/src/desktops.ts" lines="3-4" hash="c69f395af73f" blob="8d8779b5e92e" */}
 
@@ -108,9 +111,11 @@ full: true
 
 {/* ref file="../plugins/shell/src/open-pane.ts" lines="4-5" hash="d6947328f824" blob="4b59d533f10f" */}
 
+{/* ref file="../plugins/shell/src/protocol.ts" lines="7-9" hash="2868f8ec3f62" blob="06d7954e2fac" */}
+
 转发类命令 node 侧先校验参数，不对当场回错，对了才推事件；比如 `shell.desktop.switch` 推一条 `t` 为 `gwb-shell-desktop` 的事件：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="282-291" hash="fea1a639c194" blob="5b52504fc8f1" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="304-313" hash="fea1a639c194" blob="afa7e7128cf4" */}
 
 ### 包的出口
 
@@ -119,7 +124,7 @@ full: true
 | `.` | node 侧服务与三个类型 |
 | `./theme.css` | 令牌表，页面启动时加载的第一张样式表，见[令牌](/docs/shell/tokens) |
 | `./theme.reference.css` | 类名映射，插件的样式入口构建时引它，见[令牌](/docs/shell/tokens) |
-| `./pane` | 只有类型：窗格插件 `mountPane` 用到的那几个 |
+| `./pane` | 只有类型：窗格插件 `mountPane` 与状态栏按钮 `mountStatusItem` 用到的那几个 |
 | `./browser-imports` | 四个 React 入口的名字到地址，见[React 运行时](/docs/shell/react-runtime) |
 
 {/* ref file="../plugins/shell/package.json" lines="6-20" hash="1448e5c18d3f" blob="2d44c8a19401" */}
@@ -139,7 +144,7 @@ full: true
 注册发生在主进程里，摆放窗格在页面上，注册表只能经命令传过去：内核自己一条命令都没有，也不认识任何插件的命令名。
 所以命令总线是必需依赖——没有它，外壳就是一个打不开任何窗格的空容器，不如不加载。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="93-95" hash="79c3f058b1f5" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="97-99" hash="79c3f058b1f5" blob="bdace3d0a52a" */}
 
 {/* ref file="../plugins/shell/package.json" lines="29-40" hash="bd485644ad54" blob="efb6f7651ebc" */}
 
@@ -157,9 +162,9 @@ full: true
 **说明书登记**：外壳对说明书插件局部注入，把包根的 `skills/` 目录交给 `gwbSkills.register`，这个目录列在包清单的 `files` 里；
 说明书插件从目录里读 `gwb-shell/SKILL.md` frontmatter 的 `name` 与 `description` 登记。本仓没有测试检查这一处：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="49-50" hash="ad63ef54ee4f" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="51-52" hash="ad63ef54ee4f" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="153-159" hash="84067ee58a76" blob="d8029385df74" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */}
 
 ## 不做的事
 

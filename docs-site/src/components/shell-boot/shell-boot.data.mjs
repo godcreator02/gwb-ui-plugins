@@ -24,7 +24,7 @@ export const actors = [
  * @type {BootStep[]}
  */
 export const steps = [
-  /* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
+  /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
   {
     title: '外壳声明「页面归我」',
     text:
@@ -35,7 +35,7 @@ export const steps = [
     marks: {},
     code: {
       file: 'plugins/shell/src/index.ts',
-      start: 145,
+      start: 152,
       lines: [
         '  /** @internal 本插件卸载时页面根自动交还 */',
         '  private takeOverPageRoot(): string {',
@@ -45,10 +45,10 @@ export const steps = [
         '    return clientEntry',
         '  }',
       ],
-      highlight: [147, 149],
+      highlight: [154, 156],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="672-677" hash="241ed54e80f8" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="710-715" hash="241ed54e80f8" blob="d5ac26e76c09" */
   {
     title: '内核把地址推给页面，页面 import 外壳',
     text:
@@ -59,7 +59,7 @@ export const steps = [
     marks: { page: 'prepareImports → import', root: '清空，交给 mountShell' },
     code: {
       file: 'plugins/shell/src/client/index.tsx',
-      start: 668,
+      start: 710,
       lines: [
         '/**',
         ' * 内核契约的默认导出：拿走 `#root`，回 `{ dispose }`。环境问 node 侧的 `shell.env`；',
@@ -68,10 +68,10 @@ export const steps = [
         'export default function mountShell(root: HTMLElement): { dispose(): void } {',
         '  return shellHandle(root, async (alive) => {',
       ],
-      highlight: [672, 672],
+      highlight: [714, 714],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="676-693" hash="800476b8f2f2" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="714-731" hash="800476b8f2f2" blob="d5ac26e76c09" */
   {
     title: 'mountShell 问环境',
     text:
@@ -82,7 +82,7 @@ export const steps = [
     marks: { root: '空（准备中）' },
     code: {
       file: 'plugins/shell/src/client/index.tsx',
-      start: 672,
+      start: 714,
       lines: [
         'export default function mountShell(root: HTMLElement): { dispose(): void } {',
         '  return shellHandle(root, async (alive) => {',
@@ -103,10 +103,10 @@ export const steps = [
         '  })',
         '}',
       ],
-      highlight: [674, 682],
+      highlight: [716, 724],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="615-626" hash="b8e3841fab22" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="653-664" hash="b8e3841fab22" blob="d5ac26e76c09" */
   {
     title: '准备：样式表、注册表、布局文件',
     text:
@@ -119,7 +119,7 @@ export const steps = [
     marks: { root: '空（准备中）' },
     code: {
       file: 'plugins/shell/src/client/index.tsx',
-      start: 611,
+      start: 653,
       lines: [
         'async function prepareShell(args: ShellArgs, root: HTMLElement): Promise<() => MountedTree> {',
         '  const styleLoaded = await Promise.all(args.styles.map((href) => loadStyle(href)))',
@@ -134,10 +134,10 @@ export const steps = [
         '  const initial = initialLayoutOf(layoutReply)',
         "  if (initial.saveBlockedBy !== undefined) console.error(`[shell] ${initial.saveBlockedBy}——按默认布局打开，这一轮不保存布局`)",
       ],
-      highlight: [617, 621],
+      highlight: [659, 663],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="628-638" hash="cef6911699ea" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="666-676" hash="da526c2ae044" blob="d5ac26e76c09" */
   {
     title: '挂载：同步的一小段',
     text:
@@ -148,7 +148,7 @@ export const steps = [
     marks: { root: '外壳的 React 树' },
     code: {
       file: 'plugins/shell/src/client/index.tsx',
-      start: 624,
+      start: 666,
       lines: [
         '  return () => {',
         '    wellHub.setHost(args.host)',
@@ -159,13 +159,13 @@ export const steps = [
         "    root.setAttribute('data-gwb-plugin', SELF)",
         '    const reactRoot = createRoot(root)',
         '    reactRoot.render(',
-        '      <App specs={specs} home={args.home} versions={args.versions} initialDoc={initial.doc} initialSaveBlockedBy={initial.saveBlockedBy} />,',
+        '      <App host={args.host} specs={specs} home={args.home} versions={args.versions} initialDoc={initial.doc} initialSaveBlockedBy={initial.saveBlockedBy} />,',
         '    )',
       ],
-      highlight: [631, 633],
+      highlight: [673, 675],
     },
   },
-  /* ref file="../plugins/shell/src/client/index.tsx" lines="639-650" hash="33f4a45599d4" blob="144339d9b11c" */
+  /* ref file="../plugins/shell/src/client/index.tsx" lines="677-688" hash="33f4a45599d4" blob="d5ac26e76c09" */
   {
     title: '换外壳或卸载：dispose 返回时树已卸载',
     text:
@@ -176,7 +176,7 @@ export const steps = [
     marks: { root: '清空，等下一个外壳', page: 'dispose → 清空 #root' },
     code: {
       file: 'plugins/shell/src/client/index.tsx',
-      start: 635,
+      start: 677,
       lines: [
         '    return {',
         '      unmount() {',
@@ -191,7 +191,7 @@ export const steps = [
         '      },',
         '    }',
       ],
-      highlight: [638, 640],
+      highlight: [680, 682],
     },
   },
 ];

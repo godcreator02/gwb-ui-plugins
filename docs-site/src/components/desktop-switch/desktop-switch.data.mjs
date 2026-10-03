@@ -16,8 +16,8 @@ export const desks = [
  * @typedef {{ title: string, text: string, active: string, wrote: boolean, d1: DeskState, d2: DeskState, focus: string | null, log: { text: string, kind: 'cmd' | 'out' | 'ok' | 'err' }[] }} SwitchStep
  * @type {SwitchStep[]}
  */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="291-312" hash="9a8ddfec2114" blob="9b2b1fdf837c" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="90-106" hash="d1eaee67ad3a" blob="9b2b1fdf837c" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="298-319" hash="9a8ddfec2114" blob="d5ac26e76c09" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="95-111" hash="d1eaee67ad3a" blob="d5ac26e76c09" */
 export const steps = [
   {
     title: '切之前',

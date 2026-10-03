@@ -4,6 +4,10 @@
 export const PANES_COMMAND = 'shell.panes'
 export const PLUGINS_COMMAND = 'shell.plugins'
 
+/** 状态栏按钮表；表一变，node 侧经内核事件入口发一条带 `STATUS_ITEMS_EVENT` 标记的事件，页面收到就重新取 */
+export const STATUS_ITEMS_COMMAND = 'shell.statusItems'
+export const STATUS_ITEMS_EVENT = 'gwb-shell-status-items'
+
 /** 浏览器侧每次启动时取一次的环境 */
 export const ENV_COMMAND = 'shell.env'
 

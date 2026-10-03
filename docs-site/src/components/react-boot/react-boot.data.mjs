@@ -30,11 +30,11 @@ const SHELL_STYLES = ['gwb-shell/dist/theme.css', 'gwb-shell/dist/dockview.css',
  * @typedef {{ id: string, title: string, text: string, lane: 'main' | 'preload' | 'page', code?: StepCode, registry: string[][], importmap: string[][], styles: string[], root: string, changed: StateName[], fault?: boolean }} BootStep
  * @type {BootStep[]}
  */
-/* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
+/* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
 /* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */
-/* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="614-618" hash="b956510a4aab" blob="144339d9b11c" */
-/* ref file="../plugins/shell/src/client/index.tsx" lines="627-634" hash="5e6aad4b09ad" blob="144339d9b11c" */
+/* ref file="../plugins/shell/src/index.ts" lines="33-43" hash="84186942fe7c" blob="bdace3d0a52a" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="652-656" hash="b956510a4aab" blob="d5ac26e76c09" */
+/* ref file="../plugins/shell/src/client/index.tsx" lines="665-672" hash="5e6aad4b09ad" blob="d5ac26e76c09" */
 /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="18-24" hash="3c918590d21e" blob="056b20dadf53" */
 /* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="119-128" hash="81a0964ad84e" blob="056b20dadf53" */
 export const steps = [

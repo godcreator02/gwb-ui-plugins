@@ -11,7 +11,7 @@ export const shellGraph = defineSeamGraph({
   intro:
     '外壳内部接缝图：上半张是主进程里的 node 侧（src/index.ts 与注册表），下半张是页面上的浏览器侧（src/client/），中间是两侧各自打包一份的纯模块；' +
     '右边一列是内核，它把两侧接起来。虚线框是包里的文件或目录，框里的方块是它们对外给的函数，灰色实线框是包外的东西。' +
-    '外壳对插件只给两个服务方法和一组 shell.* 命令，其余全部经内核与命令总线接到页面上。',
+    '外壳对插件只给三个服务方法和一组 shell.* 命令，其余全部经内核与命令总线接到页面上。',
   frameLabel: '文件',
   modules: [
     {
@@ -20,7 +20,7 @@ export const shellGraph = defineSeamGraph({
       pkg: '任何插件 · node 侧',
       role: null,
       outside: true,
-      blurb: '插件在自己的 apply 里经 ctx.gwbShell 注册窗格、报名字，inject 里写 gwbShell。插件卸载时它登记的窗格与名字自动注销。',
+      blurb: '插件在自己的 apply 里经 ctx.gwbShell 注册窗格、报名字、登记状态栏按钮，inject 里写 gwbShell。插件卸载时它登记的这几样自动注销。',
       caps: [{ id: 'apply', name: 'apply', ident: 'ctx.gwbShell.registerPane' }],
     },
     {
@@ -57,9 +57,9 @@ export const shellGraph = defineSeamGraph({
       role: 'blue',
       outside: false,
       blurb:
-        'node 侧入口，GwbShell 服务类。对插件只有 registerPane、describeSelf 两个方法；其余能力全部登记成 shell.* 命令。初始化时登记四个 React 入口的地址、声明自己是外壳；说明书插件在时登记随包的 gwb-shell 说明书。',
+        'node 侧入口，GwbShell 服务类。对插件只有 registerPane、describeSelf、registerStatusItem 三个方法；其余能力全部登记成 shell.* 命令。初始化时登记四个 React 入口的地址、声明自己是外壳；说明书插件在时登记随包的 gwb-shell 说明书。',
       caps: [
-        { id: 'api', name: '服务方法', ident: 'registerPane · describeSelf' },
+        { id: 'api', name: '服务方法', ident: 'registerPane · describeSelf · registerStatusItem' },
         { id: 'commands', name: '命令', ident: 'shell.*' },
         { id: 'takeover', name: '接管页面根', ident: 'registerImports · setShell' },
         { id: 'skills', name: '随包说明书', ident: 'skills/gwb-shell' },
@@ -81,11 +81,11 @@ export const shellGraph = defineSeamGraph({
     {
       id: 'tables',
       name: '注册表',
-      pkg: 'pane-registry.ts · plugin-registry.ts · pane-icon.ts',
+      pkg: 'pane-registry.ts · plugin-registry.ts · status-item-registry.ts · pane-icon.ts',
       role: 'blue',
       outside: false,
       blurb:
-        '两张表：窗格表的键是（条目 id，窗格 id），一条条目可以有好几条；插件名表的键是条目 id，一条条目至多一条。登记时检查 id、标题、两个地址与 kind，认不出的图标名只告警。',
+        '三张表：窗格表的键是（条目 id，窗格 id），一条条目可以有好几条；插件名表的键是条目 id，一条条目至多一条；状态栏按钮表的键是（条目 id，按钮 id），表一变就经内核发事件让页面重新取。登记时检查 id、标题、两个地址与 kind，认不出的图标名只告警。',
       caps: [
         { id: 'pane-table', name: '窗格注册表', ident: 'createPaneRegistry' },
         { id: 'plugin-table', name: '插件名表', ident: 'createPluginRegistry' },
@@ -126,7 +126,7 @@ export const shellGraph = defineSeamGraph({
       role: 'violet',
       outside: false,
       blurb:
-        'protocol.ts、layout.ts、desktops.ts、pane-actions.ts、open-pane.ts 几个纯模块，node 侧与浏览器侧各自打包进自己的产物：命令名、布局文件的形状与校验、node 侧转给页面的三种动作的形状与参数检查。两侧用同一份，不各写一份字符串。',
+        'protocol.ts、layout.ts、desktops.ts、pane-actions.ts、open-pane.ts 几个纯模块，node 侧与浏览器侧各自打包进自己的产物：命令名与事件标记、布局文件的形状与校验、node 侧转给页面的三种动作的形状与参数检查。两侧用同一份，不各写一份字符串。',
       caps: [
         { id: 'names', name: '命令名', ident: 'protocol.ts' },
         { id: 'layout-doc', name: '布局文件', ident: 'LayoutDoc' },
@@ -140,7 +140,7 @@ export const shellGraph = defineSeamGraph({
       role: 'amber',
       outside: false,
       blurb:
-        'client/ 下的 index.tsx、shell-mount.ts、theme-boot.ts、StatusBar.tsx、DesktopPanel.tsx、TabMenu.tsx、GwbTab.tsx。client.js 的默认导出 mountShell 接管 #root。App 管多张桌面（一张桌面一个 dockview 容器）、布局保存、node 侧转来的动作；状态栏、「桌面」面板、标签右键菜单也在这里。',
+        'client/ 下的 index.tsx、shell-mount.ts、theme-boot.ts、StatusBar.tsx、StatusItemButton.tsx、DesktopPanel.tsx、TabMenu.tsx、GwbTab.tsx。client.js 的默认导出 mountShell 接管 #root。App 管多张桌面（一张桌面一个 dockview 容器）、布局保存、node 侧转来的动作；状态栏（连同插件登记的按钮）、「桌面」面板、标签右键菜单也在这里。',
       caps: [
         { id: 'mount-shell', name: 'mountShell', ident: 'mountShell · bootShell' },
         { id: 'statusbar', name: '状态栏', ident: 'StatusBar' },
@@ -195,26 +195,26 @@ export const shellGraph = defineSeamGraph({
       role: null,
       outside: true,
       blurb:
-        '注册时给的 client 地址指向它的浏览器侧模块，模块导出 mountPane；样式入口构建时引用令牌的类名映射，类名带自己的前缀。它按裸名 import react，由 importmap 指到外壳那一份。',
+        '注册时给的 client 地址指向它的浏览器侧模块，模块导出 mountPane，登记了状态栏按钮的还导出 mountStatusItem；样式入口构建时引用令牌的类名映射，类名带自己的前缀。它按裸名 import react，由 importmap 指到外壳那一份。',
       caps: [
-        { id: 'plugin-client', name: 'mountPane', ident: 'mountPane(args, container)' },
+        { id: 'plugin-client', name: '入口', ident: 'mountPane · mountStatusItem' },
         { id: 'plugin-style', name: '样式入口', ident: '@import theme.reference.css' },
       ],
     },
   ],
   entries: [{ id: 'callers', name: 'agent · 别的插件', to: 'bus' }],
   seams: [
-    /* ref file="../plugins/shell/src/index.ts" lines="82-91" hash="f1793bcd6f29" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */
     {
       n: 1,
       name: '注册窗格',
       a: ['apply'],
       b: ['api'],
-      iface: 'registerPane(spec: PaneSpec): () => void；describeSelf(info: PluginInfo): () => void',
+      iface: 'registerPane(spec: PaneSpec): () => void；describeSelf(info: PluginInfo): () => void；registerStatusItem(spec: StatusItemSpec): () => void',
       convention: false,
       via: 'code',
       text:
-        '插件只给 id、title、icon、client、style、kind 几样，身份（条目 id 与包名）由服务从调用方的 fiber 上取，插件报不出别人的名字。登记放在调用方的 ctx.effect 里，插件卸载时自动注销；返回的注销函数给要提前注销的场景。',
+        '插件只给 id、title、icon、client、style、kind 几样（状态栏按钮没有 kind、client 必给），身份（条目 id 与包名）由服务从调用方的 fiber 上取，插件报不出别人的名字。登记放在调用方的 ctx.effect 里，插件卸载时自动注销；返回的注销函数给要提前注销的场景。',
     },
     /* ref file="../plugins/shell/src/pane-registry.ts" lines="38-43" hash="c70ded27b39a" blob="22e4ca8931ac" */
     /* ref file="../plugins/shell/src/plugin-registry.ts" lines="15-20" hash="71f696f43767" blob="ca4b3d2b73d5" */
@@ -223,13 +223,13 @@ export const shellGraph = defineSeamGraph({
       name: '登记进表',
       a: ['api'],
       b: ['pane-table', 'plugin-table'],
-      iface: 'register(owner, spec): () => void；describe(owner, info): () => void',
+      iface: 'register(owner, spec): () => void；describe(owner, info): () => void；状态栏按钮表 register(owner, spec): () => void',
       convention: false,
       via: 'code',
       text:
-        '服务把取到的身份与插件给的几样交给表。窗格表在这一步检查：空 id、id 带冒号、空标题、client / style 给了却不是对应后缀的 file:// 地址、kind 不是 tool / document，都当场抛错，抛在插件自己的 apply 里；同一个键重复注册，后来者生效并告警；图标名认不出只告警，标签上画 #。',
+        '服务把取到的身份与插件给的几样交给表。状态栏按钮表的检查与窗格表同一套（client 必给），表一变就发一条 gwb-shell-status-items 事件。窗格表在这一步检查：空 id、id 带冒号、空标题、client / style 给了却不是对应后缀的 file:// 地址、kind 不是 tool / document，都当场抛错，抛在插件自己的 apply 里；同一个键重复注册，后来者生效并告警；图标名认不出只告警，标签上画 #。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="168-171" hash="b510fbb0c95b" blob="ea7cdacc4957" */
+    /* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */
     {
       n: 3,
       name: '命令总线',
@@ -241,7 +241,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '外壳的对外能力都登记成 shell.* 命令：取两张表、页面环境、读写布局文件、整页重载、桌面、跨插件开窗格、窗格。页面、agent、别的插件都按名字经命令总线调它们，包根不导出命令名。命令登记在外壳自己的上下文上，外壳卸载时一起注销。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="188-206" hash="e95de764a076" blob="ea7cdacc4957" */
+    /* ref file="../plugins/shell/src/index.ts" lines="205-223" hash="e95de764a076" blob="bdace3d0a52a" */
     {
       n: 4,
       name: '布局文件',
@@ -253,7 +253,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'shell.layout.get 原样回 readDoc 的结果，没存过是 undefined；shell.layout.save 先用 parseLayoutDoc 校验形状，不对就回 ok: false、不写入，对了整份替换。shell.desktop.* 也先读这份文件，检查要动的桌面在不在。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="153-159" hash="84067ee58a76" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */
     {
       n: 5,
       name: '随包说明书',
@@ -264,7 +264,7 @@ export const shellGraph = defineSeamGraph({
       via: 'code',
       text: '说明书插件是局部注入：它在时登记包根 skills/ 下的 gwb-shell 说明书，后加载也会补登记，卸载时自动注销；它不在外壳照常运行。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="145-151" hash="4c4709b8e5ae" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
     {
       n: 6,
       name: '接管页面根',
@@ -284,13 +284,13 @@ export const shellGraph = defineSeamGraph({
       name: '转发给页面',
       a: ['commands'],
       b: ['kernel-svc'],
-      iface: "gwbKernel.emit({ t: 'gwb-shell-desktop' | 'gwb-shell-pane' | 'gwb-shell-open-pane', … })",
+      iface: "gwbKernel.emit({ t: 'gwb-shell-desktop' | 'gwb-shell-pane' | 'gwb-shell-open-pane' | 'gwb-shell-status-items', … })",
       convention: false,
       via: 'code',
       text:
-        '窗格容器在页面上，node 侧没有。shell.desktop.switch / new / rename / delete、shell.pane.focus / send / close、shell.openPane 先在 node 侧检查参数与目标在不在（查布局文件、注册表或页面推来的窗格清单），再经内核事件推给页面，页面用 window.gwb.on 收。回执 ok 只代表转发了。',
+        '窗格容器在页面上，node 侧没有。shell.desktop.switch / new / rename / delete、shell.pane.focus / send / close、shell.openPane 先在 node 侧检查参数与目标在不在（查布局文件、注册表或页面推来的窗格清单），再经内核事件推给页面，页面用 window.gwb.on 收。回执 ok 只代表转发了。状态栏按钮表一变也发一条事件，页面收到就重新调 shell.statusItems。',
     },
-    /* ref file="../plugins/shell/src/client/index.tsx" lines="672-693" hash="fe3cf968ae4b" blob="144339d9b11c" */
+    /* ref file="../plugins/shell/src/client/index.tsx" lines="710-731" hash="fe3cf968ae4b" blob="d5ac26e76c09" */
     {
       n: 8,
       name: '页面入口',
@@ -328,7 +328,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '服务把 browserImports() 的四个名字与地址交给内核登记，内核写进页面的 importmap。外壳自己的 client.js 与每个窗格插件都按裸名 import react，构建时外置这四个名字，运行时由 importmap 指到外壳 dist/react/ 下的同一份，所以整页只有一个 React 实例。',
     },
-    /* ref file="../plugins/shell/src/protocol.ts" hash="03a2f49ea050" blob="263714d9667b" */
+    /* ref file="../plugins/shell/src/protocol.ts" hash="7fcacb76fc97" blob="06d7954e2fac" */
     /* ref file="../plugins/shell/src/layout.ts" lines="85-97" hash="75f023bdd6a8" blob="51963d44d83e" */
     {
       n: 11,
@@ -378,8 +378,8 @@ export const shellGraph = defineSeamGraph({
       text:
         'entryId 由 plugin-panel 从面板参数里取出来闭包绑定，插件只开得了自己条目的窗格；来源固定是调它的这一份，新窗格开在它那张桌面上、不切桌面。跨插件开窗格用命令 shell.openPane，页面上执行的是同一个函数。',
     },
-    /* ref file="../plugins/shell/src/client/types.ts" lines="116-152" hash="24553ab6e550" blob="652a917f98da" */
-    /* ref file="../plugins/shell/src/client/pane-api.ts" hash="7ffef4f47a76" blob="1b80da1732cf" */
+    /* ref file="../plugins/shell/src/client/types.ts" lines="127-163" hash="24553ab6e550" blob="74813412c114" */
+    /* ref file="../plugins/shell/src/client/pane-api.ts" hash="93aac36c6230" blob="e836fd6da284" */
     {
       n: 15,
       name: '挂载窗格插件',
@@ -391,7 +391,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'PluginPane 当场取注册表里这一条的 client 与 style，先注入样式表并等它加载完，再 prepareImports、动态 import client，调 mountPane。句柄上没有 dispose 就在窗格里报契约不符；有 retarget 就调它原地换内容，没有就卸载后重新挂载。插件从子路径 @godcreator/gwb-shell/pane 用 import type 取这些类型，子路径只有类型。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="31-41" hash="84186942fe7c" blob="d8029385df74" */
+    /* ref file="../plugins/shell/src/index.ts" lines="33-43" hash="84186942fe7c" blob="bdace3d0a52a" */
     {
       n: 16,
       name: '样式表',
@@ -414,6 +414,18 @@ export const shellGraph = defineSeamGraph({
       via: 'code',
       text:
         '插件的样式入口在构建时引用这张映射，Tailwind 才认得 bg-primary 这类类名；映射只给出类名到 var(--primary) 的对应，不输出变量的值，值在运行时取页面上令牌表那一份。',
+    },
+    /* ref file="../plugins/shell/src/client/StatusItemButton.tsx" lines="20-54" hash="743fde37e14e" blob="53ce88e994c3" */
+    {
+      n: 18,
+      name: '挂载状态栏按钮的浮层',
+      a: ['statusbar'],
+      b: ['plugin-client'],
+      iface: 'mountStatusItem({ host, item: { id }, portal }, container) → { dispose() }',
+      convention: false,
+      via: 'code',
+      text:
+        '状态栏按 shell.statusItems 的表画按钮；点开浮层时注入样式表、prepareImports、import 插件的 client，调 mountStatusItem，浮层关上就 dispose，下次打开重新挂载。portal 是浮层里的一个元素，插件里的下拉、菜单挂到它上面，点它们不算点到浮层外面。',
     },
   ],
 });

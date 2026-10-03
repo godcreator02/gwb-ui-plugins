@@ -55,7 +55,7 @@ function throwWhenIdOrTitleIsUnusable(owner: PaneOwner, spec: PaneSpec): void {
   if (spec.title === '') throw new Error(`${owner.pkg} 的窗格 ${spec.id} 没有标题`)
 }
 
-function isFileUrlWithPathEndingIn(address: string, extension: string): boolean {
+export function isFileUrlWithPathEndingIn(address: string, extension: string): boolean {
   if (!URL.canParse(address)) return false
   const url = new URL(address)
   return url.protocol === 'file:' && url.pathname.endsWith(extension)

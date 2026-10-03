@@ -19,7 +19,7 @@ export const criteria = ['在不在 @layer 里', '选择器特异性', '文档�
 /* ref file="../plugins/shell/src/tokens/tokens.css" lines="55-55" hash="6618e9993c4b" blob="ce74d1a59f41" */
 /* ref file="../plugins/shell/src/tokens/tokens.css" lines="76-77" hash="66c5be5a5ca2" blob="ce74d1a59f41" */
 /* ref file="../plugins/shell/src/client/dockview-theme.css" lines="125-128" hash="60b7501ac77f" blob="88651873c676" */
-/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="289-295" hash="f167fad29959" blob="f053d474aeaf" */
+/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="302-308" hash="f167fad29959" blob="7627baabfdc5" */
 export const cases = [
   {
     id: 'utilities',

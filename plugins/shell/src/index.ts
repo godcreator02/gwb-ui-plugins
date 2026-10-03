@@ -9,7 +9,8 @@ import type { GwbSkillsApi } from '@godcreator/gwb-skills'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc, type LayoutDoc } from './layout.js'
-import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, type ShellEnv, type Versions } from './protocol.js'
+import { createStatusItemRegistry, type StatusItemRegistry, type StatusItemSpec } from './status-item-registry.js'
+import { ENV_COMMAND, PANES_COMMAND, PLUGINS_COMMAND, STATUS_ITEMS_COMMAND, STATUS_ITEMS_EVENT, type ShellEnv, type Versions } from './protocol.js'
 import { versionsOf, type RuntimeVersions } from './versions.js'
 import { DESKTOP_EVENT, parseDeleteArgs, parseRenameArgs, parseSwitchArgs, resolveDesktop } from './desktops.js'
 import { parseOpenPaneArgs } from './open-pane.js'
@@ -22,6 +23,7 @@ import { browserImports } from './browser-imports.js'
 
 export type { PaneSpec } from './pane-registry.js'
 export type { PluginInfo } from './plugin-registry.js'
+export type { StatusItemSpec } from './status-item-registry.js'
 
 const PACKAGE_NAME = '@godcreator/gwb-shell'
 
@@ -88,6 +90,8 @@ export interface GwbShellApi {
   registerPane(spec: PaneSpec): () => void
   /** 报自己给人看的名字；注销同 `registerPane` */
   describeSelf(info: PluginInfo): () => void
+  /** 在状态栏上登记一个按钮，点它弹出浮层、浮层里的内容由插件的 `mountStatusItem` 画；注销同 `registerPane` */
+  registerStatusItem(spec: StatusItemSpec): () => void
 }
 
 export default class GwbShell extends Service implements GwbShellApi {
@@ -100,6 +104,8 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly paneTable: PaneRegistry
   /** @internal 键是 entryId */
   private readonly pluginTable: PluginRegistry
+  /** @internal 键是 (entryId, 按钮 id) */
+  private readonly statusItemTable: StatusItemRegistry
   /** @internal */
   private readonly logInfo: (message: string) => void
   /** @internal */
@@ -124,6 +130,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     const checkIcon = iconCheckerFor(iconCatalogOrLoadError)
     this.paneTable = createPaneRegistry(logWarn, checkIcon)
     this.pluginTable = createPluginRegistry(logWarn, checkIcon)
+    this.statusItemTable = createStatusItemRegistry(logWarn, checkIcon, () => this.kernel.emit({ t: STATUS_ITEMS_EVENT }))
   }
 
   [Service.init](): void {
@@ -161,7 +168,7 @@ export default class GwbShell extends Service implements GwbShellApi {
   /** @internal */
   private logReady(clientEntry: string): void {
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局文件走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND} / ${DESKTOP_RENAME_COMMAND} / ${DESKTOP_DELETE_COMMAND}，跨插件开窗格走 ${OPEN_PANE_COMMAND}，窗格走 ${PANE_LIST_COMMAND} / ${PANE_FOCUS_COMMAND} / ${PANE_SEND_COMMAND} / ${PANE_CLOSE_COMMAND}；已接管页面根，入口 ${clientEntry}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} / ${PLUGINS_COMMAND} / ${STATUS_ITEMS_COMMAND}，布局文件走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND} / ${DESKTOP_RENAME_COMMAND} / ${DESKTOP_DELETE_COMMAND}，跨插件开窗格走 ${OPEN_PANE_COMMAND}，窗格走 ${PANE_LIST_COMMAND} / ${PANE_FOCUS_COMMAND} / ${PANE_SEND_COMMAND} / ${PANE_CLOSE_COMMAND}；已接管页面根，入口 ${clientEntry}`,
     )
   }
 
@@ -183,6 +190,16 @@ export default class GwbShell extends Service implements GwbShellApi {
       () => this.paneTable.list(),
     )
     this.registerCommand(commandBus, { name: PLUGINS_COMMAND, description: '此刻有哪些插件报过名字', usage: '无参数', effect: 'read' }, () => this.pluginTable.list())
+    this.registerCommand(
+      commandBus,
+      {
+        name: STATUS_ITEMS_COMMAND,
+        description: '此刻状态栏上登记了哪些按钮',
+        usage: '无参数。回 [{ id, title, icon?, client, style?, entryId, pkg }]，按登记先后，也就是状态栏上从左到右的顺序',
+        effect: 'read',
+      },
+      () => this.statusItemTable.list(),
+    )
   }
 
   /** @internal */
@@ -469,6 +486,14 @@ export default class GwbShell extends Service implements GwbShellApi {
     const owner = this.ownerOfCaller()
     const unregister = this.pluginTable.describe(owner, info)
     this.logInfo(`${owner.pkg} 报了名字：${info.title}`)
+    this.ctx.effect(() => unregister)
+    return unregister
+  }
+
+  registerStatusItem(spec: StatusItemSpec): () => void {
+    const owner = this.ownerOfCaller()
+    const unregister = this.statusItemTable.register(owner, spec)
+    this.logInfo(`状态栏按钮 ${spec.id}（${spec.title}）登记上了（${owner.pkg}）`)
     this.ctx.effect(() => unregister)
     return unregister
   }

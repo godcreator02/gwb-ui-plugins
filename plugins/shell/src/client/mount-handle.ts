@@ -10,6 +10,13 @@ export function pickMountPane(mod: unknown): MountLike | undefined {
   return typeof mountPane === 'function' ? (mountPane as MountLike) : undefined
 }
 
+/** 状态栏按钮的入口：`mountStatusItem(args, container): { dispose(): void }`；缺了或不是函数回 undefined */
+export function pickMountStatusItem(mod: unknown): MountLike | undefined {
+  if (mod === null || (typeof mod !== 'object' && typeof mod !== 'function')) return undefined
+  const mountStatusItem = (mod as { mountStatusItem?: unknown }).mountStatusItem
+  return typeof mountStatusItem === 'function' ? (mountStatusItem as MountLike) : undefined
+}
+
 /** 只认对象；`this` 绑回句柄，写成方法的 dispose 才拿得到自己的字段 */
 export function pickDispose(handle: unknown): (() => void) | undefined {
   if (handle === null || typeof handle !== 'object') return undefined

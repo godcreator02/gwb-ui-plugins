@@ -22,7 +22,7 @@ export const actors = [
  * @type {MountStep[]}
  */
 export const steps = [
-  /* ref file="../plugins/shell/src/index.ts" lines="460-466" hash="764e0d5bea40" blob="ea7cdacc4957" */
+  /* ref file="../plugins/shell/src/index.ts" lines="477-483" hash="764e0d5bea40" blob="bdace3d0a52a" */
   {
     title: '注册：身份由外壳填',
     text:
@@ -33,7 +33,7 @@ export const steps = [
     marks: {},
     code: {
       file: 'plugins/shell/src/index.ts',
-      start: 451,
+      start: 477,
       lines: [
         '  registerPane(spec: PaneSpec): () => void {',
         '    const owner = this.ownerOfCaller()',
@@ -43,7 +43,7 @@ export const steps = [
         '    return unregister',
         '  }',
       ],
-      highlight: [452, 453],
+      highlight: [478, 479],
     },
   },
   /* ref file="../plugins/shell/src/client/open.ts" lines="255-272" hash="6ca0931992e9" blob="c3574996f7de" */
