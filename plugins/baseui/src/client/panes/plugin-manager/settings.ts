@@ -1,6 +1,6 @@
 /**
- * `settings.all` 按 section（条目 id 的末段；公共区是 `*`）平铺，这里按形状收窄（设置插件 `registry.ts` 的 SettingView）、
- * 再按条目归组。secret 行没有 `value` 与 `default`，只有 `secret` / `isSet` / 设过才有的 `mask`；看明文走 `settings.get`
+ * `settings.all` 与 `credentials.list` 按 section（条目 id 的末段；公共区是 `*`）平铺，这里合并、按形状收窄、再按条目归组。
+ * secret 行没有 `value` 与 `default`，只有 `secret` / `isSet` / 设过才有的 `mask`；本地看明文走 `credentials.reveal`
  */
 
 import { asResult } from './rows'
@@ -59,8 +59,8 @@ function acceptSetting(item: unknown): SettingRow | undefined {
   const live = item['live']
   if (typeof title === 'string' && title !== '') row.title = title
   if (typeof description === 'string' && description !== '') row.description = description
-  if (item['value'] !== undefined) row.value = item['value']
-  if (item['default'] !== undefined) row.default = item['default']
+  if (type !== 'secret' && item['value'] !== undefined) row.value = item['value']
+  if (type !== 'secret' && item['default'] !== undefined) row.default = item['default']
   if (live === false) row.live = false
   if (type === 'secret') withSecretMarks(row, item)
   return row
@@ -74,6 +74,26 @@ export function acceptSettings(raw: unknown): SettingRow[] {
     const row = acceptSetting(item)
     if (row !== undefined) rows.push(row)
   }
+  return rows
+}
+
+/** 两类列表都取到才显示完整配置；缺一路时说明命令与原因，不把未取到的凭据当成没配置。 */
+export async function loadSettings(call: (command: string) => Promise<unknown>): Promise<SettingRow[]> {
+  const commands = ['settings.all', 'credentials.list'] as const
+  const results = await Promise.allSettled(commands.map((command) => call(command)))
+  const rows: SettingRow[] = []
+  const failures: string[] = []
+  for (const [index, settled] of results.entries()) {
+    const command = commands[index]!
+    if (settled.status === 'rejected') {
+      failures.push(`${command}：${String(settled.reason)}`)
+      continue
+    }
+    const result = asResult(settled.value)
+    if (!result.ok) failures.push(`${command}：${result.error}`)
+    else rows.push(...acceptSettings(result.data).filter((row) => (row.type === 'secret') === (command === 'credentials.list')))
+  }
+  if (failures.length > 0) throw new Error(failures.join('\n'))
   return rows
 }
 
@@ -112,12 +132,12 @@ export function bareId(entryId: string): string {
   return parts[parts.length - 1]!
 }
 
-/** `settings.set` / `settings.delete` 按它定位；两段各自 encodeURIComponent，section 里有 `/` 也拆得回来 */
+/** 设置与凭据命令按它定位；两段各自 encodeURIComponent，section 里有 `/` 也拆得回来 */
 export function slotKey(setting: Pick<SettingRow, 'section' | 'key'>): string {
   return `${encodeURIComponent(setting.section)}/${encodeURIComponent(setting.key)}`
 }
 
-/** 只收 `slotKey` 拼出来的串；切不成两段就抛错，不拿空串去调 `settings.set` / `settings.delete` */
+/** 只收 `slotKey` 拼出来的串；切不成两段就抛错，不拿空串去调设置或凭据命令 */
 export function parseSlotKey(slot: string): { section: string; key: string } {
   const parts = slot.split('/')
   if (parts.length !== 2) throw new Error(`设置槽 ${JSON.stringify(slot)} 不是 slotKey 拼出来的「section/key」`)
@@ -130,21 +150,32 @@ export function settingsForEntry(all: readonly SettingRow[], entryId: string): S
   return all.filter((setting) => setting.section === entrySection)
 }
 
+/** 凭据空着保存就是清除；普通空字符串仍是设置值，数值控件清空时传 undefined。 */
+export function settingWriteRequest(row: Pick<SettingRow, 'section' | 'key' | 'type'>, value: unknown): {
+  command: string
+  args: { section: string; key: string; value?: unknown }
+} {
+  const { section, key, type } = row
+  const prefix = type === 'secret' ? 'credentials' : 'settings'
+  if (value === undefined || (type === 'secret' && value === '')) return { command: `${prefix}.delete`, args: { section, key } }
+  return { command: `${prefix}.set`, args: { section, key, value } }
+}
+
 export interface SettingsDeletion {
   deleted: number
   /** 每项一行「section.key：原因」；没删掉的值留在「没有插件声明的设置」里还找得到 */
   failures: string[]
 }
 
-/** 逐项 `settings.delete`，一项失败不停下。失败有两种：回执 `ok: false`，或调用本身抛错（如 IPC 断了），都记进失败项 */
+/** 按类型逐项清除设置或凭据，一项失败不停下。回执失败与调用抛错都记进失败项。 */
 export async function deleteSettingValues(
   call: (command: string, args: { section: string; key: string }) => Promise<unknown>,
-  command: string,
-  settings: ReadonlyArray<Pick<SettingRow, 'section' | 'key'>>,
+  settings: ReadonlyArray<Pick<SettingRow, 'section' | 'key' | 'type'>>,
 ): Promise<SettingsDeletion> {
   const outcome: SettingsDeletion = { deleted: 0, failures: [] }
-  for (const { section, key } of settings) {
+  for (const { section, key, type } of settings) {
     try {
+      const command = type === 'secret' ? 'credentials.delete' : 'settings.delete'
       const result = asResult(await call(command, { section, key }))
       if (result.ok) outcome.deleted += 1
       else outcome.failures.push(`${section}.${key}：${result.error ?? ''}`)

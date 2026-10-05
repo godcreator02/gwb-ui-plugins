@@ -84,7 +84,7 @@ const modules = [
     outside: true,
     blurb: '在别的仓里的几个插件：命令总线、数据、设置、说明书、插件管理各提供一个服务。它们不依赖本仓。',
     caps: [
-      { id: 'b-settings', name: '设置', ident: 'gwbSettings · settings.*' },
+      { id: 'b-settings', name: '设置', ident: 'gwbSettings · settings.* · credentials.*' },
       { id: 'b-pm', name: '插件管理', ident: 'gwbPluginManager' },
       { id: 'b-skills', name: '说明书', ident: 'gwbSkills' },
       { id: 'b-data', name: '数据', ident: 'gwbData' },
@@ -204,10 +204,10 @@ const seams = [
     name: '基础插件的窗格',
     a: ['baseui-apply', 'baseui-panes'],
     b: ['b-pm', 'b-settings'],
-    iface: "ctx.inject(['gwbPluginManager'], …)；plugin-manager.*、settings.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
+    iface: "ctx.inject(['gwbPluginManager'], …)；plugin-manager.*、settings.*、credentials.* 命令；import type … from '@godcreator/gwb-plugin-manager/receipts'",
     convention: false,
     via: 'code',
-    text: '基础界面对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记，它调的 logger.query 是基础界面自己登记的。插件管理窗格里的操作经命令名调 plugin-manager.*、settings.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
+    text: '基础界面对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记，它调的 logger.query 是基础界面自己登记的。插件管理窗格里的操作经命令名调 plugin-manager.*、settings.*、credentials.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */
   /* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */

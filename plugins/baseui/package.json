@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一个窗格一个模块，只收拆掉了界面的基础插件的窗格；另登记查日志文件的命令 logger.query",
   "type": "module",
   "exports": {
@@ -17,7 +17,7 @@
     "@godcreator/gwb-kernel-desktop": "^0.10.0",
     "@godcreator/gwb-shell": "workspace:*",
     "@godcreator/gwb-commands": "^0.6.0",
-    "@godcreator/gwb-plugin-manager": "^0.14.7"
+    "@godcreator/gwb-plugin-manager": "^0.15.0"
   },
   "peerDependenciesMeta": {
     "@godcreator/gwb-commands": {

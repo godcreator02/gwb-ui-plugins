@@ -25,7 +25,7 @@ full: true
 | 6 | 布局文件 | 外壳命令 `shell.layout.get` / `save` ↔ 数据插件 `gwbData` | `readDoc('layout')`、`writeDoc('layout', …)` | 数据插件不认识布局的形状，形状与版本由外壳定 | [布局文件](/docs/shell/desktops#布局文件) |
 | 7 | 外观设置 | 外观的设置与命令 ↔ 设置插件 `gwbSettings` | `define`、`get`、`set` | 设置值存在哪、怎么存由设置插件负责 | [外观的接口](/docs/theme#接口) |
 | 8 | 说明书登记 | 外壳随包发布的 `skills/gwb-shell/` ↔ 说明书插件 `gwbSkills` | `gwbSkills.register`、`SKILL.md` | 说明书写什么由本站的正本负责；agent 怎么找到、什么时候读由说明书插件和 MCP 入口负责 | [外壳的依赖](/docs/shell#依赖) |
-| 9 | 基础插件的窗格 | 基础界面的窗格登记与插件管理窗格 ↔ 插件管理、设置 | `ctx.inject`、`plugin-manager.*`、`settings.*`、`@godcreator/gwb-plugin-manager/receipts` | 插件怎么装卸、设置存在哪由各自的插件负责；日志由内核写，查日志的 `logger.query` 是基础界面自己登记的，不走这条接缝 | [基础界面的依赖](/docs/baseui#依赖) |
+| 9 | 基础插件的窗格 | 基础界面的窗格登记与插件管理窗格 ↔ 插件管理、设置 | `ctx.inject`、`plugin-manager.*`、`settings.*`、`credentials.*`、`@godcreator/gwb-plugin-manager/receipts` | 插件怎么装卸、设置与凭据存在哪由各自的插件负责；日志由内核写，查日志的 `logger.query` 是基础界面自己登记的，不走这条接缝 | [基础界面的依赖](/docs/baseui#依赖) |
 | 10 | 窗格注册 | 外观、基础界面、别的带界面的插件的 node 侧 ↔ 外壳的 `gwbShell` | `registerPane`、`describeSelf`、`registerStatusItem` | 注册不打开窗格；什么时候开、开在哪由外壳的浏览器侧决定 | [注册](/docs/shell/panes#注册) |
 | 11 | 窗格挂载 | 带界面的插件的浏览器侧 ↔ 外壳的窗格契约 | `mountPane`、`@godcreator/gwb-shell/pane` | 插件在容器里怎么渲染、用不用 React 由插件决定 | [插件拿到的 args](/docs/shell/panes#插件拿到的-args)、[一个窗格从注册到关闭](/docs/shell/takeover#一个窗格从注册到关闭) |
 | 12 | 外置名单 | 带界面的插件的构建脚本 ↔ 外壳的 `@godcreator/gwb-shell/browser-imports` | `Object.keys(browserImports())` | 内核不决定哪些包名外置，名单归外壳 | [外置名单之外的都打包进插件](/docs/shell/react-runtime#外置名单之外的都打包进插件) |

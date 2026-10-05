@@ -41,16 +41,17 @@ import {
   type UnmetPeerMark,
 } from './rows'
 import {
-  acceptSettings,
   deleteSettingValues,
   describeSettingsDeletion,
   dirtySlots,
   fieldState,
   formatDefault,
+  loadSettings,
   orphanSettings,
   parseSlotKey,
   secretPlaceholder,
   settingsForEntry,
+  settingWriteRequest,
   SHARED_SECTION,
   sharedSettings,
   slotKey,
@@ -86,8 +87,8 @@ import {
 
 /**
  * 插件管理窗格：「已安装」每条条目一行、展开是那个插件的设置（人先想到的是哪个插件，不是哪个分区）；「可安装」见 `market.tsx`。
- * 三份数据各取各的、各自失败：`plugin-manager.list`（包与条目）、`settings.all`（按 section 对应到条目，secret 行不回值，
- * 看明文用 `settings.get`）、`shell.plugins`（显示名与图标）。升级走 `plugin-manager.update`（`{ all: true }` 或 `{ only: [包名] }`），
+ * 三组数据各取各的、各自失败：`plugin-manager.list`（包与条目）、`settings.all` + `credentials.list`（合并后按 section 对应到条目，
+ * 本地看凭据用 `credentials.reveal`）、`shell.plugins`（显示名与图标）。升级走 `plugin-manager.update`（`{ all: true }` 或 `{ only: [包名] }`），
  * 有包升级了由窗格自己调 `shell.reload` 整页重新加载。没有事件推送，每次操作完重新取数据
  */
 
@@ -99,11 +100,8 @@ const ADD_ENTRY = 'plugin-manager.add-entry'
 const ENABLE = 'plugin-manager.enable'
 const DISABLE = 'plugin-manager.disable'
 const REMOVE_ENTRY = 'plugin-manager.remove-entry'
-const SETTINGS_ALL = 'settings.all'
-/** 按位置读一项设置，secret 项照样回明文（只有列表命令 `settings.all` 不回），「看一眼」按钮用它 */
-const SETTINGS_GET = 'settings.get'
-const SETTINGS_SET = 'settings.set'
-const SETTINGS_DELETE = 'settings.delete'
+/** 本地「看一眼」按钮专用；凭据列表不返回原文 */
+const CREDENTIALS_REVEAL = 'credentials.reveal'
 const SHELL_PLUGINS = 'shell.plugins'
 const SHELL_RELOAD = 'shell.reload'
 const OUTDATED = 'plugin-manager.outdated'
@@ -193,7 +191,7 @@ function SettingField({
   row: SettingRow
   value: unknown
   onChange: (next: unknown) => void
-  /** 按位置读这一项的明文（`settings.get`）。读不到就抛，由这一项如实显示原因 */
+  /** 在本地查看这一项的明文（`credentials.reveal`）。读不到就抛，由这一项如实显示原因 */
   onReveal: (row: SettingRow) => Promise<string>
 }): ReactElement {
   const [peek, setPeek] = useState<Peek>({ kind: 'idle' })
@@ -237,11 +235,11 @@ function SettingField({
         ? '（空着保存就是清空这一项）'
         : secretPlaceholder(row)
     const why = revealed
-      ? '这是按位置读回来的明文（settings.get）。改了再点「保存」才会写回磁盘'
+      ? '正在本地显示已保存的凭据。修改后点「保存」才会写回'
       : edited
         ? '改了还没保存。点「保存」才写回磁盘'
         : state === 'secret-set'
-          ? '已设置。列表命令 settings.all 不返回 secret 的值（只返回设过没有与遮掉的值），所以这个框平常是空的——点右边的眼睛按位置读明文'
+          ? '已设置，默认隐藏。点右边的眼睛在本地查看'
           : '没设过。填上再点「保存」就设上了'
     const look = (): void => {
       if (peek.kind === 'shown') {
@@ -281,7 +279,7 @@ function SettingField({
                   ? '这一项改了还没保存——先「保存」或「放弃」，再看磁盘上那份明文'
                   : peek.kind === 'loading'
                     ? '读取中…'
-                    : '查看明文：调 settings.get 按位置读一次明文。注意：secret 只影响这里的显示，磁盘上照样是明文；列表命令 settings.all 不返回它的值，所以这个框平常是空的'
+                    : '在本地查看已保存的凭据'
             }
             onClick={look}
           >
@@ -342,7 +340,7 @@ function SettingLine({
           <Badge
             variant="outline"
             className="baseui:px-1 baseui:py-0 baseui:text-[10px] baseui:text-warning"
-            title="secret 只影响显示时遮掉，磁盘上存的是明文；列表命令 settings.all 不返回它的值，要看明文点右边的眼睛按位置读"
+            title="凭据以明文保存在当前 home 的 credentials.json 中；点眼睛可在本地查看"
           >
             明文存储
           </Badge>
@@ -415,10 +413,10 @@ function EntryCard({
   draft: Record<string, unknown> | undefined
   saveError: string | undefined
   saving: boolean
-  /** `settings.all` 没取到的原因，空串是取到了。取不到时 `card.settings` 是空的，不能说成没声明 */
+  /** 设置或凭据列表没取到的原因，空串是取到了。取不到时 `card.settings` 是空的，不能说成没声明 */
   settingsError: string
   onValue: (slot: string, next: unknown) => void
-  /** 按位置读一项的明文（`settings.get`），供 secret 项的「看一眼」用 */
+  /** 本地读取一项的明文（`credentials.reveal`），供 secret 项的「看一眼」用 */
   onReveal: (row: SettingRow) => Promise<string>
   onSave: () => void
   onDiscard: () => void
@@ -597,7 +595,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** null 是「还没取到」，跟「取到了但一个包都没有」不是一回事——三份表各自独立 */
   const [rows, setRows] = useState<PackageRow[] | null>(null)
   const [settingsRows, setSettingsRows] = useState<SettingRow[] | null>(null)
-  /** `settings.all` 没取到的原因，空串是取到了 */
+  /** 设置或凭据列表没取到的原因，空串是取到了 */
   const [settingsError, setSettingsError] = useState('')
   const [faces, setFaces] = useState<Record<string, Face>>({})
   /** `shell.plugins` 没取到的原因，空串是取到了。取不到时标题用条目 id */
@@ -640,10 +638,10 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [updatingAll, setUpdatingAll] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
-    // 三份表**各取各的、各自失败**——设置插件没装时插件管理照样能用，展开区写明设置取不到的原因
+    // 三组数据各自失败；设置插件没装时插件管理照样能用，展开区写明设置或凭据取不到的原因
     const [list, settings, faces] = await Promise.allSettled([
       callPluginManager(args.host, LIST),
-      args.host.call(SETTINGS_ALL),
+      loadSettings((command) => args.host.call(command)),
       args.host.call(SHELL_PLUGINS),
     ])
     if (list.status === 'fulfilled') {
@@ -658,14 +656,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       setListError(`读取插件列表失败：${String(list.reason)}`)
     }
     if (settings.status === 'fulfilled') {
-      const result = asResult(settings.value)
-      if (result.ok) {
-        setSettingsRows(acceptSettings(result.data))
-        setSettingsError('')
-      } else {
-        setSettingsRows(null)
-        setSettingsError(result.error)
-      }
+      setSettingsRows(settings.value)
+      setSettingsError('')
     } else {
       setSettingsRows(null)
       setSettingsError(String(settings.reason))
@@ -810,7 +802,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
   /** 读不到就抛，由那一项如实显示原因：显示成空框会被读成「没设过」 */
   const revealSecret = async (row: SettingRow): Promise<string> => {
-    const result = asResult(await args.host.call(SETTINGS_GET, { section: row.section, key: row.key }))
+    const result = asResult(await args.host.call(CREDENTIALS_REVEAL, { section: row.section, key: row.key }))
     if (!result.ok) throw new Error(result.error)
     const value = result.data
     // 命令返回「ok 但没值」＝这一项磁盘上没有值。**如实说没设过**，不显示成空框
@@ -830,7 +822,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       return next
     })
 
-  /** 逐键 settings.set，有一个失败就全留在草稿里；只提交草稿里有的槽（`dirtySlots`），没动过的 secret 不会被当成清空 */
+  /** 按类型保存设置或凭据，有一个失败就全留在草稿里；只提交草稿里的槽，没动过的 secret 不会被清空 */
   const saveEntry = async (entryId: string): Promise<void> => {
     const slots = dirtySlots(drafts[entryId])
     if (slots.length === 0) return
@@ -839,7 +831,10 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     for (const [slot, value] of slots) {
       try {
         const pos = parseSlotKey(slot)
-        const result = asResult(await args.host.call(SETTINGS_SET, { ...pos, value }))
+        const row = settingsRows?.find((setting) => setting.section === pos.section && setting.key === pos.key)
+        if (row === undefined) throw new Error('这一项的类型已取不到，请刷新后再保存')
+        const request = settingWriteRequest(row, value)
+        const result = asResult(await args.host.call(request.command, request.args))
         if (!result.ok) failures.push(`${pos.section}.${pos.key}：${result.error}`)
       } catch (err: unknown) {
         failures.push(`${slot}：${String(err)}`)
@@ -860,14 +855,10 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
     // 重新取失败时不能留着旧的那份：卡片会显示保存之前的值
     let reloadError: string
     try {
-      const result = asResult(await args.host.call(SETTINGS_ALL))
-      if (result.ok) {
-        setSettingsRows(acceptSettings(result.data))
-        setSettingsError('')
-        setNotice({ ok: true, text: '设置存好了' })
-        return
-      }
-      reloadError = result.error
+      setSettingsRows(await loadSettings((command) => args.host.call(command)))
+      setSettingsError('')
+      setNotice({ ok: true, text: '设置存好了' })
+      return
     } catch (err: unknown) {
       reloadError = String(err)
     }
@@ -952,7 +943,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       if (!result.ok) {
         setNotice({ ok: false, text: result.error })
       } else {
-        const deletion = alsoDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
+        const deletion = alsoDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), settings) : NOTHING_DELETED
         // 设置没取到时 settings 是空的，勾了「一并删除」也删不了，要说出来
         const settingsUnknown = alsoDrop && settingsError !== '' ? `；设置取不到（${settingsError}），设置值没删` : ''
         setNotice({
@@ -998,7 +989,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         // 失败时插件管理已经把原因与 pnpm 输出的最后几行拼进 error
         setNotice({ ok: false, text: result.error })
       } else {
-        const deletion = uninstallDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), SETTINGS_DELETE, settings) : NOTHING_DELETED
+        const deletion = uninstallDrop ? await deleteSettingValues((command, pos) => args.host.call(command, pos), settings) : NOTHING_DELETED
         const touchedSettings = deletion.deleted > 0 || deletion.failures.length > 0
         setNotice({
           ok: deletion.failures.length === 0,
@@ -1272,7 +1263,10 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                           title="把这一项从磁盘上删除"
                           onClick={() =>
                             void run(
-                              async () => asResult(await args.host.call(SETTINGS_DELETE, { section: s.section, key: s.key })),
+                              async () => {
+                                const request = settingWriteRequest(s, undefined)
+                                return asResult(await args.host.call(request.command, request.args))
+                              },
                               `删除了 ${s.section}.${s.key}`,
                             )
                           }
@@ -1359,8 +1353,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               {` · ${onCount} 个启用`}
               {badCount > 0 && ` · ${badCount} 个异常`}
             </span>
-            <span className="baseui:truncate baseui:font-mono" title="设置存放在 <home>/settings.json，和 cordis.yml 在同一个目录——全部配置都在 home 里">
-              settings.json
+            <span className="baseui:truncate baseui:font-mono" title="普通设置保存在当前 home 的 settings.json，凭据以明文保存在 credentials.json">
+              settings.json · credentials.json
             </span>
           </div>
         </>

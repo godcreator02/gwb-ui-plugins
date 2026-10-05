@@ -9,7 +9,7 @@ import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 /* ref file="../plugins/baseui/src/client/index.tsx" lines="5-20" hash="863b17ec74d8" blob="d921eca3e035" */
 /* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="81-98" hash="daecad3c3be5" blob="96aeb9f838ff" */
 /* ref file="../plugins/baseui/src/client/panes/logger/receipts.ts" lines="24-43" hash="1891a30ecae2" blob="c3df10ff09fd" */
-/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="96-114" hash="ee56bdf714a4" blob="cfd6a423ce07" */
+/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="96-114" hash="8a967b88896d" blob="4c7bbe6d3b73" */
 /* ref file="../plugins/baseui/src/client/panes/plugin-manager/receipts.ts" lines="20-48" hash="48f444e7d3a8" blob="f838b9d7d2ea" */
 export const baseuiGraph = defineSeamGraph({
   id: 'baseui',
@@ -56,7 +56,7 @@ export const baseuiGraph = defineSeamGraph({
         '「已安装」每条条目一行、展开是那个插件的设置；「可安装」搜源上的包。包与条目、设置、插件名三份数据各取各的、各自失败，' +
         '没有事件推送，每次操作完重新取。升级之后由窗格自己整页刷新。',
       caps: [
-        { id: 'pm-ops', name: '插件、设置与外壳操作', ident: 'callPluginManager · settings.* · shell.*' },
+        { id: 'pm-ops', name: '插件、配置与外壳操作', ident: 'callPluginManager · settings.* · credentials.* · shell.*' },
         { id: 'pm-mount', name: '插件管理窗格', ident: 'mountPane' },
       ],
     },
@@ -90,7 +90,7 @@ export const baseuiGraph = defineSeamGraph({
       role: null,
       outside: true,
       blurb: '不写 peer、不注入：插件管理窗格只按命令名调它。设置插件没装时这些命令回失败，窗格照样能用，展开区写明设置取不到的原因。',
-      caps: [{ id: 'settings-plugin', name: '设置插件', ident: 'settings.all · get · set · delete' }],
+      caps: [{ id: 'settings-plugin', name: '设置插件', ident: 'settings.* · credentials.*' }],
     },
     {
       id: 'pm',
@@ -202,14 +202,14 @@ export const baseuiGraph = defineSeamGraph({
     },
     {
       n: 7,
-      name: '设置命令',
+      name: '设置与凭据命令',
       a: ['pm-ops'],
       b: ['settings-plugin'],
-      iface: "host.call('settings.all' | 'settings.get' | 'settings.set' | 'settings.delete', …)",
+      iface: "host.call('settings.all' | 'settings.set' | 'settings.delete' | 'credentials.list' | 'credentials.set' | 'credentials.reveal' | 'credentials.delete', …)",
       convention: true,
       via: 'code',
       text:
-        '设置插件不导出回执类型，窗格按形状收窄。settings.all 不回 secret 项的值，要看明文另调 settings.get；保存逐键 settings.set，有一个失败就全留在草稿里。',
+        '设置插件不导出回执类型，窗格按形状收窄。settings.all 与 credentials.list 合并展示；凭据列表不回原文，本地查看用 credentials.reveal。保存与清除按类型调 settings 或 credentials 命令，有一个失败就全留在草稿里。',
     },
     {
       n: 8,

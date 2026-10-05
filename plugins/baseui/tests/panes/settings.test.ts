@@ -6,18 +6,19 @@ import {
   describeSettingsDeletion,
   dirtySlots,
   fieldState,
+  loadSettings,
   orphanSettings,
   parseSlotKey,
   secretPlaceholder,
   SHARED_SECTION,
   sharedSettings,
+  settingWriteRequest,
   slotKey,
   type SettingRow,
 } from '../../src/client/panes/plugin-manager/settings'
 
 /**
- * 设置那半的纯逻辑。**这一组是 settings 0.3.0 的消费方适配**：`settings.all` 对 secret 行
- * 收口之后，那一行没有 `value` 也没有 `default`，只回 `secret` / `isSet` / 设过才有的 `mask`
+ * 设置与凭据列表在综合页合并。`credentials.list` 的行没有 `value` 也没有 `default`，只回 `secret` / `isSet` / 设过才有的 `mask`
  * ——「设过了」与「空着」因此只能靠 `isSet` 分（`fieldState`），而「没动过这一格」与
  * 「把这一格改成空」只能靠「槽在不在草稿里」分（`dirtySlots`）。
  */
@@ -53,6 +54,12 @@ describe('acceptSettings：secret 那三格随回执收下', () => {
     expect(got[0]!.mask).toBeUndefined()
   })
 
+  it('凭据列表意外带上 value/default 也不导入编辑草稿', () => {
+    const got = acceptSettings([{ section: 'gitea', key: 'token', type: 'secret', secret: true, isSet: true, value: 'private', default: 'private' }])
+    expect(got[0]).not.toHaveProperty('value')
+    expect(got[0]).not.toHaveProperty('default')
+  })
+
   it('掩码是空串就当没有——空掩码会被念成「设了个空值」', () => {
     const got = acceptSettings([{ section: 'gitea', key: 'token', type: 'secret', secret: true, isSet: true, mask: '' }])
     expect(got[0]!.mask).toBeUndefined()
@@ -69,6 +76,50 @@ describe('acceptSettings：secret 那三格随回执收下', () => {
       value: 'https://git.example.com',
       default: 'https://git.example.com',
     })
+  })
+})
+
+describe('loadSettings：普通设置与凭据各用自己的列表命令', () => {
+  it('并行读取两份列表并合并，凭据不从普通设置列表兼容读取', async () => {
+    const calls: string[] = []
+    const got = await loadSettings(async (command) => {
+      calls.push(command)
+      return {
+        ok: true,
+        data: command === 'settings.all'
+          ? [{ section: 'gitea', key: 'base-url', type: 'string', value: 'https://git.example.com' }, row({ value: 'old-contract' })]
+          : [row({ secret: true, isSet: true, mask: '••••' })],
+      }
+    })
+    expect(calls).toEqual(['settings.all', 'credentials.list'])
+    expect(got.map((setting) => [setting.key, setting.type])).toEqual([['base-url', 'string'], ['token', 'secret']])
+    expect(got[1]).not.toHaveProperty('value')
+  })
+
+  it('凭据命令缺失时说明原因，不把普通设置列表当成完整配置', async () => {
+    await expect(loadSettings(async (command) => command === 'credentials.list'
+      ? { ok: false, error: '命令不存在' }
+      : { ok: true, data: [] })).rejects.toThrow('credentials.list：命令不存在')
+  })
+
+  it('两边失败都报告，包括调用本身抛错', async () => {
+    await expect(loadSettings(async (command) => {
+      if (command === 'settings.all') throw new Error('IPC 断开')
+      return { ok: false, error: '凭据文件损坏' }
+    })).rejects.toThrow('settings.all：Error: IPC 断开\ncredentials.list：凭据文件损坏')
+  })
+})
+
+describe('settingWriteRequest：按类型选择写入命令', () => {
+  it('凭据输入用专用命令，清空输入清除凭据', () => {
+    expect(settingWriteRequest(row(), 'new-token')).toEqual({ command: 'credentials.set', args: { section: 'gitea', key: 'token', value: 'new-token' } })
+    expect(settingWriteRequest(row(), '')).toEqual({ command: 'credentials.delete', args: { section: 'gitea', key: 'token' } })
+    expect(settingWriteRequest(row(), undefined)).toEqual({ command: 'credentials.delete', args: { section: 'gitea', key: 'token' } })
+  })
+
+  it('普通设置保留空字符串，数值清空只清除设置', () => {
+    expect(settingWriteRequest(row({ type: 'string', key: 'base-url' }), '')).toEqual({ command: 'settings.set', args: { section: 'gitea', key: 'base-url', value: '' } })
+    expect(settingWriteRequest(row({ type: 'number', key: 'port' }), undefined)).toEqual({ command: 'settings.delete', args: { section: 'gitea', key: 'port' } })
   })
 })
 
@@ -195,15 +246,14 @@ describe('dirtySlots：保存只提交真被编辑过的格', () => {
 })
 
 describe('deleteSettingValues：删条目、卸载时连设置值一起删', () => {
-  const two = [
-    { section: 'gitea', key: 'token' },
-    { section: 'gitea', key: 'base-url' },
+  const two: SettingRow[] = [
+    { section: 'gitea', key: 'token', type: 'secret' },
+    { section: 'gitea', key: 'base-url', type: 'string' },
   ]
 
   it('回执 ok:false 不算删掉', async () => {
     const outcome = await deleteSettingValues(
       async (_command, pos) => (pos.key === 'token' ? { ok: false, error: '写不进 settings.json' } : { ok: true }),
-      'settings.delete',
       two,
     )
     expect(outcome).toEqual({ deleted: 1, failures: ['gitea.token：写不进 settings.json'] })
@@ -217,16 +267,15 @@ describe('deleteSettingValues：删条目、卸载时连设置值一起删', () 
         if (pos.key === 'token') throw new Error('ipc 断了')
         return { ok: true }
       },
-      'settings.delete',
       two,
     )
-    expect(calls).toEqual(['settings.delete token', 'settings.delete base-url'])
+    expect(calls).toEqual(['credentials.delete token', 'settings.delete base-url'])
     expect(outcome.deleted).toBe(1)
     expect(outcome.failures).toEqual(['gitea.token：Error: ipc 断了'])
   })
 
   it('回执认不出也算失败', async () => {
-    const outcome = await deleteSettingValues(async () => undefined, 'settings.delete', [two[0]!])
+    const outcome = await deleteSettingValues(async () => undefined, [two[0]!])
     expect(outcome.deleted).toBe(0)
     expect(outcome.failures).toHaveLength(1)
   })

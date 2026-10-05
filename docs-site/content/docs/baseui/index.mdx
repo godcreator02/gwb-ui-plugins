@@ -20,6 +20,8 @@ full: true
 | 日志 | `logger` | 总是有；`logger.query` 不在时窗格里显示命令调用失败的原因 | 看 `gwb.log` 里最近的日志，可见时每秒取新写的；按来源与级别筛选、日志文件在哪 |
 | 插件管理 | `plugin-manager` | 装了插件管理 | 装、卸、升级、启停插件与条目，改各插件的设置；「可安装」一栏在市场名单里的市场上找插件，顶上一行加删市场 |
 
+插件管理 0.15 的包源认证来自当前 home 的 `npm-auth` 凭据，不再隐式读取机器或其他 home 的 token。窗格继续调用原有安装、更新命令，并显示插件管理返回的本地诊断；普通设置与凭据分别走 `settings.*`、`credentials.*`。
+
 **查日志文件的命令 `logger.query` 也由本插件登记。** 日志由内核写进 `<home>/gwb.log`（一行一个 JSON，轮转出的旧文件是 `gwb.log.1`），
 日志窗格和经 MCP 入口的 agent 都调这条命令读它。本插件默认全装，所以这条命令一直调得到。为什么不单独成一个插件，
 见[查日志的命令并进基础界面](/trajectory/2026-09-28-log-query-moves-into-baseui)。
@@ -111,7 +113,7 @@ full: true
 | `gwbPluginManager`（`@godcreator/gwb-plugin-manager`） | 局部注入，peer 且 `optional` | 只看服务在不在，决定登不登记插件管理窗格；回执类型从它的 `./receipts` 子路径引 | 照常加载，只是没有插件管理窗格 |
 | 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | `GwbContext` 的类型；登记 `logger.query` 时取 `ctx.gwbKernel.dataDir` 定位 `gwb.log` | 类型检查不过；不在 gwb 内核里登记命令时当场抛错 |
 
-{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="fabb6dde70b2" blob="99c0edd9bf0d" */}
+{/* ref file="../plugins/baseui/package.json" lines="16-30" hash="02f220b8e4c0" blob="d697365f8d81" */}
 
 命令总线和插件管理都是可选的，node 侧源码里对它们只有 `import type`；写成运行时 import，没装它们的 home 里就多一句 `ERR_MODULE_NOT_FOUND`：
 
@@ -123,10 +125,18 @@ full: true
 | --- | --- | --- | --- |
 | 本插件的 node 侧 | `logger.query` | 日志窗格：挂载时取最近一批，可见时每秒带 `after` 取新写的；底栏显示回执里的 `file` | 按形状逐项收窄，有一条不对就整批报错；窗格与 `src/log-query/` 互不 import |
 | 插件管理 | `plugin-manager.*` | 插件管理窗格：列表、查新版本、搜索、装卸、升级、启停、增删条目 | `import type` 插件管理的回执类型，只按外层 `ok` 分开成功与失败 |
-| 设置插件 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列设置、看 secret 的明文、保存、连设置值一起删；「可安装」一栏按位置读写市场名单（公共区 `*` 的 `plugin-markets`，插件管理声明的） | 按形状收窄；设置插件不写 peer |
+| 设置插件：普通设置 | `settings.all`、`settings.set`、`settings.delete` | 插件管理窗格：按条目列普通设置、保存、清除；「可安装」一栏读写公共区 `*` 的 `plugin-markets` 市场名单 | 按形状收窄；设置插件不写 peer |
+| 设置插件：凭据 | `credentials.list`、`credentials.set`、`credentials.reveal`、`credentials.delete` | 插件管理窗格：凭据列表与普通设置合并展示，本地输入、查看、清除均走凭据命令 | 列表只接收状态与掩码，不把值或默认值填进编辑草稿；缺少凭据命令时报告读取失败 |
 | 外壳 | `shell.plugins`、`shell.reload` | 插件管理窗格：条目标题与图标、升级后整页重新加载 | 按形状收窄 |
 
-{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="87-114" hash="0233382bc57d" blob="cfd6a423ce07" */}
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="87-114" hash="9f571ebbea69" blob="4c7bbe6d3b73" */}
+
+综合页按每项的类型选择命令，删条目与卸载插件时也分别清除普通设置与凭据。设置页的凭据输入留空再保存表示清除，
+未编辑的项不写回；凭据列表读取失败时不把普通设置列表当成全部配置：
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/settings.ts" lines="80-99" hash="a764d496409f" blob="b4e070a44734" */}
+
+{/* ref file="../plugins/baseui/src/client/panes/plugin-manager/settings.ts" lines="153-163" hash="44aa893f6bda" blob="b4e070a44734" */}
 
 {/* ref file="../plugins/baseui/src/client/panes/logger/index.tsx" lines="48-48" hash="6dd062062693" blob="96aeb9f838ff" */}
 
