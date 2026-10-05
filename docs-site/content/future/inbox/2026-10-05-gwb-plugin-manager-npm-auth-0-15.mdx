@@ -1,0 +1,12 @@
+---
+title: 跟进 gwb-plugin-manager 0.15.0 的 home 包源认证
+description: 来源：gwb-plugin-manager 凭据机制适配会话；破坏性版本发布前通知
+---
+
+上游计划发布 `@godcreator/gwb-plugin-manager@0.15.0`。命令名、参数和回执形状保持，但包源认证从隐式读取机器凭据改为当前 home 的 `npm-auth` 凭据，因此属于调用方语义的破坏性变更。
+
+安装、更新或发布需要的包源认证必须在目标 home 显式配置。没有当前 home 凭据时，不会借用机器上或其他 home 的 token；授权后的复制与导入经 `credentials.*` 完成，状态与错误回执不返回凭据原文。
+
+本仓 baseUI 是活下游，适配后将 plugin-manager peer 跟到源上已发布的 `^0.15.0`，核验安装/更新错误能明确说明当前 home 凭据缺失，普通管理命令仍保持既有形状。default 要等下游适配完成再整套切换，随后检查 active 与 unmetPeers。
+
+依据：gwb-release 的破坏版下游通知要求；plugin-manager 的当前 home npm-auth 契约。处理结论写回现状文档后删除本通知。
