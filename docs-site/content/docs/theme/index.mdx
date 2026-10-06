@@ -1,6 +1,6 @@
 ---
 title: 外观插件 gwb-theme
-description: 全局启动样式（正文字体、等宽字体与一段自定义 CSS）加「外观」窗格；外壳经可选命令 theme.startupCss 取样式，没有外壳也照常加载
+description: 全局启动样式（正文字体、等宽字体与一段自定义 CSS）加「外观」窗格；外壳在场时把读启动样式的函数登记给外壳，没有外壳也照常加载
 full: true
 ---
 
@@ -32,9 +32,9 @@ full: true
 
 {/* ref file="../plugins/theme/src/client/index.tsx" lines="75-80" hash="27fa291c0660" blob="d52b9b51d84a" */}
 
-**没有外壳也照常加载。** 外壳只用局部注入，三条命令不依赖它；没有外壳时只是没有「外观」窗格：
+**没有外壳也照常加载。** 外壳只用局部注入，三条命令不依赖它；没有外壳时只是没有「外观」窗格，也不登记启动样式：
 
-{/* ref file="../plugins/theme/tests/apply.test.ts" lines="142-155" hash="ddd61eedec42" blob="3c7ae394ce8d" */}
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="148-162" hash="d36c614cfc40" blob="69ee5efcb00a" */}
 
 ## 接口
 
@@ -42,19 +42,23 @@ full: true
 
 | 命令 | 参数 | 回什么 | 谁调 |
 | --- | --- | --- | --- |
-| `theme.startupCss` | 无 | 启动样式那段 CSS 字符串，没设置就是空串 | 外壳 node 侧处理 `shell.env` 时，按名字调 |
+| `theme.startupCss` | 无 | 启动样式那段 CSS 字符串，没设置就是空串 | agent 查看用；外壳不调它，取的是登记的读函数，两边拼法相同 |
 | `theme.values` | 无 | `{ "font-sans", "font-mono", "custom-css" }` 三项现值，不是字符串的值当空串 | 外观窗格 |
 | `theme.save` | `{ "font-sans", "font-mono", "custom-css" }` 三个键都必给、值都是字符串，空串是恢复默认 | `{ ok: true }`；参数不对回 `ok: false` 与原因，一项都不写 | 外观窗格 |
 
-{/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="a9d84efd2304" blob="ea4588cf8ead" */}
+{/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="ea2c6368b20e" blob="c80681eff873" */}
 
 登记时 `plugin` 写本插件的包名：
 
-{/* ref file="../plugins/theme/tests/apply.test.ts" lines="97-104" hash="120a9dacf426" blob="9815a0d6747e" */}
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="103-110" hash="120a9dacf426" blob="69ee5efcb00a" */}
 
 `theme.save` 的参数是外部输入，在这里校验：不是对象、缺键、多了别的键、值不是字符串，都当场拒绝并说清错在哪，不替调用方修正：
 
-{/* ref file="../plugins/theme/tests/apply.test.ts" lines="127-140" hash="dbdbaec4be47" blob="3c7ae394ce8d" */}
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="133-146" hash="dbdbaec4be47" blob="69ee5efcb00a" */}
+
+**登记给外壳的启动样式**：外壳在场时局部注入它、调 `registerStartupStyle` 交出一个读函数，读函数每次按设置的现值拼一段，和 `theme.startupCss` 回的是同一份。读的是本插件自己上下文里的设置：
+
+{/* ref file="../plugins/theme/src/index.ts" lines="158-163" hash="43e8e54f193d" blob="c80681eff873" */}
 
 **三项设置**的键名用设置插件要求的 kebab-case：
 
@@ -64,7 +68,7 @@ full: true
 
 {/* ref file="../plugins/theme/src/index.ts" lines="63-86" hash="ff74955f188d" blob="8a696cae264c" */}
 
-{/* ref file="../plugins/theme/tests/apply.test.ts" lines="88-95" hash="98ab2af779a3" blob="3c7ae394ce8d" */}
+{/* ref file="../plugins/theme/tests/apply.test.ts" lines="94-101" hash="98ab2af779a3" blob="69ee5efcb00a" */}
 
 **「外观」窗格**：id 是 `appearance`，注册时报上 `dist/client.js` 与 `dist/style.css` 的 `file://` 地址，另报名字「外观」、图标 `palette`：
 
@@ -82,7 +86,7 @@ full: true
 | --- | --- | --- | --- |
 | `gwbSettings`（`@godcreator/gwb-settings`） | 必需注入，peer | 声明、读写三项外观设置 | 本插件不加载：没有设置存不了三项外观 |
 | `gwbCommands`（`@godcreator/gwb-commands`） | 必需注入，peer | 登记三条命令 | 本插件不加载：三条命令无法对外提供 |
-| `gwbShell`（`@godcreator/gwb-shell`） | 局部注入，peer `workspace:*` 且 `optional` | 登记「外观」窗格、报名字 | 照常加载，启动样式照常能取，只是没有「外观」窗格 |
+| `gwbShell`（`@godcreator/gwb-shell`） | 局部注入，peer `workspace:*` 且 `optional` | 登记「外观」窗格、报名字、登记启动样式 | 照常加载，只是没有「外观」窗格，也没有要启动样式的外壳 |
 | 内核包 `@godcreator/gwb-kernel-desktop` | peer，只 `import type` | 取 `GwbContext` 类型 | 类型检查不过；运行时不 import 它（包根一加载就启动 Electron 应用） |
 
 {/* ref file="../plugins/theme/src/index.ts" lines="30-31" hash="82c708c0994f" blob="8a696cae264c" */}
@@ -109,8 +113,8 @@ full: true
 
 ## 不做的事
 
-**不 import 外壳，外壳也不 import 它。** 外壳取启动样式只经命令名 `theme.startupCss`，先问命令表里有没有、有才调；本插件把外壳写在 peer 里，
-外壳反过来 import 它会成环。为什么查在外壳的 node 侧、不让外观插件主动把样式交给外壳，见[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
+**不 import 外壳，外壳也不 import 它。** 外壳取启动样式靠本插件局部注入外壳后登记的读函数；本插件把外壳写在 peer 里，
+外壳反过来 import 它会成环。为什么改成本插件主动登记、外壳不再按命令名去问，见[外壳经服务收启动样式](/trajectory/2026-10-07-startup-style-via-shell-service)。
 
 **不决定启动样式在页面上的位置。** node 侧只交出一段字符串，排在第几位、什么时候插进页面由外壳定；浏览器侧只在外观窗格开着时按 id 改那一个元素。
 
@@ -120,4 +124,4 @@ full: true
 
 {/* ref file="../plugins/shell/src/client/StatusBar.tsx" lines="302-308" hash="f167fad29959" blob="7627baabfdc5" */}
 
-**不提供 gwb 服务、不发事件。** 对外只有三条命令、三项设置与一个窗格。
+**不提供 gwb 服务、不发事件。** 对外只有三条命令、三项设置、一个窗格与登记给外壳的启动样式。

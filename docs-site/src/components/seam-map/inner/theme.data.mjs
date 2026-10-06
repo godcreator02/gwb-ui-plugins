@@ -5,11 +5,11 @@
 import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
 
 /* ref file="../plugins/theme/src/index.ts" lines="19-31" hash="1b69520c5ca3" blob="8a696cae264c" */
-/* ref file="../plugins/theme/src/index.ts" lines="144-163" hash="b839760d8494" blob="ea4588cf8ead" */
+/* ref file="../plugins/theme/src/index.ts" lines="144-173" hash="8420553967d9" blob="c80681eff873" */
 /* ref file="../plugins/theme/src/startup-css.ts" lines="16-26" hash="0403e4a4a171" blob="694ae7e05e50" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="15-30" hash="9c62cc1f0537" blob="82cc4b455dbb" */
 /* ref file="../plugins/theme/src/client/values.ts" hash="5310c8bb18ce" blob="855b1447cb2e" */
-/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="c49f50da741d" blob="86c08b9d31cd" */
+/* ref file="../plugins/shell/src/startup-style.ts" lines="13-37" hash="620bc5f52897" blob="d48c30458e70" */
 /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
 export const themeGraph = defineSeamGraph({
   id: 'theme',
@@ -27,11 +27,11 @@ export const themeGraph = defineSeamGraph({
       role: null,
       outside: true,
       blurb:
-        '外壳在本包里是可选的 peer。node 侧答 shell.env 时按名字取启动样式，页面侧把它写进页面、打开外观窗格时调 mountPane。' +
+        '外壳在本包里是可选的 peer。node 侧答 shell.env 时调本包登记的读函数取启动样式，页面侧把它写进页面、打开外观窗格时调 mountPane。' +
         '启动样式从 node 侧到页面侧是外壳自己经 shell.env 的回执传过去的，本包不经手。',
       caps: [
-        { id: 'shell-register', name: '窗格注册', ident: 'registerPane · describeSelf' },
-        { id: 'shell-env', name: '启动时取启动样式', ident: 'shell.env → startupCss()' },
+        { id: 'shell-register', name: '窗格与启动样式的登记', ident: 'registerPane · describeSelf · registerStartupStyle' },
+        { id: 'shell-env', name: '启动时取启动样式', ident: 'shell.env → read()' },
         { id: 'shell-pane', name: '打开窗格', ident: 'PluginPane → mountPane' },
         { id: 'shell-apply', name: '写进页面', ident: 'applyStartupCss' },
       ],
@@ -43,13 +43,13 @@ export const themeGraph = defineSeamGraph({
       role: 'blue',
       outside: false,
       blurb:
-        'apply 做三件事：声明三项 home 级设置（缺省空串）、登记三条命令、在外壳加载时登记「外观」窗格。' +
-        '必需注入只有 gwbSettings 与 gwbCommands；外壳用局部注入，没有外壳时本插件照常加载，启动样式照常能取。',
+        'apply 做四件事：声明三项 home 级设置（缺省空串）、登记三条命令、在外壳加载时登记「外观」窗格、在外壳加载时登记启动样式。' +
+        '必需注入只有 gwbSettings 与 gwbCommands；外壳用局部注入，没有外壳时本插件照常加载。',
       caps: [
         { id: 'settings', name: '三项设置', ident: 'defineThemeSettings' },
         { id: 'register-pane', name: '登记外观窗格', ident: "inject(['gwbShell'])" },
         { id: 'valuesave', name: '取值与保存', ident: 'theme.values · theme.save' },
-        { id: 'startup', name: '启动样式', ident: 'theme.startupCss' },
+        { id: 'startup', name: '启动样式', ident: 'theme.startupCss · registerStartupStyle' },
       ],
     },
     {
@@ -82,7 +82,7 @@ export const themeGraph = defineSeamGraph({
       pkg: '@godcreator/gwb-commands',
       role: null,
       outside: true,
-      blurb: '必需注入。三条命令登记在本插件的上下文上，本插件卸载时一起注销；外壳和外观窗格都经它按名字调。',
+      blurb: '必需注入。三条命令登记在本插件的上下文上，本插件卸载时一起注销；外观窗格经它按名字调。',
       caps: [{ id: 'commands', name: '命令总线', ident: 'gwbCommands.register' }],
     },
     {
@@ -93,7 +93,7 @@ export const themeGraph = defineSeamGraph({
       outside: false,
       blurb:
         '纯函数，不碰设置也不碰页面。两个字体各拼成 :root 上的一个变量，自定义 CSS 原样接在后面；三项全空就是空串。' +
-        'node 侧的 theme.startupCss 与浏览器侧的预览都调它，保存下来的与预览看到的才是同一份。',
+        'node 侧的命令 theme.startupCss、登记给外壳的读函数与浏览器侧的预览都调它，保存下来的与预览看到的才是同一份。',
       caps: [{ id: 'build', name: '拼启动样式', ident: 'buildStartupCss(values)' }],
     },
     {
@@ -135,15 +135,15 @@ export const themeGraph = defineSeamGraph({
     },
     {
       n: 3,
-      name: '启动时取启动样式',
-      a: ['shell-env'],
-      b: ['startup'],
-      iface: "list() 里有 theme.startupCss 才 run('theme.startupCss') → { ok, data: string }",
-      convention: true,
+      name: '登记启动样式',
+      a: ['startup'],
+      b: ['shell-register', 'shell-env'],
+      iface: "inject(['gwbShell']) → registerStartupStyle(() => buildStartupCss(现值))；shell.env 时外壳调 read()",
+      convention: false,
       via: 'code',
       text:
-        '外壳不 import 本包（本包把外壳写在 peer 里，反过来会成环），命令名两边各写一份字符串。外壳先问命令表里有没有这条，没有就不调；' +
-        '回空白当没设置，回失败或回的不是字符串就这次启动不带启动样式、记一条 error。',
+        '外壳不 import 本包（本包把外壳写在 peer 里，反过来会成环），所以由本包局部注入外壳、登记读函数，读函数读本插件自己上下文里的设置。' +
+        '外壳只收一份；回空白当没设置，读的时候抛错就这次启动不带启动样式、记一条 error。',
     },
     {
       n: 4,

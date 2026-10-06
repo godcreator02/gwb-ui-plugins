@@ -113,7 +113,7 @@ function parseSaveArgs(args: unknown): { ok: true; values: ThemeSettingValues } 
 function registerThemeCommands(ctx: GwbContext, commandBus: GwbCommands): void {
   const settings = ctx.gwbSettings
   commandBus.register(
-    { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳启动时读取', usage: '无参数', effect: 'read', plugin: PACKAGE_NAME },
+    { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），和登记给外壳的是同一份', usage: '无参数', effect: 'read', plugin: PACKAGE_NAME },
     () => buildStartupCss(readThemeSettingValues(ctx)),
   )
   commandBus.register(
@@ -155,11 +155,19 @@ function registerAppearancePaneWheneverShellIsLoaded(ctx: GwbContext): void {
   })
 }
 
+/** 外壳每次启动经这个读函数取启动样式；读的是本插件自己上下文里的设置，不经外壳调用方的上下文 */
+function registerStartupStyleWheneverShellIsLoaded(ctx: GwbContext): void {
+  ctx.inject(['gwbShell'], (contextWithShell) => {
+    contextWithShell.gwbShell.registerStartupStyle(() => buildStartupCss(readThemeSettingValues(ctx)))
+  })
+}
+
 export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
   defineThemeSettings(ctx.gwbSettings)
   // 命令插件的增强把它声明成可选、这边的声明必须与之一致；inject 保证它在
   registerThemeCommands(ctx, ctx.gwbCommands!)
   registerAppearancePaneWheneverShellIsLoaded(ctx)
-  log.info(`外观就绪：三项设置 + 三条命令（启动样式走 ${STARTUP_COMMAND}）`)
+  registerStartupStyleWheneverShellIsLoaded(ctx)
+  log.info('外观就绪：三项设置 + 三条命令，外壳在场时登记启动样式')
 }

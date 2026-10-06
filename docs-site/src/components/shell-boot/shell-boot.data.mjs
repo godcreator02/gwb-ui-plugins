@@ -24,7 +24,7 @@ export const actors = [
  * @type {BootStep[]}
  */
 export const steps = [
-  /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/index.ts" lines="157-163" hash="4c4709b8e5ae" blob="f97ef75dc0ff" */
   {
     title: '外壳声明「页面归我」',
     text:

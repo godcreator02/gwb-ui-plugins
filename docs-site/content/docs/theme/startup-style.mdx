@@ -1,6 +1,6 @@
 ---
 title: 外观设置怎么进页面
-description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 #gwb-theme-style 经过哪几步、为什么排在外壳三张表之后；外观窗格怎么预览与退回；用户自定义 CSS 为什么能压过令牌与插件工具类；亮暗开关怎么生效
+description: 启动样式从 home 里的设置到页面上的 #gwb-theme-style 经过哪几步、为什么排在外壳三张表之后；外观窗格怎么预览与退回；用户自定义 CSS 为什么能压过令牌与插件工具类；亮暗开关怎么生效
 ---
 
 外观设置跨了三处：设置存在 node 侧，启动样式由外壳在启动时取、在页面上注入，外观窗格又在页面上直接改它。
@@ -18,19 +18,20 @@ description: 启动样式 theme.startupCss 从 home 里的设置到页面上的 
 
 {/* ref file="../plugins/shell/src/client/index.tsx" lines="652-656" hash="b956510a4aab" blob="d5ac26e76c09" */}
 
-外壳 node 侧取启动样式时先问命令在不在：没装外观插件时不调，因为调一条不在的命令，命令总线会记一条 warn，没装可选插件却每次启动都留一条；
-回空白当用户没设置；命令在却回失败或回的不是字符串，也当没有，外壳照常启动、只记一条 error：
+外壳 node 侧取启动样式靠外观插件登记的读函数：外观插件局部注入外壳，调 `registerStartupStyle` 交出一个读函数，外壳每次答 `shell.env` 时调它；
+没装外观插件就没人登记，环境里没有这一项，也不会因为调一条不在的命令留下 warn。外壳只收一份，第二个插件登记时抛错；
+回空白当用户没设置；读的时候抛错也当没有，外壳照常启动、只记一条 error：
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-22" hash="f9112e54b6b6" blob="86c08b9d31cd" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="13-37" hash="620bc5f52897" blob="d48c30458e70" */}
 
-外壳的测试检查两种情况：命令表里没有这条就不调；有而且回了非空字符串，`shell.env` 带上它：
+外壳的测试检查：登记了就带上、每次现读，登记方卸载后不再带；只收一份：
 
-{/* ref file="../plugins/shell/tests/startup-style.test.ts" lines="19-25" hash="a1ac198db2b3" blob="d1e973f3ff33" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="279-290" hash="5a52fd35076e" blob="ca565f858a67" */}
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="279-283" hash="8f30c921baaa" blob="afa7e7128cf4" */}
+{/* ref file="../plugins/shell/tests/startup-style.test.ts" lines="38-47" hash="a8bbcfcfec3a" blob="4c4900ac1d93" */}
 
-外观插件比外壳晚加载、启动那一刻命令表里还没有这条命令时，这一次启动不带启动样式，下一次整页重新加载就有了。
-为什么查在外壳的 node 侧、不在页面上查，见[可选命令先问在不在](/trajectory/2026-09-17-optional-theme-command)。
+外观插件比外壳晚加载、启动那一刻还没登记时，这一次启动不带启动样式，下一次整页重新加载就有了。
+为什么改成外观插件主动登记，见[外壳经服务收启动样式](/trajectory/2026-10-07-startup-style-via-shell-service)。
 
 窗格的预览与启动时的注入用的是同一个 `buildStartupCss`，所以预览看到的就是重启后的样子。预览只改页面，点保存才写回设置：
 

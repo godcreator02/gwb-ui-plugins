@@ -1,8 +1,8 @@
 /**
  * 全局接缝图的内容：首页的 <SeamMap /> 画的就是它。
  * 虚线框是本仓的三个插件，框里的方块是插件对外的能力；内核、基础插件、别的带界面的插件画在框外。
- * 接缝编号按依赖方向排：先是插件接内核（1–4），再是接基础插件（5–9），再是外壳给带界面的插件的出口（10–13），
- * 最后是只靠命令名与字符串对上的两条（14、15）。每条接缝在首页有同名的一节，这里的 text 是那一节的概括。
+ * 接缝编号按依赖方向排：先是插件接内核（1–4），再是接基础插件（5–9），再是外壳给别的插件的出口（10–14，14 是外观登记启动样式），
+ * 最后是只靠命令名对上的 15。每条接缝在首页有同名的一节，这里的 text 是那一节的概括。
  * 坐标不在这里，在 system.layout.ts。
  */
 import { defineSeamGraph } from '@godcreator/docfirst-explainer/seam-graph';
@@ -17,7 +17,7 @@ const modules = [
     outside: false,
     blurb: '正文字体、等宽字体与自定义 CSS 三项设置，拼成启动样式交给外壳；有外壳时另登记「外观」窗格。没有外壳也照常加载。',
     caps: [
-      { id: 'theme-core', name: '外观设置与命令', ident: 'theme.startupCss' },
+      { id: 'theme-core', name: '外观设置与命令', ident: 'theme.* · registerStartupStyle' },
       { id: 'theme-pane', name: '外观窗格', ident: 'appearance' },
     ],
   },
@@ -110,7 +110,7 @@ const seams = [
     via: 'code',
     text: '三个插件的 node 侧从内核包的包根只 import type（包根一加载就启动 Electron 应用），peer 里写内核包。外壳在构造时取 ctx.gwbKernel，不写进 inject，不在 gwb 内核里就当场抛错。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/index.ts" lines="157-163" hash="4c4709b8e5ae" blob="f97ef75dc0ff" */
   /* ref file="../plugins/shell/src/client/index.tsx" lines="709-730" hash="300e176c4eac" blob="d5ac26e76c09" */
   {
     n: 2,
@@ -148,8 +148,8 @@ const seams = [
     via: 'code',
     text: '页面入口用命令插件的页面客户端 command 调命令（经内核的请求通道到命令总线）、收回执，交给窗格的 host.call 就是它；外壳 node 侧经 gwbKernel.emit 把桌面、窗格、开窗格三类动作推给页面，页面按 t 区分是哪一类。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */
-  /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="54e9db88bc57" blob="ea4588cf8ead" */
+  /* ref file="../plugins/shell/src/index.ts" lines="180-183" hash="b510fbb0c95b" blob="f97ef75dc0ff" */
+  /* ref file="../plugins/theme/src/index.ts" lines="112-118" hash="6af3eafdd259" blob="c80681eff873" */
   /* ref file="../plugins/baseui/src/index.ts" lines="27-45" hash="28cd476cc2fc" blob="7b7e30b1a7cd" */
   {
     n: 5,
@@ -185,7 +185,7 @@ const seams = [
     text: '外观经设置插件声明 font-sans、font-mono、custom-css 三项 home 级设置，缺省空串；theme.values 读、theme.save 一次写齐三项。设置插件是外观的必需依赖。',
   },
   /* ref file="../plugins/shell/src/index.ts" lines="51-52" hash="ad63ef54ee4f" blob="bdace3d0a52a" */
-  /* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/index.ts" lines="165-171" hash="84067ee58a76" blob="f97ef75dc0ff" */
   {
     n: 8,
     name: '说明书登记',
@@ -209,7 +209,7 @@ const seams = [
     via: 'code',
     text: '基础界面对插件管理的服务做局部注入，服务在才登记插件管理窗格；日志窗格总是登记，它调的 logger.query 是基础界面自己登记的。插件管理窗格里的操作经命令名调 plugin-manager.*、settings.*、credentials.*，插件管理的回执类型从它的 ./receipts 子路径 import type。',
   },
-  /* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */
+  /* ref file="../plugins/shell/src/index.ts" lines="84-99" hash="2a0c9d5c63f2" blob="f97ef75dc0ff" */
   /* ref file="../plugins/shell/src/pane-registry.ts" lines="4-21" hash="7838b69c2fc9" blob="22e4ca8931ac" */
   {
     n: 10,
@@ -255,20 +255,20 @@ const seams = [
     via: 'disk',
     text: '插件的样式入口在构建期引用外壳的映射文件，bg-primary 这类类名编成 var(--primary)、不输出变量值；值在运行时读外壳最先注入的令牌表。',
   },
-  /* ref file="../plugins/shell/src/startup-style.ts" lines="3-11" hash="0320654d56d7" blob="86c08b9d31cd" */
+  /* ref file="../plugins/shell/src/startup-style.ts" lines="3-11" hash="20015c61fea2" blob="d48c30458e70" */
   /* ref file="../plugins/theme/src/client/index.tsx" lines="18-19" hash="cad6e1e036ba" blob="82cc4b455dbb" */
   /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-4" hash="a668bd572a85" blob="20e3479e96b1" */
   {
     n: 14,
     name: '启动样式',
-    a: ['page', 'commands'],
-    b: ['theme-core', 'theme-pane'],
-    iface: "命令 theme.startupCss（先查 gwbCommands.list() 有没有）；样式元素 id gwb-theme-style",
+    a: ['theme-core', 'theme-pane'],
+    b: ['service', 'page'],
+    iface: "gwbShell.registerStartupStyle(read)；shell.env 的 startupCss；样式元素 id gwb-theme-style",
     convention: true,
     via: 'code',
-    text: '外壳处理 shell.env 时命令表里有 theme.startupCss 才调它，页面入口把回来的样式写进 id 为 gwb-theme-style 的样式元素、排在三张样式表之后；外观窗格预览时改的也是这张。命令名与 id 两边各写一份，不互相 import。',
+    text: '外观插件局部注入外壳，调 registerStartupStyle 交出读函数，外壳只收一份；外壳答 shell.env 时调它，页面入口把回来的样式写进 id 为 gwb-theme-style 的样式元素、排在三张样式表之后；外观窗格预览时改的也是这张。样式元素的 id 两边各写一份，不互相 import。',
   },
-  /* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="107-108" hash="4d3a00459fe8" blob="cfd6a423ce07" */
+  /* ref file="../plugins/baseui/src/client/panes/plugin-manager/index.tsx" lines="105-106" hash="4d3a00459fe8" blob="4c7bbe6d3b73" */
   {
     n: 15,
     name: '外壳的命令',
@@ -277,7 +277,7 @@ const seams = [
     iface: 'shell.plugins、shell.reload、shell.openPane、shell.pane.*、shell.desktop.* 等，经命令总线按名字调',
     convention: true,
     via: 'code',
-    text: '别的插件与 agent 经命令总线按名字调外壳的命令：插件管理窗格取插件名、升级后整页重载，别的插件跨插件开窗格。外壳的包根不导出命令名，名字与回执形状以命令的 usage 为准。',
+    text: '别的插件的窗格与 agent 经命令总线按名字调外壳的命令：插件管理窗格取插件名、升级后整页重载，别的插件的窗格跨插件开窗格。外壳的包根不导出命令名，名字与回执形状以命令的 usage 为准。',
   },
 ];
 

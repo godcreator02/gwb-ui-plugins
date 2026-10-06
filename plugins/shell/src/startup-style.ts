@@ -1,22 +1,38 @@
-import type { GwbCommands } from '@godcreator/gwb-commands'
+import type { PaneOwner } from './pane-registry.js'
 
-/** 与主题插件导出的 `STARTUP_COMMAND` 各存一份：主题插件 peer 外壳，外壳 import 它会成环 */
-export const THEME_STARTUP_COMMAND = 'theme.startupCss'
+/** 外壳每次启动时注入页面的用户外观样式：只收一份，主题插件是可选的、没装就没有 */
+export interface StartupStyleSlot {
+  /** 已有别的插件登记时抛错；返回的注销函数只撤自己那一份 */
+  register(owner: PaneOwner, read: () => string): () => void
+  /**
+   * 空白是用户没设置，当没有；读的时候抛错也当没有，但记一条 error——外壳照常启动，只是少了用户外观样式
+   */
+  css(logError: (message: string) => void): string | undefined
+}
 
-/**
- * 主题插件是可选的：命令表里没有这条就不调（调不存在的命令会记一条 warn）。
- * 空白是用户没设置，当没有；回失败、回的不是字符串也当没有，但记一条 error——外壳照常启动，只是少了用户外观样式
- */
-export async function startupCss(bus: Pick<GwbCommands, 'list' | 'run'>, logError: (message: string) => void): Promise<string | undefined> {
-  if (!bus.list().some((command) => command.name === THEME_STARTUP_COMMAND)) return undefined
-  const reply = await bus.run(THEME_STARTUP_COMMAND)
-  if (!reply.ok) {
-    logError(`${THEME_STARTUP_COMMAND} 回了失败，这次启动不带用户外观样式：${reply.error ?? '没说原因'}`)
-    return undefined
+export function createStartupStyleSlot(): StartupStyleSlot {
+  let registered: { owner: PaneOwner; read: () => string } | undefined
+  return {
+    register(owner, read) {
+      if (registered !== undefined) {
+        throw new Error(`启动样式已由 ${registered.owner.pkg}（${registered.owner.entryId}）登记，外壳只收一份，${owner.pkg} 没登记上`)
+      }
+      const mine = { owner, read }
+      registered = mine
+      return () => {
+        if (registered === mine) registered = undefined
+      }
+    },
+    css(logError) {
+      if (registered === undefined) return undefined
+      let css: string
+      try {
+        css = registered.read()
+      } catch (err: unknown) {
+        logError(`${registered.owner.pkg} 登记的启动样式读不出，这次启动不带用户外观样式：${String(err)}`)
+        return undefined
+      }
+      return css.trim() === '' ? undefined : css
+    },
   }
-  if (typeof reply.data !== 'string') {
-    logError(`${THEME_STARTUP_COMMAND} 回的不是字符串（${typeof reply.data}），这次启动不带用户外观样式`)
-    return undefined
-  }
-  return reply.data.trim() === '' ? undefined : reply.data
 }

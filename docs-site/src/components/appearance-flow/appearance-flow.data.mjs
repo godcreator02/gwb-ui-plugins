@@ -43,8 +43,8 @@ export const headElements = {
  *   settingsChanged: string[], head: HeadItem[], css: string[] | null, cssChanged: number[], pane: PaneState | null }} FlowStep
  * @type {FlowStep[]}
  */
-/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="a9d84efd2304" blob="ea4588cf8ead" */
-/* ref file="../plugins/shell/src/startup-style.ts" lines="10-22" hash="c49f50da741d" blob="86c08b9d31cd" */
+/* ref file="../plugins/theme/src/index.ts" lines="112-142" hash="ea2c6368b20e" blob="c80681eff873" */
+/* ref file="../plugins/shell/src/startup-style.ts" lines="13-37" hash="620bc5f52897" blob="d48c30458e70" */
 /* ref file="../plugins/theme/src/client/index.tsx" lines="32-95" hash="15576f315894" blob="d52b9b51d84a" */
 export const steps = [
   {
@@ -64,14 +64,14 @@ export const steps = [
   },
   {
     id: 'ask',
-    title: '启动：外壳在 node 侧先问命令在不在',
+    title: '启动：外壳在 node 侧调外观插件登记的读函数',
     text:
-      '页面问外壳要启动时的环境（shell.env）。外壳 node 侧先看命令表里有没有 theme.startupCss：没装外观插件就没有这条，外壳不调，环境里就没有 startupCss 这一项。' +
-      '有才调，外观插件用 buildStartupCss 把三项现值拼成一段 CSS 回给外壳；回空白当没设置，回失败或不是字符串就记一条 error、这次启动不带启动样式。',
+      '外观插件加载时局部注入外壳，经 registerStartupStyle 交给外壳一个读函数。页面问外壳要启动时的环境（shell.env），外壳 node 侧调这个读函数：没装外观插件就没人登记，环境里就没有 startupCss 这一项。' +
+      '读函数用 buildStartupCss 把三项现值拼成一段 CSS；回空白当没设置，读的时候抛错就记一条 error、这次启动不带启动样式。',
     actor: 'shell',
     calls: [
-      "外壳 → 命令总线：list() 里有 'theme.startupCss'",
-      "外壳 → 命令总线：run('theme.startupCss')",
+      '外观插件 → 外壳：registerStartupStyle(read)（加载时登记一次）',
+      '外壳：shell.env 时调 read()',
       '外观插件：buildStartupCss(三项现值) → 一段 CSS',
       '外壳：shell.env 回 { home, styles, startupCss, versions }',
     ],

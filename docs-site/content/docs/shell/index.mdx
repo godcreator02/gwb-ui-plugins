@@ -28,25 +28,25 @@ full: true
 
 ### 给插件的服务 `ctx.gwbShell`
 
-插件在 `inject` 里写 `gwbShell`，拿到的服务只有三个方法：注册窗格、报自己给人看的名字、在状态栏上登记按钮（见[插件的按钮](/docs/shell/statusbar#插件的按钮)）。三者都登记在调用方的上下文上，
+插件在 `inject` 里写 `gwbShell`，拿到的服务只有四个方法：注册窗格、报自己给人看的名字、在状态栏上登记按钮（见[插件的按钮](/docs/shell/statusbar#插件的按钮)）、登记启动样式（外观插件用，只收一份，见[外观设置怎么进页面](/docs/theme/startup-style)）。四者都登记在调用方的上下文上，
 插件卸载时自动注销，不用自己包 `ctx.effect`；返回的注销函数给要提前注销的场景。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="84-99" hash="2a0c9d5c63f2" blob="f97ef75dc0ff" */}
 
 包根只导出这个接口和它用到的 `PaneSpec`、`PluginInfo`、`StatusItemSpec` 三个类型，外加给 cordis `Context` 补的 `gwbShell` 一项。
-命令名、布局文件与表里一行的形状都不导出：下游按名字调命令，回执形状看命令的 `usage`。
+命令名、布局文件与表里一行的形状都不导出：页面与 agent 按名字调命令，回执形状看命令的 `usage`。
 
 {/* ref file="../plugins/shell/src/index.ts" lines="24-25" hash="2f61ea755107" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="502-506" hash="a711dfb6a01f" blob="bdace3d0a52a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="515-519" hash="a711dfb6a01f" blob="f97ef75dc0ff" */}
 
-发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有这三个方法。
+发布的 `dist/index.d.ts` 由产物测试检查：没有命令名常量、没有这几个内部类型，`GwbShellApi` 只有这四个方法。
 
-{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="107-120" hash="13460879210a" blob="56b3f87b8bdf" */}
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="107-120" hash="e0ca9d006dcc" blob="cb554f34024e" */}
 
 ### 命令
 
-外壳的其余能力全部是命令，登记在命令总线上，谁都按名字调：
+外壳的其余能力全部是命令，登记在命令总线上，页面与 agent 按名字调；别的插件在 node 侧只用上面的服务：
 
 | 命令 | 做什么 | 谁在调 |
 | --- | --- | --- |
@@ -56,8 +56,8 @@ full: true
 | `shell.env` | 页面每次启动时要的环境 `{ home, styles, startupCss?, versions }` | 外壳的页面 |
 | `shell.layout.get`、`shell.layout.save` | 读布局文件；整份替换，写之前校验形状 | 外壳的页面 |
 | `shell.reload` | 整页重载全部窗口 | 插件管理窗格升级之后；agent |
-| `shell.desktop.list`、`switch`、`new`、`rename`、`delete` | 桌面，见[多桌面](/docs/shell/desktops#命令shelldesktop) | agent、别的插件 |
-| `shell.openPane` | 打开任何插件的窗格，见[跨插件开窗格](/docs/shell/panes#跨插件开窗格shellopenpane) | 别的插件、agent |
+| `shell.desktop.list`、`switch`、`new`、`rename`、`delete` | 桌面，见[多桌面](/docs/shell/desktops#命令shelldesktop) | agent、别的插件的窗格 |
+| `shell.openPane` | 打开任何插件的窗格，见[跨插件开窗格](/docs/shell/panes#跨插件开窗格shellopenpane) | 别的插件的窗格、agent |
 | `shell.pane.list`、`focus`、`send`、`close` | 所有桌面上开着的窗格，见[窗格命令](/docs/shell/panes#窗格命令shellpane) | agent |
 | `shell.pane.sync` | 页面专用：把窗格清单推给 node 侧缓存 | 只有外壳自己的页面 |
 
@@ -72,7 +72,7 @@ full: true
 
 命令登记在外壳自己的上下文上，`plugin` 一律写外壳的包名，外壳卸载时命令总线把它们一起注销；参数由各条命令的处理函数校验，不合格回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="180-183" hash="b510fbb0c95b" blob="f97ef75dc0ff" */}
 
 {/* ref file="../plugins/shell/tests/service.test.ts" lines="141-166" hash="09e6db0d0563" blob="afa7e7128cf4" */}
 
@@ -115,7 +115,7 @@ full: true
 
 转发类命令 node 侧先校验参数，不对当场回错，对了才推事件；比如 `shell.desktop.switch` 推一条 `t` 为 `gwb-shell-desktop` 的事件：
 
-{/* ref file="../plugins/shell/tests/service.test.ts" lines="304-313" hash="fea1a639c194" blob="afa7e7128cf4" */}
+{/* ref file="../plugins/shell/tests/service.test.ts" lines="319-328" hash="fea1a639c194" blob="ca565f858a67" */}
 
 ### 包的出口
 
@@ -133,24 +133,24 @@ full: true
 
 | 依赖 | 怎么用到 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- |
-| 命令总线 `gwbCommands`（`@godcreator/gwb-commands`） | 必需依赖，写在 `static inject`；peer | 登记全部 `shell.*` 命令；处理 `shell.env` 时查 `theme.startupCss` 在不在 | 外壳不加载，cordis 在日志里写明在等它 |
+| 命令总线 `gwbCommands`（`@godcreator/gwb-commands`） | 必需依赖，写在 `static inject`；peer | 登记全部 `shell.*` 命令 | 外壳不加载，cordis 在日志里写明在等它 |
 | 数据 `gwbData`（`@godcreator/gwb-data`） | 必需依赖；peer | 布局文件存成 gwbData 的文档 `layout` | 外壳不加载：布局没地方存 |
 | 说明书 `gwbSkills`（`@godcreator/gwb-skills`） | 局部注入；peer，标 `optional` | 登记随包的 `gwb-shell` 说明书 | 外壳照常运行，只是说明书没登记；说明书插件后加载时补登记 |
 | 内核服务 `gwbKernel`（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，构造时经 `requireKernel` 取；peer 只为 `import type` | `setShell` 接管页面根、`registerImports` 登记 React、`emit` 把动作推给页面；`dataDir` 与 `version` 给 `shell.env` | 不在 gwb 内核里（普通 cordis 宿主）就在构造时抛错 |
 | `cordis` | peer，按值 import `Service` 基类 | 外壳服务的基类，用宿主那一份 | — |
 | 命令插件的页面客户端 `@godcreator/gwb-commands/client` | 打包进 `client.js` | 浏览器侧调命令：经内核的 `commands.run` 请求通道走到命令总线；交给窗格插件的 `host.call` 就是它 | — |
-| 外观插件的 `theme.startupCss` | 按名字调，不写 peer | 启动时取用户外观样式 | 没装外观插件照常启动，只是不带用户外观样式 |
+| 外观插件 | 它局部注入外壳、调 `registerStartupStyle` 登记读函数；外壳不写 peer、不 import 它 | 启动时取用户外观样式 | 没装外观插件照常启动，只是不带用户外观样式 |
 
 注册发生在主进程里，摆放窗格在页面上，注册表只能经命令传过去：内核自己一条命令都没有，也不认识任何插件的命令名。
 所以命令总线是必需依赖——没有它，外壳就是一个打不开任何窗格的空容器，不如不加载。
 
-{/* ref file="../plugins/shell/src/index.ts" lines="97-99" hash="79c3f058b1f5" blob="bdace3d0a52a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="99-101" hash="79c3f058b1f5" blob="f97ef75dc0ff" */}
 
 {/* ref file="../plugins/shell/package.json" lines="29-40" hash="bd485644ad54" blob="efb6f7651ebc" */}
 
 {/* ref file="../plugins/shell/src/vocab.ts" lines="3-10" hash="9ad006ba233b" blob="1f37046cda5d" */}
 
-{/* ref file="../plugins/shell/src/startup-style.ts" lines="6-12" hash="7131cd7aca9a" blob="86c08b9d31cd" */}
+{/* ref file="../plugins/shell/src/startup-style.ts" lines="26-36" hash="8ae54055f272" blob="d48c30458e70" */}
 
 打包进产物的库（dockview、lucide 图标全集、radix 与 shadcn 的组件、React）写在 dev 里，不是运行时依赖。
 
@@ -164,7 +164,7 @@ full: true
 
 {/* ref file="../plugins/shell/src/index.ts" lines="51-52" hash="ad63ef54ee4f" blob="bdace3d0a52a" */}
 
-{/* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="165-171" hash="84067ee58a76" blob="f97ef75dc0ff" */}
 
 ## 不做的事
 

@@ -1,0 +1,25 @@
+---
+born-at: 2026-10-07T03:10
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 外壳经服务收启动样式
+domain: shell
+---
+
+supersedes:: [可选命令先问在不在](2026-09-17-optional-theme-command.md)
+
+## 背景
+
+生态的规矩改成插件之间的能力走 cordis 服务、命令只给页面与 agent（见 gwb-lifecycle-plugins 的轨迹卡 2026-10-07-services-first）。
+外壳答 `shell.env` 时先查命令表里有没有 `theme.startupCss`、有才按名字调，是本仓 node 侧唯一一处插件之间按命令名互调。
+09-17 那张卡否掉过「外观插件主动把样式交给外壳」，理由之一是要给 `gwbShell` 加方法、改被别的插件注入的服务，得先问人；这次用户同意了。
+
+## 结论与边界
+
+`gwbShell` 加方法 `registerStartupStyle(read: () => string)`：外观插件在 `ctx.inject(['gwbShell'], …)` 里登记一个读函数，
+外壳答 `shell.env` 时调它。外壳只收一份，已有插件登记时第二个抛错；读的时候抛错记一条 error、这次启动不带用户外观样式，空白当没设置。
+登记跟着调用方的上下文注销，外观插件卸载或外壳重新加载时自动撤掉。登记的那一份放进构造时建好的对象里：方法里给 `this` 赋值，
+cordis 会把值写到给调用方派生的对象上。
+
+命令 `theme.startupCss` 留着，和读函数用同一个拼法；外壳不再调它，`startup-style.ts` 里那份命令名也删了。
+09-17 那张卡说的「没装外观插件时不留 warn」照样成立：没人登记就不调。外观插件比外壳晚加载、启动那一刻还没登记时，这一次启动不带启动样式，下一次整页重新加载就有了，和以前一样。

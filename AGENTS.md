@@ -17,7 +17,7 @@
 * **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、插件管理）写 `^<源上 latest>`，
   同仓的（shell / theme / baseui 之间）写 `workspace:*`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
   不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
-* **只按命令名调用的插件不写 peer**：不用它的服务、也不 import 它的类型，只经命令总线按名字调它的命令（命令不在就回执说明）——如 baseui 调 `settings.*`、shell 调 `theme.startupCss`
+* **窗格只按命令名调用的插件不写 peer**：窗格在页面上拿不到服务，只经命令总线按名字调对方的命令（命令不在就回执说明），也不 import 对方的类型——如 baseui 的窗格调 `settings.*`。node 侧插件之间不按命令名互调，用对方的服务：外观局部注入外壳、经 `registerStartupStyle` 登记启动样式
 * 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见文档站首页的接缝图（[`docs-site/content/docs/index.mdx`](docs-site/content/docs/index.mdx)）
 
 ## baseui 三条规矩（破了任何一条，它就会变成什么都往里放的插件）

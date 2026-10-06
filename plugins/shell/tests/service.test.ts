@@ -264,7 +264,7 @@ describe('布局文件两条命令', () => {
 })
 
 describe('shell.env', () => {
-  it('回 home、三张样式表、版本；没有 theme.startupCss 就没有 startupCss', async () => {
+  it('回 home、三张样式表、版本；没人登记启动样式就没有 startupCss', async () => {
     const env = (await (await bootShell()).call('shell.env')) as Record<string, unknown>
     expect(env['home']).toBe('D:/fake-home')
     expect(env['styles']).toHaveLength(3)
@@ -276,10 +276,25 @@ describe('shell.env', () => {
     expect(env).not.toHaveProperty('startupCss')
   })
 
-  it('theme.startupCss 回非空字符串时带上 startupCss', async () => {
-    const { bus, call } = await bootShell()
-    bus.register({ name: 'theme.startupCss', description: '测试用的主题启动样式', usage: '无参数', effect: 'read', plugin: '@t/theme' }, () => 'body{}')
+  it('经 registerStartupStyle 登记了启动样式就带上 startupCss，登记方卸载后不再带', async () => {
+    const { root, call, logs } = await bootShell()
+    const { shell, fiber } = await callerShell(root, { id: 'home:theme', pkg: '@t/theme' })
+    let css = 'body{}'
+    shell.registerStartupStyle(() => css)
     expect(await call('shell.env')).toMatchObject({ startupCss: 'body{}' })
+    css = 'main{}'
+    expect(await call('shell.env')).toMatchObject({ startupCss: 'main{}' })
+    expect(textsOf(logs, 'info').some((t) => t.includes('启动样式登记上了') && t.includes('@t/theme'))).toBe(true)
+    await fiber.dispose()
+    expect(await call('shell.env')).not.toHaveProperty('startupCss')
+  })
+
+  it('已有插件登记启动样式时，第二个登记的抛错', async () => {
+    const { root } = await bootShell()
+    const { shell: themeShell } = await callerShell(root, { id: 'home:theme', pkg: '@t/theme' })
+    themeShell.registerStartupStyle(() => 'body{}')
+    const { shell } = await callerShell(root, hello)
+    expect(() => shell.registerStartupStyle(() => 'main{}')).toThrow('外壳只收一份')
   })
 })
 

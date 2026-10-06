@@ -30,7 +30,7 @@ const SHELL_STYLES = ['gwb-shell/dist/theme.css', 'gwb-shell/dist/dockview.css',
  * @typedef {{ id: string, title: string, text: string, lane: 'main' | 'preload' | 'page', code?: StepCode, registry: string[][], importmap: string[][], styles: string[], root: string, changed: StateName[], fault?: boolean }} BootStep
  * @type {BootStep[]}
  */
-/* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
+/* ref file="../plugins/shell/src/index.ts" lines="157-163" hash="4c4709b8e5ae" blob="f97ef75dc0ff" */
 /* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */
 /* ref file="../plugins/shell/src/index.ts" lines="33-43" hash="84186942fe7c" blob="bdace3d0a52a" */
 /* ref file="../plugins/shell/src/client/index.tsx" lines="652-656" hash="b956510a4aab" blob="d5ac26e76c09" */

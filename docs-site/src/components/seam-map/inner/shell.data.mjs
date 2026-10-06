@@ -44,9 +44,9 @@ export const shellGraph = defineSeamGraph({
       role: null,
       outside: true,
       blurb:
-        '可选：没装它外壳照常启动，只是不带用户外观样式。外壳按名字调它的命令 theme.startupCss，它的外观窗格改写页面上 id 为 gwb-theme-style 的样式元素；外壳不 import 它，peer 里也不写它。',
+        '可选：没装它外壳照常启动，只是不带用户外观样式。它局部注入外壳、经 registerStartupStyle 登记读启动样式的函数，它的外观窗格改写页面上 id 为 gwb-theme-style 的样式元素；外壳不 import 它，peer 里也不写它。',
       caps: [
-        { id: 'theme-startup', name: '启动样式', ident: 'theme.startupCss' },
+        { id: 'theme-startup', name: '启动样式', ident: 'registerStartupStyle(read)' },
         { id: 'theme-pane', name: '外观窗格', ident: '#gwb-theme-style' },
       ],
     },
@@ -59,7 +59,7 @@ export const shellGraph = defineSeamGraph({
       blurb:
         'node 侧入口，GwbShell 服务类。对插件只有 registerPane、describeSelf、registerStatusItem 三个方法；其余能力全部登记成 shell.* 命令。初始化时登记四个 React 入口的地址、声明自己是外壳；说明书插件在时登记随包的 gwb-shell 说明书。',
       caps: [
-        { id: 'api', name: '服务方法', ident: 'registerPane · describeSelf · registerStatusItem' },
+        { id: 'api', name: '服务方法', ident: 'registerPane · describeSelf · registerStatusItem · registerStartupStyle' },
         { id: 'commands', name: '命令', ident: 'shell.*' },
         { id: 'takeover', name: '接管页面根', ident: 'registerImports · setShell' },
         { id: 'skills', name: '随包说明书', ident: 'skills/gwb-shell' },
@@ -204,7 +204,7 @@ export const shellGraph = defineSeamGraph({
   ],
   entries: [{ id: 'callers', name: 'agent · 别的插件', to: 'bus' }],
   seams: [
-    /* ref file="../plugins/shell/src/index.ts" lines="84-95" hash="aec03e88c2a1" blob="bdace3d0a52a" */
+    /* ref file="../plugins/shell/src/index.ts" lines="84-99" hash="2a0c9d5c63f2" blob="f97ef75dc0ff" */
     {
       n: 1,
       name: '注册窗格',
@@ -229,7 +229,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '服务把取到的身份与插件给的几样交给表。状态栏按钮表的检查与窗格表同一套（client 必给），表一变就发一条 gwb-shell-status-items 事件。窗格表在这一步检查：空 id、id 带冒号、空标题、client / style 给了却不是对应后缀的 file:// 地址、kind 不是 tool / document，都当场抛错，抛在插件自己的 apply 里；同一个键重复注册，后来者生效并告警；图标名认不出只告警，标签上画 #。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="175-178" hash="b510fbb0c95b" blob="bdace3d0a52a" */
+    /* ref file="../plugins/shell/src/index.ts" lines="180-183" hash="b510fbb0c95b" blob="f97ef75dc0ff" */
     {
       n: 3,
       name: '命令总线',
@@ -241,7 +241,7 @@ export const shellGraph = defineSeamGraph({
       text:
         '外壳的对外能力都登记成 shell.* 命令：取两张表、页面环境、读写布局文件、整页重载、桌面、跨插件开窗格、窗格。页面、agent、别的插件都按名字经命令总线调它们，包根不导出命令名。命令登记在外壳自己的上下文上，外壳卸载时一起注销。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="205-223" hash="e95de764a076" blob="bdace3d0a52a" */
+    /* ref file="../plugins/shell/src/index.ts" lines="210-228" hash="e95de764a076" blob="f97ef75dc0ff" */
     {
       n: 4,
       name: '布局文件',
@@ -253,7 +253,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'shell.layout.get 原样回 readDoc 的结果，没存过是 undefined；shell.layout.save 先用 parseLayoutDoc 校验形状，不对就回 ok: false、不写入，对了整份替换。shell.desktop.* 也先读这份文件，检查要动的桌面在不在。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="160-166" hash="84067ee58a76" blob="bdace3d0a52a" */
+    /* ref file="../plugins/shell/src/index.ts" lines="165-171" hash="84067ee58a76" blob="f97ef75dc0ff" */
     {
       n: 5,
       name: '随包说明书',
@@ -264,7 +264,7 @@ export const shellGraph = defineSeamGraph({
       via: 'code',
       text: '说明书插件是局部注入：它在时登记包根 skills/ 下的 gwb-shell 说明书，后加载也会补登记，卸载时自动注销；它不在外壳照常运行。',
     },
-    /* ref file="../plugins/shell/src/index.ts" lines="152-158" hash="4c4709b8e5ae" blob="bdace3d0a52a" */
+    /* ref file="../plugins/shell/src/index.ts" lines="157-163" hash="4c4709b8e5ae" blob="f97ef75dc0ff" */
     {
       n: 6,
       name: '接管页面根',
@@ -303,18 +303,18 @@ export const shellGraph = defineSeamGraph({
       text:
         '内核页面拿到外壳地址后先等 importmap 注入，再 import client.js，把 #root 交给默认导出 mountShell，留下它回的 dispose；换外壳时先调旧的 dispose、紧接着清空 #root。浏览器侧调命令用命令插件随外壳打包的页面客户端 command，它经内核的 commands.run 请求通道到达命令总线；node 侧转来的动作经 window.gwb.on 收。',
     },
-    /* ref file="../plugins/shell/src/startup-style.ts" lines="3-22" hash="e9946544c710" blob="86c08b9d31cd" */
+    /* ref file="../plugins/shell/src/startup-style.ts" lines="13-37" hash="620bc5f52897" blob="d48c30458e70" */
     /* ref file="../plugins/shell/src/client/theme-boot.ts" lines="3-18" hash="be7555a77dbc" blob="20e3479e96b1" */
     {
       n: 9,
       name: '用户外观样式',
-      a: ['commands', 'mount-shell'],
+      a: ['api', 'commands', 'mount-shell'],
       b: ['theme-startup', 'theme-pane'],
-      iface: 'theme.startupCss（按名字调）→ shell.env 的 startupCss → <style id="gwb-theme-style">',
+      iface: 'registerStartupStyle(read) → shell.env 时调 read() → startupCss → <style id="gwb-theme-style">',
       convention: true,
       via: 'code',
       text:
-        '处理 shell.env 时，命令表里有 theme.startupCss 才调它，没装外观插件不是错误；回失败或回的不是字符串就记一条 error、这次启动不带用户外观样式。页面在三张样式表之后把它写进 id 为 gwb-theme-style 的样式元素，外观窗格预览时直接改这个元素。命令名与元素 id 两边各写一份字符串，不互相 import。',
+        '外观插件局部注入外壳、经 registerStartupStyle 登记读函数，外壳只收一份；处理 shell.env 时调它，没人登记不是错误，读的时候抛错就记一条 error、这次启动不带用户外观样式。页面在三张样式表之后把它写进 id 为 gwb-theme-style 的样式元素，外观窗格预览时直接改这个元素。元素 id 两边各写一份字符串，不互相 import。',
     },
     /* ref file="../plugins/shell/src/browser-imports.ts" hash="b3a836f060d8" blob="981722f5237b" */
     {

@@ -10,7 +10,7 @@ full: true
 
 <SeamMap />
 
-编号按依赖方向排：1–4 是插件接内核，5–9 是插件接基础插件，10–13 是外壳交给带界面的插件的出口，14、15 两条只靠命令名与字符串对上。
+编号按依赖方向排：1–4 是插件接内核，5–9 是插件接基础插件，10–14 是外壳交给别的插件的出口（14 是外观把启动样式登记给外壳），15 只靠命令名对上。
 人只经页面使用这一层：看到的窗格容器、状态栏、每个窗格都画在外壳接管的页面根里。
 
 ## 接缝
@@ -30,8 +30,8 @@ full: true
 | 11 | 窗格挂载 | 带界面的插件的浏览器侧 ↔ 外壳的窗格契约 | `mountPane`、`@godcreator/gwb-shell/pane` | 插件在容器里怎么渲染、用不用 React 由插件决定 | [插件拿到的 args](/docs/shell/panes#插件拿到的-args)、[一个窗格从注册到关闭](/docs/shell/takeover#一个窗格从注册到关闭) |
 | 12 | 外置名单 | 带界面的插件的构建脚本 ↔ 外壳的 `@godcreator/gwb-shell/browser-imports` | `Object.keys(browserImports())` | 内核不决定哪些包名外置，名单归外壳 | [外置名单之外的都打包进插件](/docs/shell/react-runtime#外置名单之外的都打包进插件) |
 | 13 | 令牌映射 | 带界面的插件的样式入口 ↔ 外壳的令牌表 | `theme.reference.css`、`theme.css` | 类名前缀、颜色只用令牌、`var()` 不写死默认值，由 devkit 的样式检查查 | [令牌与颜色](/docs/shell/tokens) |
-| 14 | 启动样式 | 外壳的页面入口与命令 ↔ 外观的命令与外观窗格 | `theme.startupCss`、`shell.env`、`#gwb-theme-style` | 外壳不解析、不校验这段 CSS，写坏了的样式照样生效，由写的人负责 | [外观设置怎么进页面](/docs/theme/startup-style) |
-| 15 | 外壳的命令 | 插件管理窗格、别的带界面的插件、经 MCP 入口的 agent ↔ 外壳命令 | `shell.*` | 外壳不限制谁能调，命令总线对所有插件开放 | [外壳的命令](/docs/shell#命令) |
+| 14 | 启动样式 | 外观的 node 侧与外观窗格 ↔ 外壳的 `gwbShell`、`shell.env` 与页面入口 | `registerStartupStyle`、`shell.env`、`#gwb-theme-style` | 外壳不解析、不校验这段 CSS，写坏了的样式照样生效，由写的人负责 | [外观设置怎么进页面](/docs/theme/startup-style) |
+| 15 | 外壳的命令 | 插件管理窗格、别的带界面的插件的窗格、经 MCP 入口的 agent ↔ 外壳命令 | `shell.*` | 外壳不限制谁能调，命令总线对所有插件开放 | [外壳的命令](/docs/shell#命令) |
 
 ## 三个插件
 

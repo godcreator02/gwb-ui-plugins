@@ -18,7 +18,7 @@ import { listRowsOf, parsePaneArgs, parsePaneSync, type PaneAction, type PaneSyn
 import { PANE_SYNC_COMMAND } from './protocol.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 import { iconProblem, parseIconCatalog, type IconCatalog } from './pane-icon.js'
-import { startupCss } from './startup-style.js'
+import { createStartupStyleSlot, type StartupStyleSlot } from './startup-style.js'
 import { browserImports } from './browser-imports.js'
 
 export type { PaneSpec } from './pane-registry.js'
@@ -92,6 +92,8 @@ export interface GwbShellApi {
   describeSelf(info: PluginInfo): () => void
   /** 在状态栏上登记一个按钮，点它弹出浮层、浮层里的内容由插件的 `mountStatusItem` 画；注销同 `registerPane` */
   registerStatusItem(spec: StatusItemSpec): () => void
+  /** 登记外壳每次启动时注入页面的用户外观样式（主题插件登记它）；外壳只收一份，已有别的插件登记时抛错。注销同 `registerPane` */
+  registerStartupStyle(read: () => string): () => void
 }
 
 export default class GwbShell extends Service implements GwbShellApi {
@@ -106,6 +108,8 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly pluginTable: PluginRegistry
   /** @internal 键是 (entryId, 按钮 id) */
   private readonly statusItemTable: StatusItemRegistry
+  /** @internal 方法里赋值会落在 cordis 派生的对象上，所以登记的那一份放进构造时建好的对象里 */
+  private readonly startupStyleSlot: StartupStyleSlot
   /** @internal */
   private readonly logInfo: (message: string) => void
   /** @internal */
@@ -131,6 +135,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.paneTable = createPaneRegistry(logWarn, checkIcon)
     this.pluginTable = createPluginRegistry(logWarn, checkIcon)
     this.statusItemTable = createStatusItemRegistry(logWarn, checkIcon, () => this.kernel.emit({ t: STATUS_ITEMS_EVENT }))
+    this.startupStyleSlot = createStartupStyleSlot()
   }
 
   [Service.init](): void {
@@ -234,11 +239,11 @@ export default class GwbShell extends Service implements GwbShellApi {
         name: ENV_COMMAND,
         description: '外壳浏览器侧每次启动时要的环境（home、样式表的地址、用户外观样式、版本）',
         usage:
-          '回 { home, styles, startupCss?, versions }——startupCss 是 theme.startupCss 此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
+          '回 { home, styles, startupCss?, versions }——startupCss 是主题插件经 registerStartupStyle 登记的启动样式此刻的值，主题插件没装或没设置就没有这一项；versions 是 { kernel, shell, electron, node, chrome }：kernel 取 gwbKernel.version（内核自己报的），shell 是外壳版本，其余三项是主进程 process.versions。无参数',
         effect: 'read',
       },
-      async (): Promise<ShellEnv> => {
-        const userStartupCss = await startupCss(commandBus, this.logError)
+      (): ShellEnv => {
+        const userStartupCss = this.startupStyleSlot.css(this.logError)
         return userStartupCss === undefined ? envWithoutStartupCss : { ...envWithoutStartupCss, startupCss: userStartupCss }
       },
     )
@@ -494,6 +499,14 @@ export default class GwbShell extends Service implements GwbShellApi {
     const owner = this.ownerOfCaller()
     const unregister = this.statusItemTable.register(owner, spec)
     this.logInfo(`状态栏按钮 ${spec.id}（${spec.title}）登记上了（${owner.pkg}）`)
+    this.ctx.effect(() => unregister)
+    return unregister
+  }
+
+  registerStartupStyle(read: () => string): () => void {
+    const owner = this.ownerOfCaller()
+    const unregister = this.startupStyleSlot.register(owner, read)
+    this.logInfo(`启动样式登记上了（${owner.pkg}）`)
     this.ctx.effect(() => unregister)
     return unregister
   }

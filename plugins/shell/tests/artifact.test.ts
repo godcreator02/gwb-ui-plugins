@@ -104,7 +104,7 @@ describe.skipIf(!built)('产物', () => {
       expect(read('index.d.ts')).not.toMatch(/\bprivate\b/)
     })
 
-    it('不导出命令名常量、ShellEnv / LayoutDoc / SavedLayout 与注册表的行类型；GwbShellApi 只有 registerPane、describeSelf 与 registerStatusItem', () => {
+    it('不导出命令名常量、ShellEnv / LayoutDoc / SavedLayout 与注册表的行类型；GwbShellApi 只有 registerPane、describeSelf、registerStatusItem 与 registerStartupStyle', () => {
       const entry = read('index.d.ts')
       expect([...entry.matchAll(/\b[A-Z_]+_COMMAND\b/g)].map((m) => m[0])).toEqual([])
       for (const name of ['ShellEnv', 'LayoutDoc', 'SavedLayout', 'PaneOwner', 'RegisteredPane', 'RegisteredPlugin', 'RegisteredStatusItem']) {
@@ -112,7 +112,7 @@ describe.skipIf(!built)('产物', () => {
       }
       const shellApi = /export interface GwbShellApi \{([\s\S]*?)\n\}/.exec(entry)?.[1]
       expect(shellApi).toBeDefined()
-      expect([...(shellApi ?? '').matchAll(/^ {4}(\w+)\(/gm)].map((m) => m[1])).toEqual(['registerPane', 'describeSelf', 'registerStatusItem'])
+      expect([...(shellApi ?? '').matchAll(/^ {4}(\w+)\(/gm)].map((m) => m[1])).toEqual(['registerPane', 'describeSelf', 'registerStatusItem', 'registerStartupStyle'])
       expect(shellApi).not.toMatch(/\bpanes\(/)
       expect(shellApi).not.toMatch(/\bplugins\(/)
       expect(entry).not.toMatch(/\bpanes\(\): /)

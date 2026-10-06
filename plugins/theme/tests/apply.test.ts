@@ -51,15 +51,21 @@ function fakeCommands() {
 function fakeShell() {
   const panes: Record<string, unknown>[] = []
   const described: Record<string, unknown>[] = []
+  const startupStyleReaders: Array<() => string> = []
   return {
     panes,
     described,
+    startupStyleReaders,
     registerPane(spec: Record<string, unknown>) {
       panes.push(spec)
       return () => undefined
     },
     describeSelf(info: Record<string, unknown>) {
       described.push(info)
+      return () => undefined
+    },
+    registerStartupStyle(read: () => string) {
+      startupStyleReaders.push(read)
       return () => undefined
     },
   }
@@ -139,9 +145,10 @@ describe('主题插件 apply', () => {
     expect(settings.writes).toEqual([])
   })
 
-  it('没有外壳：不注册窗格，照常加载', async () => {
+  it('没有外壳：不注册窗格、不登记启动样式，照常加载', async () => {
     const { shell, logs } = await bootTheme({ withShell: false })
     expect(shell.panes).toEqual([])
+    expect(shell.startupStyleReaders).toEqual([])
     expect(logs.some((message) => message.args.map(String).join(' ').includes('外观就绪'))).toBe(true)
   })
 
@@ -152,5 +159,15 @@ describe('主题插件 apply', () => {
     expect(String(shell.panes[0]!['client'])).toMatch(/\/client\.js$/)
     expect(String(shell.panes[0]!['style'])).toMatch(/\/style\.css$/)
     expect(shell.described).toEqual([{ title: '外观', icon: 'palette' }])
+  })
+
+  it('有外壳：登记启动样式，每次读都按现值拼、和 theme.startupCss 是同一份', async () => {
+    const { shell, settings, call } = await bootTheme({ withShell: true })
+    expect(shell.startupStyleReaders).toHaveLength(1)
+    const read = shell.startupStyleReaders[0]!
+    expect(read()).toBe('')
+    settings.values.set('custom-css', 'body { color: red }')
+    expect(read()).toBe('body { color: red }')
+    expect(read()).toBe(await call('theme.startupCss'))
   })
 })

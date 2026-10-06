@@ -40,7 +40,7 @@ React 报 `removeChild` 的 `NotFoundError`。为什么在外壳里改而不动�
 {/* ref file="../plugins/shell/src/client/panes.ts" lines="22-39" hash="b2dd836a69e4" blob="35d23289a86a" */}
 
 另外两样取不到不算启动失败：布局文件读不回来就按默认布局打开、这一轮停止保存（见[多桌面与布局保存](/docs/shell/desktops#启动与挂载时从哪份布局开始)）；
-外观插件的 `theme.startupCss` 回了失败，外壳照常启动、只是不带用户外观样式，`gwb.log` 里一条 error。
+外观插件登记的启动样式读的时候抛错，外壳照常启动、只是不带用户外观样式，`gwb.log` 里一条 error。
 
 ## 一个窗格从注册到关闭
 
