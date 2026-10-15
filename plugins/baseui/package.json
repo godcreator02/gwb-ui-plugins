@@ -1,13 +1,15 @@
 {
   "name": "@godcreator/gwb-baseui",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "基础界面：基础插件的官方窗格集（日志、插件管理），一个窗格一个模块，只收拆掉了界面的基础插件的窗格；另登记查日志文件的命令 logger.query",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
@@ -28,7 +30,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
@@ -49,7 +52,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-ui-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

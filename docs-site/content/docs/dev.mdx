@@ -37,7 +37,7 @@ pnpm check   # typecheck + lint + test
 
 三个插件的 `build` 脚本都先运行 `build.ts`，再用 Tailwind 命令行把 `src/client/styles.css` 编成 `dist/style.css`：
 
-{/* ref file="../plugins/theme/package.json" lines="12-15" hash="6452e7b61706" blob="c5d8c5059237" */}
+{/* ref file="../plugins/theme/package.json" lines="14-17" hash="6452e7b61706" blob="8a210a748854" */}
 
 `build.ts` 先清空 `dist/`，再用 esbuild 把 node 侧 `src/index.ts` 与浏览器侧 `src/client/index.tsx` 各打成一个文件。两个外置名单的来源不同：
 
@@ -56,7 +56,7 @@ pnpm check   # typecheck + lint + test
 外壳的构建另外产出：`tsc` 只输出类型声明（包根一份，子路径 `./pane` 一份），窗格图标名单 `pane-icons.json`，
 裁掉 dockview 自带主题后的 `dockview.css`，令牌表 `theme.css` 与映射文件 `theme.reference.css`，以及 `browser-imports.js` 与 `dist/react/` 下的四个 React 文件：
 
-{/* ref file="../plugins/shell/package.json" lines="26-26" hash="270e2f5a79d5" blob="2d44c8a19401" */}
+{/* ref file="../plugins/shell/package.json" lines="28-28" hash="270e2f5a79d5" blob="ef9729d77335" */}
 
 {/* ref file="../plugins/shell/build.ts" lines="162-163" hash="5d30332bc8a6" blob="4dc419913506" */}
 

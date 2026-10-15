@@ -1,13 +1,15 @@
 {
   "name": "@godcreator/gwb-theme",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "description": "外观插件：正文字体、等宽字体与自定义 CSS 的全局启动样式表，外加「外观」窗格，没有外壳也照常加载",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
@@ -25,7 +27,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
@@ -45,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-ui-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

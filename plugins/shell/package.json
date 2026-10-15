@@ -1,7 +1,8 @@
 {
   "name": "@godcreator/gwb-shell",
-  "version": "0.15.11",
+  "version": "0.15.12",
   "description": "外壳：内核页面根的唯一入口，提供窗格容器与窗格注册服务 gwbShell，并随包提供令牌表和 UI 接入说明书",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
@@ -20,7 +21,8 @@
   },
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node build.ts && tsc -p tsconfig.build.json && tsc -p src/client/tsconfig.pane-types.json && tailwindcss -i src/client/styles.css -o dist/style.css",
@@ -39,7 +41,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
@@ -62,7 +65,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-ui-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-ui-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

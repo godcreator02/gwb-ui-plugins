@@ -232,7 +232,7 @@ const seams = [
     via: 'code',
     text: '打开窗格时外壳 import 注册时给的 client 地址，取导出 mountPane 同步调用，收下 { dispose, retarget? }。类型从只有类型的子路径 @godcreator/gwb-shell/pane import type。',
   },
-  /* ref file="../plugins/shell/package.json" lines="16-19" hash="c4d663d53fe3" blob="2d44c8a19401" */
+  /* ref file="../plugins/shell/package.json" lines="17-20" hash="c4d663d53fe3" blob="ef9729d77335" */
   /* ref file="../plugins/theme/build.ts" lines="44-47" hash="9528639d0916" blob="0abda5a1aaeb" */
   {
     n: 12,

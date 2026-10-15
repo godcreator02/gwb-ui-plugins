@@ -403,7 +403,7 @@ export const shellGraph = defineSeamGraph({
       text:
         'node 侧回应 shell.env 时给出三张样式表的地址，页面按这个顺序插入 <link> 并等全部加载完；有一张加载不了外壳就不渲染，根节点上只写一句「外壳启动失败：原因」。',
     },
-    /* ref file="../plugins/shell/package.json" lines="11-12" hash="8dcfe7b086f6" blob="2d44c8a19401" */
+    /* ref file="../plugins/shell/package.json" lines="12-13" hash="8dcfe7b086f6" blob="ef9729d77335" */
     {
       n: 17,
       name: '令牌映射',
