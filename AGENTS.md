@@ -31,7 +31,7 @@
 
 `docs-site/content/docs/`：[首页的接缝图与接缝总表](docs-site/content/docs/index.mdx) → 要改的那个包的目录（`shell/`、`theme/`、`baseui/`，
 目录首页是包的内部接缝图）→ [术语表](docs-site/content/docs/glossary.mdx)；怎么跑、怎么验收在 [开发与验收](docs-site/content/docs/dev.mdx)。
-正在做的工作在 `docs-site/content/future/spec/`，别的仓写来的反馈是 gitea 上本仓的 issue。
+正在做的工作在 `docs-site/content/future/spec/`，别的仓写来的反馈是 GitHub 上本仓（`godcreator02/gwb-ui-plugins`）的 issue。
 写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，
 写文档、分区、钉码钉哪种话读 skill「docs-writing」，文档检查、确认黄灯、生成文件读 skill「docs-site」（两份都随插件 `@godcreator/gwb-docfirst-workflow` 发布）。
 
