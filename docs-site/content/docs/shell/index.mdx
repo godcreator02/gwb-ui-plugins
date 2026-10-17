@@ -4,6 +4,9 @@ description: 内核页面根的唯一入口：接管页面、让插件注册窗�
 full: true
 ---
 
+import { SeamMap } from '../_shared/seam-map/seam-map';
+
+
 外壳是包 `@godcreator/gwb-shell`，源码在 `plugins/shell/src/`：node 侧入口是 `src/index.ts`（构建成 `dist/index.js`），
 浏览器侧入口是 `src/client/index.tsx`（构建成 `dist/client.js`）。
 

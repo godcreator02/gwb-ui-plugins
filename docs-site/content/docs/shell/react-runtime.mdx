@@ -3,6 +3,9 @@ title: 页面上的 React
 description: 页面上的 React 由外壳打包提供、经内核登记成浏览器模块（importmap）；插件浏览器侧的外置名单从外壳的 browserImports() 来；从主进程登记到窗格挂载完成的完整启动顺序
 ---
 
+import { ReactBoot } from './react-runtime/react-boot/react-boot';
+
+
 外壳和每个带界面的插件的浏览器侧代码都写 `import … from 'react'`，构建时这几个包名不打包进去，留给页面解析。
 解析由两个包分工：**内核**只提供通用的机制——主进程里登记「包名 → 本地文件地址」（`registerImports`），页面动态加载模块之前
 把登记的内容注入成 importmap（`prepareImports`），它不认识 React；**外壳**提供 React 本身——自己打包四个文件，自己登记，

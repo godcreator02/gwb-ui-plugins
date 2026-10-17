@@ -19,6 +19,7 @@ description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令�
 ## 给插件加一个窗格
 
 1. node 侧 `inject` 写上 `'gwbShell'`，在 `apply` 里调 `ctx.gwbShell.registerPane({ id, title, icon, kind, client, style })`：
+
    - `id` 非空、不含 `:`，本插件内唯一；`title` 非空。不满足的 `registerPane` 当场抛错
    - `client` / `style` 从本模块地址算：`new URL('./client.js', import.meta.url).href`、`new URL('./style.css', import.meta.url).href`。
      给了就必须是 `file://` 地址、路径分别以 `.js` / `.css` 结尾，否则 `registerPane` 当场抛错
@@ -75,6 +76,7 @@ description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令�
 1. 注册时写 `kind: 'document'`。
 2. 打开一份：`args.shell.openPane(paneId, { key, params, preview, placement })`。新窗格开在调用它的这个窗格所在的桌面上，
    不切桌面。放进哪一组，按顺序取第一条成立的：
+
    - 调用它的就是同一个窗格（同一插件、同一窗格 id）：放进调用方自己那一组
    - 这张桌面上有已开着这个窗格的组：放进其中最近激活过的那一组
    - 调用方右边紧挨着有一组：放进那一组；右边没有，就把调用方那一组对半分出一组新的
@@ -132,6 +134,7 @@ description: 写 gwb 插件的窗格或状态栏按钮、在窗格里调命令�
 1. 用 `args.host.call(name, args)`。它调用 `@godcreator/gwb-commands/client`，经内核的 `commands.run` 请求通道交给主进程，由命令总线
    `ctx.gwbCommands.run` 执行，回的是命令总线的回执，形状见说明书 `gwb-commands` 的「回执参考」。
 2. 命令没成功时 promise 照常 resolve，回执是 `{ ok: false, error }`，不会 reject：
+
    - 命令不存在：`error` 是 `没有这条命令：<命令名>`
    - 处理函数抛错：`error` 是异常文本
    - 处理函数自己返回 `{ ok: false, error }`：原样返回
@@ -165,6 +168,7 @@ devkit 0.25.4 起生成的插件，第 1、2 步已经做好、`button` 已经�
 1. 包根写 `components.json`（形状见下文「参考」），`tailwind.prefix` 填本插件的 CSS 前缀，即样式入口第一行
    `prefix(…)` 里那个。
 2. 配 `@/` 别名，三处都指向 `src/client`：
+
    - 包根 `tsconfig.json`：`"paths": { "@/*": ["./src/client/*"] }`（shadcn CLI 按它决定组件放在哪）
    - `src/client/tsconfig.json`：`"paths": { "@/*": ["./*"] }`（类型检查）
    - `build.ts` 的 esbuild 选项：`alias: { '@': path.join(here, 'src', 'client') }`（打包）
@@ -271,6 +275,7 @@ devkit 0.25.4 起生成的插件，第 1、2 步已经做好、`button` 已经�
 1. `devkit.dev {"home":"<home 名>","dir":"<仓根>","packages":["plugins/<短名>"]}` 把这一版装进隔离 home，回执 `ok: true`
    （样式检查在这一步跑，见「用令牌配颜色与布局」的完成判据）。
 2. 用命令打开要验的窗格，不靠点状态栏菜单：
+
    - `devkit.cdp {"args":["<home 名>","cmd","shell.panes"]}`，在回执里找到本插件那一行，记下 `entryId` 与窗格 `id`
    - `devkit.cdp {"args":["<home 名>","cmd","shell.openPane","{\"entryId\":\"<entryId>\",\"paneId\":\"<窗格 id>\"}"]}`
      （工具窗格已开着就是把它激活）；已开着的某一份要激活，用 `shell.pane.list` 查它的 `instance`，再调 `shell.pane.focus {"instance":…}`

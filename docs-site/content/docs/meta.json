@@ -1,3 +1,5 @@
 {
+  "title": "现状",
+  "root": true,
   "pages": ["index", "shell", "theme", "baseui", "dev", "glossary", "outputs"]
 }

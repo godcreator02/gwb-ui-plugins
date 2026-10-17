@@ -1,0 +1,36 @@
+---
+born-at: 2026-10-17T11:30
+type: choice
+parent: [2026-09-12-gwb-ui-plugins]
+label: 文档站迁到 god-docsite 平台
+domain: 文档站
+---
+
+## 背景
+
+站原来是 Next 16 + `@godcreator/docfirst-workflow` 0.5.2 + `@godcreator/docfirst-explainer` 0.1.1，路由、页面 loader、
+功能包接线与 god-docsite 平台（fumadocs + React Router + Vite）全不同。god-docsite 的维护页
+（`content/maintain/migrate-next-docfirst.mdx`）定了做法：在空目录 `docfirst.create` 生成骨架，把建站器负责的文件整份换进旧站，
+`content/` 正文留着，逐类处理差异；前面的 gwb-vscode、gwb-windows-backup、gwb-gitea 等六个站照它迁过。
+
+## 结论与边界
+
+照维护页迁完，站目录 `pnpm doc` / `typecheck` / `build` 全绿，站点经 `docsite.site.*` 托管、各页 200：
+
+- 骨架建在 `D:\gwb-docfirst-migrate\gwb-ui-plugins\docs-site`（做完保留），`app/`、根配置（vite / react-router / source.config / tsconfig /
+  .gitignore / pnpm-workspace / 锁文件）、身份文件 docsite.json、people.json、glossary.json、comments/ 换进站；package.json 换 type /
+  scripts / 依赖，名字版本描述照旧。Next 的 `src/app/`、`src/lib/`、`src/proxy.ts`、组件表与名册核对、next / postcss 配置删掉
+- 14 个讲解组件挪出 `src/components/`：接缝图 SeamMap 被 docs / shell / theme / baseui 四个首页共用，进 `content/docs/_shared/`；
+  lanes（横道画面）只被 takeover 一页的 shell-boot 与 pane-mount 用，进 `content/docs/shell/takeover/`；其余 11 个各进所用页面的同名文件夹。
+  页面开头 import 组件，组件去掉 `'use client'`；讲解组件包换成 `@godcreator/explainer`（组件从 `./site` 取、机读文字从 `.` 取），
+  16 份 `.data.mjs` 旁补 `.d.mts`。本站组件样式原本就各在自己目录的 `.css` 里、由组件 import，没碰上 gwb-gitea 那类变量写在 global.css 的情况
+- 轨迹卡 `content/trajectory/` 挪到站点根 `trajectory/`；`content/meta.json` 写站名，docs、future 两区加 `title` 与 `root: true`；
+  `docfirst.config.mjs` 照模板改（`fumadocsRoster: true`、`trajectory`、名册加 `Term`，13 条机读规则跟着组件换路径）
+- 生成物重新 render：正本有意改两处（README 的 build+start 端口说法改工作台托管、AGENTS 里说明书所属插件改 `@godcreator/gwb-docsite`），
+  其余是列表记号、表格分隔线、嵌套列表前空行这类读起来一样的渲染器差异；CLAUDE.md 与三个插件 README 没变
+
+没做完 / 平台侧的遗留：
+
+- 四个包首页 frontmatter 的 `full: true` 不再生效：平台的页面组件不把它交给 fumadocs 的 DocsPage，接缝图旁边照样有目录栏，
+  宽图在正文里横向滚动。这是平台包的事，迁移时页面原样保留
+- 旧站 `global.css` 里 `@theme` 设的更纱黑体没带过来，站用平台默认字体

@@ -3,6 +3,9 @@ title: 升级之后怎么整页刷新
 description: 插件管理窗格点「更新」后，plugin-manager.update 的回执怎么写成几行话、什么时候自己调 shell.reload 整页重新加载、插件管理升级自己时为什么先等它回来、有条目没回来时为什么不刷新
 ---
 
+import { UpdateReloadCases } from './update-reload/update-reload/update-reload';
+
+
 插件升级之后，node 侧的条目由插件管理重新加载，页面上开着的窗格却还在用旧版本的 `client.js`，要整页重新加载才换成新的。
 插件管理自己不刷新页面，这一步由插件管理窗格做：拿到 `plugin-manager.update` 的回执，先写成窗格上的几行话，再决定刷不刷新。
 下面几种回执取自窗格的测试，选一种看它走到哪一步为止：

@@ -3,6 +3,10 @@ title: 样式隔离
 description: 一张页面上几个插件的样式怎么放在一起——令牌的值全页共享一份，工具类规则各一份、靠类名前缀互相隔离，组件共享的是源码出处；外壳自己的两张样式表；插件的样式表怎么进页面、谁来检查
 ---
 
+import { SubsetSheets } from './styles/subset-sheets/subset-sheets';
+import { NameIsolation } from './styles/name-isolation/name-isolation';
+
+
 外壳、基础界面（baseui）、外观（theme）这几个插件的界面渲染在同一个页面上，但它们分别构建、分别发版，
 装进同一个 home 运行时才第一次放在一起。浏览器给的条件是固定的：只有一个 DOM、一套级联、一个 JS 运行环境
 （一份模块缓存、一份 importmap）。「几个插件共享一套外观」对照这三条，其实是三个问题：

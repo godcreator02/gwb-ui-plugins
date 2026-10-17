@@ -6,26 +6,26 @@
 页面用的 React 由 shell 提供，kernel 管理 importmap，不为假想的第二外壳实现维护独立契约包。`gwb-tokens` / `gwb-shared-react` 两个
 共享包已停发，registry 上的旧版别再引。
 
-|      | 插件 / 包                                              |
-| ---- | -------------------------------------------------- |
-| 外壳   | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；子路径 `theme.css` / `theme.reference.css` 提供令牌表；页面用的 React 由 shell 提供，kernel 管理 importmap） |
-| 外观   | `theme`（全局启动样式 + 外观窗格；没外壳也照常加载）                     |
+|  | 插件 / 包 |
+| --- | --- |
+| 外壳 | `shell`（窗格容器 + 窗格注册服务，内核页面根的唯一入口；子路径 `theme.css` / `theme.reference.css` 提供令牌表；页面用的 React 由 shell 提供，kernel 管理 importmap） |
+| 外观 | `theme`（全局启动样式 + 外观窗格；没外壳也照常加载） |
 | 基础界面 | `baseui`（基础插件的官方窗格集：日志、插件管理；另登记查日志文件的命令 `logger.query`） |
 
 ## 依赖现状
 
-* **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、插件管理）写 `^<源上 latest>`，
+- **用到的插件写 peer**：跨仓的（命令总线、数据、设置、说明书、插件管理）写 `^<源上 latest>`，
   同仓的（shell / theme / baseui 之间）写 `workspace:*`；可选使用的在 `peerDependenciesMeta` 标 `optional: true`，
   不另写 dev。peer 里还有内核包 `@godcreator/gwb-kernel-desktop`，接口类型从它的包根 `import type`
-* **窗格只按命令名调用的插件不写 peer**：窗格在页面上拿不到服务，只经命令总线按名字调对方的命令（命令不在就回执说明），也不 import 对方的类型——如 baseui 的窗格调 `settings.*`。node 侧插件之间不按命令名互调，用对方的服务：外观局部注入外壳、经 `registerStartupStyle` 登记启动样式
-* 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见文档站首页的接缝图（[`docs-site/content/docs/index.mdx`](docs-site/content/docs/index.mdx)）
+- **窗格只按命令名调用的插件不写 peer**：窗格在页面上拿不到服务，只经命令总线按名字调对方的命令（命令不在就回执说明），也不 import 对方的类型——如 baseui 的窗格调 `settings.*`。node 侧插件之间不按命令名互调，用对方的服务：外观局部注入外壳、经 `registerStartupStyle` 登记启动样式
+- 依赖单向：本仓用基础仓，基础仓不依赖本仓。各插件注入了谁、按名字调了谁，见文档站首页的接缝图（[`docs-site/content/docs/index.mdx`](docs-site/content/docs/index.mdx)）
 
 ## baseui 三条规矩（破了任何一条，它就会变成什么都往里放的插件）
 
 1. 用到的基础服务**一律局部注入**（`ctx.inject([...], fn)`），必需依赖只有 `gwbShell`——缺了哪个服务就不注册对应的窗格或命令（`logger.query` 由 baseui 自己登记，跟着 `gwbCommands` 走）；只按命令名调的不注入（日志窗格只调 `logger.query`，总是注册）
 2. **一窗格一模块**：`panes/` 下窗格之间零 import，只准 import `components/ui` 共享层
 3. **只收基础插件的官方界面**：进 baseui 的唯一资格是它是某个基础插件的官方界面（内核写的日志也算）；界面本身就是全部
-  功能的插件（hello、将来的功能插件）自带界面，不进
+   功能的插件（hello、将来的功能插件）自带界面，不进
 
 ## 先读
 
@@ -33,7 +33,7 @@
 目录首页是包的内部接缝图）→ [术语表](docs-site/content/docs/glossary.mdx)；怎么跑、怎么验收在 [开发与验收](docs-site/content/docs/dev.mdx)。
 正在做的工作在 `docs-site/content/future/spec/`，别的仓写来的反馈是 GitHub 上本仓（`godcreator02/gwb-ui-plugins`）的 issue。
 写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，
-写文档、分区、钉码钉哪种话读 skill「docs-writing」，文档检查、确认黄灯、生成文件读 skill「docs-site」（两份都随插件 `@godcreator/gwb-docfirst-workflow` 发布）。
+写文档、分区、钉码钉哪种话读 skill「docs-writing」，文档检查、确认黄灯、生成文件读 skill「docs-site」（两份都随插件 `@godcreator/gwb-docsite` 发布）。
 
 ## 怎么跑
 
@@ -56,4 +56,4 @@ pnpm check        # typecheck + lint + test
 
 ## 不能做的事
 
-* 这份 AGENTS.md 是生成物，正本是 `docs-site/content/docs/outputs/agents.mdx`，改那边
+- 这份 AGENTS.md 是生成物，正本是 `docs-site/content/docs/outputs/agents.mdx`，改那边

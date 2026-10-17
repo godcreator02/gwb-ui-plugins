@@ -64,12 +64,12 @@ pnpm check   # typecheck + lint + test
 
 第一次先在 `docs-site/` 里 `pnpm install`。文档检查在站目录运行 `pnpm doc`（仓根的同名命令转到站目录），改了生成物的正本后运行 `pnpm doc:render`：
 
-{/* ref file="package.json" lines="12-14" hash="bdd90c568c21" blob="28f3b5ff6860" */}
+{/* ref file="package.json" lines="11-13" hash="c2cdd849b3c2" blob="36dcaea57e43" */}
 
 仓根的 `AGENTS.md`、`CLAUDE.md`、`README.md`，三个插件各自的 `README.md`，以及外壳随包发布的 `skills/gwb-shell/SKILL.md` 都是生成物，
 正本在本站 `content/docs/outputs/`，映射写在站配置里；改正本，不改生成物：
 
-{/* ref file="docfirst.config.mjs" lines="22-32" hash="095565f78f07" blob="aab9e5a51b95" */}
+{/* ref file="docfirst.config.mjs" lines="17-31" hash="3857fcb6049b" blob="b122d8c990bb" */}
 
 ## 提交前检查
 
@@ -116,7 +116,7 @@ lint 是 `oxlint --type-aware --deny-warnings`，一条警告也不放过。有�
 界面的改动要在隔离 home 里实际打开页面验（怎么建隔离 home、装插件读说明书 `gwb-devkit`，不在 default 上试）。要量页面上的数字时写探针脚本，
 放在仓根 `probes/<时间>_<题目>/` 下，经 devkit 的 CDP 命令在页面里执行，目录里的 README 写问什么、怎么跑、结论：
 
-{/* tree dir="../probes" depth="1" hash="7d33da3c1370" */}
+{/* tree dir="../probes" depth="1" hash="341ae80aa7b4" */}
 
 {/* ref file="../probes/2609191127_split-sizing/README.md" lines="9-15" hash="41adb54385c8" blob="4c51ad513a9b" */}
 

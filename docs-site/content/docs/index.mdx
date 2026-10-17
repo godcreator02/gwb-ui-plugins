@@ -4,6 +4,9 @@ description: 外壳、外观、基础界面三个插件怎么接到内核、基�
 full: true
 ---
 
+import { SeamMap } from './_shared/seam-map/seam-map';
+
+
 `gwb-ui-plugins` 放着 gwb 工作台界面层的三个插件：外壳 `@godcreator/gwb-shell` 接管内核的页面根、提供窗格容器与窗格注册，
 外观 `@godcreator/gwb-theme` 管全局字体与自定义 CSS，基础界面 `@godcreator/gwb-baseui` 是基础插件的官方窗格集。
 三个插件、令牌表和页面用的 React 是一个整体，要换整套换，不为假想的第二个外壳维护独立的契约包（[建仓理由](/trajectory/2026-09-12-gwb-ui-plugins)）。

@@ -3,6 +3,10 @@ title: 多桌面与布局保存
 description: 一张桌面一个窗格容器、挂载后常驻；切桌面按什么顺序；布局文件的形状、什么时候写入磁盘、启动时从哪份布局开始、读不回来时停止保存；桌面改名删除、把窗格送到别的桌面、shell.desktop.* 命令
 ---
 
+import { LayoutBootCases } from './desktops/layout-boot/layout-boot';
+import { DesktopSwitchSteps } from './desktops/desktop-switch/desktop-switch';
+
+
 ## 一张桌面一个容器，常驻保活
 
 每张桌面是页面上的一个 `section`，里面一个 dockview 窗格容器，外加这张桌面的浮层挂载点。启动时只挂载活动那张，别的桌面第一次切过去才挂载，挂载之后常驻。

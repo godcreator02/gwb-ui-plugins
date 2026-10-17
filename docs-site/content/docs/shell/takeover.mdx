@@ -3,6 +3,10 @@ title: 外壳怎么接管页面
 description: 外壳插件怎么拿到内核页面的 #root、准备与挂载为什么分成两段、卸载为什么必须同步；一个窗格从注册、挂载、换内容到关闭的每一步
 ---
 
+import { ShellBootSteps } from './takeover/shell-boot/shell-boot';
+import { PaneMountSteps } from './takeover/pane-mount/pane-mount';
+
+
 内核的页面只有一个 `#root` 和一张状态页，它不认识任何界面。外壳是一个普通插件：node 侧告诉内核「页面归我」，
 浏览器侧的 `client.js` 被页面 import 之后接管 `#root`。下面这个过程跨两个进程，一步一步看。
 

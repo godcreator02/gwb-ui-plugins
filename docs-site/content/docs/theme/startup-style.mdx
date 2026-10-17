@@ -3,6 +3,10 @@ title: 外观设置怎么进页面
 description: 启动样式从 home 里的设置到页面上的 #gwb-theme-style 经过哪几步、为什么排在外壳三张表之后；外观窗格怎么预览与退回；用户自定义 CSS 为什么能压过令牌与插件工具类；亮暗开关怎么生效
 ---
 
+import { AppearanceFlow } from './startup-style/appearance-flow/appearance-flow';
+import { CustomCssCases } from './startup-style/custom-css-cases/custom-css-cases';
+
+
 外观设置跨了三处：设置存在 node 侧，启动样式由外壳在启动时取、在页面上注入，外观窗格又在页面上直接改它。
 下面用同一个例子从头看一遍：这个 home 存着等宽字体 `Consolas, monospace` 与一段把底色换掉的自定义 CSS，打开外观窗格把等宽字体改成
 `Cascadia Mono` 并保存，再填一个正文字体、不保存就关掉窗格。
